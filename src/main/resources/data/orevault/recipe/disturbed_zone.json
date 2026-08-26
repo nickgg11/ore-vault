@@ -1,0 +1,15 @@
+﻿{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    { "item": "orevault:vault_frame" },
+    { "item": "minecraft:bone_block" },
+    { "item": "minecraft:bone_block" },
+    { "item": "minecraft:bone_block" },
+    { "item": "minecraft:bone_block" },
+    { "item": "minecraft:rotten_flesh" },
+    { "item": "minecraft:rotten_flesh" },
+    { "item": "minecraft:rotten_flesh" },
+    { "item": "minecraft:rotten_flesh" }
+  ],
+  "result": { "id": "orevault:disturbed_zone" }
+}

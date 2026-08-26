@@ -1,0 +1,9 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [ "FFF", "FCF", "FFF" ],
+  "key": {
+    "F": { "item": "orevault:vault_frame" },
+    "C": { "item": "orevault:resonance_crystal" }
+  },
+  "result": { "id": "orevault:vault_anchor" }
+}

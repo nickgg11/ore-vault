@@ -1,0 +1,6 @@
+﻿{
+    "textures":  {
+                     "all":  "orevault:block/disturbed_zone"
+                 },
+    "parent":  "minecraft:block/cube_all"
+}

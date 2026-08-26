@@ -1,0 +1,8 @@
+﻿{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    { "item": "minecraft:cobblestone" },
+    { "item": "minecraft:book" }
+  ],
+  "result": { "id": "orevault:tome_of_the_deep_seam" }
+}

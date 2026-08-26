@@ -1,0 +1,10 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [ "CCC", "CDC", "CIC" ],
+  "key": {
+    "C": { "item": "orevault:resonance_crystal" },
+    "D": { "item": "minecraft:diamond" },
+    "I": { "item": "orevault:attuned_vault_igniter" }
+  },
+  "result": { "id": "orevault:resonant_vault_igniter" }
+}

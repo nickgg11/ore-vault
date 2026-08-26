@@ -1,0 +1,5 @@
+﻿{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [ { "item": "orevault:resonance_crystal_block" } ],
+  "result": { "id": "orevault:resonance_crystal", "count": 9 }
+}
