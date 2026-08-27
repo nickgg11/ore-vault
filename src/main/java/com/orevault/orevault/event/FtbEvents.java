@@ -48,7 +48,7 @@ public final class FtbEvents {
         MinecraftServer server = TeamHelper.manager().getServer();
         ServerLevel overworld = server.overworld();
 
-        // TODO [13]/[31]: delete the team's Vault dimension once dimension management exists.
+        // TODO [31]: delete the team's Vault dimension (VaultReset owns dimension deletion).
         OreVault.LOGGER.warn("Team {} disbanded: Vault dimension deletion not implemented yet (see [13]/[31])", teamId);
 
         OreVaultTeamData teamData = OreVaultTeamData.get(overworld, teamId);
