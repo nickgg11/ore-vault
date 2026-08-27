@@ -108,6 +108,7 @@ tasks.withType(ProcessResources).configureEach {
             mod_group_id           : mod_group_id,
             mod_authors            : mod_authors,
             mod_description        : mod_description,
+            ftb_teams_version      : ftb_teams_version,
     ]
     inputs.properties replaceProperties
 

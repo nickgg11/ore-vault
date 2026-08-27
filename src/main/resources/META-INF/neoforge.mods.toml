@@ -1,0 +1,49 @@
+# Ore Vault mod metadata (NeoForge 26.1).
+# Placeholder values are expanded from gradle.properties during processResources.
+
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="${mod_authors}"
+description='''${mod_description}'''
+
+# Hard dependency on NeoForge.
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="[${neo_version},)"
+    ordering="NONE"
+    side="BOTH"
+
+# Hard dependency on Minecraft.
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+# Hard dependency: FTB Teams (pulls FTB Library transitively). The mod will not load without it.
+[[dependencies.${mod_id}]]
+    modId="ftbteams"
+    type="required"
+    versionRange="[${ftb_teams_version},)"
+    ordering="AFTER"
+    side="BOTH"
+
+# Soft dependency: FTB Ultimine (detected at runtime; optional).
+[[dependencies.${mod_id}]]
+    modId="ftbultimine"
+    type="optional"
+    ordering="AFTER"
+    side="BOTH"
+
+# Soft dependency: Mekanism (detected at runtime; optional; tag-based integration only).
+[[dependencies.${mod_id}]]
+    modId="mekanism"
+    type="optional"
+    ordering="AFTER"
+    side="BOTH"
