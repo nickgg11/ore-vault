@@ -1,6 +1,0 @@
-﻿{
-  "type": "minecraft:crafting_shaped",
-  "pattern": [ "CCC", "CCC", "CCC" ],
-  "key": { "C": { "item": "orevault:resonance_crystal" } },
-  "result": { "id": "orevault:resonance_crystal_block" }
-}

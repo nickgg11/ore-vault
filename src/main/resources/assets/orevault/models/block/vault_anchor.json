@@ -1,6 +1,0 @@
-﻿{
-    "textures":  {
-                     "all":  "orevault:block/vault_anchor"
-                 },
-    "parent":  "minecraft:block/cube_all"
-}

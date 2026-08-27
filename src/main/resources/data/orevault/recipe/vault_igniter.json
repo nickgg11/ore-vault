@@ -1,9 +1,0 @@
-﻿{
-  "type": "minecraft:crafting_shaped",
-  "pattern": [ "IR" ],
-  "key": {
-    "I": { "item": "minecraft:iron_ingot" },
-    "R": { "item": "minecraft:redstone" }
-  },
-  "result": { "id": "orevault:vault_igniter" }
-}
