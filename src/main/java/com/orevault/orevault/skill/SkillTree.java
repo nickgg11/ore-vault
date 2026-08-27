@@ -48,6 +48,16 @@ public final class SkillTree {
         return unlockedTiers.getOrDefault(nodeId, 0);
     }
 
+    /** Snapshot of all unlocked node tiers (node id → tier). */
+    public Map<String, Integer> getUnlockedTiers() {
+        return Map.copyOf(unlockedTiers);
+    }
+
+    /** Directly sets an unlocked tier; used only when loading persisted data. */
+    public void setUnlockedTier(String nodeId, int tier) {
+        unlockedTiers.put(nodeId, tier);
+    }
+
     public boolean isUnlocked(String nodeId) {
         return unlockedTier(nodeId) > 0;
     }
