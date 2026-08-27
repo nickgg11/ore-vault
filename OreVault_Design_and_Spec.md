@@ -1147,15 +1147,15 @@ Work through these sessions with Claude Code. Start each session by instructing 
 Use this to track progress. Update at the end of each development session.
 
 ### Infrastructure
-- [ ] Forge 26.1 project scaffold (build.gradle, settings.gradle, mods.toml)
-- [ ] FTB Teams hard dependency declared and verified
-- [ ] Package structure created (`block`, `item`, `portal`, `worldgen`, `data`, `config`, `client`, `event`)
-- [ ] `OreVault.java` main mod class
-- [ ] `NodeCosts.java` constants file
-- [ ] `OreVaultTeamData` SavedData class
-- [ ] `PlayerStats` data class
-- [ ] FTB Teams event hooks (CREATED, PLAYER_JOINED, DISBANDED)
-- [ ] Per-team dimension key generation
+- [x] Forge 26.1 project scaffold (build.gradle, settings.gradle, mods.toml)
+- [x] FTB Teams hard dependency declared and verified
+- [ ] Package structure created (`block`, `item`, `portal`, `worldgen`, `data`, `config`, `client`, `event`) — `data`/`config`/`event`/`skill`/`team` done; rest land in later phases
+- [x] `OreVault.java` main mod class
+- [x] `NodeCosts.java` constants file
+- [x] `OreVaultTeamData` SavedData class
+- [x] `PlayerStats` data class
+- [ ] FTB Teams event hooks (CREATED, PLAYER_JOINED, DISBANDED) — CREATED + DISBANDED done; PLAYER_JOINED (Tome grant) pending Tome item
+- [x] Per-team dimension key generation
 
 ### Dimension
 - [ ] Dimension type JSON (`ore_vault_type.json`)
@@ -1317,12 +1317,12 @@ Use this to track progress. Update at the end of each development session.
 - [ ] Ore Doubling fallback chain (Mekanism → dust → raw ore)
 
 ### Config
-- [ ] `orevault-server.toml` generated with defaults
-- [ ] `vault_presence_enabled` toggle
-- [ ] `max_loaded_chunks_per_team` ceiling
-- [ ] `overrides` ore classification map
-- [ ] `max_zones_per_team` limit
-- [ ] `allow_backup_on_reset` toggle
+- [x] `orevault-server.toml` generated with defaults
+- [x] `vault_presence_enabled` toggle
+- [x] `max_loaded_chunks_per_team` ceiling
+- [x] `overrides` ore classification map
+- [x] `max_zones_per_team` limit
+- [x] `allow_backup_on_reset` toggle
 
 ### Polish
 - [ ] Portal activation particles
