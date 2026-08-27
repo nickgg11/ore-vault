@@ -1149,7 +1149,7 @@ Use this to track progress. Update at the end of each development session.
 ### Infrastructure
 - [x] Forge 26.1 project scaffold (build.gradle, settings.gradle, mods.toml)
 - [x] FTB Teams hard dependency declared and verified
-- [ ] Package structure created (`block`, `item`, `portal`, `worldgen`, `data`, `config`, `client`, `event`) — `data`/`config`/`event`/`skill`/`team` done; rest land in later phases
+- [ ] Package structure created (`block`, `item`, `portal`, `worldgen`, `data`, `config`, `client`, `event`) — `data`/`config`/`event`/`skill`/`team`/`worldgen`/`ore` done; `block`/`item`/`portal`/`client` land in later phases
 - [x] `OreVault.java` main mod class
 - [x] `NodeCosts.java` constants file
 - [x] `OreVaultTeamData` SavedData class
@@ -1158,14 +1158,14 @@ Use this to track progress. Update at the end of each development session.
 - [x] Per-team dimension key generation
 
 ### Dimension
-- [ ] Dimension type JSON (`ore_vault_type.json`)
-- [ ] Dynamic dimension registration per team
-- [ ] Dimension deletion on team disband
-- [ ] Custom chunk generator skeleton
-- [ ] Ore rarity classifier (scans registry at server start)
-- [ ] Admin config override for rarity classification
-- [ ] Dynamic ore placement from skill state
-- [ ] 40% stone content floor enforcement
+- [x] Dimension type JSON (`ore_vault.json`, `ore_vault_expanded.json`)
+- [x] Dynamic dimension registration per team
+- [ ] Dimension deletion on team disband (deferred to `[31]` VaultReset; TODO in `VaultDimensions`)
+- [x] Custom chunk generator skeleton
+- [x] Ore rarity classifier (scans registry at server start)
+- [x] Admin config override for rarity classification
+- [ ] Dynamic ore placement from skill state (skill snapshot wired; node math deferred to `[44]`/`[45]`)
+- [x] 40% stone content floor enforcement
 - [ ] Vault Expansion keystone (height extension, post-reset)
 
 ### Portal and Igniter
