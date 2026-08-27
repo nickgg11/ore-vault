@@ -48,3 +48,7 @@ repo/
 # Local API inspection extracts (NeoForge/FTB sources unpacked from gradle caches).inspect/
 
 /.inspect
+
+# Dev run outputslogs/
+run/
+

@@ -93,6 +93,14 @@ dependencies {
     // Runtime-only presence is detected via ModList at runtime.
     compileOnly "dev.ftb.mods:ftb-ultimine-neoforge:${ftb_ultimine_version}"
     // Mekanism: no compile-time reference at all — integration is tag-based per the design spec.
+
+    // JUnit for pure-logic unit tests (OreClassifier rules, later [72] suites).
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
