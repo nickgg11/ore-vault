@@ -45,10 +45,10 @@ run/
 repo/
 !**/src/**/repo/
 
-# Local API inspection extracts (NeoForge/FTB sources unpacked from gradle caches).inspect/
-
+# Local API inspection extracts (NeoForge/FTB sources unpacked from gradle caches)
 /.inspect
 
-# Dev run outputslogs/
+# Dev run outputs
+logs/
 run/
 
