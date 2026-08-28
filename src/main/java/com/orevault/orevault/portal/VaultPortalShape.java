@@ -136,29 +136,99 @@ public final class VaultPortalShape {
             return Optional.empty();
         }
 
+        if (!validateFrame(view, minH, maxH, minY, maxY, fixed, axis)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new VaultPortalShape(at(minH, minY, fixed, axis), width, height, axis));
+    }
+
+    /**
+     * True if {@code pos} (an existing portal block) still belongs to a
+     * complete, valid frame. Used by {@code VaultPortalBlock#updateShape} so
+     * that breaking any frame block — including a corner, which is diagonal
+     * to every portal block — dissolves the whole portal.
+     */
+    public static boolean isValidFrameContaining(LevelReader level, BlockPos pos) {
+        View view = (x, y, z) -> classify(level.getBlockState(new BlockPos(x, y, z)));
+        for (Direction.Axis axis : SCAN_ORDER) {
+            int fixed = fixedCoord(pos, axis);
+
+            // Walk the interior run horizontally and vertically from the portal block.
+            int minH = horizCoord(pos, axis) - walkWhileInterior(view, pos, axis, -1);
+            int maxH = horizCoord(pos, axis) + walkWhileInterior(view, pos, axis, 1);
+            int minY = pos.getY() - walkWhileInteriorVertical(view, pos, axis, -1);
+            int maxY = pos.getY() + walkWhileInteriorVertical(view, pos, axis, 1);
+
+            // Frame bounds sit one block outside the interior run; validateFrame re-checks the size limits.
+            if (validateFrame(view, minH - 1, maxH + 1, minY - 1, maxY + 1, fixed, axis)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Steps while the cell is interior (air or portal), capped at the max interior size. */
+    private static int walkWhileInterior(View view, BlockPos start, Direction.Axis axis, int step) {
+        int steps = 0;
+        int y = start.getY();
+        int fixed = fixedCoord(start, axis);
+        int h = horizCoord(start, axis) + step;
+        while (steps < MAX_INTERIOR_WIDTH && isInterior(kindAt(view, h, y, fixed, axis))) {
+            steps++;
+            h += step;
+        }
+        return steps;
+    }
+
+    /** Steps vertically while the cell is interior (air or portal), capped at the max interior height. */
+    private static int walkWhileInteriorVertical(View view, BlockPos start, Direction.Axis axis, int step) {
+        int steps = 0;
+        int h = horizCoord(start, axis);
+        int fixed = fixedCoord(start, axis);
+        int y = start.getY() + step;
+        while (steps < MAX_INTERIOR_HEIGHT && isInterior(kindAt(view, h, y, fixed, axis))) {
+            steps++;
+            y += step;
+        }
+        return steps;
+    }
+
+    private static boolean isInterior(Kind kind) {
+        return kind == Kind.AIR || kind == Kind.PORTAL;
+    }
+
+    /**
+     * Verifies that {@code (minH..maxH) × (minY..maxY)} on the given plane is a
+     * complete rectangular frame with a valid, empty interior.
+     */
+    private static boolean validateFrame(View view, int minH, int maxH, int minY, int maxY, int fixed, Direction.Axis axis) {
+        int width = maxH - minH + 1;
+        int height = maxY - minY + 1;
+        if (width < MIN_FRAME_WIDTH || width > MAX_FRAME_WIDTH || height < MIN_FRAME_HEIGHT || height > MAX_FRAME_HEIGHT) {
+            return false;
+        }
         // All four sides must be solid frame.
         for (int h = minH; h <= maxH; h++) {
             if (kindAt(view, h, minY, fixed, axis) != Kind.FRAME || kindAt(view, h, maxY, fixed, axis) != Kind.FRAME) {
-                return Optional.empty();
+                return false;
             }
         }
         for (int y = minY; y <= maxY; y++) {
             if (kindAt(view, minH, y, fixed, axis) != Kind.FRAME || kindAt(view, maxH, y, fixed, axis) != Kind.FRAME) {
-                return Optional.empty();
+                return false;
             }
         }
-
         // Interior must be entirely air or existing portal blocks.
         for (int h = minH + 1; h < maxH; h++) {
             for (int y = minY + 1; y < maxY; y++) {
                 Kind kind = kindAt(view, h, y, fixed, axis);
                 if (kind != Kind.AIR && kind != Kind.PORTAL) {
-                    return Optional.empty();
+                    return false;
                 }
             }
         }
-
-        return Optional.of(new VaultPortalShape(at(minH, minY, fixed, axis), width, height, axis));
+        return true;
     }
 
     /** Steps of frame blocks along the horizontal axis, capped at {@link #MAX_STEPS}; returns {@code MAX_STEPS + 1} if over-long. */

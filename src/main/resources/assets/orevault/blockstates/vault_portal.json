@@ -1,10 +1,10 @@
 {
   "variants": {
     "axis=x": {
-      "model": "orevault:block/vault_portal"
+      "model": "orevault:block/vault_portal_ew"
     },
     "axis=z": {
-      "model": "orevault:block/vault_portal"
+      "model": "orevault:block/vault_portal_ns"
     }
   }
 }

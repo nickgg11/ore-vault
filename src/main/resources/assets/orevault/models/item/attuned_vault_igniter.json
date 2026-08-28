@@ -1,5 +1,6 @@
 {
+  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "minecraft:item/gold_ingot"
+    "layer0": "orevault:item/attuned_vault_igniter"
   }
 }

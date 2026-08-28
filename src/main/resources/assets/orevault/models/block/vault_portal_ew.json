@@ -1,0 +1,15 @@
+{
+  "textures": {
+    "particle": "orevault:block/vault_portal"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 7.5],
+      "to": [16, 16, 8.5],
+      "faces": {
+        "north": { "uv": [0, 0, 16, 16], "texture": "#particle" },
+        "south": { "uv": [0, 0, 16, 16], "texture": "#particle" }
+      }
+    }
+  ]
+}

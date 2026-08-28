@@ -3,6 +3,7 @@ package com.orevault.orevault.block;
 import java.util.Map;
 
 import com.mojang.serialization.MapCodec;
+import com.orevault.orevault.portal.VaultPortalShape;
 import com.orevault.orevault.portal.VaultTeleport;
 
 import net.minecraft.core.BlockPos;
@@ -64,9 +65,12 @@ public class VaultPortalBlock extends Block {
     }
 
     /**
-     * Portal frame integrity check (§3.2): if a horizontal neighbour off the
-     * portal plane is neither another portal block nor a Vault Frame block,
-     * the portal dissolves to air.
+     * Portal frame integrity check (§3.2): on any change to a horizontal
+     * neighbour off the portal plane, the whole frame is re-validated (via
+     * {@link VaultPortalShape#isValidFrameContaining}) and the portal dissolves
+     * if it is no longer complete. Re-validating the entire frame — rather
+     * than just the changed neighbour — is what catches corner blocks, which
+     * are diagonal to every portal block.
      */
     @Override
     protected BlockState updateShape(
@@ -82,7 +86,7 @@ public class VaultPortalBlock extends Block {
         Direction.Axis updateAxis = directionToNeighbour.getAxis();
         Direction.Axis axis = state.getValue(AXIS);
         boolean samePlane = axis == updateAxis || !updateAxis.isHorizontal();
-        return !samePlane && !neighbourState.is(this) && !neighbourState.is(ModBlocks.VAULT_FRAME)
+        return !samePlane && !VaultPortalShape.isValidFrameContaining(level, pos)
                 ? Blocks.AIR.defaultBlockState()
                 : super.updateShape(state, level, ticks, pos, directionToNeighbour, neighbourPos, neighbourState, random);
     }
