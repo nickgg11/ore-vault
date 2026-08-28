@@ -3,7 +3,12 @@ package com.orevault.orevault.item;
 import com.orevault.orevault.OreVault;
 import com.orevault.orevault.block.ModBlocks;
 
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -37,6 +42,31 @@ public final class ModItems {
      */
     public static final DeferredItem<BlockItem> VAULT_FRAME_ITEM =
             ITEMS.registerSimpleBlockItem("vault_frame", ModBlocks.VAULT_FRAME);
+
+    // ----- creative tab -----
+
+    /**
+     * Ore Vault creative tab. Without tab membership items are invisible in
+     * the creative menu and JEI (26.1 search tab only indexes tab contents),
+     * so this is required for playability even before the content phase.
+     */
+    public static final DeferredRegister<CreativeModeTab> CREATIVE_TABS =
+            DeferredRegister.create(Registries.CREATIVE_MODE_TAB, OreVault.MODID);
+
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> OREVAULT_TAB = CREATIVE_TABS.register(
+            "orevault",
+            () -> CreativeModeTab.builder()
+                    .title(Component.translatable("itemGroup.orevault"))
+                    .icon(() -> new ItemStack(VAULT_IGNITER.get()))
+                    .displayItems((parameters, output) -> {
+                        output.accept(VAULT_FRAME_ITEM.get());
+                        output.accept(VAULT_IGNITER.get());
+                        output.accept(ATTUNED_VAULT_IGNITER.get());
+                        output.accept(RESONANT_VAULT_IGNITER.get());
+                        output.accept(SOVEREIGN_VAULT_IGNITER.get());
+                    })
+                    .build()
+    );
 
     private ModItems() {
     }

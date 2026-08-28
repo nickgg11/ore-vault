@@ -31,8 +31,10 @@ public class OreVault {
         // Block registry ([16]; extended by [17], [27], [29]).
         ModBlocks.BLOCKS.register(modEventBus);
 
-        // Item registry ([19]: igniter tiers + frame item form; [33], [65] later).
+        // Item registry ([19]: igniter tiers + frame item form; [33], [65] later)
+        // plus the Ore Vault creative tab (items are invisible in creative/JEI without tab membership).
         ModItems.ITEMS.register(modEventBus);
+        ModItems.CREATIVE_TABS.register(modEventBus);
 
         // Registrations are added incrementally in later tasks:
         //   [21] entities, [32] network.
