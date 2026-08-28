@@ -56,8 +56,8 @@ public final class VaultDimensions {
             ResourceKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath(OreVault.MODID, "vault"));
 
     /** World height of the base dimension type (matches {@code ore_vault.json}). */
-    private static final int BASE_MIN_Y = 0;
-    private static final int BASE_HEIGHT = 256;
+    private static final int BASE_MIN_Y = -64;
+    private static final int BASE_HEIGHT = 384;
 
     private static final Map<UUID, ResourceKey<Level>> TEAM_DIMENSIONS = new ConcurrentHashMap<>();
     private static final Map<UUID, VaultChunkGenerator.SkillSnapshot> SKILL_SNAPSHOTS = new ConcurrentHashMap<>();
@@ -78,8 +78,8 @@ public final class VaultDimensions {
     }
 
     /**
-     * Default entry Y for the base dimension: feet standing on the deepslate
-     * surface at the top of the stone layer (§3.1 air-layer layout).
+     * Default entry Y for the base dimension: feet standing on the grass
+     * surface at the top of the solid fill (§3.1 air-layer layout).
      */
     public static int defaultEntryY() {
         return BASE_MIN_Y + BASE_HEIGHT - VaultChunkGenerator.OPEN_AIR_LAYER;

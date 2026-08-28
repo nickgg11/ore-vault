@@ -5,5 +5,6 @@
   "item.orevault.vault_igniter": "Crude Vault Igniter",
   "item.orevault.attuned_vault_igniter": "Attuned Vault Igniter",
   "item.orevault.resonant_vault_igniter": "Resonant Vault Igniter",
-  "item.orevault.sovereign_vault_igniter": "Sovereign Vault Igniter"
+  "item.orevault.sovereign_vault_igniter": "Sovereign Vault Igniter",
+  "message.orevault.team_required": "You must be in a team to open an Ore Vault."
 }

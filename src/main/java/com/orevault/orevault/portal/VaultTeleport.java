@@ -1,57 +1,71 @@
 package com.orevault.orevault.portal;
 
 import java.util.Optional;
-import java.util.UUID;
 
 import org.jspecify.annotations.Nullable;
 
 import com.orevault.orevault.OreVault;
+import com.orevault.orevault.block.ModBlocks;
 import com.orevault.orevault.item.VaultIgniterItem;
 import com.orevault.orevault.team.TeamHelper;
 import com.orevault.orevault.worldgen.VaultDimensions;
 
+import dev.ftb.mods.ftbteams.api.Team;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Relative;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 
 /**
  * Teleportation routing between the Overworld and the team's Vault (§3.2).
  *
- * <p>Overworld → Vault: saves the return position (one block outside the
- * portal plane, on the approach side, so returning never re-triggers the
- * portal), finds/creates the team's dimension via {@link VaultDimensions},
- * and teleports to the mirrored XZ standing on the deepslate surface at the
- * top of the stone layer — or to the player's custom entry point for tier 3+
- * igniters. Vault → Overworld: returns to the saved position, falling back to
- * the world spawn.</p>
+ * <p>Two entry paths exist:
+ * <ul>
+ * <li>{@link #createTransition} — the 26.1 {@code Portal} interface path used
+ * by {@code VaultPortalBlock}: after the vanilla portal wait, the returned
+ * {@link TeleportTransition} performs the trip (with portal travel sound).
+ * Overworld → Vault: saves the return position (outside the portal plane, on
+ * the approach side), finds/creates the team's dimension, ensures the exit
+ * portal at the vault's default entry point, and lands on the mirrored XZ
+ * standing on the surface — or at the player's custom entry point for tier 3+.
+ * Vault → Overworld: returns to the saved position, falling back to world
+ * spawn.</li>
+ * <li>{@link #handlePortal} — the tier-4 instant path (§3.3): direct teleport,
+ * no portal wait and no cooldown.</li>
+ * </ul>
  *
- * <p>Cooldown is the vanilla 80-tick {@code portalCooldown}; tier 4 skips it.
- * Arrival effects on entering the Vault: Speed I (tier 2, 5s), Haste I
- * (tier 3, 10s), Haste II (tier 4, 15s).</p>
+ * <p>Arrival effects on entering the Vault: Speed I (tier 2, 5s), Haste I
+ * (tier 3, 10s), Haste II (tier 4, 15s). The re-entry cooldown is the vanilla
+ * portal cooldown (80 ticks, §3.2); tier 4 skips it.</p>
  */
 public final class VaultTeleport {
 
     /** Persistent-data key for the saved return position (§3.2): NBT x/y/z ints. */
     public static final String RETURN_TAG = "orevault_return";
-    /** Vanilla portal cooldown in ticks (§3.2); tier 4 skips it (§3.3). */
+    /** Portal charge-up time while standing inside, in ticks (§3.2). */
+    public static final int PORTAL_WAIT_TICKS = 80;
+    /** Re-entry cooldown after a portal trip in ticks (§3.2); tier 4 skips it (§3.3). */
     public static final int PORTAL_COOLDOWN_TICKS = 80;
 
     private VaultTeleport() {
     }
 
-    /** Portal entry point (§3.2): routes between Overworld and Vault. */
+    /** Direct teleport used by the tier-4 instant path (§3.3). */
     public static void handlePortal(ServerPlayer player) {
         if (player.isSpectator()) {
             return;
@@ -63,17 +77,113 @@ public final class VaultTeleport {
         }
     }
 
+    /**
+     * Portal-interface entry point (§3.2): builds the {@link TeleportTransition}
+     * for the waiting portal flow in {@code VaultPortalBlock}, or {@code null}
+     * if the trip is impossible. The team check normally happens in the block;
+     * this is the safety net.
+     */
+    public static @Nullable TeleportTransition createTransition(ServerLevel currentLevel, Entity entity, BlockPos portalEntryPos) {
+        if (!(entity instanceof ServerPlayer player)) {
+            return null;
+        }
+        if (VaultDimensions.isVaultDimension(currentLevel)) {
+            return returnTransition(player);
+        }
+        return toVaultTransition(player, currentLevel, portalEntryPos);
+    }
+
     // ----- Overworld -> Vault -----
+
+    private static @Nullable TeleportTransition toVaultTransition(ServerPlayer player, ServerLevel currentLevel, BlockPos portalEntryPos) {
+        Optional<Team> team = TeamHelper.getTeam(player);
+        if (team.isEmpty()) {
+            return null;
+        }
+        saveReturnPosition(player, currentLevel, portalEntryPos);
+
+        MinecraftServer server = currentLevel.getServer();
+        ResourceKey<Level> key = VaultDimensions.findOrCreate(team.get().getTeamId());
+        ServerLevel vault = server.getLevel(key);
+        if (vault == null) {
+            OreVault.LOGGER.error("Vault dimension {} missing after findOrCreate", key.identifier());
+            return null;
+        }
+
+        int tier = VaultIgniterItem.highestTierLevel(player);
+        BlockPos defaultAnchor = defaultEntry(player);
+        Optional<BlockPos> custom = tier >= 3 ? entryPoint(player) : Optional.empty();
+        BlockPos target = custom.map(pos -> findSafeFooting(vault, pos)).orElse(defaultAnchor);
+
+        // The team's exit portal lives at the vault's default entry point (§3.2);
+        // (re)build it whenever the area is still clear.
+        Direction.Axis axis = currentLevel.getBlockState(portalEntryPos)
+                .getOptionalValue(BlockStateProperties.HORIZONTAL_AXIS)
+                .orElse(Direction.Axis.X);
+        VaultPortalShape.ensureReturnPortal(vault, defaultAnchor, axis);
+
+        int finalTier = tier;
+        TeleportTransition.PostTeleportTransition post = TeleportTransition.PLAY_PORTAL_SOUND.then(entity -> {
+            if (entity instanceof ServerPlayer p) {
+                p.setPortalCooldown(finalTier >= 4 ? 0 : PORTAL_COOLDOWN_TICKS);
+                applyArrivalEffects(p, finalTier);
+            }
+        });
+        return new TeleportTransition(
+                vault,
+                new Vec3(target.getX() + 0.5, target.getY(), target.getZ() + 0.5),
+                Vec3.ZERO,
+                player.getYRot(),
+                player.getXRot(),
+                post
+        );
+    }
+
+    /** Mirrored XZ, feet standing on the grass surface (§3.2, §3.1 air layer). */
+    private static BlockPos defaultEntry(ServerPlayer player) {
+        return new BlockPos(player.blockPosition().getX(), VaultDimensions.defaultEntryY(), player.blockPosition().getZ());
+    }
+
+    // ----- Vault -> Overworld -----
+
+    private static TeleportTransition returnTransition(ServerPlayer player) {
+        ServerLevel vault = (ServerLevel) player.level();
+        ServerLevel overworld = vault.getServer().overworld();
+        Optional<BlockPos> saved = returnPos(player);
+        Vec3 dest;
+        if (saved.isPresent()) {
+            BlockPos pos = saved.get();
+            dest = new Vec3(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
+        } else {
+            BlockPos spawn = overworld.getRespawnData().globalPos().pos();
+            dest = new Vec3(spawn.getX() + 0.5, spawn.getY() + 1, spawn.getZ() + 0.5);
+        }
+        return new TeleportTransition(
+                overworld,
+                dest,
+                Vec3.ZERO,
+                player.getYRot(),
+                player.getXRot(),
+                TeleportTransition.PLAY_PORTAL_SOUND
+        );
+    }
+
+    // ----- direct (tier-4) paths -----
 
     private static void teleportToVault(ServerPlayer player) {
         MinecraftServer server = server(player);
         if (server == null) {
             return;
         }
-        saveReturnPosition(player);
+        ServerLevel current = (ServerLevel) player.level();
+        saveReturnPosition(player, current, player.blockPosition());
 
-        UUID teamId = TeamHelper.getTeamId(player);
-        ResourceKey<Level> key = VaultDimensions.findOrCreate(teamId);
+        Optional<Team> team = TeamHelper.getTeam(player);
+        if (team.isEmpty()) {
+            player.sendSystemMessage(Component.translatable("message.orevault.team_required"));
+            return;
+        }
+        ResourceKey<Level> key = VaultDimensions.findOrCreate(team.get().getTeamId());
         ServerLevel vault = server.getLevel(key);
         if (vault == null) {
             OreVault.LOGGER.error("Vault dimension {} missing after findOrCreate", key.identifier());
@@ -81,23 +191,18 @@ public final class VaultTeleport {
         }
 
         int tier = VaultIgniterItem.highestTierLevel(player);
+        BlockPos defaultAnchor = defaultEntry(player);
         Optional<BlockPos> custom = tier >= 3 ? entryPoint(player) : Optional.empty();
-        BlockPos target = custom.map(pos -> findSafeFooting(vault, pos))
-                .orElseGet(() -> defaultEntry(player));
+        BlockPos target = custom.map(pos -> findSafeFooting(vault, pos)).orElse(defaultAnchor);
+
+        Direction.Axis axis = current.getBlockState(player.blockPosition())
+                .getOptionalValue(BlockStateProperties.HORIZONTAL_AXIS)
+                .orElse(Direction.Axis.X);
+        VaultPortalShape.ensureReturnPortal(vault, defaultAnchor, axis);
+
         teleport(player, vault, target.getX() + 0.5, target.getY(), target.getZ() + 0.5);
-
-        if (tier < 4) {
-            player.setPortalCooldown(PORTAL_COOLDOWN_TICKS);
-        }
-        applyArrivalEffects(player, tier);
+        applyArrivalEffects(player, tier); // no cooldown: tier 4 (§3.3)
     }
-
-    /** Mirrored XZ, feet standing on the deepslate surface (§3.2, §3.1 air layer). */
-    private static BlockPos defaultEntry(ServerPlayer player) {
-        return new BlockPos(player.blockPosition().getX(), VaultDimensions.defaultEntryY(), player.blockPosition().getZ());
-    }
-
-    // ----- Vault -> Overworld -----
 
     private static void teleportBack(ServerPlayer player) {
         MinecraftServer server = server(player);
@@ -120,10 +225,6 @@ public final class VaultTeleport {
             z = spawn.getZ() + 0.5;
         }
         teleport(player, overworld, x, y, z);
-
-        if (VaultIgniterItem.highestTierLevel(player) < 4) {
-            player.setPortalCooldown(PORTAL_COOLDOWN_TICKS);
-        }
     }
 
     // ----- helpers -----
@@ -147,21 +248,26 @@ public final class VaultTeleport {
     }
 
     /**
-     * Saves the return position one block outside the portal plane on the
-     * approach side. Standing outside the plane after the return trip means
-     * the portal never instantly re-triggers, even with the tier-4 no-cooldown.
+     * Saves the return position outside the portal plane on the approach side.
+     * Walking from the touched block along the approach direction until the
+     * first non-portal block guarantees the saved spot lies outside BOTH portal
+     * planes, so returning never instantly re-triggers the portal.
      */
-    private static void saveReturnPosition(ServerPlayer player) {
-        BlockPos pos = player.blockPosition();
-        Direction.Axis axis = player.level()
-                .getBlockState(pos)
+    private static void saveReturnPosition(ServerPlayer player, Level level, BlockPos portalPos) {
+        Direction.Axis axis = level.getBlockState(portalPos)
                 .getOptionalValue(BlockStateProperties.HORIZONTAL_AXIS)
                 .orElse(Direction.Axis.X);
-        BlockPos exit = pos.relative(exitDirection(player, axis));
+        Direction exitDirection = exitDirection(player, axis);
+
+        BlockPos exit = portalPos;
+        for (int steps = 0; steps < 4 && level.getBlockState(exit.relative(exitDirection)).is(ModBlocks.VAULT_PORTAL); steps++) {
+            exit = exit.relative(exitDirection);
+        }
+        exit = exit.relative(exitDirection);
 
         CompoundTag tag = new CompoundTag();
         tag.putInt("x", exit.getX());
-        tag.putInt("y", pos.getY());
+        tag.putInt("y", portalPos.getY());
         tag.putInt("z", exit.getZ());
         player.getPersistentData().put(RETURN_TAG, tag);
     }

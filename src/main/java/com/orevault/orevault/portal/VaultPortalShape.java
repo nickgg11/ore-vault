@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import com.orevault.orevault.block.ModBlocks;
 import com.orevault.orevault.block.VaultPortalBlock;
+import com.orevault.orevault.worldgen.VaultDimensions;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -225,6 +226,93 @@ public final class VaultPortalShape {
                 Kind kind = kindAt(view, h, y, fixed, axis);
                 if (kind != Kind.AIR && kind != Kind.PORTAL) {
                     return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Dissolves the first portal block found near {@code framePos} whose frame
+     * is no longer valid. Corner frame blocks are diagonal to every portal
+     * block, so breaking one never reaches the portal via {@code updateShape};
+     * the frame's {@code onRemove} calls this instead. Removing one portal
+     * block cascades across the whole interior through the neighbours' own
+     * updateShape re-validation.
+     */
+    public static void dissolveInvalidPortalsNear(Level level, BlockPos framePos) {
+        int radius = MAX_INTERIOR_WIDTH + 2;
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dy = -radius; dy <= radius; dy++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    pos.set(framePos.getX() + dx, framePos.getY() + dy, framePos.getZ() + dz);
+                    if (level.getBlockState(pos).is(ModBlocks.VAULT_PORTAL) && !isValidFrameContaining(level, pos)) {
+                        level.removeBlock(pos, false);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Best-effort exit portal at the vault's default entry point (§3.2): a
+     * free-standing 4×5 frame (2×3 interior) standing on the surface, offset
+     * three blocks along the plane normal from the anchor so arriving players
+     * never land inside it. Idempotent — existing frame/portal cells are
+     * kept, and the whole area is left untouched if any required cell holds a
+     * player-placed block. Returns true if the exit portal now exists.
+     */
+    public static boolean ensureReturnPortal(ServerLevel level, BlockPos anchor, Direction.Axis axis) {
+        int feetY = VaultDimensions.defaultEntryY();
+        int fixedBase = fixedCoord(anchor, axis) + 3;
+        int minH = horizCoord(anchor, axis) - 1;
+        int maxH = minH + 3;
+        int minY = feetY;
+        int maxY = feetY + 4;
+        BlockState frame = ModBlocks.VAULT_FRAME.get().defaultBlockState();
+        BlockState portal = ModBlocks.VAULT_PORTAL.get().defaultBlockState().setValue(VaultPortalBlock.AXIS, axis);
+
+        // Idempotency check: every cell must be clear or already correct.
+        for (int plane = 0; plane <= 1; plane++) {
+            int fixed = fixedBase + plane;
+            for (int h = minH; h <= maxH; h++) {
+                for (int y = minY; y <= maxY; y++) {
+                    boolean frameCell = h == minH || h == maxH || y == minY || y == maxY;
+                    BlockState existing = level.getBlockState(at(h, y, fixed, axis));
+                    boolean acceptable = frameCell
+                            ? existing.isAir() || existing.is(ModBlocks.VAULT_FRAME)
+                            : existing.isAir() || existing.is(ModBlocks.VAULT_PORTAL);
+                    if (!acceptable) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // Frame first, then interior, so updateShape validation sees a complete frame.
+        for (int plane = 0; plane <= 1; plane++) {
+            int fixed = fixedBase + plane;
+            for (int h = minH; h <= maxH; h++) {
+                for (int y = minY; y <= maxY; y++) {
+                    boolean frameCell = h == minH || h == maxH || y == minY || y == maxY;
+                    BlockPos pos = at(h, y, fixed, axis);
+                    BlockState wanted = frameCell ? frame : portal;
+                    if (frameCell && !level.getBlockState(pos).is(ModBlocks.VAULT_FRAME)) {
+                        level.setBlock(pos, wanted, Block.UPDATE_CLIENTS);
+                    }
+                }
+            }
+        }
+        for (int plane = 0; plane <= 1; plane++) {
+            int fixed = fixedBase + plane;
+            for (int h = minH + 1; h < maxH; h++) {
+                for (int y = minY + 1; y < maxY; y++) {
+                    BlockPos pos = at(h, y, fixed, axis);
+                    if (!level.getBlockState(pos).is(ModBlocks.VAULT_PORTAL)) {
+                        level.setBlock(pos, portal, Block.UPDATE_CLIENTS);
+                    }
                 }
             }
         }

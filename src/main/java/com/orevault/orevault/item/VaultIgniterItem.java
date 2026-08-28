@@ -6,12 +6,14 @@ import org.jspecify.annotations.Nullable;
 
 import com.orevault.orevault.block.ModBlocks;
 import com.orevault.orevault.portal.VaultPortalShape;
+import com.orevault.orevault.team.TeamHelper;
 import com.orevault.orevault.worldgen.VaultDimensions;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionResult;
@@ -115,6 +117,12 @@ public class VaultIgniterItem extends Item {
         Player player = context.getPlayer();
 
         if (level.getBlockState(pos).is(ModBlocks.VAULT_FRAME)) {
+            // Vaults are team-scoped (§3.1): refuse activation for teamless players.
+            if (!level.isClientSide() && player instanceof ServerPlayer serverPlayer && TeamHelper.getTeam(serverPlayer).isEmpty()) {
+                player.sendSystemMessage(Component.translatable("message.orevault.team_required"));
+                level.playSound(null, pos, SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 1.0F, 1.0F);
+                return InteractionResult.SUCCESS_SERVER;
+            }
             Optional<VaultPortalShape> shape = VaultPortalShape.find(level, pos);
             if (shape.isPresent()) {
                 VaultPortalShape portal = shape.get();

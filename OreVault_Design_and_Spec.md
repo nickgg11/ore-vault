@@ -97,19 +97,20 @@ Where `<teamId>` is the UUID of the FTB Team, stripped of hyphens.
 
 Dimensions are created dynamically the first time any member of a team activates a portal. The dimension type JSON is static (defined once), but the chunk generator is a custom implementation that reads the team's current skill tree state at chunk generation time, allowing node purchases to affect newly generated chunks immediately without a server restart.
 
-**Dimension type properties:**
+**Dimension type properties (base: `min_y: -64`, `height: 384`, `logical_height: 384`):**
 - `ambient_light: 1.0` — full universal brightness, no torches needed
+- `visual/sky_light_factor: 1.0` + `visual/ambient_light_color` — fullbright terrain (MC 26.1 renders block brightness from environment attributes; `ambient_light` alone no longer lights terrain)
 - `fixed_time: 6000` — always midday aesthetically
-- `monster_spawn_light_level: min/max -1` — impossible light level, natural mob spawning disabled
+- `monster_spawn_light_level: 0` — monsters would only spawn in total darkness, which the fullbright environment never has
 - `has_raids: false`
-- `bed_works: false`
-- `respawn_anchor_works: false`
-- `natural: false` — disables passive mob spawning
+- `bed_works: false` / `respawn_anchor_works: false`
+- `natural: false` — disables passive mob spawning, sleep and spawn protection
 
-**World generation:**
-- Open air layer at the top of the dimension: 64 blocks tall (Y=192–255 for the base dimension), giving players an open working space when they enter
-- Solid stone fill below the air layer (Y=0–191 for the base dimension)
-- Surface layer is deepslate — the top 8 layers of the stone fill, directly under the air layer
+**World generation (overworld-style layering):**
+- Open air layer at the top of the dimension: 64 blocks tall (Y=256–319), giving players an open working space when they enter
+- Grass surface at Y=255, then a 4-block dirt band (Y=251–254)
+- Stone from Y=0 up to the dirt band; deepslate below Y=0 (Y=-64…-1)
+- Default entry point: feet at Y=256, standing on the grass surface
 - No aquifers, no caves by default (open to adding cave generation as a future node)
 - Ore generation handled entirely by the custom chunk generator, not static placed features
 - A hard floor of 40% stone content is enforced regardless of skill tree state — the Vault will never be more than 60% ore by volume
@@ -124,9 +125,11 @@ When an FTB Team is disbanded, the team's Vault dimension is deleted. This inclu
 **Vault Frame Block**
 - Crafting recipe: 8 iron ingots surrounding 1 redstone dust (shapeless, fills all 8 outer slots)
 - Hardness: 50.0, blast resistance: 1200.0
+- Mineable with any pickaxe (`minecraft:mineable/pickaxe` tag; MC 26.1 harvest rules are driven by the item `Tool` component)
 - Requires correct tool to drop
 - Sound: metal
 - Right-clicking with a Vault Igniter triggers the portal shape scan
+- Breaking any frame block — including a corner, which is diagonal to every portal block — dissolves the whole portal (`affectNeighborsAfterRemoval` scan + `updateShape` whole-frame re-validation)
 
 **VaultPortalShape Scanner**
 - Scans outward from the clicked frame block in both X and Z orientations
@@ -141,22 +144,24 @@ When an FTB Team is disbanded, the team's Vault dimension is deleted. This inclu
 - Hardness: -1.0 (unbreakable), blast resistance: 3,600,000
 - Light level: 11
 - Has HORIZONTAL_AXIS block state property for orientation
-- `entityInside()` handles teleportation (players only)
-- `updateShape()` breaks to air if a neighbouring block is neither Vault Frame nor portal block
-- Teleport cooldown: 80 ticks (4 seconds) using vanilla `portalCooldown`
+- Implements MC 26.1's `Portal` interface: entering starts the vanilla nether-style charge-up — 80 ticks (4 seconds) inside the portal with the wavy "confusion" screen overlay, giving players the chance to step back out — followed by a portal travel sound and the teleport
+- `entityInside()` handles teleportation (players only); FTB team required (teamless players get a hint instead of portal charge-up)
+- `updateShape()` breaks to air if a neighbouring block is neither Vault Frame nor portal block (whole-frame re-validation)
+- Teleport cooldown: 80 ticks (4 seconds) using vanilla `portalCooldown`; Tier 4 igniter holders skip the wait and the cooldown entirely
 
 **Teleportation Logic**
 ```
 If player is in Ore Vault dimension:
     → retrieve saved return position from player persistent data
     → teleport to Overworld at saved position (fallback: world spawn)
-Else:
+Else (requires an FTB team):
     → save current position to player persistent data
     → find or create team's Vault dimension
-    → teleport to Vault at mirrored XZ, standing on the deepslate surface (top of the stone layer, one block below the air layer)
+    → ensure the team's exit portal exists at the Vault's default entry point (auto-built 4×5 frame with 2×3 portal, offset from the arrival point)
+    → teleport to Vault at mirrored XZ, standing on the grass surface (top of the solid fill, one block below the air layer)
 ```
 
-Return position is stored in `player.getPersistentData()` under key `orevault_return` as an NBT compound with x/y/z integers. This survives death and dimension changes.
+Return position is stored in `player.getPersistentData()` under key `orevault_return` as an NBT compound with x/y/z integers. This survives death and dimension changes. The saved spot is walked out along the approach direction past the last portal block, so returning never instantly re-triggers the portal.
 
 > **Spawn safety (implementation note):** the open air layer (§3.1) means the default entry needs no terrain carving — the player arrives standing on the deepslate surface in open air. Custom entry points (Tier 3+) scan upward from the stored block for a 2-block air pocket, carving one only if none is found nearby (e.g. the entry was set against a solid wall).
 
@@ -186,7 +191,7 @@ The Vault Igniter replaces Flint & Steel as the portal activation item. Four tie
 **Tier 4 — Sovereign Vault Igniter**
 - Recipe: Resonant Vault Igniter + Netherite ingot + 16 Resonance Crystals
 - Grants Haste II for 15 seconds on entering the Vault
-- Teleportation is instant with no cooldown
+- Teleportation is instant with no cooldown: skips the 4-second portal wait and the re-entry cooldown entirely
 - Unlocks the Vault Reset button in the Tome of the Deep Seam UI
 - Without a Tier 4 igniter, the reset button does not appear in the UI
 
@@ -1188,9 +1193,14 @@ Use this to track progress. Update at the end of each development session.
 - [x] Vault → Overworld routing (return position)
 - [x] Return position persistence (player persistent data)
 - [x] Teleport cooldown (80 ticks, 0 for Tier 4 igniter)
+- [x] Nether-style portal wait (80 ticks) with wavy overlay and travel sound
+- [x] Team requirement: teamless players cannot activate or use a portal
+- [x] Exit portal auto-built at the Vault's default entry point
 - [x] Tier 2 Speed I on arrival
 - [x] Tier 3 Haste I on arrival
 - [x] Tier 4 Haste II on arrival
+- [ ] [73] Vault Recall item — expensive consumable teleporting the user back to a saved point in the dimension it was saved in
+- [ ] [74] Vault Return structure — dedicated exit block/keystone at the Vault's entry area (0,0 spawn platform), polished replacement for the auto-built exit portal
 
 ### Resonance System
 - [ ] Resonance orb entity (visual distinction from XP)
@@ -1337,7 +1347,8 @@ Use this to track progress. Update at the end of each development session.
 - [ ] All crafting recipes
 - [ ] `en_us.json` lang file (all block names, item names, node names, tooltips)
 - [ ] Mod icon (`pack.png`)
-- [ ] Block and item textures (placeholder or final)
+- [ ] Block and item textures — **at least 64×64** for all Ore Vault assets ([68])
+- [ ] Translucent portal texture (nether-portal-style see-through, gray theme)
 - [ ] Blockstate JSONs
 - [ ] Model JSONs
 

@@ -3,11 +3,15 @@ package com.orevault.orevault.block;
 import java.util.Map;
 
 import com.mojang.serialization.MapCodec;
+import com.orevault.orevault.item.VaultIgniterItem;
 import com.orevault.orevault.portal.VaultPortalShape;
 import com.orevault.orevault.portal.VaultTeleport;
+import com.orevault.orevault.team.TeamHelper;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
@@ -19,11 +23,13 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.Portal;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -36,12 +42,17 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * light level 11.</li>
  * <li>{@code HORIZONTAL_AXIS} state for orientation.</li>
  * <li>{@link #updateShape} breaks to air when the frame around it is damaged
- * (a neighbouring block is neither frame nor portal).</li>
- * <li>{@link #entityInside} triggers teleportation for players once
- * {@code VaultTeleport} lands in [20]; a documented stub until then.</li>
+ * (re-validates the whole frame, so broken corners dissolve it too).</li>
+ * <li>Implements 26.1's {@link Portal} interface: players standing inside get
+ * the vanilla nether-style charge-up ({@link #getPortalTransitionTime}), the
+ * wavy "confusion" screen overlay ({@link #getLocalTransition}) and a portal
+ * travel sound, then {@link #getPortalDestination} routes through
+ * {@link VaultTeleport}. Tier-4 igniter holders skip the wait entirely.</li>
+ * <li>Requires an FTB team (§3.1): teamless players get a hint instead of
+ * portal charge-up.</li>
  * </ul>
  */
-public class VaultPortalBlock extends Block {
+public class VaultPortalBlock extends Block implements Portal {
 
     public static final MapCodec<VaultPortalBlock> CODEC = simpleCodec(VaultPortalBlock::new);
     public static final EnumProperty<Direction.Axis> AXIS = BlockStateProperties.HORIZONTAL_AXIS;
@@ -70,7 +81,8 @@ public class VaultPortalBlock extends Block {
      * {@link VaultPortalShape#isValidFrameContaining}) and the portal dissolves
      * if it is no longer complete. Re-validating the entire frame — rather
      * than just the changed neighbour — is what catches corner blocks, which
-     * are diagonal to every portal block.
+     * are diagonal to every portal block (with the frame's own
+     * {@code onRemove} scan as the final safety net).
      */
     @Override
     protected BlockState updateShape(
@@ -92,18 +104,53 @@ public class VaultPortalBlock extends Block {
     }
 
     /**
-     * Teleport trigger (§3.2): players only, server side, gated by the vanilla
-     * portal cooldown. Routing lives in {@link VaultTeleport} ([20]).
+     * Portal entry (§3.2): players only, server side.
+     * <ul>
+     * <li>Tier 4 igniter (§3.3): instant direct teleport, no wait, no cooldown.</li>
+     * <li>No FTB team (§3.1): hint message, rate-limited via the portal cooldown.</li>
+     * <li>Otherwise: the vanilla {@link Portal} flow — wait, overlay, travel
+     * sound, then {@link #getPortalDestination}.</li>
+     * </ul>
      */
     @Override
     protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity, InsideBlockEffectApplier effectApplier, boolean isPrecise) {
         if (level.isClientSide() || !(entity instanceof ServerPlayer player)) {
             return;
         }
-        if (player.isOnPortalCooldown()) {
+        if (VaultIgniterItem.highestTierLevel(player) >= 4) {
+            if (!player.isOnPortalCooldown()) {
+                VaultTeleport.handlePortal(player);
+            }
             return;
         }
-        VaultTeleport.handlePortal(player);
+        if (TeamHelper.getTeam(player).isEmpty()) {
+            if (!player.isOnPortalCooldown()) {
+                player.sendSystemMessage(Component.translatable("message.orevault.team_required"));
+                player.setPortalCooldown(40); // re-used as a message rate limiter
+            }
+            return;
+        }
+        if (entity.canUsePortal(false)) {
+            entity.setAsInsidePortal(this, pos);
+        }
+    }
+
+    /** Nether-style charge-up while standing inside the portal, in ticks (§3.2). */
+    @Override
+    public int getPortalTransitionTime(ServerLevel level, Entity entity) {
+        return VaultTeleport.PORTAL_WAIT_TICKS;
+    }
+
+    /** Routes the portal trip through {@link VaultTeleport} (overworld ⇄ vault). */
+    @Override
+    public TeleportTransition getPortalDestination(ServerLevel currentLevel, Entity entity, BlockPos portalEntryPos) {
+        return VaultTeleport.createTransition(currentLevel, entity, portalEntryPos);
+    }
+
+    /** The vanilla wavy screen overlay while the portal charges (nether-style). */
+    @Override
+    public Portal.Transition getLocalTransition() {
+        return Portal.Transition.CONFUSION;
     }
 
     /** Unbreakable interior block: never pick-blockable (matches vanilla portal behaviour). */
