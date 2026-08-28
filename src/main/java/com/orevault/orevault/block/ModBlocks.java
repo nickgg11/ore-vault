@@ -19,6 +19,10 @@ public final class ModBlocks {
     public static final DeferredHolder<Block, VaultFrameBlock> VAULT_FRAME =
             BLOCKS.register("vault_frame", () -> new VaultFrameBlock());
 
+    /** Portal interior block (§3.2). */
+    public static final DeferredHolder<Block, VaultPortalBlock> VAULT_PORTAL =
+            BLOCKS.register("vault_portal", () -> new VaultPortalBlock());
+
     private ModBlocks() {
     }
 }
