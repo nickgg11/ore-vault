@@ -9,6 +9,9 @@ import com.orevault.orevault.block.VaultPortalBlock;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
@@ -189,6 +192,91 @@ public final class VaultPortalShape {
         BlockState portal = ModBlocks.VAULT_PORTAL.get().defaultBlockState().setValue(VaultPortalBlock.AXIS, axis);
         for (BlockPos pos : interiorPositions()) {
             level.setBlock(pos, portal, Block.UPDATE_CLIENTS);
+        }
+    }
+
+    /**
+     * Activation animation (§3.3): fills the interior progressively over
+     * {@code totalTicks} ticks on the server thread, bottom row first, so the
+     * portal visibly "opens". Optional portal-particle burst on the first
+     * step (tier 2+ igniters).
+     */
+    public void fillAnimated(ServerLevel level, int totalTicks, boolean particleBurst) {
+        List<BlockPos> positions = interiorPositions();
+        if (positions.isEmpty()) {
+            return;
+        }
+        if (particleBurst) {
+            burst(level);
+        }
+        int rows = frameHeight - 2;
+        if (totalTicks <= 1 || rows == 0) {
+            fill(level);
+            return;
+        }
+        BlockState portal = ModBlocks.VAULT_PORTAL.get().defaultBlockState().setValue(VaultPortalBlock.AXIS, axis);
+        level.getServer().schedule(level.getServer().wrapRunnable(new FillTask(level, positions, rows, totalTicks, portal)));
+    }
+
+    private void burst(ServerLevel level) {
+        RandomSource random = level.getRandom();
+        int h = horizCoord(minCorner, axis);
+        int fixed = fixedCoord(minCorner, axis);
+        double centerH = h + (frameWidth - 1) / 2.0;
+        double centerY = minCorner.getY() + (frameHeight - 1) / 2.0;
+        for (int i = 0; i < 48; i++) {
+            double x = centerH + (random.nextDouble() - 0.5) * frameWidth;
+            double y = centerY + (random.nextDouble() - 0.5) * frameHeight;
+            double z = fixed + (random.nextDouble() - 0.5) * 0.75;
+            double vx = (random.nextFloat() - 0.5) * 0.3;
+            double vy = random.nextFloat() * 0.4;
+            double vz = (random.nextFloat() - 0.5) * 0.3;
+            if (axis == Direction.Axis.Z) {
+                double tmp = x;
+                x = z;
+                z = tmp;
+                tmp = vx;
+                vx = vz;
+                vz = tmp;
+            }
+            level.addParticle(ParticleTypes.PORTAL, x, y, z, vx, vy, vz);
+        }
+    }
+
+    /** Progressive fill task: runs once per server tick until every row is placed. */
+    private static final class FillTask implements Runnable {
+        private final ServerLevel level;
+        private final List<BlockPos> positions;
+        private final int rows;
+        private final int totalTicks;
+        private final int perRow;
+        private final BlockState portal;
+        private int nextRow;
+
+        FillTask(ServerLevel level, List<BlockPos> positions, int rows, int totalTicks, BlockState portal) {
+            this.level = level;
+            this.positions = positions;
+            this.rows = rows;
+            this.totalTicks = totalTicks;
+            this.perRow = positions.size() / rows;
+            this.portal = portal;
+        }
+
+        @Override
+        public void run() {
+            int rowsThisTick = Math.max(1, (rows + totalTicks - 1) / totalTicks);
+            int from = nextRow * perRow;
+            int to = Math.min(positions.size(), from + rowsThisTick * perRow);
+            for (int i = from; i < to; i++) {
+                BlockPos pos = positions.get(i);
+                if (level.getBlockState(pos).isAir() || level.getBlockState(pos).is(ModBlocks.VAULT_PORTAL)) {
+                    level.setBlock(pos, portal, Block.UPDATE_CLIENTS);
+                }
+            }
+            nextRow += rowsThisTick;
+            if (nextRow < rows) {
+                level.getServer().schedule(level.getServer().wrapRunnable(this));
+            }
         }
     }
 

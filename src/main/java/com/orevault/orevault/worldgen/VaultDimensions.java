@@ -71,6 +71,12 @@ public final class VaultDimensions {
         return ResourceKey.create(Registries.DIMENSION, TeamHelper.dimensionKey(teamId));
     }
 
+    /** True if the given level is any team's Ore Vault dimension (§3.1 naming scheme). */
+    public static boolean isVaultDimension(Level level) {
+        Identifier id = level.dimension().identifier();
+        return OreVault.MODID.equals(id.getNamespace()) && id.getPath().startsWith("vault_");
+    }
+
     /**
      * Ensures the given team's Vault dimension exists, creating it on first use.
      * Safe to call repeatedly; idempotent per team.
