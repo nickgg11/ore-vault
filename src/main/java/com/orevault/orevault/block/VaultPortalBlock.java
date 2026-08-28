@@ -3,6 +3,7 @@ package com.orevault.orevault.block;
 import java.util.Map;
 
 import com.mojang.serialization.MapCodec;
+import com.orevault.orevault.portal.VaultTeleport;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -95,8 +96,7 @@ public class VaultPortalBlock extends Block {
 
     /**
      * Teleport trigger (§3.2): players only, server side, gated by the vanilla
-     * portal cooldown. The actual routing lands in [20] {@code VaultTeleport};
-     * until then this is a documented stub.
+     * portal cooldown. Routing lives in {@link VaultTeleport} ([20]).
      */
     @Override
     protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity, InsideBlockEffectApplier effectApplier, boolean isPrecise) {
@@ -106,7 +106,7 @@ public class VaultPortalBlock extends Block {
         if (player.isOnPortalCooldown()) {
             return;
         }
-        // TODO [20]: VaultTeleport.handlePortal(player, state.getValue(AXIS));
+        VaultTeleport.handlePortal(player);
     }
 
     /** Unbreakable interior block: never pick-blockable (matches vanilla portal behaviour). */
