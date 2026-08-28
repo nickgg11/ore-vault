@@ -107,8 +107,9 @@ Dimensions are created dynamically the first time any member of a team activates
 - `natural: false` — disables passive mob spawning
 
 **World generation:**
-- Default stone fill from Y=0 to Y=255
-- Surface layer is deepslate
+- Open air layer at the top of the dimension: 64 blocks tall (Y=192–255 for the base dimension), giving players an open working space when they enter
+- Solid stone fill below the air layer (Y=0–191 for the base dimension)
+- Surface layer is deepslate — the top 8 layers of the stone fill, directly under the air layer
 - No aquifers, no caves by default (open to adding cave generation as a future node)
 - Ore generation handled entirely by the custom chunk generator, not static placed features
 - A hard floor of 40% stone content is enforced regardless of skill tree state — the Vault will never be more than 60% ore by volume
@@ -152,12 +153,12 @@ If player is in Ore Vault dimension:
 Else:
     → save current position to player persistent data
     → find or create team's Vault dimension
-    → teleport to Vault at mirrored XZ, Y=64
+    → teleport to Vault at mirrored XZ, standing on the deepslate surface (top of the stone layer, one block below the air layer)
 ```
 
 Return position is stored in `player.getPersistentData()` under key `orevault_return` as an NBT compound with x/y/z integers. This survives death and dimension changes.
 
-> **Entry chamber (implementation note):** the Vault is solid stone (no caves, §3.1), so the default Y=64 entry point would suffocate. On first entry the teleport logic carves a 5×5×4 air chamber at the mirrored XZ (Y=64–67) via `setBlock`. Custom entry points (Tier 3+) instead scan upward from the stored block for a 2-block air pocket, carving one only if none is found nearby.
+> **Spawn safety (implementation note):** the open air layer (§3.1) means the default entry needs no terrain carving — the player arrives standing on the deepslate surface in open air. Custom entry points (Tier 3+) scan upward from the stored block for a 2-block air pocket, carving one only if none is found nearby (e.g. the entry was set against a solid wall).
 
 ---
 
@@ -1164,6 +1165,7 @@ Use this to track progress. Update at the end of each development session.
 - [x] Dynamic dimension registration per team
 - [ ] Dimension deletion on team disband (deferred to `[31]` VaultReset; TODO in `VaultDimensions`)
 - [x] Custom chunk generator skeleton
+- [x] Open air layer at the top (64 blocks), stone below with deepslate surface
 - [x] Ore rarity classifier (scans registry at server start)
 - [x] Admin config override for rarity classification
 - [ ] Dynamic ore placement from skill state (skill snapshot wired; node math deferred to `[44]`/`[45]`)

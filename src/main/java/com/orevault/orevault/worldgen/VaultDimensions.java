@@ -78,6 +78,14 @@ public final class VaultDimensions {
     }
 
     /**
+     * Default entry Y for the base dimension: feet standing on the deepslate
+     * surface at the top of the stone layer (§3.1 air-layer layout).
+     */
+    public static int defaultEntryY() {
+        return BASE_MIN_Y + BASE_HEIGHT - VaultChunkGenerator.OPEN_AIR_LAYER;
+    }
+
+    /**
      * Ensures the given team's Vault dimension exists, creating it on first use.
      * Safe to call repeatedly; idempotent per team.
      */

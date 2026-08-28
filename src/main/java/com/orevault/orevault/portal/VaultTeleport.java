@@ -32,19 +32,14 @@ import net.minecraft.world.phys.Vec3;
  * <p>Overworld → Vault: saves the return position (one block outside the
  * portal plane, on the approach side, so returning never re-triggers the
  * portal), finds/creates the team's dimension via {@link VaultDimensions},
- * and teleports to the mirrored XZ at Y=64 — or to the player's custom entry
- * point for tier 3+ igniters. Vault → Overworld: returns to the saved
- * position, falling back to the world spawn.</p>
+ * and teleports to the mirrored XZ standing on the deepslate surface at the
+ * top of the stone layer — or to the player's custom entry point for tier 3+
+ * igniters. Vault → Overworld: returns to the saved position, falling back to
+ * the world spawn.</p>
  *
  * <p>Cooldown is the vanilla 80-tick {@code portalCooldown}; tier 4 skips it.
  * Arrival effects on entering the Vault: Speed I (tier 2, 5s), Haste I
  * (tier 3, 10s), Haste II (tier 4, 15s).</p>
- *
- * <p><b>Entry chamber (design note):</b> the Vault world is solid stone
- * (§3.1, no caves), so the default Y=64 spawn point is carved into a 5×5×4
- * air chamber on first entry — without it the player would suffocate. Carving
- * happens on the server thread via {@code setBlock}, which generates the
- * chunk if needed.</p>
  */
 public final class VaultTeleport {
 
@@ -52,12 +47,6 @@ public final class VaultTeleport {
     public static final String RETURN_TAG = "orevault_return";
     /** Vanilla portal cooldown in ticks (§3.2); tier 4 skips it (§3.3). */
     public static final int PORTAL_COOLDOWN_TICKS = 80;
-    /** Default entry Y in the Vault (§3.2 pseudocode). */
-    public static final int DEFAULT_ENTRY_Y = 64;
-    /** Entry chamber footprint (square side length) carved at the default spawn. */
-    public static final int ENTRY_CHAMBER_FOOTPRINT = 5;
-    /** Entry chamber height in blocks, from {@link #DEFAULT_ENTRY_Y} upward. */
-    public static final int ENTRY_CHAMBER_HEIGHT = 4;
 
     private VaultTeleport() {
     }
@@ -94,7 +83,7 @@ public final class VaultTeleport {
         int tier = VaultIgniterItem.highestTierLevel(player);
         Optional<BlockPos> custom = tier >= 3 ? entryPoint(player) : Optional.empty();
         BlockPos target = custom.map(pos -> findSafeFooting(vault, pos))
-                .orElseGet(() -> defaultEntry(player, vault));
+                .orElseGet(() -> defaultEntry(player));
         teleport(player, vault, target.getX() + 0.5, target.getY(), target.getZ() + 0.5);
 
         if (tier < 4) {
@@ -103,11 +92,9 @@ public final class VaultTeleport {
         applyArrivalEffects(player, tier);
     }
 
-    /** Mirrored XZ at {@link #DEFAULT_ENTRY_Y} (§3.2), carving the entry chamber on first use. */
-    private static BlockPos defaultEntry(ServerPlayer player, ServerLevel vault) {
-        BlockPos target = new BlockPos(player.blockPosition().getX(), DEFAULT_ENTRY_Y, player.blockPosition().getZ());
-        carveEntryChamber(vault, target);
-        return target;
+    /** Mirrored XZ, feet standing on the deepslate surface (§3.2, §3.1 air layer). */
+    private static BlockPos defaultEntry(ServerPlayer player) {
+        return new BlockPos(player.blockPosition().getX(), VaultDimensions.defaultEntryY(), player.blockPosition().getZ());
     }
 
     // ----- Vault -> Overworld -----
@@ -245,25 +232,6 @@ public final class VaultTeleport {
         vault.setBlock(new BlockPos(entry.getX(), entry.getY() + 1, entry.getZ()), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
         vault.setBlock(new BlockPos(entry.getX(), entry.getY() + 2, entry.getZ()), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
         return new BlockPos(entry.getX(), entry.getY() + 1, entry.getZ());
-    }
-
-    /**
-     * Carves the default spawn chamber (the Vault is solid stone, §3.1, so
-     * Y=64 would otherwise suffocate the player). Idempotent.
-     */
-    private static void carveEntryChamber(ServerLevel vault, BlockPos target) {
-        int half = ENTRY_CHAMBER_FOOTPRINT / 2;
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        for (int dx = -half; dx <= half; dx++) {
-            for (int dz = -half; dz <= half; dz++) {
-                for (int y = 0; y < ENTRY_CHAMBER_HEIGHT; y++) {
-                    pos.set(target.getX() + dx, DEFAULT_ENTRY_Y + y, target.getZ() + dz);
-                    if (!vault.getBlockState(pos).isAir()) {
-                        vault.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
-                    }
-                }
-            }
-        }
     }
 
     /** Arrival effects on entering the Vault, by igniter tier (§3.3). */

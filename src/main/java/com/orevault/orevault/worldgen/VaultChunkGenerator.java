@@ -31,9 +31,10 @@ import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
 
 /**
- * Custom chunk generator for team Vault dimensions (§3.1, §11): a solid world
- * of stone (Y=0..255) with a deepslate "surface" at the top, no aquifers,
- * caves, or structures, and ore placement driven by the team's skill state.
+ * Custom chunk generator for team Vault dimensions (§3.1, §11): an open air
+ * layer at the top (64 blocks), then solid stone below with a deepslate
+ * "surface" at the top of the stone layer — no aquifers, caves, or
+ * structures. Ore placement is driven by the team's skill state.
  *
  * <p>The generator is created per team by {@code VaultDimensions} and reads a
  * main-thread-maintained {@link SkillSnapshot} at generation time so node
@@ -42,13 +43,15 @@ import net.minecraft.world.level.levelgen.blending.Blender;
  * until then a single hardcoded coal vein is placed per chunk.</p>
  *
  * <p>The 40% stone floor (§3.1) is enforced by capping the ore budget at 60%
- * of the chunk's volume; no skill state can ever push stone below 40%.</p>
+ * of the chunk's stone volume; no skill state can ever push stone below 40%.</p>
  */
 public final class VaultChunkGenerator extends ChunkGenerator {
 
     /** Top layers generated as deepslate — the vault's "surface" (§3.1). */
     public static final int DEEPSLATE_SURFACE_LAYERS = 8;
-    /** Hard 40% stone floor: ores may never exceed 60% of a chunk's volume (§3.1). */
+    /** Open air layer at the top of the dimension, in blocks (§3.1 revision). */
+    public static final int OPEN_AIR_LAYER = 64;
+    /** Hard 40% stone floor: ores may never exceed 60% of a chunk's stone volume (§3.1). */
     public static final double MAX_ORE_FRACTION = 0.60;
     /** Placeholder vein parameters until node-driven placement lands in [44]/[45]. */
     private static final int PLACEHOLDER_VEINS = 2;
@@ -139,16 +142,24 @@ public final class VaultChunkGenerator extends ChunkGenerator {
 
     @Override
     public int getBaseHeight(int x, int z, Heightmap.Types type, LevelHeightAccessor heightAccessor, RandomState randomState) {
-        return minY + height; // solid world: first free space is one above the top layer
+        // First free space: one block above the deepslate surface (§3.1 air layer).
+        return minY + height - OPEN_AIR_LAYER;
     }
 
     @Override
     public NoiseColumn getBaseColumn(int x, int z, LevelHeightAccessor heightAccessor, RandomState randomState) {
         BlockState[] states = new BlockState[height];
+        int stoneTop = minY + height - OPEN_AIR_LAYER;
         BlockState stone = Blocks.STONE.defaultBlockState();
         BlockState deepslate = Blocks.DEEPSLATE.defaultBlockState();
+        BlockState air = Blocks.AIR.defaultBlockState();
         for (int y = 0; y < height; y++) {
-            states[y] = y >= height - DEEPSLATE_SURFACE_LAYERS ? deepslate : stone;
+            int worldY = minY + y;
+            if (worldY >= stoneTop) {
+                states[y] = air;
+            } else {
+                states[y] = stoneTop - worldY <= DEEPSLATE_SURFACE_LAYERS ? deepslate : stone;
+            }
         }
         return new NoiseColumn(minY, states);
     }
@@ -164,18 +175,27 @@ public final class VaultChunkGenerator extends ChunkGenerator {
     ) {
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         int maxY = minY + height - 1;
+        int stoneTop = minY + height - OPEN_AIR_LAYER;
         Heightmap oceanFloor = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.OCEAN_FLOOR_WG);
         Heightmap worldSurface = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.WORLD_SURFACE_WG);
         BlockState stone = Blocks.STONE.defaultBlockState();
         BlockState deepslate = Blocks.DEEPSLATE.defaultBlockState();
+        BlockState air = Blocks.AIR.defaultBlockState();
 
         for (int y = minY; y <= maxY; y++) {
-            BlockState state = maxY - y < DEEPSLATE_SURFACE_LAYERS ? deepslate : stone;
+            BlockState state;
+            if (y >= stoneTop) {
+                state = air;
+            } else {
+                state = stoneTop - y <= DEEPSLATE_SURFACE_LAYERS ? deepslate : stone;
+            }
             for (int x = 0; x < 16; x++) {
                 for (int z = 0; z < 16; z++) {
                     chunk.setBlockState(pos.set(x, y, z), state);
-                    oceanFloor.update(x, y, z, state);
-                    worldSurface.update(x, y, z, state);
+                    if (!state.isAir()) {
+                        oceanFloor.update(x, y, z, state);
+                        worldSurface.update(x, y, z, state);
+                    }
                 }
             }
         }
@@ -201,7 +221,8 @@ public final class VaultChunkGenerator extends ChunkGenerator {
             );
         }
 
-        int oreBudget = (int) (16 * 16 * height * MAX_ORE_FRACTION); // 40% stone floor (§3.1)
+        int stoneHeight = height - OPEN_AIR_LAYER;
+        int oreBudget = (int) (16 * 16 * stoneHeight * MAX_ORE_FRACTION); // 40% stone floor (§3.1)
         ChunkPos chunkPos = chunk.getPos();
         RandomSource random = RandomSource.create(seedFor(chunkPos));
         BlockState coalOre = Blocks.COAL_ORE.defaultBlockState();
@@ -209,13 +230,13 @@ public final class VaultChunkGenerator extends ChunkGenerator {
         int placed = 0;
         for (int vein = 0; vein < PLACEHOLDER_VEINS && placed < oreBudget; vein++) {
             int cx = random.nextInt(16);
-            int cy = minY + random.nextInt(height);
+            int cy = minY + random.nextInt(stoneHeight);
             int cz = random.nextInt(16);
             for (int i = 0; i < PLACEHOLDER_VEIN_SIZE && placed < oreBudget; i++) {
                 int x = cx + random.nextInt(5) - 2;
                 int y = cy + random.nextInt(5) - 2;
                 int z = cz + random.nextInt(5) - 2;
-                if (x < 0 || x > 15 || z < 0 || z > 15 || y < minY || y >= minY + height) {
+                if (x < 0 || x > 15 || z < 0 || z > 15 || y < minY || y >= minY + stoneHeight) {
                     continue;
                 }
                 BlockPos localPos = new BlockPos(x, y, z);
