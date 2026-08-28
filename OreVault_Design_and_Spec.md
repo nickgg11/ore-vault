@@ -157,6 +157,8 @@ Else:
 
 Return position is stored in `player.getPersistentData()` under key `orevault_return` as an NBT compound with x/y/z integers. This survives death and dimension changes.
 
+> **Entry chamber (implementation note):** the Vault is solid stone (no caves, §3.1), so the default Y=64 entry point would suffocate. On first entry the teleport logic carves a 5×5×4 air chamber at the mirrored XZ (Y=64–67) via `setBlock`. Custom entry points (Tier 3+) instead scan upward from the stored block for a 2-block air pocket, carving one only if none is found nearby.
+
 ---
 
 ### 3.3 Vault Igniter Tiers
@@ -1169,24 +1171,24 @@ Use this to track progress. Update at the end of each development session.
 - [ ] Vault Expansion keystone (height extension, post-reset)
 
 ### Portal and Igniter
-- [ ] Vault Frame block
-- [ ] Vault Frame crafting recipe (8 iron + 1 redstone)
-- [ ] `VaultPortalShape` scanner (both axes, 2×3 to 21×21)
-- [ ] Ore Vault Portal block (no collision, unbreakable, AXIS state)
-- [ ] Portal frame integrity check (`updateShape`)
-- [ ] Vault Igniter Tier 1 item and recipe
-- [ ] Vault Igniter Tier 2 item, recipe, and effects
-- [ ] Vault Igniter Tier 3 item, recipe, and effects (custom entry point)
-- [ ] Vault Igniter Tier 4 item, recipe, and effects (unlocks reset button)
+- [x] Vault Frame block
+- [ ] Vault Frame crafting recipe (8 iron + 1 redstone) — recipe lands in [67]
+- [x] `VaultPortalShape` scanner (both axes, 2×3 to 21×21)
+- [x] Ore Vault Portal block (no collision, unbreakable, AXIS state)
+- [x] Portal frame integrity check (`updateShape`)
+- [x] Vault Igniter Tier 1 item (recipe in [67])
+- [x] Vault Igniter Tier 2 item and effects (recipe in [67])
+- [x] Vault Igniter Tier 3 item and effects — custom entry point (recipe in [67])
+- [x] Vault Igniter Tier 4 item and effects (reset-button gate in [31]; recipe in [67])
 
 ### Teleportation
-- [ ] Overworld → Vault routing (per team)
-- [ ] Vault → Overworld routing (return position)
-- [ ] Return position persistence (player persistent data)
-- [ ] Teleport cooldown (80 ticks, 0 for Tier 4 igniter)
-- [ ] Tier 2 Speed I on arrival
-- [ ] Tier 3 Haste I on arrival
-- [ ] Tier 4 Haste II on arrival
+- [x] Overworld → Vault routing (per team)
+- [x] Vault → Overworld routing (return position)
+- [x] Return position persistence (player persistent data)
+- [x] Teleport cooldown (80 ticks, 0 for Tier 4 igniter)
+- [x] Tier 2 Speed I on arrival
+- [x] Tier 3 Haste I on arrival
+- [x] Tier 4 Haste II on arrival
 
 ### Resonance System
 - [ ] Resonance orb entity (visual distinction from XP)
