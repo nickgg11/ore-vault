@@ -48,13 +48,6 @@ public class VaultPortalBlock extends Block {
     /** Thin vertical slab in the centre of the block, rotated per axis (mirrors NetherPortalBlock). */
     private static final Map<Direction.Axis, VoxelShape> SHAPES = Shapes.rotateHorizontalAxis(Block.column(4.0, 16.0, 0.0, 16.0));
 
-    public VaultPortalBlock() {
-        this(BlockBehaviour.Properties.of()
-                .noCollision()
-                .strength(-1.0F, 3600000.0F)
-                .lightLevel(state -> 11));
-    }
-
     public VaultPortalBlock(BlockBehaviour.Properties properties) {
         super(properties);
         this.registerDefaultState(this.stateDefinition.any().setValue(AXIS, Direction.Axis.X));

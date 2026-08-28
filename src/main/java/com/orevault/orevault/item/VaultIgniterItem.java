@@ -70,8 +70,8 @@ public class VaultIgniterItem extends Item {
 
     private final Tier tier;
 
-    public VaultIgniterItem(Tier tier) {
-        super(new Item.Properties());
+    public VaultIgniterItem(Item.Properties properties, Tier tier) {
+        super(properties);
         this.tier = tier;
     }
 
