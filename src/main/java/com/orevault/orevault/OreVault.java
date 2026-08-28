@@ -1,6 +1,7 @@
 package com.orevault.orevault;
 
 import com.mojang.logging.LogUtils;
+import com.orevault.orevault.block.ModBlocks;
 import com.orevault.orevault.config.OreVaultServerConfig;
 import com.orevault.orevault.event.FtbEvents;
 import com.orevault.orevault.worldgen.VaultDimensions;
@@ -26,7 +27,10 @@ public class OreVault {
         // Server-side config (§10).
         modContainer.registerConfig(ModConfig.Type.SERVER, OreVaultServerConfig.SPEC);
 
+        // Block registry ([16]; extended by [17], [27], [29]).
+        ModBlocks.BLOCKS.register(modEventBus);
+
         // Registrations are added incrementally in later tasks:
-        //   [16]/[19] blocks & items, [21] entities, [32] network.
+        //   [19] items, [21] entities, [32] network.
     }
 }
