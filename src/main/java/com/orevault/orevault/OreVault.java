@@ -3,6 +3,7 @@ package com.orevault.orevault;
 import com.mojang.logging.LogUtils;
 import com.orevault.orevault.block.ModBlocks;
 import com.orevault.orevault.config.OreVaultServerConfig;
+import com.orevault.orevault.debug.VaultDiag;
 import com.orevault.orevault.event.FtbEvents;
 import com.orevault.orevault.event.PortalEvents;
 import com.orevault.orevault.item.ModItems;
@@ -28,6 +29,9 @@ public class OreVault {
 
         // Portal protection (creative-mode break cancelling).
         NeoForge.EVENT_BUS.register(PortalEvents.class);
+
+        // Playtest diagnostics (#82): block-break instrumentation + /orevault diag.
+        NeoForge.EVENT_BUS.register(VaultDiag.class);
 
         // Server-side config (§10).
         modContainer.registerConfig(ModConfig.Type.SERVER, OreVaultServerConfig.SPEC);

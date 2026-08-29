@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.orevault.orevault.OreVault;
 import com.orevault.orevault.config.OreVaultServerConfig;
 import com.orevault.orevault.data.OreVaultTeamData;
+import com.orevault.orevault.debug.VaultDiag;
 import com.orevault.orevault.ore.OreClassifier;
 import com.orevault.orevault.team.TeamHelper;
 import dev.ftb.mods.ftbteams.api.Team;
@@ -182,7 +183,8 @@ public final class VaultDimensions {
 
         GENERATORS.put(teamId, generator);
         TEAM_DIMENSIONS.put(teamId, key);
-        OreVault.LOGGER.info("Created Ore Vault dimension {} for team {}", key.identifier(), teamId);
+        VaultDiag.markCreated(key, server.getTickCount());
+        OreVault.LOGGER.info("Created Ore Vault dimension {} for team {} at server tick {}", key.identifier(), teamId, server.getTickCount());
         return key;
     }
 
