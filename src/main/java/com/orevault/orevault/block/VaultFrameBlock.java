@@ -10,7 +10,8 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * Portal frame block (§3.2): hardness 50.0, blast resistance 1200.0, requires
+ * Portal frame block (§3.2): hardness 1.5, blast resistance 6.0 (stone-speed
+ * mining), requires
  * the correct tool to drop, metal sound, mineable with any pickaxe. Right-click
  * with an igniter triggers the portal shape scan
  * ({@code VaultIgniterItem} [19]); this block is otherwise inert.

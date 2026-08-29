@@ -124,7 +124,7 @@ When an FTB Team is disbanded, the team's Vault dimension is deleted. This inclu
 
 **Vault Frame Block**
 - Crafting recipe: 8 iron ingots surrounding 1 redstone dust (shapeless, fills all 8 outer slots)
-- Hardness: 50.0, blast resistance: 1200.0
+- Hardness: 1.5 (mines at stone speed), blast resistance: 6.0
 - Mineable with any pickaxe (`minecraft:mineable/pickaxe` tag; MC 26.1 harvest rules are driven by the item `Tool` component)
 - Requires correct tool to drop
 - Sound: metal

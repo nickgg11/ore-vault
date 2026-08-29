@@ -26,7 +26,7 @@ public final class ModBlocks {
             "vault_frame",
             VaultFrameBlock::new,
             properties -> properties
-                    .strength(50.0F, 1200.0F)
+                    .strength(1.5F, 6.0F)
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.METAL)
     );
