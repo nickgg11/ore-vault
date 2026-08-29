@@ -20,6 +20,18 @@ import net.minecraft.nbt.Tag;
  */
 public final class PlayerStats {
 
+    /**
+     * Schema version for the persisted per-player tag (§11).
+     *
+     * <p>Versioned independently of {@link OreVaultTeamData}: this is stored as
+     * a nested tag and grows on its own schedule, so the two would otherwise
+     * have to bump in lockstep for no reason. Version {@code 0} is reserved for
+     * the unversioned saves written before versioning existed.</p>
+     */
+    public static final int CURRENT_DATA_VERSION = 1;
+
+    private static final String DATA_VERSION_KEY = "data_version";
+
     // ----- ore / block stats (§8) -----
     private final Map<String, Integer> oresMined = new HashMap<>();
     private int stoneBroken;
@@ -236,6 +248,7 @@ public final class PlayerStats {
 
     public CompoundTag toNbt() {
         CompoundTag tag = new CompoundTag();
+        tag.putInt(DATA_VERSION_KEY, CURRENT_DATA_VERSION);
         tag.putInt("stone_broken", stoneBroken);
         tag.putInt("total_blocks_broken", totalBlocksBroken);
         tag.putInt("deepest_y", deepestY);
@@ -262,7 +275,8 @@ public final class PlayerStats {
         return tag;
     }
 
-    public static PlayerStats fromNbt(CompoundTag tag) {
+    public static PlayerStats fromNbt(CompoundTag raw) {
+        CompoundTag tag = migrate(raw, raw.getIntOr(DATA_VERSION_KEY, 0));
         PlayerStats stats = new PlayerStats();
         stats.stoneBroken = tag.getIntOr("stone_broken", 0);
         stats.totalBlocksBroken = tag.getIntOr("total_blocks_broken", 0);
@@ -286,6 +300,24 @@ public final class PlayerStats {
             element.asString().ifPresent(stats.activeTradeoffs::add);
         }
         return stats;
+    }
+
+    /**
+     * Upgrades a stored tag to {@link #CURRENT_DATA_VERSION} before any field is
+     * read. Add one step per version bump, each falling through to the next.
+     *
+     * <p>A tag from a newer build is read best-effort rather than rejected —
+     * unknown keys are ignored and missing keys default — so a downgrade costs
+     * the player their newest stats, not their whole record.</p>
+     */
+    private static CompoundTag migrate(CompoundTag tag, int storedVersion) {
+        if (storedVersion >= CURRENT_DATA_VERSION) {
+            return tag;
+        }
+        CompoundTag out = tag.copy();
+        // v0 (unversioned, written before #104) -> v1: no structural change. The
+        // version stamp is the only addition, so there is nothing to rewrite.
+        return out;
     }
 
     private static CompoundTag intMapToNbt(Map<String, Integer> map) {

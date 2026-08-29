@@ -33,6 +33,21 @@ public final class OreVaultTeamData extends SavedData {
     public static final Codec<OreVaultTeamData> CODEC =
             CompoundTag.CODEC.xmap(OreVaultTeamData::fromNbt, OreVaultTeamData::toNbt);
 
+    /**
+     * Schema version for the persisted team tag (§11).
+     *
+     * <p>Bump this whenever the stored shape changes — a renamed key, a changed
+     * unit, a restructured sub-tag — and add the corresponding step to
+     * {@link #migrate(CompoundTag, int)}. Version {@code 0} is reserved for the
+     * unversioned saves written before versioning existed.</p>
+     *
+     * <p>This class grows through every remaining phase, so the cost of not
+     * having this is a schema change becoming a wipe rather than a migration.</p>
+     */
+    public static final int CURRENT_DATA_VERSION = 1;
+
+    private static final String DATA_VERSION_KEY = "data_version";
+
     private final UUID teamId;
     private final SkillTree resonanceTree = new SkillTree(Tree.RESONANCE);
     private final SkillTree animusTree = new SkillTree(Tree.ANIMUS);
@@ -225,6 +240,7 @@ public final class OreVaultTeamData extends SavedData {
 
     public CompoundTag toNbt() {
         CompoundTag tag = new CompoundTag();
+        tag.putInt(DATA_VERSION_KEY, CURRENT_DATA_VERSION);
         tag.putString("team_id", teamId.toString());
         tag.putLong("resonance_pool", resonancePool);
         tag.putLong("animus_pool", animusPool);
@@ -244,7 +260,8 @@ public final class OreVaultTeamData extends SavedData {
         return tag;
     }
 
-    public static OreVaultTeamData fromNbt(CompoundTag tag) {
+    public static OreVaultTeamData fromNbt(CompoundTag raw) {
+        CompoundTag tag = migrate(raw, raw.getIntOr(DATA_VERSION_KEY, 0));
         String teamIdString = tag.getStringOr("team_id", "");
         if (teamIdString.isEmpty()) {
             throw new IllegalArgumentException("OreVaultTeamData is missing team_id");
@@ -265,6 +282,36 @@ public final class OreVaultTeamData extends SavedData {
             data.playerStats.put(UUID.fromString(key), PlayerStats.fromNbt(players.getCompoundOrEmpty(key)));
         }
         return data;
+    }
+
+    /**
+     * Upgrades a stored tag to {@link #CURRENT_DATA_VERSION} before any field is
+     * read, so {@code fromNbt} only ever deals with the current shape.
+     *
+     * <p>Add one step per version bump, each upgrading {@code out} in place and
+     * falling through to the next, so a save from any older version migrates in
+     * a single pass.</p>
+     */
+    private static CompoundTag migrate(CompoundTag tag, int storedVersion) {
+        if (storedVersion == CURRENT_DATA_VERSION) {
+            return tag;
+        }
+        if (storedVersion > CURRENT_DATA_VERSION) {
+            // Written by a newer build than this one. Read it best-effort rather
+            // than refusing: unknown keys are ignored and missing keys fall back
+            // to defaults, so a player who downgrades keeps their progression
+            // instead of having the team wiped.
+            OreVault.LOGGER.warn(
+                    "Ore Vault team data is version {} but this build understands {}; loading best-effort."
+                            + " Progression written by the newer build may be dropped on next save.",
+                    storedVersion, CURRENT_DATA_VERSION);
+            return tag;
+        }
+        CompoundTag out = tag.copy();
+        // v0 (unversioned, written before #104) -> v1: no structural change. The
+        // version stamp is the only addition, so there is nothing to rewrite.
+        OreVault.LOGGER.info("Migrating Ore Vault team data from version {} to {}", storedVersion, CURRENT_DATA_VERSION);
+        return out;
     }
 
     private static CompoundTag tiersToNbt(Map<String, Integer> tiers) {
