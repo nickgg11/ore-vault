@@ -15,6 +15,10 @@ public final class OreVaultServerConfig {
 
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
+    // [resonance]
+    private static final ModConfigSpec.IntValue TARGET_PLAY_HOURS;
+    private static final ModConfigSpec.DoubleValue CURVE_DIVISOR;
+
     // [chunk_loading]
     private static final ModConfigSpec.BooleanValue VAULT_PRESENCE_ENABLED;
     private static final ModConfigSpec.IntValue MAX_LOADED_CHUNKS_PER_TEAM;
@@ -31,6 +35,19 @@ public final class OreVaultServerConfig {
     public static final ModConfigSpec SPEC;
 
     static {
+        BUILDER.push("resonance");
+        TARGET_PLAY_HOURS = BUILDER
+                .comment("Target hours of play to make the full Resonance tree purchasable (level 30).",
+                        "Read once at server start; changing it requires a restart.")
+                .defineInRange("target_play_hours", 100, 1, 10000);
+        CURVE_DIVISOR = BUILDER
+                .comment("Divides the total Resonance required across the whole curve.",
+                        "2.0 = half the grind; 0.5 = double it. The shape of the curve is unchanged,",
+                        "so every level requirement in the skill tree keeps its intended pacing.",
+                        "Read once at server start; changing it requires a restart.")
+                .defineInRange("curve_divisor", 1.0, 0.01, 100.0);
+        BUILDER.pop();
+
         BUILDER.push("chunk_loading");
         VAULT_PRESENCE_ENABLED = BUILDER
                 .comment("Whether the Vault Presence skill nodes are enabled.",
@@ -67,6 +84,16 @@ public final class OreVaultServerConfig {
     }
 
     private OreVaultServerConfig() {
+    }
+
+    /** Target hours to make the whole Resonance tree purchasable (§4.3 step 4). */
+    public static int targetPlayHours() {
+        return TARGET_PLAY_HOURS.get();
+    }
+
+    /** Scales the whole Resonance grind without changing the curve's shape (§4.3 step 6). */
+    public static double curveDivisor() {
+        return CURVE_DIVISOR.get();
     }
 
     public static boolean vaultPresenceEnabled() {

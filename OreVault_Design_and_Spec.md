@@ -301,9 +301,9 @@ A five-person team progresses 40% faster than a solo player, not 500% faster. Th
 1. At startup, sum the skill point cost of every node at every tier in the tree. Call this `totalTreeCost`.
 2. The level cap is a constant: `LEVEL_CAP = 30` for both trees.
 3. Points awarded per level: `pointsPerLevel = ceil(totalTreeCost / LEVEL_CAP)`. Reaching level 30 therefore grants at least enough points to buy the whole tree. Adding or removing nodes automatically adjusts the award, not the cap.
-4. From config, read `targetPlayHoursResonance` (default: 100).
-5. Calculate average Resonance per hour for a **solo** player: `resonancePerHour = averageOresPerHour * weightedAverageResonancePerOre`.
-6. Total Resonance needed: `totalResonance = resonancePerHour * targetPlayHoursResonance`.
+4. From config, read `target_play_hours` (default: 100) and `curve_divisor` (default: 1.0) from the `[resonance]` block in §10. Both are read once at server start; changing either requires a restart, because moving a threshold mid-session would move it under teams that had already passed it.
+5. Calculate average Resonance per hour for a **solo** player: `resonancePerHour = averageOresPerHour * weightedAverageResonancePerOre`. `averageOresPerHour` is a **constant in code**, not config — it measures how fast a player mines rather than expressing a preference, so an admin has no way to know the right value and a wrong one silently distorts the whole curve. The knob a server owner wants is `curve_divisor` in the next step.
+6. Total Resonance needed: `totalResonance = resonancePerHour * targetPlayHoursResonance / curve_divisor`. Because the divisor is applied here, before the distribution in step 7, it scales every level threshold by the same factor: the 100:1 last-to-first ratio and the milestone spacing below are preserved exactly, and every level requirement in §6 keeps its intended pacing. This is the supported way to make Ore Vault a 40-hour mod rather than a 100-hour one, without touching node costs or the level cap.
 7. Distribute `totalResonance` across the 30 levels using an exponential curve where the last level costs `LAST_TO_FIRST_RATIO` (100) times the first:
 ```
 levelCost(n) = baseCost * (growthFactor ^ n)
@@ -1160,6 +1160,17 @@ Configuration is intentionally minimal. Most values are derived dynamically from
 **Config file:** `orevault-server.toml` (server-side only, not synced to clients)
 
 ```toml
+[resonance]
+    # Target hours of play to make the full Resonance tree purchasable (level 30).
+    # Read once at server start; changing it requires a restart.
+    target_play_hours = 100
+
+    # Divides the total Resonance required across the whole curve.
+    # 2.0 = half the grind; 0.5 = double it. The shape of the curve is unchanged,
+    # so every level requirement in the skill tree keeps its intended pacing.
+    # Read once at server start; changing it requires a restart.
+    curve_divisor = 1.0
+
 [chunk_loading]
     # Whether the Vault Presence skill nodes are enabled.
     # Set to false to disable cross-dimension chunk loading entirely.
@@ -1186,10 +1197,11 @@ Configuration is intentionally minimal. Most values are derived dynamically from
 ```
 
 **Values derived automatically (not configurable):**
-- Level thresholds for Resonance and Animus (derived from tree structure)
+- Level thresholds for Resonance and Animus (derived from tree structure, scaled by `curve_divisor`)
 - Level cap (derived from tree structure)
 - Node costs (defined as constants in `NodeCosts.java`)
 - Stone content floor (40%, hardcoded constant)
+- `averageOresPerHour` (constant in `ResonanceSystem`, see §4.3 step 5)
 
 ---
 
@@ -1401,16 +1413,18 @@ Use this to track progress. Update at the end of each development session.
 - [ ] Resonance orb entity (visual distinction from XP)
 - [ ] Resonance orb spawns on ore break in Vault
 - [ ] Orb floats to nearest team member in radius
-- [ ] Team Resonance pool accumulation
+- [x] Team Resonance pool accumulation
 - [x] Level curve: cap 30, `ceil(totalTreeCost / 30)` points per level
+- [x] `[resonance]` config block: `target_play_hours`, `curve_divisor`
 - [x] Team scaling: `sum / teamSize × (1 + 0.1 × (teamSize − 1))`
 - [x] Remove `ASSUMED_TEAM_SIZE` from `NodeCosts` and `LevelCurve`
-- [ ] Skill point award on level-up + toast notification
+- [x] Skill point award on level-up — every level crossed is paid; the notification is an
+      overlay message until the network channel lands, then it becomes a real toast
 - [ ] Drop pipeline (5 ordered stages on `BlockDropsEvent`)
 - [ ] Vein index: completion detection, Twin Veins registration, player-placed ore excluded
 - [x] Refund: `3 XP levels × tier cost`, free for 10 min after a reset — window state and
       `startFreeRespecWindow` are in place; the reset that opens it is owned by the reset ticket
-- [ ] `dataVersion` field + migration on `OreVaultTeamData`
+- [x] `dataVersion` field + migration on `OreVaultTeamData`
 
 ### Skill Tree — Resonance Nodes
 - [x] Skill tree data structure and prerequisite graph
