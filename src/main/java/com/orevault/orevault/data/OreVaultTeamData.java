@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.mojang.serialization.Codec;
 import com.orevault.orevault.OreVault;
+import com.orevault.orevault.skill.NodeCosts;
 import com.orevault.orevault.skill.NodeDef.Tree;
 import com.orevault.orevault.skill.SkillTree;
 import net.minecraft.nbt.CompoundTag;
@@ -44,6 +45,7 @@ public final class OreVaultTeamData extends SavedData {
     private int resonanceSkillPoints;
     private int animusSkillPoints;
     private int chunkLoadingTickets;
+    private long freeRespecUntilGameTime;
 
     public OreVaultTeamData(UUID teamId) {
         this.teamId = teamId;
@@ -93,6 +95,16 @@ public final class OreVaultTeamData extends SavedData {
         return chunkLoadingTickets;
     }
 
+    /** Overworld game time at which the free-respec window closes (0 = never opened). */
+    public long getFreeRespecUntilGameTime() {
+        return freeRespecUntilGameTime;
+    }
+
+    /** Whether node refunds are currently free (§3.5, §4.4). */
+    public boolean isFreeRespecActive(long gameTime) {
+        return gameTime < freeRespecUntilGameTime;
+    }
+
     // ----- mutators (mark dirty) -----
 
     public void addResonancePool(long amount) {
@@ -130,6 +142,17 @@ public final class OreVaultTeamData extends SavedData {
         setDirty();
     }
 
+    /**
+     * Opens the 10-minute free-respec window (§3.5). Called by the dimension
+     * reset; a fresh Vault is the natural moment to rebuild a mining strategy.
+     *
+     * @param gameTime current overworld game time, in ticks
+     */
+    public void startFreeRespecWindow(long gameTime) {
+        this.freeRespecUntilGameTime = gameTime + NodeCosts.FREE_RESPEC_WINDOW_TICKS;
+        setDirty();
+    }
+
     /** Unlocks the next tier on the Resonance tree; marks dirty only on success. */
     public SkillTree.UnlockResult unlockResonanceNode(String nodeId, int teamLevel, int availableSkillPoints) {
         return unlockNode(resonanceTree, nodeId, teamLevel, availableSkillPoints);
@@ -140,14 +163,20 @@ public final class OreVaultTeamData extends SavedData {
         return unlockNode(animusTree, nodeId, teamLevel, availableSkillPoints);
     }
 
-    /** Refunds the highest unlocked Resonance tier; returns the XP cost or -1. */
-    public int refundResonanceNode(String nodeId) {
-        return refundNode(resonanceTree, nodeId);
+    /**
+     * Refunds the highest unlocked Resonance tier; returns the XP cost or -1.
+     * The cost is 0 while the free-respec window is open (§4.4).
+     */
+    public int refundResonanceNode(String nodeId, long gameTime) {
+        return refundNode(resonanceTree, nodeId, gameTime);
     }
 
-    /** Refunds the highest unlocked Animus tier; returns the XP cost or -1. */
-    public int refundAnimusNode(String nodeId) {
-        return refundNode(animusTree, nodeId);
+    /**
+     * Refunds the highest unlocked Animus tier; returns the XP cost or -1.
+     * The cost is 0 while the free-respec window is open (§4.4).
+     */
+    public int refundAnimusNode(String nodeId, long gameTime) {
+        return refundNode(animusTree, nodeId, gameTime);
     }
 
     // ----- player stats -----
@@ -204,6 +233,7 @@ public final class OreVaultTeamData extends SavedData {
         tag.putInt("resonance_skill_points", resonanceSkillPoints);
         tag.putInt("animus_skill_points", animusSkillPoints);
         tag.putInt("chunk_loading_tickets", chunkLoadingTickets);
+        tag.putLong("free_respec_until", freeRespecUntilGameTime);
         tag.put("resonance_nodes", tiersToNbt(resonanceTree.getUnlockedTiers()));
         tag.put("animus_nodes", tiersToNbt(animusTree.getUnlockedTiers()));
         CompoundTag players = new CompoundTag();
@@ -227,6 +257,7 @@ public final class OreVaultTeamData extends SavedData {
         data.resonanceSkillPoints = tag.getIntOr("resonance_skill_points", 0);
         data.animusSkillPoints = tag.getIntOr("animus_skill_points", 0);
         data.chunkLoadingTickets = tag.getIntOr("chunk_loading_tickets", 0);
+        data.freeRespecUntilGameTime = tag.getLongOr("free_respec_until", 0L);
         tiersFromNbt(tag.getCompoundOrEmpty("resonance_nodes"), data.resonanceTree);
         tiersFromNbt(tag.getCompoundOrEmpty("animus_nodes"), data.animusTree);
         CompoundTag players = tag.getCompoundOrEmpty("player_stats");
@@ -258,8 +289,8 @@ public final class OreVaultTeamData extends SavedData {
         return result;
     }
 
-    private int refundNode(SkillTree tree, String nodeId) {
-        int cost = tree.refund(nodeId);
+    private int refundNode(SkillTree tree, String nodeId, long gameTime) {
+        int cost = tree.refund(nodeId, isFreeRespecActive(gameTime));
         if (cost >= 0) {
             setDirty();
         }

@@ -25,11 +25,23 @@ public final class NodeCosts {
     /** Minimum fraction of generated Vault blocks that must remain stone (§6.1). */
     public static final double STONE_CONTENT_FLOOR = 0.40;
 
-    /** Diminishing-return step in the team-size Resonance multiplier (§4.2). */
-    public static final double TEAM_SIZE_MULTIPLIER_STEP = 0.7;
+    /**
+     * Per-extra-member coordination bonus in the team pool multiplier (§4.2):
+     * {@code 1 + 0.1 * (teamSize - 1)}. Small on purpose — the pool is divided
+     * by team size first, so joining a team must not outpace playing solo.
+     */
+    public static final double TEAM_SIZE_COORDINATION_STEP = 0.1;
 
-    /** Assumed team size used to calibrate the level curve (§4.3). */
-    public static final double ASSUMED_TEAM_SIZE = 2.5;
+    /**
+     * Level cap for both the Resonance and Animus tracks (§4.3, §5.2).
+     *
+     * <p>Levels are decoupled from skill points: the cap is fixed and each level
+     * awards {@code ceil(totalTreeCost / LEVEL_CAP)} points. Setting the cap to
+     * the tree's total cost instead (225 for Resonance) put every level gate in
+     * §6 — the highest of which is 30 — inside the first hour of a 100-hour
+     * curve.</p>
+     */
+    public static final int LEVEL_CAP = 30;
 
     /** Default target play hours for the Resonance tree (§4.3). */
     public static final int TARGET_PLAY_HOURS_RESONANCE = 100;
@@ -37,8 +49,11 @@ public final class NodeCosts {
     /** Default target play hours for the Animus tree (§5.2). */
     public static final int TARGET_PLAY_HOURS_ANIMUS = 100;
 
-    /** Maximum XP cost (in levels) for refunding a fully invested tree (§4.4). */
-    public static final int MAX_REFUND_XP_LEVELS = 50;
+    /** XP levels charged per skill point when refunding a node tier (§4.4). */
+    public static final int REFUND_XP_PER_POINT = 3;
+
+    /** Length of the free-respec window opened by a dimension reset, in ticks (§3.5, §4.4). */
+    public static final long FREE_RESPEC_WINDOW_TICKS = 10L * 60L * 20L;
 
     // Resonance gain base values (§4.2)
     public static final int RESONANCE_COMMON = 2;
