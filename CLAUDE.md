@@ -168,13 +168,21 @@ tool; a leading slash means it runs only when the user types it.
 | `superpowers` | 14 process skills, invoked as `superpowers:<name>` |
 | `mattpocock-skills` | 25 engineering and writing skills, `mattpocock-skills:<name>` |
 | `claude-md-management` | the `claude-md-improver` skill, plus `/revise-claude-md` |
+| `remember` | automatic session capture through hooks, plus `/doctor` |
 | `feature-dev` | `/feature-dev` |
 
-Two more are installed but **disabled on purpose**, and should stay that way unless
-something changes. `serena` is an MCP server for semantic code navigation, which
-duplicates what `jdtls-local` already does for Java and is the only language here.
-`remember` captures sessions to `.remember/` through hooks, which overlaps with what
-this file and the GitHub issues already carry, and it loses to auto-compact anyway.
+`serena` is installed but **disabled on purpose** and should stay that way. It is an
+MCP server for semantic code navigation, which duplicates what `jdtls-local` already
+does for Java, the only language here.
+
+`remember` captures sessions on its own through SessionStart, UserPromptSubmit and
+PostToolUse hooks, writing to `.remember/` at the repo root under its own `.gitignore`.
+It covers a different need from the issue tracker: tickets record what was decided,
+`remember` records what actually happened in a session, including the dead ends. Two
+things it needs to work. Hooks are read once at startup, so a restart is required after
+enabling or updating it. And **auto-compact should be off** (`/config`), because
+compaction discards conversation history before the save pipeline can read it. `/doctor`
+reports whether capture is genuinely live rather than merely configured.
 
 `superpowers` covers brainstorming, systematic-debugging, test-driven-development,
 writing-plans, executing-plans, verification-before-completion, requesting-code-review,
@@ -231,6 +239,13 @@ review really ran, check that steps 3 and 4 executed rather than trusting the ti
   in this chat — goes through the `humanizer` skill's rules. No inflated significance,
   no bolded inline-header lists, no rule-of-three padding, no emoji. Say the specific
   thing.
+- **Say when a PR is ready to merge, in as many words.** Opening a PR is not the same
+  as being finished with it; follow-up commits often land minutes later, and a merge in
+  between strands them on a dead branch. End the work with an explicit "ready to merge"
+  rather than leaving it to be inferred from the PR existing.
+- The repository has `delete_branch_on_merge` enabled, so a merged branch is removed
+  automatically. Don't push follow-ups to a branch whose PR has already merged; branch
+  again from `main`.
 
 ## Out of scope for review
 
