@@ -104,7 +104,8 @@ public class VaultPortalBlock extends Block implements Portal {
     }
 
     /**
-     * Portal entry (§3.2): players only, server side.
+     * Portal entry (§3.2): the client call only creates the local portal
+     * processor for the warp overlay; all gating is server side.
      * <ul>
      * <li>Tier 4 igniter (§3.3): instant direct teleport, no wait, no cooldown.</li>
      * <li>No FTB team (§3.1): hint message, rate-limited via the portal cooldown.</li>
@@ -114,7 +115,15 @@ public class VaultPortalBlock extends Block implements Portal {
      */
     @Override
     protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity, InsideBlockEffectApplier effectApplier, boolean isPrecise) {
-        if (level.isClientSide() || !(entity instanceof ServerPlayer player)) {
+        if (level.isClientSide()) {
+            // Client side: create the local portal processor — the wavy
+            // CONFUSION warp overlay is rendered from it (#81). Vanilla's
+            // NetherPortalBlock does this on both sides; skipping it left the
+            // portal with no visual warp effect.
+            entity.setAsInsidePortal(this, pos);
+            return;
+        }
+        if (!(entity instanceof ServerPlayer player)) {
             return;
         }
         if (VaultIgniterItem.highestTierLevel(player) >= 4) {
