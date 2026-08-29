@@ -1402,19 +1402,20 @@ Use this to track progress. Update at the end of each development session.
 - [ ] Resonance orb spawns on ore break in Vault
 - [ ] Orb floats to nearest team member in radius
 - [ ] Team Resonance pool accumulation
-- [ ] Level curve: cap 30, `ceil(totalTreeCost / 30)` points per level
-- [ ] Team scaling: `sum / teamSize × (1 + 0.1 × (teamSize − 1))`
-- [ ] Remove `ASSUMED_TEAM_SIZE` from `NodeCosts` and `LevelCurve`
+- [x] Level curve: cap 30, `ceil(totalTreeCost / 30)` points per level
+- [x] Team scaling: `sum / teamSize × (1 + 0.1 × (teamSize − 1))`
+- [x] Remove `ASSUMED_TEAM_SIZE` from `NodeCosts` and `LevelCurve`
 - [ ] Skill point award on level-up + toast notification
 - [ ] Drop pipeline (5 ordered stages on `BlockDropsEvent`)
 - [ ] Vein index: completion detection, Twin Veins registration, player-placed ore excluded
-- [ ] Refund: `3 XP levels × tier cost`, free for 10 min after a reset
+- [x] Refund: `3 XP levels × tier cost`, free for 10 min after a reset — window state and
+      `startFreeRespecWindow` are in place; the reset that opens it is owned by the reset ticket
 - [ ] `dataVersion` field + migration on `OreVaultTeamData`
 
 ### Skill Tree — Resonance Nodes
 - [x] Skill tree data structure and prerequisite graph
 - [x] Unlock validation (level req, prereq, exclusive conflicts, skill points)
-- [ ] Node-by-node refund (new formula)
+- [x] Node-by-node refund (new formula)
 - [ ] Tradeoff toggle per-player persistence — **toggleable only outside the Vault**
 - [ ] Exclusive node pair enforcement
 - [ ] Fork enforcement (one branch, others locked until refunded)

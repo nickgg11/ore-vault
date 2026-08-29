@@ -133,18 +133,42 @@ public final class SkillTree {
     }
 
     /**
-     * Refunds the highest unlocked tier of {@code nodeId}.
+     * XP-level cost of refunding the highest unlocked tier of {@code nodeId},
+     * without performing the refund.
      *
-     * @return the XP-level cost per §4.4 (scaled by how invested the tree is), or
-     *         -1 if the node has no tier to refund.
+     * @param freeRespec {@code true} while the post-reset free window is open (§3.5)
+     * @return the cost per §4.4, or -1 if the node has no tier to refund
      */
-    public int refund(String nodeId) {
+    public int refundCost(String nodeId, boolean freeRespec) {
         int current = unlockedTier(nodeId);
-        if (current <= 0) {
+        NodeDef def = NodeDefs.get(nodeId);
+        // current can exceed maxTier if a node's tier list shrank between versions:
+        // setUnlockedTier loads persisted tiers verbatim, so never index costs() blind.
+        if (def == null || current <= 0 || current > def.maxTier()) {
             return -1;
         }
-        double ratio = (double) skillPointsInvested() / NodeDefs.totalTreeCost(tree);
-        int xpCost = (int) Math.round(ratio * NodeCosts.MAX_REFUND_XP_LEVELS);
+        return freeRespec ? 0 : NodeCosts.REFUND_XP_PER_POINT * def.costs()[current - 1];
+    }
+
+    /**
+     * Refunds the highest unlocked tier of {@code nodeId}.
+     *
+     * <p>The price is {@code 3 XP levels × that tier's skill-point cost} (§4.4),
+     * so it is always proportional to what is being undone — a 1-point node
+     * costs 3, the 10-point Vault Expansion keystone costs 30. The previous
+     * formula scaled with total tree investment instead, pricing every node
+     * identically: an early mistake was nearly free and a late respec cost
+     * ~3,250 levels, which would have made every one-way fork in §6.1 a trap.</p>
+     *
+     * @param freeRespec {@code true} while the post-reset free window is open (§3.5)
+     * @return the XP-level cost, or -1 if the node has no tier to refund
+     */
+    public int refund(String nodeId, boolean freeRespec) {
+        int xpCost = refundCost(nodeId, freeRespec);
+        if (xpCost < 0) {
+            return -1;
+        }
+        int current = unlockedTier(nodeId);
         if (current == 1) {
             unlockedTiers.remove(nodeId);
         } else {
