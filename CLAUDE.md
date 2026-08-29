@@ -135,6 +135,25 @@ Do not ask for unit tests on code that cannot have them. Do expect them on new p
 logic — especially skill-tree maths and classification rules, where the balance
 regressions have historically landed.
 
+## Java language server
+
+`.claude/skills/jdtls-local/` is a project-scoped plugin wiring Eclipse JDT.LS to the
+vendored `.tools/jdtls` and `.tools/jdk25`, giving real compiler diagnostics on Java
+edits. It registers automatically — no skill invocation needed — and the `LSP` tool
+(`goToDefinition`, `findReferences`, `hover`, `documentSymbol`) works once it's up.
+
+Two constraints:
+
+- **Launch Claude Code from the repo root.** Project-scoped plugins load only from the
+  session's primary working directory. In a git worktree the server still runs but
+  the files aren't on its classpath, so you get syntax errors only — no type checking.
+- Keep `jdtls-lsp@claude-plugins-official` **disabled**. It hardcodes `command: "jdtls"`
+  on `PATH`, which doesn't exist here. If both register, only the first to claim
+  `.java` starts.
+
+`.tools/` and `.gradle-home/` are gitignored, so a fresh clone has no language server
+until they're restored.
+
 ## Conventions
 
 - Commits: `feat:`, `fix:`, `docs:`, `ci:`, with the issue number in the subject —
