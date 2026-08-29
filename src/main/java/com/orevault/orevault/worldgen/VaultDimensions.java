@@ -1,9 +1,15 @@
 package com.orevault.orevault.worldgen;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
+
+import org.jspecify.annotations.Nullable;
 
 import com.orevault.orevault.OreVault;
 import com.orevault.orevault.config.OreVaultServerConfig;
@@ -27,6 +33,7 @@ import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.storage.DerivedLevelData;
+import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.LevelEvent;
@@ -38,12 +45,15 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
  * dimension per FTB team, registered dynamically and created on demand the
  * first time the team activates a portal.
  *
- * <p><strong>Creation is lazy.</strong> Nothing is created at server start or
- * when a team is registered — only {@link #findOrCreate} on the portal path
- * creates a dimension. FTB Teams auto-creates a single-member team for every
- * player who logs in, so eager creation cost one {@link ServerLevel} per player
- * account the server had ever seen. Dimension deletion on team disband is a
- * documented TODO that lands in {@code [77]} (issue #93).</p>
+ * <p><strong>Creation is lazy; restoration is not.</strong> No dimension is
+ * created for a team merely because the team exists — FTB Teams auto-creates a
+ * single-member team for every player who logs in, so that cost one
+ * {@link ServerLevel} per player account the server had ever seen. Only
+ * {@link #findOrCreate} on the portal path creates a <em>new</em> Vault.
+ * Vaults that already exist on disk are re-registered at server start, before
+ * any player connects, because a player may have logged out inside one.
+ * Dimension deletion on team disband is a documented TODO that lands in
+ * {@code [77]} (issue #93).</p>
  *
  * <p>Because chunk generation runs on a background executor while SavedData is
  * main-thread-only, this class maintains a thread-safe {@link
@@ -114,21 +124,93 @@ public final class VaultDimensions {
     // ----- lifecycle -----
 
     /**
-     * Server start: classify ores (§11). Deliberately does <em>not</em> create
-     * any dimension.
+     * Server start: classify ores (§11) and restore every Vault that already
+     * exists on disk.
      *
-     * <p>Dimensions are created lazily, on the first portal trip by a team
-     * member, and never before (§3.1). Earlier versions swept every existing
-     * team here and created another on {@code FTBTeamsEvent.TeamCreated};
-     * because FTB Teams auto-creates a single-member team for every player who
-     * logs in, that meant one full {@link ServerLevel} — chunk map, storage,
+     * <p>New dimensions are created lazily, on the first portal trip by a team
+     * member (§3.1) — <em>not</em> for every registered team. FTB Teams
+     * auto-creates a single-member team for every player who logs in, so
+     * creating one there meant a full {@link ServerLevel} — chunk map, storage,
      * region directory — per player account the server had ever seen, for a
      * dimension most of them never enter.</p>
+     *
+     * <p>A Vault that already has a directory on disk is a different matter: it
+     * has been entered, its cost is already paid, and a player may be standing
+     * in it right now. Those <strong>must</strong> be registered before anyone
+     * connects. A player whose saved dimension does not resolve to a live level
+     * is placed in the Overworld by vanilla — but keeps their saved
+     * coordinates, because {@code ServerPlayer.SavedPosition} holds the
+     * dimension and the position as independent optionals. Someone who logged
+     * out standing on the Vault surface at Y=251 therefore reappears at Y=251
+     * in the Overworld, in open sky, and falls to their death.</p>
      */
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
         MinecraftServer server = event.getServer();
         OreClassifier.rebuild(server.registryAccess(), OreVaultServerConfig.oreClassificationOverrides());
+        restoreExistingDimensions(server);
+    }
+
+    /**
+     * Registers every Vault that already has a directory under
+     * {@code <world>/dimensions/orevault/}. Teams that have never opened a
+     * portal have no directory and stay uncreated.
+     */
+    private static void restoreExistingDimensions(MinecraftServer server) {
+        Path dimensionsDir = server.getWorldPath(LevelResource.ROOT)
+                .resolve("dimensions")
+                .resolve(OreVault.MODID);
+        if (!Files.isDirectory(dimensionsDir)) {
+            return;
+        }
+        int restored = 0;
+        try (Stream<Path> entries = Files.list(dimensionsDir)) {
+            for (Path dir : entries.filter(Files::isDirectory).toList()) {
+                UUID teamId = teamIdFromDirectoryName(dir.getFileName().toString());
+                if (teamId == null) {
+                    OreVault.LOGGER.warn("Ignoring unrecognised Ore Vault dimension directory {}", dir);
+                    continue;
+                }
+                try {
+                    ensureTeamDimension(server, teamId);
+                    restored++;
+                } catch (RuntimeException e) {
+                    OreVault.LOGGER.error("Failed to restore Ore Vault dimension for team {}", teamId, e);
+                }
+            }
+        } catch (IOException e) {
+            OreVault.LOGGER.error("Failed to scan {} for existing Ore Vault dimensions", dimensionsDir, e);
+            return;
+        }
+        if (restored > 0) {
+            OreVault.LOGGER.info("Restored {} existing Ore Vault dimension(s) from disk", restored);
+        }
+    }
+
+    /**
+     * Reverses {@link TeamHelper#dimensionKey}: {@code vault_<32 hex chars>}
+     * back to a team UUID, or {@code null} if the name is not one of ours.
+     */
+    private static @Nullable UUID teamIdFromDirectoryName(String name) {
+        String prefix = "vault_";
+        if (!name.startsWith(prefix)) {
+            return null;
+        }
+        String hex = name.substring(prefix.length());
+        if (hex.length() != 32) {
+            return null;
+        }
+        try {
+            // Re-insert the hyphens right-to-left so the earlier indices stay valid.
+            return UUID.fromString(new StringBuilder(hex)
+                    .insert(20, '-')
+                    .insert(16, '-')
+                    .insert(12, '-')
+                    .insert(8, '-')
+                    .toString());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     // ----- dimension creation -----
