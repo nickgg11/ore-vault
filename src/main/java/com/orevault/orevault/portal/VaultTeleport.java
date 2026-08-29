@@ -50,7 +50,8 @@ import net.minecraft.world.phys.Vec3;
  * </ul>
  *
  * <p>Arrival effects on entering the Vault: Speed I (tier 2, 5s), Haste I
- * (tier 3, 10s), Haste II (tier 4, 15s). The re-entry cooldown is the vanilla
+ * (tier 3, 10s), Haste II (tier 4, 15s). Arrivals in both directions show an
+ * action-bar overlay message (#78). The re-entry cooldown is the vanilla
  * portal cooldown (80 ticks, §3.2); tier 4 skips it.</p>
  */
 public final class VaultTeleport {
@@ -127,6 +128,7 @@ public final class VaultTeleport {
             if (entity instanceof ServerPlayer p) {
                 p.setPortalCooldown(finalTier >= 4 ? 0 : PORTAL_COOLDOWN_TICKS);
                 applyArrivalEffects(p, finalTier);
+                p.sendOverlayMessage(Component.translatable("message.orevault.vault_arrival"));
             }
         });
         return new TeleportTransition(
@@ -164,7 +166,11 @@ public final class VaultTeleport {
                 Vec3.ZERO,
                 player.getYRot(),
                 player.getXRot(),
-                TeleportTransition.PLAY_PORTAL_SOUND
+                TeleportTransition.PLAY_PORTAL_SOUND.then(entity -> {
+                    if (entity instanceof ServerPlayer p) {
+                        p.sendOverlayMessage(Component.translatable("message.orevault.overworld_return"));
+                    }
+                })
         );
     }
 
@@ -202,6 +208,7 @@ public final class VaultTeleport {
 
         teleport(player, vault, target.getX() + 0.5, target.getY(), target.getZ() + 0.5);
         applyArrivalEffects(player, tier); // no cooldown: tier 4 (§3.3)
+        player.sendOverlayMessage(Component.translatable("message.orevault.vault_arrival"));
     }
 
     private static void teleportBack(ServerPlayer player) {
@@ -225,6 +232,7 @@ public final class VaultTeleport {
             z = spawn.getZ() + 0.5;
         }
         teleport(player, overworld, x, y, z);
+        player.sendOverlayMessage(Component.translatable("message.orevault.overworld_return"));
     }
 
     // ----- helpers -----
