@@ -1,0 +1,10 @@
+{
+  "layers": [
+    { "block": "minecraft:bedrock", "thickness": 1 },
+    { "block": "minecraft:deepslate", "thickness": 63 },
+    { "block": "minecraft:stone", "thickness": 246 },
+    { "block": "minecraft:dirt", "thickness": 4 },
+    { "block": "minecraft:grass_block", "thickness": 1 },
+    { "block": "minecraft:air", "thickness": 69 }
+  ]
+}

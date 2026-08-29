@@ -64,6 +64,9 @@ public final class VaultDimensions {
     private static final Map<UUID, VaultChunkGenerator.SkillSnapshot> SKILL_SNAPSHOTS = new ConcurrentHashMap<>();
     private static final Map<UUID, VaultChunkGenerator> GENERATORS = new ConcurrentHashMap<>();
 
+    /** Layer stack for the base dimension type, loaded on first dimension creation (#76). */
+    private static volatile VaultLayerConfig BASE_LAYER_CONFIG;
+
     private VaultDimensions() {
     }
 
@@ -79,11 +82,16 @@ public final class VaultDimensions {
     }
 
     /**
-     * Default entry Y for the base dimension: feet standing on the grass
-     * surface at the top of the solid fill (§3.1 air-layer layout).
+     * Default entry Y for the base dimension: the bottom of the configured air
+     * layer (#76), falling back to the pre-config height while no server has
+     * loaded the layer stack yet.
      */
     public static int defaultEntryY() {
-        return BASE_MIN_Y + BASE_HEIGHT - VaultChunkGenerator.OPEN_AIR_LAYER;
+        VaultLayerConfig config = BASE_LAYER_CONFIG;
+        if (config != null && config.firstAirY() >= 0) {
+            return config.firstAirY();
+        }
+        return BASE_MIN_Y + BASE_HEIGHT - VaultLayerConfig.DEFAULT_AIR_THICKNESS;
     }
 
     /**
@@ -143,12 +151,15 @@ public final class VaultDimensions {
 
         Holder.Reference<DimensionType> type = server.registryAccess().lookupOrThrow(Registries.DIMENSION_TYPE).getOrThrow(BASE_DIMENSION_TYPE);
         Holder.Reference<Biome> biome = server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(VAULT_BIOME);
+        VaultLayerConfig layerConfig = VaultLayerConfig.load(server, BASE_DIMENSION_TYPE, BASE_MIN_Y, BASE_HEIGHT);
+        BASE_LAYER_CONFIG = layerConfig;
         VaultChunkGenerator generator = new VaultChunkGenerator(
                 teamId,
                 biome,
                 BASE_MIN_Y,
                 BASE_HEIGHT,
-                () -> SKILL_SNAPSHOTS.getOrDefault(teamId, VaultChunkGenerator.SkillSnapshot.EMPTY)
+                () -> SKILL_SNAPSHOTS.getOrDefault(teamId, VaultChunkGenerator.SkillSnapshot.EMPTY),
+                layerConfig
         );
         LevelStem stem = new LevelStem(type, generator);
 

@@ -32,10 +32,12 @@ import net.minecraft.world.level.levelgen.blending.Blender;
 
 /**
  * Custom chunk generator for team Vault dimensions (§3.1, §11): an open air
- * layer at the top (64 blocks), then an overworld-style solid fill — one grass
- * layer, a 4-block dirt band, stone down to Y=0 and deepslate below Y=0. No
- * aquifers, caves, or structures. Ore placement is driven by the team's skill
- * state.
+ * layer at the top, then an overworld-style solid fill. The exact layering is
+ * data-driven through {@link VaultLayerConfig} (#76) — loaded per dimension
+ * type from {@code data/orevault/worldgen/vault_layers/<type>.json}, with the
+ * classic stack (bedrock, deepslate to Y=0, stone, dirt band, grass surface,
+ * air layer) as the built-in fallback. No aquifers, caves, or structures. Ore
+ * placement is driven by the team's skill state.
  *
  * <p>The generator is created per team by {@code VaultDimensions} and reads a
  * main-thread-maintained {@link SkillSnapshot} at generation time so node
@@ -48,12 +50,6 @@ import net.minecraft.world.level.levelgen.blending.Blender;
  */
 public final class VaultChunkGenerator extends ChunkGenerator {
 
-    /** Surface soil: one grass layer on top of the solid fill (§3.1). */
-    public static final int GRASS_LAYERS = 1;
-    /** Dirt band directly under the grass surface (§3.1). */
-    public static final int DIRT_LAYERS = 4;
-    /** Open air layer at the top of the dimension, in blocks (§3.1 revision). */
-    public static final int OPEN_AIR_LAYER = 64;
     /** Hard 40% stone floor: ores may never exceed 60% of a chunk's stone volume (§3.1). */
     public static final double MAX_ORE_FRACTION = 0.60;
     /** Placeholder vein parameters until node-driven placement lands in [44]/[45]. */
@@ -63,15 +59,17 @@ public final class VaultChunkGenerator extends ChunkGenerator {
     private final UUID teamId;
     private final int minY;
     private final int height;
+    private final VaultLayerConfig layers;
     private final Supplier<SkillSnapshot> skills;
     private final AtomicBoolean loggedSkillState = new AtomicBoolean();
 
-    public VaultChunkGenerator(UUID teamId, Holder<Biome> biome, int minY, int height, Supplier<SkillSnapshot> skills) {
+    public VaultChunkGenerator(UUID teamId, Holder<Biome> biome, int minY, int height, Supplier<SkillSnapshot> skills, VaultLayerConfig layers) {
         super(new FixedBiomeSource(biome));
         this.teamId = teamId;
         this.minY = minY;
         this.height = height;
         this.skills = skills;
+        this.layers = layers;
     }
 
     /** Team id this generator was created for. */
@@ -145,17 +143,16 @@ public final class VaultChunkGenerator extends ChunkGenerator {
 
     @Override
     public int getBaseHeight(int x, int z, Heightmap.Types type, LevelHeightAccessor heightAccessor, RandomState randomState) {
-        // First free space: one block above the grass surface (§3.1 air layer).
-        return minY + height - OPEN_AIR_LAYER;
+        // First free space: the bottom of the air layer (one block above the surface).
+        int firstAirY = layers.firstAirY();
+        return firstAirY >= 0 ? firstAirY : minY + height;
     }
 
     @Override
     public NoiseColumn getBaseColumn(int x, int z, LevelHeightAccessor heightAccessor, RandomState randomState) {
         BlockState[] states = new BlockState[height];
-        int stoneTop = minY + height - OPEN_AIR_LAYER;
         for (int y = 0; y < height; y++) {
-            int worldY = minY + y;
-            states[y] = solidState(worldY, stoneTop);
+            states[y] = layers.blockAt(minY + y);
         }
         return new NoiseColumn(minY, states);
     }
@@ -171,12 +168,11 @@ public final class VaultChunkGenerator extends ChunkGenerator {
     ) {
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         int maxY = minY + height - 1;
-        int stoneTop = minY + height - OPEN_AIR_LAYER;
         Heightmap oceanFloor = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.OCEAN_FLOOR_WG);
         Heightmap worldSurface = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.WORLD_SURFACE_WG);
 
         for (int y = minY; y <= maxY; y++) {
-            BlockState state = solidState(y, stoneTop);
+            BlockState state = layers.blockAt(y);
             for (int x = 0; x < 16; x++) {
                 for (int z = 0; z < 16; z++) {
                     chunk.setBlockState(pos.set(x, y, z), state);
@@ -192,34 +188,14 @@ public final class VaultChunkGenerator extends ChunkGenerator {
         return CompletableFuture.completedFuture(chunk);
     }
 
-    /**
-     * The generated block for a column at absolute {@code worldY}: air above the
-     * surface, grass on top, a 4-block dirt band, stone down to Y=0 and deepslate
-     * below (§3.1 overworld-style layering).
-     */
-    private static BlockState solidState(int worldY, int stoneTop) {
-        if (worldY >= stoneTop) {
-            return Blocks.AIR.defaultBlockState();
-        }
-        if (worldY == stoneTop - 1) {
-            return Blocks.GRASS_BLOCK.defaultBlockState();
-        }
-        if (worldY >= stoneTop - 1 - DIRT_LAYERS) {
-            return Blocks.DIRT.defaultBlockState();
-        }
-        if (worldY >= 0) {
-            return Blocks.STONE.defaultBlockState();
-        }
-        return Blocks.DEEPSLATE.defaultBlockState();
-    }
-
     // ----- ore placement -----
 
     /**
      * Places ores for the chunk. Reads the team's skill state at generation
      * time; node modifiers are a TODO hook for [44]/[45], so until then only a
-     * small hardcoded coal vein is placed. The ore budget enforces the 40%
-     * stone-content floor regardless of any future node math.
+     * small hardcoded coal vein is placed inside the config's stone band. The
+     * ore budget enforces the 40% stone-content floor regardless of any future
+     * node math.
      */
     private void placeOres(ChunkAccess chunk) {
         SkillSnapshot snapshot = skills.get();
@@ -230,9 +206,13 @@ public final class VaultChunkGenerator extends ChunkGenerator {
             );
         }
 
-        int stoneHeight = height - OPEN_AIR_LAYER;
+        if (!layers.hasStoneBand()) {
+            return; // nothing to mineralize without a stone layer
+        }
+        int stoneBandBottom = layers.stoneBandBottom();
+        int stoneBandTop = layers.stoneBandTop();
+        int stoneHeight = stoneBandTop - stoneBandBottom;
         int oreBudget = (int) (16 * 16 * stoneHeight * MAX_ORE_FRACTION); // 40% stone floor (§3.1)
-        int stoneBandTop = stoneTop(); // ores only replace stone: Y in [0, stoneBandTop)
         ChunkPos chunkPos = chunk.getPos();
         RandomSource random = RandomSource.create(seedFor(chunkPos));
         BlockState coalOre = Blocks.COAL_ORE.defaultBlockState();
@@ -240,13 +220,13 @@ public final class VaultChunkGenerator extends ChunkGenerator {
         int placed = 0;
         for (int vein = 0; vein < PLACEHOLDER_VEINS && placed < oreBudget; vein++) {
             int cx = random.nextInt(16);
-            int cy = random.nextInt(stoneBandTop);
+            int cy = stoneBandBottom + random.nextInt(stoneHeight);
             int cz = random.nextInt(16);
             for (int i = 0; i < PLACEHOLDER_VEIN_SIZE && placed < oreBudget; i++) {
                 int x = cx + random.nextInt(5) - 2;
                 int y = cy + random.nextInt(5) - 2;
                 int z = cz + random.nextInt(5) - 2;
-                if (x < 0 || x > 15 || z < 0 || z > 15 || y < 0 || y >= stoneBandTop) {
+                if (x < 0 || x > 15 || z < 0 || z > 15 || y < stoneBandBottom || y >= stoneBandTop) {
                     continue;
                 }
                 BlockPos localPos = new BlockPos(x, y, z);
@@ -256,11 +236,6 @@ public final class VaultChunkGenerator extends ChunkGenerator {
                 }
             }
         }
-    }
-
-    /** First Y of the air layer; the stone band for ore placement is [0, stoneTop - grass - dirt). */
-    private int stoneTop() {
-        return minY + height - OPEN_AIR_LAYER - GRASS_LAYERS - DIRT_LAYERS;
     }
 
     /** Deterministic per-chunk seed (independent of the world seed). */

@@ -106,13 +106,12 @@ Dimensions are created dynamically the first time any member of a team activates
 - `bed_works: false` / `respawn_anchor_works: false`
 - `natural: false` — disables passive mob spawning, sleep and spawn protection
 
-**World generation (overworld-style layering):**
-- Open air layer at the top of the dimension: 64 blocks tall (Y=256–319), giving players an open working space when they enter
-- Grass surface at Y=255, then a 4-block dirt band (Y=251–254)
-- Stone from Y=0 up to the dirt band; deepslate below Y=0 (Y=-64…-1)
-- Default entry point: the heightmap surface at the mirrored XZ (first air block above the ground, verified 2-high), falling back to feet at Y=256; the exit portal is built standing on that surface
+**World generation (overworld-style layering, data-driven — #76):**
+- The layer stack is a bottom-up list of `{block, thickness}` pairs, jamd-style, loaded per dimension type from `data/orevault/worldgen/vault_layers/<type>.json` and validated against the dimension height; missing/malformed configs fall back to the classic stack
+- Classic stack (base type): bedrock Y=-64, deepslate Y=-63…-1, stone Y=0…245, dirt band Y=246…249, grass surface Y=250, open air Y=251…319 (69 blocks of open working space)
+- Default entry point: the heightmap surface at the mirrored XZ (first air block above the ground, verified 2-high), falling back to feet at Y=251; the exit portal is built standing on that surface
 - No aquifers, no caves by default (open to adding cave generation as a future node)
-- Ore generation handled entirely by the custom chunk generator, not static placed features
+- Ore generation handled entirely by the custom chunk generator (ores replace stone inside the configured stone band), not static placed features
 - A hard floor of 40% stone content is enforced regardless of skill tree state — the Vault will never be more than 60% ore by volume
 
 **Dimension cleanup:**
