@@ -1,11 +1,11 @@
 # Ore Vault — Technical Design & Specification Document
 
-> **Version:** 1.0 — Pre-Development  
-> **Target:** Minecraft 26.1, Forge  
+> **Version:** 1.1 — Design revision (skill tree restructure, Animus deferred to post-1.0)  
+> **Target:** Minecraft 26.1, NeoForge  
 > **Hard Dependencies:** FTB Teams  
 > **Soft Dependencies:** FTB Ultimine, Mekanism, generic ore-dust mods  
 > **Book Item:** Tome of the Deep Seam  
-> **Last Updated:** Pre-development brainstorm complete  
+> **Last Updated:** 2026-08-28 — post-playtest design review  
 
 ---
 
@@ -95,9 +95,20 @@ orevault:vault_<teamId>
 ```
 Where `<teamId>` is the UUID of the FTB Team, stripped of hyphens.
 
-Dimensions are created dynamically the first time any member of a team activates a portal. The dimension type JSON is static (defined once), but the chunk generator is a custom implementation that reads the team's current skill tree state at chunk generation time, allowing node purchases to affect newly generated chunks immediately without a server restart.
+**Dimensions are created lazily — on the first portal trip by a member of that team, and never before.** No dimension is created at server start, and none is created when a team is registered. This matters because FTB Teams auto-creates a single-member team for every player who logs in; eager creation would mean one full `ServerLevel` (chunk map, storage, region directory) per player account the server has ever seen, whether or not they use the mod.
 
-**Dimension type properties (base: `min_y: -64`, `height: 384`, `logical_height: 384`):**
+The dimension type JSON is static (two variants, below), but the chunk generator is a custom implementation that reads the team's current skill tree state at chunk generation time, allowing node purchases to affect newly generated chunks immediately without a server restart.
+
+**Dimension type variants.** Two types exist; a team's Vault uses the base type until the Vault Expansion keystone is purchased and the dimension is reset, at which point it is re-created under the expanded type. The only difference is how deep the world goes before bedrock:
+
+| | `orevault:ore_vault` (base) | `orevault:ore_vault_expanded` |
+|---|---|---|
+| `min_y` | `0` | `-64` |
+| `height` / `logical_height` | `320` | `384` |
+| Bedrock floor | Y=0 | Y=−64 |
+| Deepslate band | none | Y=−63…−1 — the densest ore band in the mod |
+
+Shared attributes for both types:
 - `ambient_light: 1.0` — full universal brightness, no torches needed
 - `visual/sky_light_factor: 1.0` + `visual/ambient_light_color` — fullbright terrain (MC 26.1 renders block brightness from environment attributes; `ambient_light` alone no longer lights terrain)
 - `fixed_time: 6000` — always midday aesthetically
@@ -107,12 +118,15 @@ Dimensions are created dynamically the first time any member of a team activates
 - `natural: false` — disables passive mob spawning, sleep and spawn protection
 
 **World generation (overworld-style layering, data-driven — #76):**
-- The layer stack is a bottom-up list of `{block, thickness}` pairs, jamd-style, loaded per dimension type from `data/orevault/worldgen/vault_layers/<type>.json` and validated against the dimension height; missing/malformed configs fall back to the classic stack
-- Classic stack (base type): bedrock Y=-64, deepslate Y=-63…-1, stone Y=0…245, dirt band Y=246…249, grass surface Y=250, open air Y=251…319 (69 blocks of open working space)
-- Default entry point: the heightmap surface at the mirrored XZ (first air block above the ground, verified 2-high), falling back to feet at Y=251; the exit portal is built standing on that surface
+- The layer stack is a bottom-up list of `{block, thickness}` pairs, jamd-style, loaded per dimension type from `data/orevault/worldgen/vault_layers/<type>.json` and validated against the dimension height; missing/malformed configs fall back to the built-in stack for that type
+- Base stack (`ore_vault`, Y=0…319): bedrock Y=0, stone Y=1…245, dirt band Y=246…249, grass surface Y=250, open air Y=251…319 (69 blocks of open working space)
+- Expanded stack (`ore_vault_expanded`, Y=−64…319): bedrock Y=−64, deepslate Y=−63…−1, then identical to the base stack from Y=0 upward
+- Entry point: a **fixed anchor per team** at the Vault origin (X=0, Z=0), standing on the grass surface. Vault arrival never mirrors or otherwise derives from Overworld coordinates — every trip in lands on the same block, and the return portal stands there permanently (§3.2)
 - No aquifers, no caves by default (open to adding cave generation as a future node)
 - Ore generation handled entirely by the custom chunk generator (ores replace stone inside the configured stone band), not static placed features
 - A hard floor of 40% stone content is enforced regardless of skill tree state — the Vault will never be more than 60% ore by volume
+
+> **Implementation gotcha — mid-session dimension creation.** After putting the new `ServerLevel` into `server.forgeGetWorldMap()`, you **must** call `server.markWorldsDirty()`. `MinecraftServer` ticks levels from a cached array (`getWorldArray()`) that is only rebuilt when that marker changes; without the call, a dimension created after the first server tick is never ticked at all. Symptom: block-breaking stalls after one `BreakSpeed` event and `BREAK_BLOCK` never fires, entities never tick, and relogging "fixes" it. See issues #82 / #89.
 
 **Dimension cleanup:**
 When an FTB Team is disbanded, the team's Vault dimension is deleted. This includes all chunk data and the team's SavedData entry. A server log entry is written noting the deletion.
@@ -145,27 +159,32 @@ When an FTB Team is disbanded, the team's Vault dimension is deleted. This inclu
 - Has HORIZONTAL_AXIS block state property for orientation
 - Four variants, one per igniter tier (#84): common (green), uncommon (blue), rare (purple), legendary (orange) — the igniter's tier selects which variant fills the frame. All four share one near-white texture tinted client-side via BlockColors (`tintindex`), and everything that recognises "a portal block" uses the `orevault:vault_portals` block tag.
 - Implements MC 26.1's `Portal` interface: entering starts the vanilla nether-style charge-up — 80 ticks (4 seconds) inside the portal with the wavy "confusion" screen overlay, giving players the chance to step back out — followed by a portal travel sound and the teleport
-- `entityInside()` handles teleportation (players only); FTB team required (teamless players get a hint instead of portal charge-up)
+- `entityInside()` handles teleportation (players only)
 - `updateShape()` breaks to air if a neighbouring block is neither Vault Frame nor portal block (whole-frame re-validation)
-- Teleport cooldown: 80 ticks (4 seconds) using vanilla `portalCooldown`; Tier 4 igniter holders skip the wait and the cooldown entirely
+- Teleport cooldown: 80 ticks (4 seconds) using vanilla `portalCooldown`; Tier 3+ igniter holders skip the wait and the cooldown entirely (§3.3)
+
+**No team gate.** FTB Teams auto-creates a single-member team for every player, so there is no such thing as a teamless player at runtime and nothing is gated on team membership. `getTeamForPlayerID` never returns empty on a live server; any check written against it is dead code. Solo players get a solo Vault, exactly as §2 describes.
 
 **Teleportation Logic**
 ```
 If player is in Ore Vault dimension:
     → retrieve saved return position from player persistent data
     → teleport to Overworld at saved position (fallback: world spawn)
-Else (requires an FTB team):
-    → save current position to player persistent data
+Else:
+    → save current Overworld position to player persistent data
     → find or create team's Vault dimension
-    → ensure the team's exit portal exists at the Vault's default entry point (auto-built 4×5 frame with 2×3 portal, offset from the arrival point)
-    → teleport to Vault at mirrored XZ, standing on the grass surface (top of the solid fill, one block below the air layer)
+    → ensure the team's return portal exists at the Vault anchor (§3.1) — a single-plane
+      4×5 frame with a 2×3 interior, standing on the grass surface at X=0, Z=0
+    → teleport to the Vault anchor (or the player's personal entry point, Tier 2+)
 ```
+
+**The Vault side is fixed; only the Overworld side is remembered.** Every trip into a team's Vault lands on the same block — the team anchor at X=0, Z=0 — regardless of where in the Overworld the portal was. Vault arrival never mirrors, offsets, or otherwise derives from Overworld coordinates. Exactly one return portal exists per Vault, built at that anchor on first entry and idempotent thereafter, and it is tier-coloured to match the highest igniter tier that has opened the Vault (upgrading, never downgrading).
 
 Return position is stored in `player.getPersistentData()` under key `orevault_return` as an NBT compound with x/y/z integers. This survives death and dimension changes. The saved spot is walked out along the approach direction past the last portal block, so returning never instantly re-triggers the portal.
 
 > **Ore-block-look portals (investigation, #84):** the portal interior is a flat translucent plane (nether-portal style), so a literal ore-block appearance would need a full-cube model or a block-entity renderer — losing the flat translucency. Conclusion: keep the tinted plane; an "ore-look" would be done as a texture swap (ore-vein pattern on the plane), not a block-shaped portal.
 
-> **Spawn safety (implementation note):** the open air layer (§3.1) means the default entry needs no terrain carving — the player arrives standing on the deepslate surface in open air. Custom entry points (Tier 3+) scan upward from the stored block for a 2-block air pocket, carving one only if none is found nearby (e.g. the entry was set against a solid wall).
+> **Spawn safety (implementation note):** the open air layer (§3.1) means the team anchor needs no terrain carving — the player arrives standing on the grass surface in open air. Personal entry points (Tier 2+) scan upward from the stored block for a 2-block air pocket, carving one only if none is found nearby (e.g. the entry was set against a solid wall).
 
 ---
 
@@ -173,31 +192,18 @@ Return position is stored in `player.getPersistentData()` under key `orevault_re
 
 The Vault Igniter replaces Flint & Steel as the portal activation item. Four tiers, each crafted from the previous tier plus additional materials.
 
-**Tier 1 — Crude Vault Igniter**
-- Recipe: Iron ingot + Redstone dust (shaped, horizontal)
-- Function: Opens the portal, standard activation
-- No special effects
+**Every tier grants a persistent capability, not a buff.** Earlier drafts gave the tiers short potion effects on arrival (Speed I for 5s, Haste I, Haste II); those were removed. They were cosmetic noise, and the Vault Fever and Efficient Miner nodes already own the haste and hunger axes far more meaningfully — a 15-second Haste II on entry is worthless next to a node granting it permanently. The igniter is the player's *key*: what it carries is access, not stats.
 
-**Tier 2 — Attuned Vault Igniter**
-- Recipe: Crude Vault Igniter + Gold ingot + 4 Resonance Crystals (craftable from accumulated... see note below)
-- Portal opens with a particle burst on activation
-- Player receives Speed I for 5 seconds on entering the Vault
-- Portal activation animation is 30% faster
+| Tier | Name | Recipe | Capability |
+|---|---|---|---|
+| 1 | Crude Vault Igniter | Iron ingot + Redstone dust (shaped, horizontal) | Opens the portal. Nothing else. |
+| 2 | Attuned Vault Igniter | Tier 1 + Gold ingot + 4 Resonance Crystals | Set and recall **one** personal entry point inside the Vault (right-click a block while holding the igniter) |
+| 3 | Resonant Vault Igniter | Tier 2 + Diamond + 8 Resonance Crystals | Instant travel — skips the 4-second portal charge and the re-entry cooldown entirely; personal entry points raised to **3**, selectable as a waypoint list |
+| 4 | Sovereign Vault Igniter | Tier 3 + Netherite ingot + 16 Resonance Crystals | Unlocks the Vault Reset button in the Tome UI; required (and returned) by the Vault Anchor recipe (§3.4) |
 
-**Tier 3 — Resonant Vault Igniter**
-- Recipe: Attuned Vault Igniter + Diamond + 8 Resonance Crystals
-- Grants Haste I for 10 seconds on entering the Vault
-- Unlocks ability to set a custom entry point inside the Vault (right-click a block inside the Vault while holding the igniter to set it as personal spawn point)
-- Custom entry point stored per-player in persistent data
+Personal entry points are stored per-player in persistent data. Without a Tier 4 igniter the reset button does not appear in the UI, and Vault Anchors cannot be crafted at all.
 
-**Tier 4 — Sovereign Vault Igniter**
-- Recipe: Resonant Vault Igniter + Netherite ingot + 16 Resonance Crystals
-- Grants Haste II for 15 seconds on entering the Vault
-- Teleportation is instant with no cooldown: skips the 4-second portal wait and the re-entry cooldown entirely
-- Unlocks the Vault Reset button in the Tome of the Deep Seam UI
-- Without a Tier 4 igniter, the reset button does not appear in the UI
-
-> **Resonance Crystals:** A craftable item representing condensed Resonance. Crafted at a ratio defined in config (default: 100 Resonance worth of... ). Actually Resonance is not a physical item — it is a team-pool counter. Resonance Crystals should instead be crafted from materials that feel thematically appropriate, such as: Amethyst Shard + Iron Nugget. The exact recipe is a design decision to finalise in implementation. The key point is that Igniter tiers require both a crafting cost and progression — the Tier 4 igniter being a significant material investment.
+> **Resonance Crystals.** Not craftable from raw materials — the *only* source is Attuned ore, which drops from the Runic Attunement node (§6.1, Fortune branch). Recipe: **4 Attuned raw ore (any type) + 1 Amethyst Shard → 1 Resonance Crystal** (shapeless). This deliberately gates the igniter ladder behind a skill investment rather than a free recipe, and gives Runic Attunement a concrete purpose — it is the supply line for igniter upgrades and Vault Anchors. Total cost of a Tier 4 igniter is 28 Crystals = 112 Attuned ore, which at Runic Attunement Tier 3 (20% attune chance) is roughly 560 ore mined: a genuine but reachable investment.
 
 ---
 
@@ -207,16 +213,19 @@ The Vault Igniter replaces Flint & Steel as the portal activation item. Four tie
 The mod registers Forge chunk loading tickets for chunks inside the Vault that contain an active Vault Anchor block. Tickets persist until the anchor is removed or the server restarts.
 
 **Vault Anchor Block**
-- Crafted from Vault Frame blocks + Resonance Crystal
+- Crafted from Vault Frame blocks + Resonance Crystal + a **Tier 4 Sovereign Vault Igniter**, which is *not consumed* — it is returned to the crafting grid as a crafting remainder, the same pattern vanilla uses for buckets and water bottles
+- The igniter is therefore a **recipe gate, not a placement gate.** Gating placement instead would mean the block pops out of the world and back into the player's inventory when they lack the igniter, which reads as a bug rather than a rule. Gating the recipe means an anchor that exists can always be placed
 - Placeable inside the Vault only
 - Registers a chunk loading ticket for its chunk on placement
 - Deregisters on removal
-- Serves dual purpose: chunk loader and personal waypoint (right-click to set as return point with Tier 3+ igniter)
+- Serves dual purpose: chunk loader and personal waypoint (right-click to set as a personal entry point with a Tier 2+ igniter)
 - Maximum simultaneous tickets per team determined by Vault Presence skill node (see skill tree)
 - Admin config can set a hard ceiling on max tickets regardless of node level
 
 **Cross-Dimension Behaviour**
-When a player is in the Overworld and a machine breaks a block in a ticket-loaded Vault chunk, the Automated Extraction node (if unlocked) awards Resonance to the team pool for that block. The block break event fires normally on the server regardless of which dimension the player is in, as long as the chunk is loaded.
+Blocks broken by machines in a ticket-loaded Vault chunk **never award Resonance**, in any quantity, under any node. This is a deliberate hard rule, not a balance value to tune: the level curve (§4.3) is calibrated against a player mining by hand, and a quarry in a 60%-ore dimension exceeds that by orders of magnitude. Allowing even a fraction would collapse a 100-hour progression into an evening on any tech pack.
+
+What automation *does* get is the Automated Extraction node (§6.1), which increases machine **yield** inside the Vault and makes machine-broken ore count toward vein completion (§11) and player statistics. Automation is therefore worth building for materials, and worth nothing for progression — progression is always earned by hand.
 
 ---
 
@@ -236,9 +245,10 @@ When a player is in the Overworld and a machine breaks a block in a ticket-loade
 2. Once vote passes, a 10-second countdown is shown to anyone inside the Vault with a warning message
 3. Any players still inside the Vault at countdown end are teleported to Overworld spawn
 4. All chunk data for the team's Vault dimension is deleted
-5. The dimension is re-registered fresh (same registry key, new generation state)
+5. The dimension is re-registered fresh (same registry key, new generation state). If the team has purchased the **Vault Expansion** keystone, the dimension is re-created under `orevault:ore_vault_expanded` instead of the base type — this is the only moment the dimension type can change (§3.1)
 6. Team skill tree progress, Resonance pool, Animus pool, and all skill point investments are fully preserved
-7. A server log entry records the reset with timestamp and team ID
+7. **Free respec window:** for 10 minutes after a reset, node refunds cost no XP (§4.4). A fresh Vault is the natural moment to rebuild a mining strategy, and it gives the reset a second purpose beyond regenerating terrain
+8. A server log entry records the reset with timestamp and team ID
 
 **Backup option:** A checkbox in the reset confirmation UI labelled "Export chunk data before reset." If checked, the dimension's region files are copied to `world/orevault_backups/<teamId>/<timestamp>/` before deletion. This is purely a safety net and is not used by the mod itself after creation.
 
@@ -267,37 +277,68 @@ Resonance orbs are spawned as floating entities when an ore block is broken insi
 
 **Tithe node modifier:** If Tithe is active, 25% of ore blocks mined are consumed (the block breaks but drops nothing) and the Resonance that would have come from that ore is multiplied by 1.75 and added to the pool. Stone Memory bonus drops and other secondary drops are not affected by Tithe.
 
-**Team pool scaling with diminishing returns:**
-The team pool accrues Resonance as the sum of all members' gains, but with a soft diminishing return on the multiplier as team size grows. Formula:
+**Team pool scaling.** The intent is that joining a team does not push progression ahead of playing solo — a team gets to mine together and share a tree, not to progress five times faster. The pool receives the sum of member gains, divided by team size, with a small coordination bonus:
+
 ```
-effectiveMultiplier = 1 + (teamSize - 1) * 0.7
+teamPoolGain = sum(memberGains) / teamSize * (1 + 0.1 * (teamSize - 1))
 ```
-So a team of 1 gets 1.0x, team of 2 gets 1.7x, team of 3 gets 2.4x, team of 5 gets 3.8x. Raw additive would be 5.0x for a team of 5 — this keeps large teams from trivialising the progression timeline.
+
+| Team size | Rate vs. solo |
+|---|---|
+| 1 | 1.0× |
+| 2 | 1.1× |
+| 3 | 1.2× |
+| 5 | 1.4× |
+
+A five-person team progresses 40% faster than a solo player, not 500% faster. The earlier `1 + (teamSize - 1) * 0.7` formula was both ambiguous (it read as a multiplier applied *on top of* an already-summed pool, which would have made a team of five progress 19× as fast) and far too generous. Because the curve below is now calibrated for a solo player, the `assumedTeamSize` constant is no longer needed anywhere and has been removed.
 
 ### 4.3 Level Thresholds and Skill Points
 
+**Levels and skill points are decoupled.** Earlier drafts set the level cap equal to the tree's total skill-point cost, awarding one point per level. With a 225-point Resonance tree that meant a 225-level track, and since the highest level requirement anywhere in §6 is 30, every gate in the entire mod opened inside the first hour of a 100-hour curve. The level requirements in §6 were authored for a ~30-level track; the track now matches them.
+
 **Dynamic calculation (performed in code at startup, not configured manually):**
 
-1. At startup, sum the skill point cost of every node at every tier in the Resonance tree. Call this `totalResonanceTreeCost`.
-2. From config, read `targetPlayHoursResonance` (default: 100) and `assumedTeamSize` (default: 2.5).
-3. Calculate average Resonance per hour: `resonancePerHour = averageOresPerHour * weightedAverageResonancePerOre * effectiveMultiplier(assumedTeamSize)`.
-4. Total Resonance needed: `totalResonance = resonancePerHour * targetPlayHoursResonance`.
-5. Total levels needed = `totalResonanceTreeCost` (one skill point per level).
-6. Distribute `totalResonance` across levels using an exponential curve, where early levels are cheap and late levels are expensive. The curve formula:
+1. At startup, sum the skill point cost of every node at every tier in the tree. Call this `totalTreeCost`.
+2. The level cap is a constant: `LEVEL_CAP = 30` for both trees.
+3. Points awarded per level: `pointsPerLevel = ceil(totalTreeCost / LEVEL_CAP)`. Reaching level 30 therefore grants at least enough points to buy the whole tree. Adding or removing nodes automatically adjusts the award, not the cap.
+4. From config, read `targetPlayHoursResonance` (default: 100).
+5. Calculate average Resonance per hour for a **solo** player: `resonancePerHour = averageOresPerHour * weightedAverageResonancePerOre`.
+6. Total Resonance needed: `totalResonance = resonancePerHour * targetPlayHoursResonance`.
+7. Distribute `totalResonance` across the 30 levels using an exponential curve where the last level costs `LAST_TO_FIRST_RATIO` (100) times the first:
 ```
 levelCost(n) = baseCost * (growthFactor ^ n)
+growthFactor = LAST_TO_FIRST_RATIO ^ (1 / (LEVEL_CAP - 1))
 ```
-Where `baseCost` and `growthFactor` are derived to make the sum across all levels equal `totalResonance`.
+`baseCost` is derived so the sum across all levels equals `totalResonance`, with the final level absorbing rounding drift.
 
-7. This array of level costs is computed once at server start and stored. Adding or removing nodes from the tree automatically recalibrates all costs.
+8. This array of level costs is computed once at server start and stored.
 
-**Skill point award:** When the team's cumulative Resonance crosses the threshold for the next level, the team automatically receives one skill point. A toast notification appears for all online team members. The Resonance pool is not reset — it continues accumulating past each threshold.
+**Resulting pacing** (100-hour target, 30 levels, ratio 100):
+
+| Milestone | Level | ≈ Hours in |
+|---|---|---|
+| First nodes purchasable | 1–2 | < 1 |
+| Mid-tree branches open | 8–10 | 3–5 |
+| Vault Expansion keystone | 18 | ~15 |
+| Tree fully purchasable | 30 | 100 |
+
+**Skill point award:** When the team's cumulative Resonance crosses the threshold for the next level, the team automatically receives `pointsPerLevel` skill points. A toast notification appears for all online team members. The Resonance pool is not reset — it continues accumulating past each threshold.
 
 ### 4.4 Spending Skill Points
 
 Skill points are spent in the Resonance tree tab of the Tome of the Deep Seam. Clicking an available node spends one skill point (or more for premium nodes — see node definitions) and unlocks that node immediately. Effects take place immediately. For nodes that affect chunk generation, newly generated chunks will reflect the node's effect; already-generated chunks are unchanged.
 
-**Refund:** Node-by-node refund is available at a cost of Minecraft XP. Refund cost = `(totalSkillPointsInvestedInTree / totalTreeCost) * maxRefundXPCost`. `maxRefundXPCost` is a constant set in code (suggested: 50 XP levels for a fully invested tree). This means refunding a node early is cheap; refunding when the tree is nearly full is expensive.
+**Refund:** Node-by-node refund is available at a cost of Minecraft XP:
+
+```
+refundCost = REFUND_XP_PER_POINT * tierSkillPointCost      // REFUND_XP_PER_POINT = 3
+```
+
+A 1-point node costs 3 XP levels to refund; the 10-point Vault Expansion keystone costs 30. A full 225-point respec is ~675 levels — a serious commitment, but achievable, and always proportional to what is actually being undone.
+
+The previous formula (`investedPoints / totalTreeCost * 50`) priced every node identically regardless of what it cost, which made a single early mistake nearly free and a late-game respec effectively impossible (~3,250 levels). Because several nodes are exclusive pairs and one-way forks (§6.1), permanent-feeling refunds would have turned every fork into a trap.
+
+**Free respec window:** refunds cost nothing for 10 minutes after a dimension reset (§3.5).
 
 ---
 
@@ -318,13 +359,16 @@ Animus gain rates scale with mob difficulty (to be defined per mob type in a con
 
 ### 5.2 Level Thresholds
 
-Identical dynamic calculation to Resonance, using:
+Identical dynamic calculation to Resonance (§4.3), using:
 - `totalAnimusTreeCost` (sum of all mob tree node costs)
 - `targetPlayHoursAnimus` (default: 100, can differ from Resonance target)
-- `assumedTeamSize`
-- Average Animus per hour based on mob kill rates in a Disturbed Zone
+- Average Animus per hour for a **solo** player, based on mob kill rates in a Disturbed Zone
+- The same `LEVEL_CAP = 30` and `pointsPerLevel = ceil(totalAnimusTreeCost / 30)`
+- The same team scaling formula from §4.2, applied to the Animus pool
 
 The two level tracks (Resonance level and Animus level) are completely independent. A team could be Resonance level 15 and Animus level 3 if they mostly mine.
+
+> **Section 5, Section 7, and the Animus half of Section 6 are deferred to the post-1.0 Animus epic.** They remain specified here so the design is not lost, but nothing in this half is in 1.0 scope. See §12.
 
 ### 5.3 Spending Animus Skill Points
 
@@ -337,29 +381,26 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 ### Notation
 
 - **Cost:** Skill points required to purchase this tier
-- **Level req:** Minimum team Resonance or Animus level required to purchase this tier
+- **Level req:** Minimum team Resonance or Animus level required to purchase this tier (cap: 30 — see §4.3)
 - **Prereq:** Nodes that must be unlocked before this tier is available
-- Nodes marked **[TRADEOFF]** are toggleable on/off at any time with no cost
-- Nodes marked **[EXCLUSIVE: X]** cannot be active simultaneously with node X; unlocking one locks the other until refunded
-- Nodes marked **[ULTIMINE]** only appear if FTB Ultimine is loaded
 - All costs and level requirements are defined as constants in a single `NodeCosts.java` file for easy adjustment
+
+**Node classes.** The tree is built from four kinds of node, in deliberate imitation of the Path of Exile passive tree and the Diablo 4 skill paths:
+
+| Marker | Meaning |
+|---|---|
+| *(unmarked)* | **Small node.** A tiered percentage bonus with no downside. These are the filler you path through — individually modest, collectively the bulk of the tree. |
+| **[NOTABLE]** | A single-tier node at the end of a cluster granting a *distinct mechanic* rather than a bigger number. Always pure upside. |
+| **[KEYSTONE]** | Build-defining, expensive, and **always carries a real downside**. A keystone should change how you mine, not just how fast. |
+| **[FORK: name]** | A one-way choice. Purchasing any branch of a fork locks the others until refunded. Every option is intended to be viable — the fork is a decision, not a trap. |
+| **[TRADEOFF]** | Toggleable on and off at no cost, **but only while outside the Vault.** |
+| **[ULTIMINE]** | Only appears if FTB Ultimine is loaded. |
+
+> **Why tradeoffs are only toggleable outside the Vault.** Previously they could be flipped at any moment, which meant no commitment: a player would enable Tithe while mining ore and disable it before touching stone, taking every upside and paying no cost. Requiring the toggle to happen outside makes a tradeoff a loadout you commit to before you delve, which is the whole point of the mechanic, while keeping the freedom to change strategy between trips.
 
 ---
 
 ### 6.1 Resonance Tree
-
-#### BRANCH: Core (prerequisite for all other branches)
-
----
-
-**Disturbed Zone Unlock**
-> Unlocks the Disturbed Zone block, allowing it to be crafted and placed inside the Vault. Required to access the mob farming system.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Disturbed Zone block craftable | 1 | 0 | None |
-
----
 
 #### BRANCH: Vein
 
@@ -392,23 +433,12 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 ---
 
 **Deep Veins**
-> Shifts ore generation weighting toward lower Y levels where deposits become especially dense below Y=30.
+> Shifts ore generation weighting toward lower Y levels.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
 | 1 | Moderate shift toward lower Y | 2 | 5 | Vein Proliferation T2 |
-| 2 | Strong shift; below Y=30 has 2x standard density | 3 | 9 | Tier 1 |
-
----
-
-**Twin Veins**
-> When a vein is fully mined to completion (no more connected ore blocks of that type remain), there is a chance a second identical vein spawns adjacent to the mined area with a visual flash effect.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | 1% chance on vein completion | 2 | 6 | Vein Expansion T3 |
-| 2 | 5% chance on vein completion | 2 | 10 | Tier 1 |
-| 3 | 10% chance on vein completion | 3 | 14 | Tier 2 |
+| 2 | Strong shift; the lowest 30 blocks above bedrock have 2× standard density | 3 | 9 | Tier 1 |
 
 ---
 
@@ -423,48 +453,116 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 
 ---
 
+**Echo Chamber** `[NOTABLE]`
+> Vault Echo bursts also grant vanilla XP equal to the Resonance awarded. Finishing a vein becomes worth doing for its own sake rather than something that happens incidentally.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 (only tier) | Vault Echo bursts additionally grant XP 1:1 with the Resonance awarded | 3 | 11 | Vault Echo T3 |
+
+---
+
+**Deep Harvest** `[NOTABLE]`
+> Ore mined below Y=0 — the deepslate band that only exists in an expanded Vault — drops an additional Resonance orb. The reward for committing to the Vault Expansion keystone.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 (only tier) | Ore below Y=0 drops one extra Resonance orb | 4 | 20 | Deep Veins T2, Vault Expansion |
+
+---
+
+**Twin Veins**
+> When a vein is fully mined to completion, there is a chance a second identical vein spawns adjacent to the mined area with a visual flash effect.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | 1% chance on vein completion | 2 | 6 | Vein Expansion T3 |
+| 2 | 5% chance on vein completion | 2 | 10 | Tier 1 |
+| 3 | 10% chance on vein completion | 3 | 14 | Tier 2 |
+
+> Veins created by Twin Veins are registered into the vein index (§11) exactly as generated veins are, so they themselves can trigger Vault Echo and Twin Veins on completion.
+
+---
+
+**[FORK: Vein Shape]**
+> How ore is distributed through a chunk. Choose exactly one; the other two lock until refunded. All three are subject to the 40% stone floor and all three apply *after* Vein Expansion and Vein Proliferation, overriding the resulting count and size.
+
+**Abundance** `[FORK: Vein Shape]`
+> Many small deposits scattered throughout. Reliable, steady, never a dry chunk.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | +50% vein count, −20% vein size | 3 | 7 | Vein Proliferation T2 |
+| 2 | +100% vein count, −20% vein size | 4 | 12 | Tier 1 |
+
+---
+
+**Vein Singularity** `[FORK: Vein Shape]` `[KEYSTONE]`
+> All ore in a chunk is concentrated into 1–3 enormous deposits. Finding one is a jackpot; many chunks have nothing at all. *(This replaces the earlier "Motherlode" node, which was mechanically identical to Vein Expansion with a different name — taken to its extreme it becomes a genuine keystone instead.)*
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | Chunk ore consolidated into 1–3 veins; total ore volume unchanged | 3 | 7 | Vein Proliferation T2 |
+| 2 | Consolidation intensifies; +25% total ore volume, ~40% of chunks generate no ore at all | 4 | 12 | Tier 1 |
+
+---
+
+**Stratified** `[FORK: Vein Shape]`
+> Ore generates in flat horizontal bands sorted by rarity instead of scattered blobs. Rare ore always sits at a known depth. Rewards planned strip-mining over wandering.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | Ore generates in rarity-sorted layers; band positions shown in the Tome | 3 | 7 | Vein Proliferation T2 |
+| 2 | Bands thicken and purify — each band is near-single-ore | 4 | 12 | Tier 1 |
+
+---
+
 #### BRANCH: Ore Quality
 
-**Common Ore Boost**
-> Increases spawn rates of common ores (dynamically classified at server start).
+**Ore Attunement**
+> Opens the rarity focus fork. On its own it grants a small across-the-board bonus.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | +25% common ore vein count | 1 | 1 | None |
-| 2 | +50% common ore vein count | 1 | 3 | Tier 1 |
-| 3 | +80% common ore vein count | 2 | 6 | Tier 2 |
+| 1 | +10% vein count for all ore rarities | 1 | 1 | None |
 
 ---
 
-**Uncommon Ore Boost**
-> Increases spawn rates of uncommon ores.
+**[FORK: Ore Focus]**
+> Choose which rarity band the Vault favours. Exactly one of the three; the others lock until refunded — or until **Full Spectrum**. *(These three replace the previous Common/Uncommon/Rare Ore Boost chain, which stacked sequentially and so was never a decision — everyone bought all three in the same order.)*
+
+**Common Focus** `[FORK: Ore Focus]`
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | +25% uncommon ore vein count | 1 | 2 | Common Ore Boost T1 |
-| 2 | +50% uncommon ore vein count | 2 | 5 | Tier 1 |
-| 3 | +80% uncommon ore vein count | 2 | 8 | Tier 2 |
+| 1 | +25% common ore vein count | 1 | 3 | Ore Attunement |
+| 2 | +50% common ore vein count | 2 | 6 | Tier 1 |
+| 3 | +80% common ore vein count | 2 | 10 | Tier 2 |
 
----
-
-**Rare Ore Boost**
-> Increases spawn rates of rare ores.
+**Uncommon Focus** `[FORK: Ore Focus]`
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | +30% rare ore vein count | 2 | 5 | Uncommon Ore Boost T1 |
+| 1 | +25% uncommon ore vein count | 1 | 3 | Ore Attunement |
+| 2 | +50% uncommon ore vein count | 2 | 6 | Tier 1 |
+| 3 | +80% uncommon ore vein count | 2 | 10 | Tier 2 |
+
+**Rare Focus** `[FORK: Ore Focus]`
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | +30% rare ore vein count | 2 | 5 | Ore Attunement |
 | 2 | +60% rare ore vein count | 2 | 9 | Tier 1 |
 | 3 | +100% rare ore vein count | 3 | 13 | Tier 2 |
 
 ---
 
-**Ancient Traces**
-> Adds ancient debris to Vault generation.
+**Full Spectrum** `[KEYSTONE]`
+> The Vault stops favouring anything. The two focus branches you did not choose apply at half effect alongside the one you did — but the Vault's generosity is spread thin, and every ore yields less Resonance.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | Small ancient debris veins generate at low Y | 5 | 12 | Rare Ore Boost T2 |
-| 2 | Increased ancient debris frequency | 5 | 16 | Tier 1 |
+| 1 (only tier) | Unchosen Ore Focus branches apply at 50% effect at their purchased tier depth; **−20% Resonance from all ore** | 8 | 22 | Any Ore Focus T3 |
 
 ---
 
@@ -497,10 +595,22 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 
 ---
 
+**Ancient Traces**
+> Ancient debris generates in the Vault — but only in the deepslate band below Y=0, and the Vault refuses to multiply it.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | Sparse ancient debris below Y=0 | 5 | 21 | Rare Focus T2 *or* Full Spectrum, **and** Vault Expansion |
+| 2 | Roughly doubled ancient debris frequency below Y=0 | 5 | 26 | Tier 1 |
+
+> **Balance rules — ancient debris is exempt from everything.** It is not affected by Vein Expansion, Vein Proliferation, the Vein Shape fork, Ore Focus, Vein Fortune, Ore Doubling, Smelter's Intuition, Greedy Seams, or Twin Veins. It generates at a fixed rate and drops exactly one. This is deliberate: the node exists so a team never *has* to go back to the Nether, not so the Vault becomes a netherite farm. Requiring Vault Expansion first also means it arrives at roughly the 20-hour mark rather than early.
+
+---
+
 #### BRANCH: Fortune
 
-**Ore Sense**
-> Grants a passive Fortune effect to all ore mining inside the Vault. Stacks additively with tool enchantments.
+**Vein Fortune**
+> Grants a passive Fortune effect to all ore mining inside the Vault. Stacks additively with tool enchantments. *(Renamed from "Ore Sense", which described a sensing mechanic it never had — that name now belongs to Prospector's Eye below.)*
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -510,44 +620,56 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 
 ---
 
-**Ore Doubling**
-> Ore drops are multiplied. Fallback order: Mekanism processing output → mod ore dust → raw ore double. Output is always equivalent to 2x the raw ore at maximum, regardless of processing chain. For ores with multiple byproducts, only the primary raw material is doubled by this node (extra raw ore, not processed byproducts).
+**Prospector's Eye** `[NOTABLE]`
+> Breaking the first block of a vein briefly outlines every other vein within 16 blocks through solid stone. Turns exploratory mining into reading the rock.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | 25% chance of bonus ore (or dust/processed equivalent) for 1.2x | 3 | 8 | Ore Sense T1 |
-| 2 | 50% chance for 1.2x| 3 | 12 | Tier 1 |
-| 3 | 75% chance for 1.2x| 4 | 16 | Tier 2 |
+| 1 (only tier) | On first block of a vein: nearby veins outlined for 5 seconds, 16-block radius | 3 | 8 | Vein Fortune T1 |
+
+---
+
+**[FORK: Yield]**
+> How ore drops are multiplied. Choose one; the other locks until refunded. Vein Fortune above is available to both.
+
+**Ore Doubling** `[FORK: Yield]`
+> Raw multiplication. Fallback order: Mekanism processing output → mod ore dust (`c:dusts/<ore>`) → extra raw ore.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | +25% average ore yield | 3 | 8 | Vein Fortune T1 |
+| 2 | +50% average ore yield | 3 | 12 | Tier 1 |
+| 3 | Guaranteed 2× ore yield | 4 | 16 | Tier 2 |
 
 > **Mekanism tiers (only if Mekanism is loaded):**
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 4 | Drops Clumps (3x) | 7 | 20 | Tier 3 |
-| 5 | Drops Shards (4x) | 10 | 25 | Tier 4 |
-| 6 | Drops Crystals (5x) | 15 | 30 | Tier 5 |
+| 4 | Drops Clumps (3×) | 7 | 20 | Tier 3 |
+| 5 | Drops Shards (4×) | 10 | 25 | Tier 4 |
+| 6 | Drops Crystals (5×) | 15 | 30 | Tier 5 |
+
+**Smelter's Intuition** `[FORK: Yield]`
+> No extra material, but what you get needs no furnace. A chance that ore blocks drop the already-smelted result rather than raw ore.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | 15% chance of smelted drop | 2 | 8 | Vein Fortune T1 |
+| 2 | 40% chance | 3 | 12 | Tier 1 |
+| 3 | 75% chance | 4 | 16 | Tier 2 |
 
 ---
 
 **Runic Attunement**
-> Ore drops have a small chance to be "attuned," granting bonus effects when processed by magic-based ore processing mods. If no magic processing mod is present, attuned ores function identically to normal ores.
+> Ore drops have a chance to come out **Attuned** — resonance-charged raw ore. Attuned ore is the only source of Resonance Crystals (§3.3), which every Vault Igniter upgrade and every Vault Anchor requires.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | 5% chance ore drops are attuned | 3 | 10 | Ore Doubling T1 |
+| 1 | 5% chance ore drops are Attuned | 3 | 10 | Any Yield fork T1 |
 | 2 | 12% chance | 3 | 14 | Tier 1 |
 | 3 | 20% chance | 4 | 17 | Tier 2 |
 
----
-
-**Smelter's Intuition**
-> A chance that ore blocks drop the already-smelted result rather than raw ore.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | 5% chance of smelted drop | 2 | 7 | Ore Doubling T1 |
-| 2 | 15% chance | 2 | 11 | Tier 1 |
-| 3 | 30% chance | 3 | 15 | Tier 2 |
+> Attuned ore is an ordinary raw-ore stack carrying a data component. It smelts, stacks, and processes exactly like the unattuned version, so nothing breaks if a player feeds it into a machine — they simply lose the crystal. Recipe: 4 Attuned raw ore (any type) + 1 Amethyst Shard → 1 Resonance Crystal. *(The previous version of this node granted "bonus effects when processed by magic-based ore processing mods", naming no mod and defining no mechanism — 10 skill points that did nothing.)*
 
 ---
 
@@ -562,7 +684,18 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 | 2 | +2 XP; stone occasionally drops flint | 1 | 3 | Tier 1 |
 | 3 | +3 XP; deepslate drops a small amount of Resonance | 2 | 6 | Tier 2 |
 | 4 | +4 XP; small chance stone drops a random common ore nugget | 2 | 10 | Tier 3 |
-| 5 | +5 XP; rare chance stone triggers a Vault Echo-equivalent Resonance burst | 3 | 14 | Tier 4 |
+| 5 | +5 XP; rare chance stone triggers a Resonance burst equal to Vault Echo T3 | 3 | 14 | Tier 4 |
+
+---
+
+**Stonecaller** `[NOTABLE]`
+> The Vault's stone remembers what grows near it. Stone mined inside the Vault has a chance to convert into the ore type of the nearest vein within 8 blocks. Standing in rich rock makes even the filler pay.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 (only tier) | Stone has a 3% chance to drop the ore type of the nearest vein within 8 blocks | 3 | 12 | Stone Memory T4 |
+
+> Uses the vein index (§11) for the nearest-vein lookup — no flood fill, no scan. If no indexed vein is within range the roll is skipped, so this is worthless in stripped-out areas and best in fresh chunks, which is the intended pull.
 
 ---
 
@@ -594,8 +727,11 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 
 #### BRANCH: Utility
 
-**Resonance Magnetism** `[EXCLUSIVE: Hoarder's Instinct]`
-> Vault Resonance orbs are attracted to the player from greater distances.
+**[FORK: Orb Collection]**
+> How Resonance orbs reach you. Choose one; the other locks until refunded.
+
+**Resonance Magnetism** `[FORK: Orb Collection]`
+> Orbs are drawn to the player from greater distances. Convenience — mine and never think about collection again.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -603,29 +739,32 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 | 2 | Orb attraction radius: 16 blocks | 1 | 5 | Tier 1 |
 | 3 | Orb attraction radius: 24 blocks | 2 | 9 | Tier 2 |
 
----
-
-**Hoarder's Instinct** `[EXCLUSIVE: Resonance Magnetism]`
-> Resonance orbs do not float toward the player automatically. Instead, orbs manually walked over grant a 2x Resonance bonus. Rewards deliberate collection.
+**Hoarder's Instinct** `[FORK: Orb Collection]`
+> Orbs never move toward you — but they never despawn either, and orbs that come to rest near each other merge into a single growing cache. Collecting a merged cache of N orbs pays a bonus. Rewards clearing an area completely, then sweeping it.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | 2x Resonance on manual collection | 2 | 4 | None |
+| 1 | Orbs are stationary and permanent; nearby orbs merge into caches | 2 | 4 | None |
+| 2 | Cache collection pays ×(1 + 0.1 × N), capped at ×3 | 2 | 8 | Tier 1 |
+
+> The previous version of this node removed orb attraction and gave a flat 2× on manual pickup, which was strictly worse than Magnetism Tier 1 in ordinary play — an exclusive choice where one side was simply wrong. Merging plus permanence makes it a different way to mine (clear-then-sweep) rather than a worse one.
 
 ---
 
 **Automated Extraction**
-> Ore blocks broken by non-player means (machines, drills, etc.) inside ticket-loaded Vault chunks still award Resonance to the team pool.
+> Machines mining inside the Vault extract more from each block. **Machine-broken blocks never award Resonance** (§3.4) — this node is about materials, not progression.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | Automated mining awards 50% of normal Resonance | 2 | 8 | Vault Presence T1 |
-| 2 | Automated mining awards 100% of normal Resonance | 3 | 12 | Tier 1 |
+| 1 | +25% ore yield from machine-broken blocks in the Vault; machine breaks count toward vein completion and statistics | 2 | 8 | Vault Presence T1 |
+| 2 | +50% ore yield from machine-broken blocks | 3 | 12 | Tier 1 |
+
+> **Implementation:** hook `BlockDropsEvent`, whose `getBreaker()` is a `@Nullable Entity` ("or null if unknown") and whose drop list is mutable. This covers machines that route through `Block.dropResources` / `Level.destroyBlock`, which is the large majority. Mods that build drops themselves and insert straight into their own inventory will not fire it; that gap is accepted.
 
 ---
 
 **Vault Presence**
-> Increases the number of Forge chunk-loading tickets the team's Vault can maintain simultaneously, enabling larger automated operations.
+> Increases the number of chunk-loading tickets the team's Vault can maintain simultaneously.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -637,12 +776,21 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 
 ---
 
-**Vault Expansion** *(Keystone)*
-> Expands the Vault's vertical height from Y=0–255 to Y=-64–320, matching modern world height. Unlocks a new ultra-deep layer below Y=0 with the highest ore density. Requires a dimension reset to take effect. The reset button prompt will inform the player of this.
+**Seismic Sense** `[NOTABLE]`
+> The Tome gains a directional readout of surrounding ore density — which way the rock gets richer, at chunk granularity. Navigation rather than power.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 (only tier) | Vault height expanded; ultra-deep layer below Y=0 unlocked after reset | 10 | 18 | Rare Ore Boost T3, Vein Expansion T5, Efficient Miner T4 |
+| 1 (only tier) | Chunk-level ore density compass in the Tome UI | 2 | 6 | Vault Presence T1 |
+
+---
+
+**Vault Expansion** `[KEYSTONE]`
+> The Vault's floor drops away. Bedrock moves from Y=0 down to Y=−64, opening a 63-block deepslate band that carries the highest ore density in the mod. **Requires a dimension reset to take effect** — the existing Vault, and everything built in it, is regenerated.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 (only tier) | Vault re-created under `ore_vault_expanded` on next reset; deepslate band below Y=0 unlocked | 10 | 18 | Rare Focus T3 *or* Full Spectrum, Vein Expansion T5, Efficient Miner T4 |
 
 ---
 
@@ -669,11 +817,42 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 
 ---
 
-#### TRADEOFF NODES (Resonance Tree)
+#### KEYSTONES
 
-Tradeoff nodes are toggled on/off by the player at any time at no cost. Toggle state is saved per-player (not per-team — one player can run a tradeoff another doesn't want).
+Keystones are permanent until refunded — they are not toggleable. Each is a commitment.
+
+**Greedy Seams** `[KEYSTONE]` `[EXCLUSIVE: Resonant Overload]`
+> Take the material now and pay for it in progress. Ore yields double; the Vault gives back only half the Resonance.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 (only tier) | +100% ore drops, −50% Resonance from ore | 4 | 6 | Vein Expansion T1 |
 
 ---
+
+**Resonant Overload** `[KEYSTONE]` `[EXCLUSIVE: Greedy Seams]`
+> The mirror image. Progress at double speed and take home half the material.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 (only tier) | +100% Resonance from ore, −50% ore drops | 4 | 6 | Vein Expansion T1 |
+
+> Together these two form the tree's central axis: **materials now** versus **progression now**, and you must pick a side or neither. Greedy Seams at 4 points also deliberately undercuts Ore Doubling T3 (10 points, level 16) on raw yield — buying it early is a real option that costs you the pace of the whole tree.
+
+---
+
+**Brittle Stone** `[KEYSTONE]`
+> The Vault's stone gives way at a touch — and so do its veins. Everything breaks instantly, but ore has a habit of crumbling to nothing.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 (only tier) | All blocks in the Vault break instantly; each ore block has a 10% chance to shatter with no drops | 5 | 13 | Vein Fortune T2 |
+
+---
+
+#### TRADEOFF NODES
+
+Toggleable on and off at no cost, **but only while outside the Vault** (see Notation). Toggle state is saved per-player, not per-team — one player can run a tradeoff another doesn't want.
 
 **Volatile Veins** `[TRADEOFF]`
 > Increases vein size by 25%, but each ore broken has a small chance of causing the remaining connected vein to vanish instantly, replaced with air, with no drops. A pity counter prevents more than three consecutive triggers; after three triggers the next several ore breaks are guaranteed safe. The pity counter resets on logout.
@@ -685,21 +864,12 @@ Tradeoff nodes are toggled on/off by the player at any time at no cost. Toggle s
 
 ---
 
-**Volatile Veins: Ultimine Gambit** `[TRADEOFF] [ULTIMINE ONLY]`
-> When using FTB Ultimine with Volatile Veins active, the effective block count for disappearance checks is increased by 1 (as if one extra block was mined), increasing the risk. In exchange, successful Ultimine operations that don't trigger disappearance award a 20% Resonance bonus.
+**Volatile Veins: Ultimine Gambit** `[TRADEOFF]` `[ULTIMINE ONLY]`
+> When using FTB Ultimine with Volatile Veins active, the effective block count for disappearance checks is increased by 1, increasing the risk. In exchange, successful Ultimine operations that don't trigger disappearance award a 20% Resonance bonus.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
 | 1 | Riskier Ultimine, 20% Resonance bonus on safe operations | 2 | 9 | Volatile Veins, Ultimine Expansion T1 |
-
----
-
-**Greedy Seams** `[TRADEOFF]`
-> Ore drops are doubled, but Resonance gained from each ore is halved.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | 2x ore drops, 0.5x Resonance gain | 2 | 5 | Vein Expansion T1 |
 
 ---
 
@@ -708,16 +878,18 @@ Tradeoff nodes are toggled on/off by the player at any time at no cost. Toggle s
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | 3x Stone Memory XP, stone drops nothing | 2 | 4 | Stone Memory T2 |
+| 1 | 3× Stone Memory XP, stone drops nothing | 2 | 4 | Stone Memory T2 |
 
 ---
 
 **Vault Fever** `[TRADEOFF]`
-> Grants permanent Haste II inside the Vault, but hunger drains faster.
+> Grants permanent Haste II inside the Vault. You mine faster than you can listen — the Vault yields less Resonance for every ore taken.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | Haste II, +50% hunger drain rate | 2 | 7 | Efficient Miner T2 |
+| 1 | Haste II inside the Vault, −25% Resonance from ore | 2 | 7 | Efficient Miner T2 |
+
+> The cost used to be +50% hunger drain, which Efficient Miner Tier 5 (hunger frozen entirely) cancelled outright — the two together gave permanent free Haste II. Pricing Fever in Resonance instead makes the two nodes independent, and leaves Efficient Miner as a clean quality-of-life ladder with no hidden interaction.
 
 ---
 
@@ -727,49 +899,33 @@ Tradeoff nodes are toggled on/off by the player at any time at no cost. Toggle s
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | 25% ore consumed, 1.75x Resonance on consumed ores | 2 | 5 | None |
+| 1 | 25% ore consumed, 1.75× Resonance on consumed ores | 2 | 5 | None |
 
 ---
 
-#### EXCLUSIVE NODE PAIRS (Resonance Tree)
-
-**Abundance** `[EXCLUSIVE: Motherlode]`
-> Vein count per chunk increased significantly. Many small deposits scattered throughout.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +50% vein count (stacks with Vein Proliferation, but both are subject to 40% stone floor) | 3 | 7 | Vein Proliferation T2 |
-| 2 | +100% vein count | 4 | 12 | Tier 1 |
-
----
-
-**Motherlode** `[EXCLUSIVE: Abundance]`
-> Vein size greatly increased, vein count halved. Rare but enormous deposits.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +100% vein size, −50% vein count (stacks with Vein Expansion and Proliferation) | 3 | 7 | Vein Proliferation T2 |
-| 2 | +150% vein size, −50% vein count | 4 | 12 | Tier 1 |
-
-> **Important implementation note:** Abundance and Motherlode must be treated as overrides to the base vein count/size after all other modifiers are applied. The 40% stone floor still applies.
-
----
+#### EXCLUSIVE NODE PAIRS
 
 **Vault's Blessing** `[EXCLUSIVE: Vault's Purity]`
-> All potion effects active when entering the Vault last 50% longer while inside.
+> The Vault sustains what you bring into it. Potion effects do not tick down at all while you are inside.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | +50% effect duration | 2 | 8 | None |
+| 1 | Potion effect durations are frozen inside the Vault | 3 | 8 | None |
 
 ---
 
 **Vault's Purity** `[EXCLUSIVE: Vault's Blessing]`
-> All potion effects are stripped on entry to the Vault and cannot be applied while inside. The Vault is clean — pure skill, no potions.
+> Nothing comes in with you. Potion effects are stripped on entry and cannot be applied inside — and the Vault rewards the discipline directly.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | No potion effects inside the Vault | 2 | 8 | None |
+| 1 | No potion effects can exist inside the Vault; while unaffected: **+20% Resonance and +1 effective Fortune** | 3 | 8 | None |
+
+> Purity previously granted nothing at all in exchange for stripping effects — 2 skill points of pure downside that only ever mattered against witches, which do not spawn in a Vault. As a pair these now describe two real builds: stack potions and keep them forever, or forgo them entirely for flat power that never runs out.
+
+---
+
+> **Deferred to the Animus epic.** The **Disturbed Zone Unlock** node previously sat at the root of this tree. Disturbed Zones and the whole Animus system have moved to a separate post-1.0 epic, and this node moves with them — it will re-enter the Resonance tree as a Core-branch node when that epic is scheduled.
 
 ---
 
@@ -968,9 +1124,10 @@ Animus orbs drop from mobs killed in Disturbed Zones, behaving identically to XP
 - Resonance and Animus pools stored per team
 - Skill tree state stored per team
 - Player stat tracking stored per player, queryable by team
-- Dimension created on first portal activation by any team member
+- Per-player tradeoff toggle state stored per player (§6.1), **not** on the team
+- Dimension created lazily, on the first portal trip by any team member, and never before (§3.1)
 - Dimension deleted on team disband event (listen to FTB Teams disband event)
-- Solo players use their auto-created single-member FTB team
+- Solo players use their auto-created single-member FTB team. Because FTB Teams creates that team automatically for every player who logs in, `getTeamForPlayerID` never returns empty on a live server — **nothing in this mod may gate behaviour on "has a team"**, since the condition can never be false
 
 ### FTB Ultimine (Soft Dependency)
 
@@ -989,10 +1146,10 @@ Animus orbs drop from mobs killed in Disturbed Zones, behaving identically to XP
 
 ### Generic Ore Dust Mods (Soft Dependency)
 
-- At server start, scan the Forge item tag `forge:dusts/<oreName>` for each classified ore block
+- At server start, scan the common item tag **`c:dusts/<oreName>`** for each classified ore block. Note the namespace: NeoForge 26.1 uses `c:` for common tags — the `forge:` namespace named in earlier drafts of this document does not exist and would silently match nothing (the same class of mistake as the `orevault:mineable/pickaxe` bug in #87)
 - If a dust tag exists for an ore, Ore Doubling tiers 1-3 drop dust instead of raw ore
 - If no dust tag exists, drop raw ore
-- No specific mod is referenced; this works with any mod that registers proper Forge dust tags
+- No specific mod is referenced; this works with any mod that registers proper `c:` dust tags
 
 ---
 
@@ -1060,6 +1217,7 @@ All persistent mod state (Resonance pool, Animus pool, skill tree state, player 
 
 ```java
 public class OreVaultTeamData extends SavedData {
+    int dataVersion;            // bumped whenever this shape changes; read on load to migrate
     UUID teamId;
     long resonancePool;
     long animusPool;
@@ -1068,11 +1226,14 @@ public class OreVaultTeamData extends SavedData {
     int resonanceSkillPoints;
     int animusSkillPoints;
     Map<NodeId, Integer> unlockedNodes; // NodeId -> tier
-    Set<NodeId> activeTradeoffs;
     Map<UUID, PlayerStats> playerStats; // player UUID -> stats
     int chunkLoadingTickets;
 }
 ```
+
+**Tradeoff toggles live on `PlayerStats`, not here.** §6.1 specifies them as per-player — one member of a team can run Tithe while another does not — so `activeTradeoffs` is a `Set<NodeId>` field on `PlayerStats`. An earlier version of this sketch put it on the team object, which contradicted §6.1; the implementation follows §6.1 and this sketch has been corrected to match.
+
+**`dataVersion` and migration.** Every load reads `dataVersion` first and migrates forward if it is behind `CURRENT_DATA_VERSION`. This costs almost nothing to add now and is the difference between a schema change being a migration and being a wipe. The shape above is still growing through the remaining phases, so assume it will be needed.
 
 ### Ore Rarity Classification
 
@@ -1102,7 +1263,37 @@ After 3 consecutive triggers: enter safe window for 10 blocks.
 
 ### Dimension-per-Team Registration
 
-Forge 26.1 supports dynamic dimension registration via `ServerLifecycleEvents` or by adding dimensions to the server's registry before world load. The recommended approach is to register all team dimensions at server start by iterating existing teams, then handle new team creation via event. Dimension deletion is done via the level's storage and removing the registry entry — requires careful handling to avoid registry desync.
+Dimensions are registered **lazily, on the first portal trip by a team member** (§3.1). Earlier drafts of this section recommended registering every team's dimension at server start and creating more on team-created events; that recommendation is withdrawn. FTB Teams auto-creates a single-member team for every player who logs in, so eager registration means one full `ServerLevel` per player account the server has ever seen — chunk map, storage, region directory and all — for a dimension most of them will never enter.
+
+Registration itself: build the `LevelStem`, briefly unfreeze the live `LEVEL_STEM` `MappedRegistry` to register it, re-freeze, construct the `ServerLevel` mirroring what `MinecraftServer#createLevels` does for non-overworld dimensions, and put it into the world map. Deletion removes the registry entry and the level's storage directory — handle carefully to avoid registry desync.
+
+> **The `markWorldsDirty()` trap.** After `server.forgeGetWorldMap().put(key, level)` you **must** call `server.markWorldsDirty()`. `MinecraftServer` ticks levels from a cached `ServerLevel[]` built by `getWorldArray()`, which is only rebuilt when `worldArrayMarker` changes — and `markWorldsDirty()` is the only thing that changes it. Omit the call and a dimension created after the first server tick is placed in the map but **never ticked**.
+>
+> The failure mode is deeply misleading. Because packet handlers run synchronously, block *placement* works and the first left-click produces exactly one `BreakSpeed` event — then nothing. `ServerPlayerGameMode.tick()` never runs, so destroy progress never advances and `BREAK_BLOCK` never fires; the block appears to break client-side and then snaps back. Nothing is cancelled, no protection mod is involved, and relogging "fixes" it because the level is then recreated by `createLevels` before the cache exists. Dimensions created during `ServerStartedEvent` also work, because the cache is still `null` at that point — which is exactly what makes the bug look like it is about team registration rather than tick scheduling. See issues #82 and #89.
+
+### Vein Index
+
+Four nodes need to know when a vein has been *completely* mined, and one needs to know which vein is nearest: Vault Echo (burst on completion), Twin Veins (clone the vein on completion), Volatile Veins (vanish the *remaining* connected blocks), and Stonecaller (nearest vein's ore type). The obvious implementation — a flood fill from every broken ore block — is far too expensive in a 60%-ore dimension being quarried.
+
+Instead: **the chunk generator places the veins, so it already knows their exact extents.** Persist a per-chunk index of `{veinId, oreType, blockPositions}` at generation time. Completion is then a decrement to zero, "remaining blocks" is a lookup, and nearest-vein is a bounded search over an index rather than the world.
+
+Two rules the implementation must hold:
+- Veins created by **Twin Veins** are registered into the index when spawned, so they behave identically to generated veins.
+- **Player-placed ore is never indexed.** This closes the otherwise obvious exploit — place ore, break it, farm Vault Echo — by construction rather than by a check that could be missed.
+
+### Drop Pipeline
+
+Nine nodes modify what an ore break drops, and the order they apply in changes the result substantially. Rather than each node ticket patching the same handler, all of them register into a single ordered pipeline on `BlockDropsEvent`:
+
+| Stage | Nodes |
+|---|---|
+| 1. Consume | Tithe (block consumed, no drops), Brittle Stone (shatter roll) |
+| 2. Quantity | Ore Doubling, Greedy Seams, Automated Extraction |
+| 3. Fortune | Vein Fortune, Vault's Purity's +1 Fortune |
+| 4. Transform | Smelter's Intuition, Runic Attunement (Attuned marking), dust/Mekanism substitution |
+| 5. Bonus | Stone Memory, Ancient Knowledge, Stonecaller, Vault Echo, Deep Harvest |
+
+> **Fortune is the awkward stage.** `BlockDropsEvent` fires *after* `Block#getDrops` has already rolled the loot table, so a Fortune bonus cannot simply be added there. Stage 3 therefore discards the existing drop list and re-rolls `state.getDrops(...)` with a copy of the tool carrying the appropriate Fortune level. Everything else operates on the list in place.
 
 ### Resonance Orb Entity
 
@@ -1125,30 +1316,27 @@ The dynamic level threshold calculator reads total tree cost by summing all `_BA
 
 ## 12. Suggested Build Order
 
-Work through these sessions with Claude Code. Start each session by instructing the agent to read this document before writing any code.
+Work through these phases with Claude Code. Start each session by instructing the agent to read this document before writing any code.
 
-| Session | Focus |
-|---|---|
-| 1 | Project scaffold, Forge 26.1 setup, FTB Teams hard dependency, dimension registration skeleton |
-| 2 | Vault Frame block, portal block, VaultPortalShape scanner, igniter item tiers 1-4 |
-| 3 | Teleportation logic, return position persistence, per-team dimension routing |
-| 4 | Resonance orb entity, Resonance SavedData, level threshold dynamic calculator |
-| 5 | Animus orb entity, Animus SavedData, parallel level system |
-| 6 | Ore rarity classifier, custom chunk generator, dynamic ore placement |
-| 7 | Skill tree data structures, NodeCosts.java, prerequisite graph, unlock validation |
-| 8 | Resonance tree node effects (world-gen affecting nodes) |
-| 9 | Resonance tree node effects (player-affecting nodes: hunger, fortune, XP, tradeoffs) |
-| 10 | Disturbed Zone block, mob spawn logic, Animus tree node effects |
-| 11 | Tome of the Deep Seam UI — item, screen, three tabs, node graph renderer |
-| 12 | Ore Memory tab — stat tracking, per-player stats, trophy system |
-| 13 | Vault reset system — voting logic, countdown, chunk deletion, dimension re-registration |
-| 14 | Chunk loading — Vault Anchor block, Forge ticket registration, Vault Presence nodes |
-| 15 | FTB Ultimine integration — conditional node registration, event hooks |
-| 16 | Mekanism integration — reflection-based processing lookup, Ore Doubling tiers 4-6 |
-| 17 | Generic dust mod integration — Forge tag scanning, Ore Doubling fallback chain |
-| 18 | Particles and sounds — portal activation, teleport flash, Vault Echo burst, Twin Veins flash |
-| 19 | Recipes, advancements, lang file, loot tables |
-| 20 | Testing, JUnit for pure logic systems, compile verification, KNOWN_ISSUES.md review |
+**Two scope decisions shape this order.** First, the Tome UI moves ahead of the node-effect work: a node cannot be *purchased* without it, so every node effect built before the UI exists is unverifiable. Second, the entire Animus half — Animus orbs, Animus levels, Disturbed Zones, the Animus tree, Soul Harvest — moves to a separate post-1.0 epic. It is parallel to the Resonance system rather than foundational to it, and deferring it takes roughly a third of the remaining tickets off the critical path without weakening 1.0.
+
+**1.0 scope: the Resonance half.** Mining, the Resonance tree, the Tome, chunk loading, reset, integrations, content.
+
+| Phase | Focus | Status |
+|---|---|---|
+| 0 | Project scaffold, FTB Teams hard dependency, skill tree data structures, `NodeCosts`, config | ✅ complete |
+| 1 | Dimension registration, ore rarity classifier, custom chunk generator | ✅ complete |
+| 2 | Vault Frame, portal block, shape scanner, igniter tiers, teleportation | ✅ complete |
+| 3 | **Foundations for everything below:** vein index, drop pipeline, ore break handler, Resonance orb + system, level curve | |
+| 4 | **Tome UI:** network channel, Tome item, screen shell, Resonance tree tab renderer — nodes become purchasable here | |
+| 5 | Resonance node effects — world-gen (Vein branch, Ore Focus fork, Vein Shape fork, Stone Reduction, Geodes, Ancient Traces) | |
+| 6 | Resonance node effects — player-facing (Fortune branch, XP/Stone, Hunger, Utility, keystones, tradeoffs) | |
+| 7 | Chunk loading — Vault Anchor, tickets, Vault Presence, Automated Extraction | |
+| 8 | Vault reset — dimension deletion, vote state machine, countdown + evacuation, backup export, vote UI | |
+| 9 | Integrations — soft-dep detection, FTB Ultimine, Mekanism / `c:dusts` fallback chain | |
+| 10 | Content — recipes, models and textures, lang, advancements, loot tables, particles and sounds | |
+| 11 | Testing — JUnit for pure logic, load test on a heavy pack, KNOWN_ISSUES.md | |
+| — | **Post-1.0 epic:** Animus system, Disturbed Zones, Animus tree, Soul Harvest + shop, Ore Memory tab | deferred |
 
 ---
 
@@ -1169,149 +1357,139 @@ Use this to track progress. Update at the end of each development session.
 
 ### Dimension
 - [x] Dimension type JSON (`ore_vault.json`, `ore_vault_expanded.json`)
+- [ ] Dimension types differentiated: base `min_y: 0` / `height: 320`, expanded `min_y: -64` / `height: 384` (they are currently byte-identical)
 - [x] Dynamic dimension registration per team
-- [ ] Dimension deletion on team disband (deferred to `[31]` VaultReset; TODO in `VaultDimensions`)
+- [ ] **Lazy creation only** — remove the `ServerStartedEvent` sweep and the `TeamCreated` handler; create on first portal trip
+- [ ] **`server.markWorldsDirty()` after inserting the level into the world map** (#82 / #89)
+- [ ] Dimension deletion on team disband
 - [x] Custom chunk generator skeleton
-- [x] Open air layer at the top (64 blocks), stone below with deepslate surface
+- [x] Open air layer at the top (69 blocks), solid fill below with grass surface
 - [x] Ore rarity classifier (scans registry at server start)
 - [x] Admin config override for rarity classification
-- [ ] Dynamic ore placement from skill state (skill snapshot wired; node math deferred to `[44]`/`[45]`)
+- [ ] Dynamic ore placement from skill state
 - [x] 40% stone content floor enforcement
-- [ ] Vault Expansion keystone (height extension, post-reset)
+- [ ] Per-chunk vein index persisted at generation time
+- [ ] Vault Expansion: re-create under the expanded type on reset
 
 ### Portal and Igniter
 - [x] Vault Frame block
-- [ ] Vault Frame crafting recipe (8 iron + 1 redstone) — recipe lands in [67]
+- [ ] Vault Frame `minecraft:mineable/pickaxe` tag in the **`minecraft` namespace** (#87)
+- [ ] Vault Frame crafting recipe (8 iron + 1 redstone)
 - [x] `VaultPortalShape` scanner (both axes, 2×3 to 21×21)
 - [x] Ore Vault Portal block (no collision, unbreakable, AXIS state)
 - [x] Portal frame integrity check (`updateShape`)
-- [x] Vault Igniter Tier 1 item (recipe in [67])
-- [x] Vault Igniter Tier 2 item and effects (recipe in [67])
-- [x] Vault Igniter Tier 3 item and effects — custom entry point (recipe in [67])
-- [x] Vault Igniter Tier 4 item and effects (reset-button gate in [31]; recipe in [67])
+- [x] Vault Igniter Tier 1 item
+- [ ] Igniter tier capabilities overhaul — potion buffs removed, capabilities per §3.3
+- [ ] Tier 2: one personal entry point
+- [ ] Tier 3: instant travel + 3 personal entry points
+- [ ] Tier 4: reset button gate + Vault Anchor recipe ingredient (returned as crafting remainder)
+- [ ] Resonance Crystal item + recipe (4 Attuned ore + 1 Amethyst Shard)
 
 ### Teleportation
 - [x] Overworld → Vault routing (per team)
 - [x] Vault → Overworld routing (return position)
 - [x] Return position persistence (player persistent data)
-- [x] Teleport cooldown (80 ticks, 0 for Tier 4 igniter)
+- [x] Teleport cooldown (80 ticks)
 - [x] Nether-style portal wait (80 ticks) with wavy overlay and travel sound
-- [x] Team requirement: teamless players cannot activate or use a portal
-- [x] Exit portal auto-built at the Vault's default entry point
-- [x] Tier 2 Speed I on arrival
-- [x] Tier 3 Haste I on arrival
-- [x] Tier 4 Haste II on arrival
-- [ ] [73] Vault Recall item — expensive consumable teleporting the user back to a saved point in the dimension it was saved in
-- [ ] [74] Vault Return structure — dedicated exit block/keystone at the Vault's entry area (0,0 spawn platform), polished replacement for the auto-built exit portal
+- [ ] **Fixed team anchor at X=0, Z=0** — remove Overworld XZ mirroring entirely
+- [ ] Exactly one return portal per Vault, built at the anchor, single-plane (#85)
+- [ ] Return portal tier-coloured to the highest igniter tier seen (#86)
+- [ ] Remove the team-required gate and its message (#88 — the condition can never be false)
+- [ ] Tier 3+ skips the wait and the cooldown
 
 ### Resonance System
 - [ ] Resonance orb entity (visual distinction from XP)
 - [ ] Resonance orb spawns on ore break in Vault
 - [ ] Orb floats to nearest team member in radius
 - [ ] Team Resonance pool accumulation
-- [ ] Dynamic level threshold calculator
-- [ ] Skill point award on level-up
-- [ ] Level-up toast notification
-- [ ] Resonance Magnetism node (orb radius modification)
-- [ ] Hoarder's Instinct node (manual collection 2x)
-- [ ] Tithe node (25% consume, 1.75x Resonance)
-- [ ] Tithe tooltip clarification in UI
-
-### Animus System
-- [ ] Animus orb entity (visual distinction)
-- [ ] Animus orb spawns on mob kill in Disturbed Zone
-- [ ] Orb floats to nearest team member
-- [ ] Team Animus pool accumulation
-- [ ] Separate dynamic level threshold calculator for Animus
-- [ ] Animus skill point award on level-up
+- [ ] Level curve: cap 30, `ceil(totalTreeCost / 30)` points per level
+- [ ] Team scaling: `sum / teamSize × (1 + 0.1 × (teamSize − 1))`
+- [ ] Remove `ASSUMED_TEAM_SIZE` from `NodeCosts` and `LevelCurve`
+- [ ] Skill point award on level-up + toast notification
+- [ ] Drop pipeline (5 ordered stages on `BlockDropsEvent`)
+- [ ] Vein index: completion detection, Twin Veins registration, player-placed ore excluded
+- [ ] Refund: `3 XP levels × tier cost`, free for 10 min after a reset
+- [ ] `dataVersion` field + migration on `OreVaultTeamData`
 
 ### Skill Tree — Resonance Nodes
-- [ ] Skill tree data structure and prerequisite graph
-- [ ] Unlock validation (level req, prereq, exclusive conflicts, skill points)
-- [ ] Node-by-node refund (scaled XP cost)
-- [ ] Tradeoff toggle per-player persistence
+- [x] Skill tree data structure and prerequisite graph
+- [x] Unlock validation (level req, prereq, exclusive conflicts, skill points)
+- [ ] Node-by-node refund (new formula)
+- [ ] Tradeoff toggle per-player persistence — **toggleable only outside the Vault**
 - [ ] Exclusive node pair enforcement
+- [ ] Fork enforcement (one branch, others locked until refunded)
 - **Vein Branch**
   - [ ] Vein Expansion (T1-T5)
   - [ ] Vein Proliferation (T1-T5)
   - [ ] Deep Veins (T1-T2)
-  - [ ] Twin Veins tradeoff (T1-T3)
   - [ ] Vault Echo (T1-T3)
+  - [ ] Echo Chamber *(notable, new)*
+  - [ ] Deep Harvest *(notable, new)*
+  - [ ] Twin Veins (T1-T3)
+  - [ ] **[FORK: Vein Shape]** Abundance / Vein Singularity *(keystone, replaces Motherlode)* / Stratified *(new)*
 - **Ore Quality Branch**
-  - [ ] Common Ore Boost (T1-T3)
-  - [ ] Uncommon Ore Boost (T1-T3)
-  - [ ] Rare Ore Boost (T1-T3)
-  - [ ] Ancient Traces (T1-T2)
+  - [ ] Ore Attunement *(new fork root)*
+  - [ ] **[FORK: Ore Focus]** Common / Uncommon / Rare Focus (T1-T3 each) *(replaces the three sequential Ore Boosts)*
+  - [ ] Full Spectrum *(keystone, new)*
   - [ ] Gravel Purge (T1)
   - [ ] Stone Reduction (T1-T2)
   - [ ] Geode Clusters (T1-T2)
-  - [ ] Structural Echoes (T1-T2)
+  - [ ] Ancient Traces (T1-T2) — below Y=0 only, exempt from all multipliers
 - **Fortune Branch**
-  - [ ] Ore Sense (T1-T3)
-  - [ ] Ore Doubling (T1-T3 base, T4-T6 Mekanism)
-  - [ ] Runic Attunement (T1-T3)
-  - [ ] Smelter's Intuition (T1-T3)
+  - [ ] Vein Fortune (T1-T3) *(renamed from Ore Sense)*
+  - [ ] Prospector's Eye *(notable, new)*
+  - [ ] **[FORK: Yield]** Ore Doubling (T1-T3, T4-T6 Mekanism) / Smelter's Intuition (T1-T3)
+  - [ ] Runic Attunement (T1-T3) — Attuned ore → Resonance Crystals
 - **XP and Stone Branch**
-  - [ ] Stone Memory (T1-T5, all tier effects)
+  - [ ] Stone Memory (T1-T5)
+  - [ ] Stonecaller *(notable, new)*
   - [ ] Ancient Knowledge (T1-T3)
 - **Hunger Branch**
-  - [ ] Efficient Miner (T1-T5, all tier effects)
+  - [ ] Efficient Miner (T1-T5)
 - **Utility Branch**
-  - [ ] Resonance Magnetism (T1-T3)
-  - [ ] Hoarder's Instinct (T1)
-  - [ ] Automated Extraction (T1-T2)
+  - [ ] **[FORK: Orb Collection]** Resonance Magnetism (T1-T3) / Hoarder's Instinct (T1-T2, reworked)
+  - [ ] Automated Extraction (T1-T2) — yield only, never Resonance
   - [ ] Vault Presence (T1-T3)
-  - [ ] Vault Expansion keystone
-  - [ ] Disturbed Zone Unlock node
+  - [ ] Seismic Sense *(notable, new)*
+  - [ ] Vault Expansion *(keystone)*
+- **Keystones**
+  - [ ] Greedy Seams *(exclusive: Resonant Overload)*
+  - [ ] Resonant Overload *(new, exclusive: Greedy Seams)*
+  - [ ] Brittle Stone *(new)*
 - **Tradeoff Nodes**
   - [ ] Volatile Veins (with pity system)
-  - [ ] Greedy Seams
   - [ ] Stone Curse
-  - [ ] Vault Fever
+  - [ ] Vault Fever — cost is −25% Resonance, no longer hunger
   - [ ] Tithe
 - **Exclusive Pairs**
-  - [ ] Abundance / Motherlode
-  - [ ] Resonance Magnetism / Hoarder's Instinct
-  - [ ] Vault's Blessing / Vault's Purity
+  - [ ] Vault's Blessing / Vault's Purity *(both reworked)*
 - **Ultimine Branch (conditional)**
   - [ ] Ultimine Expansion (T1-T3)
   - [ ] Ultimine Safety (T1-T2)
   - [ ] Volatile Veins: Ultimine Gambit
 
-### Skill Tree — Animus Nodes
-- **Disturbed Zone Enhancement**
-  - [ ] Zone Frequency (T1-T4)
-  - [ ] Zone Pack Size (T1-T3)
-  - [ ] Zone Radius (T1-T3)
-  - [ ] Mob Diversity (T1-T4)
-- **Mob Rewards**
-  - [ ] Reaper's Claim (T1-T3)
-  - [ ] Corrupted Veins (T1-T3)
-  - [ ] Plunderer's Share (T1-T3)
-  - [ ] Animus Amplifier (T1-T3)
-  - [ ] Soul Harvest keystone
-
-### Disturbed Zones
-- [ ] Disturbed Zone block (craftable after unlock node)
-- [ ] Disturbed Zone crafting recipe
-- [ ] Spherical spawn zone logic
-- [ ] Zone particle effect (boundary visualisation)
-- [ ] Mob spawn in zone (vanilla mobs, respects Mob Diversity node)
-- [ ] Mob kill Animus drop
-- [ ] Zone stat tracking (for node effects)
+### Deferred to the post-1.0 Animus epic
+- [ ] Animus orb entity, pool, level track, skill point award
+- [ ] Animus tree: Zone Frequency / Pack Size / Radius, Mob Diversity, Reaper's Claim, Corrupted Veins, Plunderer's Share, Animus Amplifier
+- [ ] Soul Harvest keystone + the shop that gives it a sink
+- [ ] Disturbed Zone block, spherical spawn logic, zone particles, mob spawning, Animus drops
+- [ ] Disturbed Zone mob tagging (mobs stay "zone mobs" after wandering out)
+- [ ] Disturbed Zone Unlock node (re-enters the Resonance tree Core branch with this epic)
+- [ ] Ore Memory tab — team/player stats panels, trophies (cosmetic; deferred)
 
 ### UI — Tome of the Deep Seam
+- [ ] Network channel (`ModNetwork`) — tree state, pool, level, tradeoff toggles, node purchase/refund
 - [ ] Tome item (auto-given on first spawn, craftable cobblestone + book)
-- [ ] Main screen with three tabs
+- [ ] Main screen shell (Resonance tab for 1.0; Animus and Ore Memory tabs land with their epics)
 - [ ] Resonance tree tab — node graph renderer
 - [ ] Node locked/unlocked/toggleable visual states
+- [ ] Fork indicator — unchosen branches shown locked
 - [ ] Exclusive node lock indicator
+- [ ] Keystone visual treatment (distinct from small nodes and notables)
+- [ ] Tradeoff toggle disabled with a reason while inside the Vault
 - [ ] Ultimine node conditional visibility
 - [ ] Team Resonance level bar and skill point display
-- [ ] Animus tree tab — parallel to Resonance tab
-- [ ] Ore Memory tab — team stats panel
-- [ ] Ore Memory tab — player stats panel with member dropdown
-- [ ] Trophy icon logic (highest per stat)
+- [ ] Seismic Sense ore-density readout (gated on the node)
 - [ ] Vault reset button (conditional on Tier 4 igniter)
 - [ ] Reset voting dialog
 - [ ] Reset countdown warning
