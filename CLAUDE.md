@@ -246,8 +246,3 @@ review really ran, check that steps 3 and 4 executed rather than trusting the ti
 - The repository has `delete_branch_on_merge` enabled, so a merged branch is removed
   automatically. Don't push follow-ups to a branch whose PR has already merged; branch
   again from `main`.
-
-## Out of scope for review
-
-`build/`, `run/`, `logs/`, `.gradle*/`, `.tools/`, `.inspect/`, `.research/`, and
-`src/generated/` are build output or local scratch and are gitignored.
