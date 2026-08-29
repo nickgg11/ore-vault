@@ -10,7 +10,6 @@ import com.orevault.orevault.tags.ModTags;
 import com.orevault.orevault.team.TeamHelper;
 import com.orevault.orevault.worldgen.VaultDimensions;
 
-import dev.ftb.mods.ftbteams.api.Team;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -98,14 +97,10 @@ public final class VaultTeleport {
     // ----- Overworld -> Vault -----
 
     private static @Nullable TeleportTransition toVaultTransition(ServerPlayer player, ServerLevel currentLevel, BlockPos portalEntryPos) {
-        Optional<Team> team = TeamHelper.getTeam(player);
-        if (team.isEmpty()) {
-            return null;
-        }
         saveReturnPosition(player, currentLevel, portalEntryPos);
 
         MinecraftServer server = currentLevel.getServer();
-        ResourceKey<Level> key = VaultDimensions.findOrCreate(team.get().getTeamId());
+        ResourceKey<Level> key = VaultDimensions.findOrCreate(TeamHelper.getTeamId(player));
         ServerLevel vault = server.getLevel(key);
         if (vault == null) {
             OreVault.LOGGER.error("Vault dimension {} missing after findOrCreate", key.identifier());
@@ -113,16 +108,16 @@ public final class VaultTeleport {
         }
 
         int tier = VaultIgniterItem.highestTierLevel(player);
-        BlockPos defaultAnchor = safeSurface(vault, player.blockPosition());
+        BlockPos anchor = vaultAnchor(vault);
         Optional<BlockPos> custom = tier >= 3 ? entryPoint(player) : Optional.empty();
-        BlockPos target = custom.map(pos -> findSafeFooting(vault, pos)).orElse(defaultAnchor);
+        BlockPos target = custom.map(pos -> findSafeFooting(vault, pos)).orElse(anchor);
 
-        // The team's exit portal lives at the vault's default entry point (§3.2);
-        // (re)build it whenever the area is still clear.
+        // The team's one return portal lives at the fixed anchor (§3.2);
+        // (re)build it whenever the area is still clear, upgrading its tier.
         Direction.Axis axis = currentLevel.getBlockState(portalEntryPos)
                 .getOptionalValue(BlockStateProperties.HORIZONTAL_AXIS)
                 .orElse(Direction.Axis.X);
-        VaultPortalShape.ensureReturnPortal(vault, defaultAnchor, axis);
+        VaultPortalShape.ensureReturnPortal(vault, anchor, axis, tier);
 
         int finalTier = tier;
         TeleportTransition.PostTeleportTransition post = TeleportTransition.PLAY_PORTAL_SOUND.then(entity -> {
@@ -143,7 +138,19 @@ public final class VaultTeleport {
     }
 
     /**
-     * Safe landing spot at the mirrored XZ (#77): reads the MOTION_BLOCKING
+     * The team's fixed arrival point: the Vault surface at X=0, Z=0 (§3.2).
+     *
+     * <p>Every trip into a Vault lands on this same block regardless of where
+     * in the Overworld the portal stood. Arrival deliberately does not mirror
+     * Overworld coordinates — doing so built a separate return portal for each
+     * entry location and littered the Vault with them.</p>
+     */
+    public static BlockPos vaultAnchor(ServerLevel vault) {
+        return safeSurface(vault, new BlockPos(0, vault.getMaxY(), 0));
+    }
+
+    /**
+     * Safe landing spot at the given XZ (#77): reads the MOTION_BLOCKING
      * heightmap (generating the chunk if needed) and scans down from the
      * surface for a 2-block air pocket, falling back to the default entry
      * height. Also used by {@link VaultPortalShape#ensureReturnPortal} to sit
@@ -203,12 +210,7 @@ public final class VaultTeleport {
         ServerLevel current = (ServerLevel) player.level();
         saveReturnPosition(player, current, player.blockPosition());
 
-        Optional<Team> team = TeamHelper.getTeam(player);
-        if (team.isEmpty()) {
-            player.sendOverlayMessage(Component.translatable("message.orevault.team_required"));
-            return;
-        }
-        ResourceKey<Level> key = VaultDimensions.findOrCreate(team.get().getTeamId());
+        ResourceKey<Level> key = VaultDimensions.findOrCreate(TeamHelper.getTeamId(player));
         ServerLevel vault = server.getLevel(key);
         if (vault == null) {
             OreVault.LOGGER.error("Vault dimension {} missing after findOrCreate", key.identifier());
@@ -216,14 +218,14 @@ public final class VaultTeleport {
         }
 
         int tier = VaultIgniterItem.highestTierLevel(player);
-        BlockPos defaultAnchor = safeSurface(vault, player.blockPosition());
+        BlockPos anchor = vaultAnchor(vault);
         Optional<BlockPos> custom = tier >= 3 ? entryPoint(player) : Optional.empty();
-        BlockPos target = custom.map(pos -> findSafeFooting(vault, pos)).orElse(defaultAnchor);
+        BlockPos target = custom.map(pos -> findSafeFooting(vault, pos)).orElse(anchor);
 
         Direction.Axis axis = current.getBlockState(player.blockPosition())
                 .getOptionalValue(BlockStateProperties.HORIZONTAL_AXIS)
                 .orElse(Direction.Axis.X);
-        VaultPortalShape.ensureReturnPortal(vault, defaultAnchor, axis);
+        VaultPortalShape.ensureReturnPortal(vault, anchor, axis, tier);
 
         teleport(player, vault, target.getX() + 0.5, target.getY(), target.getZ() + 0.5);
         applyArrivalEffects(player, tier); // no cooldown: tier 4 (§3.3)

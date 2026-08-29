@@ -6,15 +6,11 @@ import com.mojang.serialization.MapCodec;
 import com.orevault.orevault.item.VaultIgniterItem;
 import com.orevault.orevault.portal.VaultPortalShape;
 import com.orevault.orevault.portal.VaultTeleport;
-import com.orevault.orevault.team.TeamHelper;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.InsideBlockEffectApplier;
@@ -50,8 +46,9 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * wavy "confusion" screen overlay ({@link #getLocalTransition}) and a portal
  * travel sound, then {@link #getPortalDestination} routes through
  * {@link VaultTeleport}. Tier-4 igniter holders skip the wait entirely.</li>
- * <li>Requires an FTB team (§3.1): teamless players get a hint instead of
- * portal charge-up.</li>
+ * <li>No team gate (§3.2, §9): FTB Teams auto-creates a single-member team for
+ * every player who logs in, so "has a team" can never be false and any check
+ * against it is dead code. Solo players get a solo Vault.</li>
  * </ul>
  */
 public class VaultPortalBlock extends Block implements Portal {
@@ -132,15 +129,6 @@ public class VaultPortalBlock extends Block implements Portal {
         if (VaultIgniterItem.highestTierLevel(player) >= 4) {
             if (!player.isOnPortalCooldown()) {
                 VaultTeleport.handlePortal(player);
-            }
-            return;
-        }
-        if (TeamHelper.getTeam(player).isEmpty()) {
-            if (!player.isOnPortalCooldown()) {
-                // Action-bar hint + fizzle sound so the denial is unmissable (#80).
-                player.sendOverlayMessage(Component.translatable("message.orevault.team_required"));
-                level.playSound(null, pos, SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 1.0F, 1.0F);
-                player.setPortalCooldown(40); // re-used as a message rate limiter
             }
             return;
         }

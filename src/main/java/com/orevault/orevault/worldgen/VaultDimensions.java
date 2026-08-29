@@ -62,18 +62,55 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
  */
 public final class VaultDimensions {
 
-    private static final ResourceKey<DimensionType> BASE_DIMENSION_TYPE =
-            ResourceKey.create(Registries.DIMENSION_TYPE, Identifier.fromNamespaceAndPath(OreVault.MODID, "ore_vault"));
+    /**
+     * A Vault dimension type and the world height that must match its JSON
+     * (§3.1). The two variants differ only in how far down the world goes
+     * before bedrock; everything else — lighting, fixed time, no natural
+     * spawning — is identical.
+     *
+     * <p>The height values are duplicated from the JSON rather than read back
+     * from the registry because {@link VaultLayerConfig#load} validates the
+     * layer stack against them, and a mismatch should fail loudly at creation
+     * rather than generate a subtly wrong world.</p>
+     */
+    public enum Variant {
+        /** {@code ore_vault}: bedrock at Y=0, no deepslate band. */
+        BASE("ore_vault", 0, 320),
+        /** {@code ore_vault_expanded}: bedrock at Y=-64, unlocking Y=-63..-1 (§6.1 Vault Expansion). */
+        EXPANDED("ore_vault_expanded", -64, 384);
+
+        private final ResourceKey<DimensionType> key;
+        private final int minY;
+        private final int height;
+
+        Variant(String path, int minY, int height) {
+            this.key = ResourceKey.create(Registries.DIMENSION_TYPE, Identifier.fromNamespaceAndPath(OreVault.MODID, path));
+            this.minY = minY;
+            this.height = height;
+        }
+
+        public ResourceKey<DimensionType> key() {
+            return key;
+        }
+
+        public int minY() {
+            return minY;
+        }
+
+        public int height() {
+            return height;
+        }
+    }
+
     private static final ResourceKey<Biome> VAULT_BIOME =
             ResourceKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath(OreVault.MODID, "vault"));
-
-    /** World height of the base dimension type (matches {@code ore_vault.json}). */
-    private static final int BASE_MIN_Y = -64;
-    private static final int BASE_HEIGHT = 384;
 
     private static final Map<UUID, ResourceKey<Level>> TEAM_DIMENSIONS = new ConcurrentHashMap<>();
     private static final Map<UUID, VaultChunkGenerator.SkillSnapshot> SKILL_SNAPSHOTS = new ConcurrentHashMap<>();
     private static final Map<UUID, VaultChunkGenerator> GENERATORS = new ConcurrentHashMap<>();
+
+    /** Which variant each team's Vault was created under. */
+    private static final Map<UUID, Variant> TEAM_VARIANTS = new ConcurrentHashMap<>();
 
     /** Layer stack for the base dimension type, loaded on first dimension creation (#76). */
     private static volatile VaultLayerConfig BASE_LAYER_CONFIG;
@@ -95,14 +132,20 @@ public final class VaultDimensions {
     /**
      * Default entry Y for the base dimension: the bottom of the configured air
      * layer (#76), falling back to the pre-config height while no server has
-     * loaded the layer stack yet.
+     * loaded the layer stack yet. Both variants share the same surface — they
+     * differ below Y=0, not above it — so one value serves for either.
      */
     public static int defaultEntryY() {
         VaultLayerConfig config = BASE_LAYER_CONFIG;
         if (config != null && config.firstAirY() >= 0) {
             return config.firstAirY();
         }
-        return BASE_MIN_Y + BASE_HEIGHT - VaultLayerConfig.DEFAULT_AIR_THICKNESS;
+        return Variant.BASE.minY() + Variant.BASE.height() - VaultLayerConfig.DEFAULT_AIR_THICKNESS;
+    }
+
+    /** The variant a team's Vault was created under; {@link Variant#BASE} until one exists. */
+    public static Variant variantFor(UUID teamId) {
+        return TEAM_VARIANTS.getOrDefault(teamId, Variant.BASE);
     }
 
     /**
@@ -155,6 +198,14 @@ public final class VaultDimensions {
      * Registers every Vault that already has a directory under
      * {@code <world>/dimensions/orevault/}. Teams that have never opened a
      * portal have no directory and stay uncreated.
+     *
+     * <p>Restored Vaults come back as {@link Variant#BASE}. That is correct
+     * today because nothing can produce an expanded Vault yet — the Vault
+     * Expansion keystone and the reset that applies it both land in
+     * {@code [77]} (issue #93). When they do, the chosen variant has to be
+     * persisted on the team's SavedData and read here, or an expanded Vault
+     * would silently come back with bedrock at Y=0 and its deepslate band
+     * unreachable.</p>
      */
     private static void restoreExistingDimensions(MinecraftServer server) {
         Path dimensionsDir = server.getWorldPath(LevelResource.ROOT)
@@ -224,6 +275,17 @@ public final class VaultDimensions {
      * remove the level, delete {@code <world>/dimensions/orevault/vault_...}).</p>
      */
     private static ResourceKey<Level> ensureTeamDimension(MinecraftServer server, UUID teamId) {
+        return ensureTeamDimension(server, teamId, variantFor(teamId));
+    }
+
+    /**
+     * As {@link #ensureTeamDimension(MinecraftServer, UUID)}, but pins the
+     * dimension type variant. Only the reset path ({@code [77]}, issue #93)
+     * passes anything other than the team's current variant — a Vault's depth
+     * can change exactly once, when Vault Expansion forces a regeneration
+     * (§3.5 step 5).
+     */
+    private static ResourceKey<Level> ensureTeamDimension(MinecraftServer server, UUID teamId, Variant variant) {
         ResourceKey<Level> key = dimensionKey(teamId);
         ServerLevel existing = server.getLevel(key);
         if (existing != null) {
@@ -233,15 +295,17 @@ public final class VaultDimensions {
 
         refreshSkillSnapshot(server, teamId);
 
-        Holder.Reference<DimensionType> type = server.registryAccess().lookupOrThrow(Registries.DIMENSION_TYPE).getOrThrow(BASE_DIMENSION_TYPE);
+        Holder.Reference<DimensionType> type = server.registryAccess().lookupOrThrow(Registries.DIMENSION_TYPE).getOrThrow(variant.key());
         Holder.Reference<Biome> biome = server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(VAULT_BIOME);
-        VaultLayerConfig layerConfig = VaultLayerConfig.load(server, BASE_DIMENSION_TYPE, BASE_MIN_Y, BASE_HEIGHT);
-        BASE_LAYER_CONFIG = layerConfig;
+        VaultLayerConfig layerConfig = VaultLayerConfig.load(server, variant.key(), variant.minY(), variant.height());
+        if (variant == Variant.BASE) {
+            BASE_LAYER_CONFIG = layerConfig;
+        }
         VaultChunkGenerator generator = new VaultChunkGenerator(
                 teamId,
                 biome,
-                BASE_MIN_Y,
-                BASE_HEIGHT,
+                variant.minY(),
+                variant.height(),
                 () -> SKILL_SNAPSHOTS.getOrDefault(teamId, VaultChunkGenerator.SkillSnapshot.EMPTY),
                 layerConfig
         );
@@ -289,8 +353,17 @@ public final class VaultDimensions {
 
         GENERATORS.put(teamId, generator);
         TEAM_DIMENSIONS.put(teamId, key);
+        TEAM_VARIANTS.put(teamId, variant);
         VaultDiag.markCreated(key, server.getTickCount());
-        OreVault.LOGGER.info("Created Ore Vault dimension {} for team {} at server tick {}", key.identifier(), teamId, server.getTickCount());
+        OreVault.LOGGER.info(
+                "Created Ore Vault dimension {} ({}, Y={}..{}) for team {} at server tick {}",
+                key.identifier(),
+                variant.key().identifier(),
+                variant.minY(),
+                variant.minY() + variant.height() - 1,
+                teamId,
+                server.getTickCount()
+        );
         return key;
     }
 
