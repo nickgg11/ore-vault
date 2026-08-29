@@ -11,8 +11,6 @@ import com.orevault.orevault.data.OreVaultTeamData;
 import com.orevault.orevault.debug.VaultDiag;
 import com.orevault.orevault.ore.OreClassifier;
 import com.orevault.orevault.team.TeamHelper;
-import dev.ftb.mods.ftbteams.api.Team;
-import dev.ftb.mods.ftbteams.api.neoforge.FTBTeamsEvent;
 
 import net.minecraft.core.Holder;
 import net.minecraft.core.MappedRegistry;
@@ -40,9 +38,12 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
  * dimension per FTB team, registered dynamically and created on demand the
  * first time the team activates a portal.
  *
- * <p>At server start every existing team gets its dimension; teams created
- * later are handled via {@link FTBTeamsEvent.TeamCreated}. Dimension deletion
- * on team disband is a documented TODO that lands in {@code [31]} VaultReset.</p>
+ * <p><strong>Creation is lazy.</strong> Nothing is created at server start or
+ * when a team is registered — only {@link #findOrCreate} on the portal path
+ * creates a dimension. FTB Teams auto-creates a single-member team for every
+ * player who logs in, so eager creation cost one {@link ServerLevel} per player
+ * account the server had ever seen. Dimension deletion on team disband is a
+ * documented TODO that lands in {@code [77]} (issue #93).</p>
  *
  * <p>Because chunk generation runs on a background executor while SavedData is
  * main-thread-only, this class maintains a thread-safe {@link
@@ -112,21 +113,22 @@ public final class VaultDimensions {
 
     // ----- lifecycle -----
 
-    /** Server start: classify ores (§11) and register a dimension for every existing team. */
+    /**
+     * Server start: classify ores (§11). Deliberately does <em>not</em> create
+     * any dimension.
+     *
+     * <p>Dimensions are created lazily, on the first portal trip by a team
+     * member, and never before (§3.1). Earlier versions swept every existing
+     * team here and created another on {@code FTBTeamsEvent.TeamCreated};
+     * because FTB Teams auto-creates a single-member team for every player who
+     * logs in, that meant one full {@link ServerLevel} — chunk map, storage,
+     * region directory — per player account the server had ever seen, for a
+     * dimension most of them never enter.</p>
+     */
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
         MinecraftServer server = event.getServer();
         OreClassifier.rebuild(server.registryAccess(), OreVaultServerConfig.oreClassificationOverrides());
-        for (Team team : TeamHelper.manager().getTeams()) {
-            ensureTeamDimension(server, team.getTeamId());
-        }
-    }
-
-    /** New team created mid-session: create its dimension on demand. */
-    @SubscribeEvent
-    public static void onTeamCreated(FTBTeamsEvent.TeamCreated event) {
-        MinecraftServer server = TeamHelper.manager().getServer();
-        ensureTeamDimension(server, event.getEventData().team().getTeamId());
     }
 
     // ----- dimension creation -----
@@ -136,7 +138,7 @@ public final class VaultDimensions {
      * constructs the {@link ServerLevel}, mirroring what
      * {@code MinecraftServer#createLevels} does for non-overworld dimensions.
      *
-     * <p>TODO [31]: dimension deletion on team disband (unregister LevelStem,
+     * <p>TODO [77] (issue #93): dimension deletion on team disband (unregister LevelStem,
      * remove the level, delete {@code <world>/dimensions/orevault/vault_...}).</p>
      */
     private static ResourceKey<Level> ensureTeamDimension(MinecraftServer server, UUID teamId) {
@@ -188,6 +190,17 @@ public final class VaultDimensions {
                 false
         );
         server.forgeGetWorldMap().put(key, level);
+        // MUST follow the world-map insert (#82/#89). MinecraftServer ticks levels
+        // from a cached ServerLevel[] rebuilt by getWorldArray() only when this
+        // marker changes; without the call a level added after the first server
+        // tick sits in the map but is never ticked. The failure mode is
+        // misleading: packet handlers are synchronous, so block placement works
+        // and the first left-click produces exactly one BreakSpeed event, then
+        // ServerPlayerGameMode.tick() never runs, destroy progress never
+        // advances and BREAK_BLOCK never fires. Nothing is cancelled, and
+        // relogging "fixes" it because the level is then rebuilt by
+        // MinecraftServer#createLevels before the cache exists.
+        server.markWorldsDirty();
         level.getWorldBorder().setAbsoluteMaxSize(server.getAbsoluteMaxWorldSize());
         server.getPlayerList().addWorldborderListener(level);
         NeoForge.EVENT_BUS.post(new LevelEvent.Load(level));
