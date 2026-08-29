@@ -13,6 +13,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.InsideBlockEffectApplier;
@@ -108,7 +110,8 @@ public class VaultPortalBlock extends Block implements Portal {
      * processor for the warp overlay; all gating is server side.
      * <ul>
      * <li>Tier 4 igniter (§3.3): instant direct teleport, no wait, no cooldown.</li>
-     * <li>No FTB team (§3.1): hint message, rate-limited via the portal cooldown.</li>
+     * <li>No FTB team (§3.1): action-bar hint + fizzle sound (#80),
+     * rate-limited via the portal cooldown.</li>
      * <li>Otherwise: the vanilla {@link Portal} flow — wait, overlay, travel
      * sound, then {@link #getPortalDestination}.</li>
      * </ul>
@@ -134,7 +137,9 @@ public class VaultPortalBlock extends Block implements Portal {
         }
         if (TeamHelper.getTeam(player).isEmpty()) {
             if (!player.isOnPortalCooldown()) {
-                player.sendSystemMessage(Component.translatable("message.orevault.team_required"));
+                // Action-bar hint + fizzle sound so the denial is unmissable (#80).
+                player.sendOverlayMessage(Component.translatable("message.orevault.team_required"));
+                level.playSound(null, pos, SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 1.0F, 1.0F);
                 player.setPortalCooldown(40); // re-used as a message rate limiter
             }
             return;

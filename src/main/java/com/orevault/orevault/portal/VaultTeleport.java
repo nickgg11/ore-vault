@@ -186,7 +186,7 @@ public final class VaultTeleport {
 
         Optional<Team> team = TeamHelper.getTeam(player);
         if (team.isEmpty()) {
-            player.sendSystemMessage(Component.translatable("message.orevault.team_required"));
+            player.sendOverlayMessage(Component.translatable("message.orevault.team_required"));
             return;
         }
         ResourceKey<Level> key = VaultDimensions.findOrCreate(team.get().getTeamId());

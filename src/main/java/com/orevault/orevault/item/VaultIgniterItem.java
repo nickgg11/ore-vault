@@ -119,7 +119,8 @@ public class VaultIgniterItem extends Item {
         if (level.getBlockState(pos).is(ModBlocks.VAULT_FRAME)) {
             // Vaults are team-scoped (§3.1): refuse activation for teamless players.
             if (!level.isClientSide() && player instanceof ServerPlayer serverPlayer && TeamHelper.getTeam(serverPlayer).isEmpty()) {
-                player.sendSystemMessage(Component.translatable("message.orevault.team_required"));
+                // Action-bar hint + fizzle sound so the denial is unmissable (#80).
+                player.sendOverlayMessage(Component.translatable("message.orevault.team_required"));
                 level.playSound(null, pos, SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 1.0F, 1.0F);
                 return InteractionResult.SUCCESS_SERVER;
             }
