@@ -1,5 +1,6 @@
 {
   "itemGroup.orevault": "Ore Vault",
+  "entity.orevault.resonance_orb": "Resonance Orb",
   "block.orevault.vault_frame": "Vault Frame",
   "block.orevault.vault_portal_common": "Ore Vault Portal (Common)",
   "block.orevault.vault_portal_uncommon": "Ore Vault Portal (Uncommon)",

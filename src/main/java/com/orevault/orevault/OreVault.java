@@ -2,10 +2,12 @@ package com.orevault.orevault;
 
 import com.mojang.logging.LogUtils;
 import com.orevault.orevault.block.ModBlocks;
+import com.orevault.orevault.client.VaultOrbRenderers;
 import com.orevault.orevault.client.VaultPortalColors;
 import com.orevault.orevault.config.OreVaultServerConfig;
 import com.orevault.orevault.debug.VaultDiag;
 import com.orevault.orevault.event.FtbEvents;
+import com.orevault.orevault.entity.ModEntities;
 import com.orevault.orevault.event.PortalEvents;
 import com.orevault.orevault.item.ModItems;
 import com.orevault.orevault.resonance.ResonanceSystem;
@@ -50,12 +52,18 @@ public class OreVault {
         ModItems.ITEMS.register(modEventBus);
         ModItems.CREATIVE_TABS.register(modEventBus);
 
-        // Client-side tier tinting of the portal interior blocks (#84).
+        // Entity registry ([21]: Resonance orb; the Animus orb lands post-1.0).
+        ModEntities.ENTITY_TYPES.register(modEventBus);
+
+        // Client-side rendering. Both must stay behind the dist check: a
+        // common-path reference to a client class kills a dedicated server at
+        // class-load, and no unit test here would catch it.
         if (FMLEnvironment.getDist().isClient()) {
             VaultPortalColors.register(modEventBus);
+            VaultOrbRenderers.register(modEventBus);
         }
 
         // Registrations are added incrementally in later tasks:
-        //   [21] entities, [32] network.
+        //   [32] network.
     }
 }
