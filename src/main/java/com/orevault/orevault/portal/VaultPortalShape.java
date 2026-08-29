@@ -233,26 +233,41 @@ public final class VaultPortalShape {
     }
 
     /**
-     * Dissolves the first portal block found near {@code framePos} whose frame
-     * is no longer valid. Corner frame blocks are diagonal to every portal
-     * block, so breaking one never reaches the portal via {@code updateShape};
-     * the frame's {@code onRemove} calls this instead. Removing one portal
-     * block cascades across the whole interior through the neighbours' own
-     * updateShape re-validation.
+     * Dissolves <em>every</em> portal block near {@code framePos} whose frame is
+     * no longer valid. Corner frame blocks are diagonal to every portal block,
+     * so breaking one never reaches the portal via {@code updateShape}; the
+     * frame's {@code affectNeighborsAfterRemoval} calls this instead.
+     *
+     * <p>This must clear the whole interior itself — it cannot remove one block
+     * and let the rest cascade. {@link VaultPortalBlock#updateShape} only
+     * re-validates when the changed neighbour lies <em>off</em> the portal
+     * plane, and a neighbouring portal block is by definition in-plane, so a
+     * portal block being removed never triggers re-validation in the blocks
+     * beside it. Removing only the first match left the portal dissolving one
+     * block per frame block broken, in scan order.</p>
+     *
+     * <p>Portals whose frame is still intact are untouched, so a second portal
+     * standing within the scan radius survives.</p>
      */
     public static void dissolveInvalidPortalsNear(Level level, BlockPos framePos) {
         int radius = MAX_INTERIOR_WIDTH + 2;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        List<BlockPos> doomed = new ArrayList<>();
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dy = -radius; dy <= radius; dy++) {
                 for (int dz = -radius; dz <= radius; dz++) {
                     pos.set(framePos.getX() + dx, framePos.getY() + dy, framePos.getZ() + dz);
                     if (level.getBlockState(pos).is(ModTags.Blocks.VAULT_PORTALS) && !isValidFrameContaining(level, pos)) {
-                        level.removeBlock(pos, false);
-                        return;
+                        doomed.add(pos.immutable());
                     }
                 }
             }
+        }
+        // Collect first, then remove: validity is judged against the untouched
+        // portal so a partially cleared interior cannot change the verdict
+        // for blocks still to be checked.
+        for (BlockPos doomedPos : doomed) {
+            level.removeBlock(doomedPos, false);
         }
     }
 
