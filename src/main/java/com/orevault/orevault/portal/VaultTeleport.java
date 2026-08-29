@@ -97,8 +97,6 @@ public final class VaultTeleport {
     // ----- Overworld -> Vault -----
 
     private static @Nullable TeleportTransition toVaultTransition(ServerPlayer player, ServerLevel currentLevel, BlockPos portalEntryPos) {
-        saveReturnPosition(player, currentLevel, portalEntryPos);
-
         MinecraftServer server = currentLevel.getServer();
         ResourceKey<Level> key = VaultDimensions.findOrCreate(TeamHelper.getTeamId(player));
         ServerLevel vault = server.getLevel(key);
@@ -106,6 +104,12 @@ public final class VaultTeleport {
             OreVault.LOGGER.error("Vault dimension {} missing after findOrCreate", key.identifier());
             return null;
         }
+
+        // Saved only once the trip is known to be possible (#100). Saving before
+        // the checks overwrote a good return position on a failed trip, so a
+        // player who bounced off a broken vault lost their way home instead of
+        // simply going nowhere.
+        saveReturnPosition(player, currentLevel, portalEntryPos);
 
         int tier = VaultIgniterItem.highestTierLevel(player);
         BlockPos anchor = vaultAnchor(vault);
@@ -208,7 +212,6 @@ public final class VaultTeleport {
             return;
         }
         ServerLevel current = (ServerLevel) player.level();
-        saveReturnPosition(player, current, player.blockPosition());
 
         ResourceKey<Level> key = VaultDimensions.findOrCreate(TeamHelper.getTeamId(player));
         ServerLevel vault = server.getLevel(key);
@@ -216,6 +219,9 @@ public final class VaultTeleport {
             OreVault.LOGGER.error("Vault dimension {} missing after findOrCreate", key.identifier());
             return;
         }
+
+        // After the checks, for the same reason as toVaultTransition (#100).
+        saveReturnPosition(player, current, player.blockPosition());
 
         int tier = VaultIgniterItem.highestTierLevel(player);
         BlockPos anchor = vaultAnchor(vault);
