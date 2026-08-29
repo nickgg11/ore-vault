@@ -168,9 +168,13 @@ tool; a leading slash means it runs only when the user types it.
 | `superpowers` | 14 process skills, invoked as `superpowers:<name>` |
 | `mattpocock-skills` | 25 engineering and writing skills, `mattpocock-skills:<name>` |
 | `claude-md-management` | the `claude-md-improver` skill, plus `/revise-claude-md` |
-| `remember` | automatic session capture through hooks, plus `/doctor` |
 | `feature-dev` | `/feature-dev` |
-| `serena` | an MCP server for semantic code navigation, run through `uvx` |
+
+Two more are installed but **disabled on purpose**, and should stay that way unless
+something changes. `serena` is an MCP server for semantic code navigation, which
+duplicates what `jdtls-local` already does for Java and is the only language here.
+`remember` captures sessions to `.remember/` through hooks, which overlaps with what
+this file and the GitHub issues already carry, and it loses to auto-compact anyway.
 
 `superpowers` covers brainstorming, systematic-debugging, test-driven-development,
 writing-plans, executing-plans, verification-before-completion, requesting-code-review,
@@ -189,17 +193,13 @@ Project-scoped skills live in `.claude/skills/`. `address-review` pulls the unre
 review comments off a PR, fixes them, pushes, and replies on each thread. User-level
 skills in `~/.claude/skills/` are `find-skills`, `humanizer` and `skill-vetter`.
 
-Two overlaps to be deliberate about. There are **two TDD skills** —
-`superpowers:test-driven-development` and `mattpocock-skills:tdd`. The work so far has
-used the superpowers one, and the Red-Green-Refactor evidence in existing PR bodies
-follows its format; stay on it rather than mixing conventions mid-project. Separately,
-`mattpocock-skills:code-review` is a local pass over a diff and has nothing to do with
-either the `/code-review` command or the GitHub workflow below.
-
-`remember` captures sessions on its own through SessionStart, UserPromptSubmit and
-PostToolUse hooks, writing to `.remember/` at the repo root with its own `.gitignore`.
-Hooks are read once at startup, so enabling or updating the plugin needs a restart
-before anything is captured. `/doctor` reports whether capture is actually live.
+Two overlaps to be deliberate about. **`superpowers:test-driven-development` is the
+only TDD skill to use here.** `mattpocock-skills` ships its own `tdd`, and it is
+suppressed rather than removed, because two of them means two Red-Green-Refactor
+conventions and the evidence recorded in merged PR bodies already follows the
+superpowers format. Separately, `mattpocock-skills:code-review` is a local pass over a
+diff and has nothing to do with either the `/code-review` command or the GitHub
+workflow below.
 
 ## Automated PR review
 
