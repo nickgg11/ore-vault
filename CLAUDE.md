@@ -170,7 +170,19 @@ tool; a leading slash means it runs only when the user types it.
 | `claude-md-management` | the `claude-md-improver` skill, plus `/revise-claude-md` |
 | `remember` | automatic session capture through hooks, plus `/doctor` |
 | `feature-dev` | `/feature-dev` |
-| `serena` | an MCP server for semantic code navigation, run through `uvx` |
+
+`serena` is installed but **disabled on purpose** and should stay that way. It is an
+MCP server for semantic code navigation, which duplicates what `jdtls-local` already
+does for Java, the only language here.
+
+`remember` captures sessions on its own through SessionStart, UserPromptSubmit and
+PostToolUse hooks, writing to `.remember/` at the repo root under its own `.gitignore`.
+It covers a different need from the issue tracker: tickets record what was decided,
+`remember` records what actually happened in a session, including the dead ends. Two
+things it needs to work. Hooks are read once at startup, so a restart is required after
+enabling or updating it. And **auto-compact should be off** (`/config`), because
+compaction discards conversation history before the save pipeline can read it. `/doctor`
+reports whether capture is genuinely live rather than merely configured.
 
 `superpowers` covers brainstorming, systematic-debugging, test-driven-development,
 writing-plans, executing-plans, verification-before-completion, requesting-code-review,
@@ -189,17 +201,13 @@ Project-scoped skills live in `.claude/skills/`. `address-review` pulls the unre
 review comments off a PR, fixes them, pushes, and replies on each thread. User-level
 skills in `~/.claude/skills/` are `find-skills`, `humanizer` and `skill-vetter`.
 
-Two overlaps to be deliberate about. There are **two TDD skills** —
-`superpowers:test-driven-development` and `mattpocock-skills:tdd`. The work so far has
-used the superpowers one, and the Red-Green-Refactor evidence in existing PR bodies
-follows its format; stay on it rather than mixing conventions mid-project. Separately,
-`mattpocock-skills:code-review` is a local pass over a diff and has nothing to do with
-either the `/code-review` command or the GitHub workflow below.
-
-`remember` captures sessions on its own through SessionStart, UserPromptSubmit and
-PostToolUse hooks, writing to `.remember/` at the repo root with its own `.gitignore`.
-Hooks are read once at startup, so enabling or updating the plugin needs a restart
-before anything is captured. `/doctor` reports whether capture is actually live.
+Two overlaps to be deliberate about. **`superpowers:test-driven-development` is the
+only TDD skill to use here.** `mattpocock-skills` ships its own `tdd`, and it is
+suppressed rather than removed, because two of them means two Red-Green-Refactor
+conventions and the evidence recorded in merged PR bodies already follows the
+superpowers format. Separately, `mattpocock-skills:code-review` is a local pass over a
+diff and has nothing to do with either the `/code-review` command or the GitHub
+workflow below.
 
 ## Automated PR review
 
@@ -231,8 +239,10 @@ review really ran, check that steps 3 and 4 executed rather than trusting the ti
   in this chat — goes through the `humanizer` skill's rules. No inflated significance,
   no bolded inline-header lists, no rule-of-three padding, no emoji. Say the specific
   thing.
-
-## Out of scope for review
-
-`build/`, `run/`, `logs/`, `.gradle*/`, `.tools/`, `.inspect/`, `.research/`, and
-`src/generated/` are build output or local scratch and are gitignored.
+- **Say when a PR is ready to merge, in as many words.** Opening a PR is not the same
+  as being finished with it; follow-up commits often land minutes later, and a merge in
+  between strands them on a dead branch. End the work with an explicit "ready to merge"
+  rather than leaving it to be inferred from the PR existing.
+- The repository has `delete_branch_on_merge` enabled, so a merged branch is removed
+  automatically. Don't push follow-ups to a branch whose PR has already merged; branch
+  again from `main`.
