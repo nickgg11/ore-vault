@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "orevault:vault_portal_common",
+    "orevault:vault_portal_uncommon",
+    "orevault:vault_portal_rare",
+    "orevault:vault_portal_legendary"
+  ]
+}

@@ -31,15 +31,33 @@ public final class ModBlocks {
                     .sound(SoundType.METAL)
     );
 
-    /** Portal interior block (§3.2). */
-    public static final DeferredBlock<VaultPortalBlock> VAULT_PORTAL = BLOCKS.registerBlock(
-            "vault_portal",
-            VaultPortalBlock::new,
-            properties -> properties
-                    .noCollision()
-                    .strength(-1.0F, 3600000.0F)
-                    .lightLevel(state -> 11)
-    );
+    /** Portal interior blocks, one per igniter tier (§3.2, #84): green/blue/purple/orange. */
+    public static final DeferredBlock<VaultPortalBlock> VAULT_PORTAL_COMMON = portalBlock("vault_portal_common");
+    public static final DeferredBlock<VaultPortalBlock> VAULT_PORTAL_UNCOMMON = portalBlock("vault_portal_uncommon");
+    public static final DeferredBlock<VaultPortalBlock> VAULT_PORTAL_RARE = portalBlock("vault_portal_rare");
+    public static final DeferredBlock<VaultPortalBlock> VAULT_PORTAL_LEGENDARY = portalBlock("vault_portal_legendary");
+
+    /** Unbreakable, no-collision interior block; colour comes from client-side tinting (§3.2). */
+    private static DeferredBlock<VaultPortalBlock> portalBlock(String name) {
+        return BLOCKS.registerBlock(
+                name,
+                VaultPortalBlock::new,
+                properties -> properties
+                        .noCollision()
+                        .strength(-1.0F, 3600000.0F)
+                        .lightLevel(state -> 11)
+        );
+    }
+
+    /** Portal block for an igniter tier (#84): 1=common (green) … 4=legendary (orange). */
+    public static DeferredBlock<VaultPortalBlock> portalForTier(int tier) {
+        return switch (tier) {
+            case 2 -> VAULT_PORTAL_UNCOMMON;
+            case 3 -> VAULT_PORTAL_RARE;
+            case 4 -> VAULT_PORTAL_LEGENDARY;
+            default -> VAULT_PORTAL_COMMON;
+        };
+    }
 
     private ModBlocks() {
     }

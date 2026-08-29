@@ -2,6 +2,7 @@ package com.orevault.orevault;
 
 import com.mojang.logging.LogUtils;
 import com.orevault.orevault.block.ModBlocks;
+import com.orevault.orevault.client.VaultPortalColors;
 import com.orevault.orevault.config.OreVaultServerConfig;
 import com.orevault.orevault.debug.VaultDiag;
 import com.orevault.orevault.event.FtbEvents;
@@ -12,6 +13,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 
@@ -43,6 +45,11 @@ public class OreVault {
         // plus the Ore Vault creative tab (items are invisible in creative/JEI without tab membership).
         ModItems.ITEMS.register(modEventBus);
         ModItems.CREATIVE_TABS.register(modEventBus);
+
+        // Client-side tier tinting of the portal interior blocks (#84).
+        if (FMLEnvironment.getDist().isClient()) {
+            VaultPortalColors.register(modEventBus);
+        }
 
         // Registrations are added incrementally in later tasks:
         //   [21] entities, [32] network.

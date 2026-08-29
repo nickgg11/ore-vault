@@ -129,9 +129,9 @@ public class VaultIgniterItem extends Item {
                 VaultPortalShape portal = shape.get();
                 level.playSound(null, pos, SoundEvents.PORTAL_TRIGGER, SoundSource.BLOCKS, 1.0F, 1.0F);
                 if (level instanceof ServerLevel serverLevel) {
-                    portal.fillAnimated(serverLevel, tier.activationTicks(), tier.level() >= 2);
+                    portal.fillAnimated(serverLevel, tier.activationTicks(), tier.level() >= 2, tier.level());
                 } else {
-                    portal.fill(level);
+                    portal.fill(level, tier.level());
                 }
             } else {
                 level.playSound(null, pos, SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 1.0F, 1.0F);

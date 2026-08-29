@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import com.orevault.orevault.block.ModBlocks;
 import com.orevault.orevault.block.VaultPortalBlock;
+import com.orevault.orevault.tags.ModTags;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -246,7 +247,7 @@ public final class VaultPortalShape {
             for (int dy = -radius; dy <= radius; dy++) {
                 for (int dz = -radius; dz <= radius; dz++) {
                     pos.set(framePos.getX() + dx, framePos.getY() + dy, framePos.getZ() + dz);
-                    if (level.getBlockState(pos).is(ModBlocks.VAULT_PORTAL) && !isValidFrameContaining(level, pos)) {
+                    if (level.getBlockState(pos).is(ModTags.Blocks.VAULT_PORTALS) && !isValidFrameContaining(level, pos)) {
                         level.removeBlock(pos, false);
                         return;
                     }
@@ -272,7 +273,7 @@ public final class VaultPortalShape {
         int minY = feetY;
         int maxY = feetY + 4;
         BlockState frame = ModBlocks.VAULT_FRAME.get().defaultBlockState();
-        BlockState portal = ModBlocks.VAULT_PORTAL.get().defaultBlockState().setValue(VaultPortalBlock.AXIS, axis);
+        BlockState portal = ModBlocks.VAULT_PORTAL_COMMON.get().defaultBlockState().setValue(VaultPortalBlock.AXIS, axis);
 
         // Idempotency check: every cell must be clear or already correct.
         for (int plane = 0; plane <= 1; plane++) {
@@ -283,7 +284,7 @@ public final class VaultPortalShape {
                     BlockState existing = level.getBlockState(at(h, y, fixed, axis));
                     boolean acceptable = frameCell
                             ? existing.isAir() || existing.is(ModBlocks.VAULT_FRAME)
-                            : existing.isAir() || existing.is(ModBlocks.VAULT_PORTAL);
+                            : existing.isAir() || existing.is(ModTags.Blocks.VAULT_PORTALS);
                     if (!acceptable) {
                         return false;
                     }
@@ -310,7 +311,7 @@ public final class VaultPortalShape {
             for (int h = minH + 1; h < maxH; h++) {
                 for (int y = minY + 1; y < maxY; y++) {
                     BlockPos pos = at(h, y, fixed, axis);
-                    if (!level.getBlockState(pos).is(ModBlocks.VAULT_PORTAL)) {
+                    if (!level.getBlockState(pos).is(ModTags.Blocks.VAULT_PORTALS)) {
                         level.setBlock(pos, portal, Block.UPDATE_CLIENTS);
                     }
                 }
@@ -345,9 +346,9 @@ public final class VaultPortalShape {
         return kindAt(view, h, y, fixed, axis) == Kind.FRAME ? MAX_STEPS + 1 : steps;
     }
 
-    /** Fills the interior with portal blocks oriented to the frame axis (§3.2). */
-    public void fill(Level level) {
-        BlockState portal = ModBlocks.VAULT_PORTAL.get().defaultBlockState().setValue(VaultPortalBlock.AXIS, axis);
+    /** Fills the interior with the portal block of the given igniter tier (§3.2, #84). */
+    public void fill(Level level, int tier) {
+        BlockState portal = ModBlocks.portalForTier(tier).get().defaultBlockState().setValue(VaultPortalBlock.AXIS, axis);
         for (BlockPos pos : interiorPositions()) {
             level.setBlock(pos, portal, Block.UPDATE_CLIENTS);
         }
@@ -357,9 +358,9 @@ public final class VaultPortalShape {
      * Activation animation (§3.3): fills the interior progressively over
      * {@code totalTicks} ticks on the server thread, bottom row first, so the
      * portal visibly "opens". Optional portal-particle burst on the first
-     * step (tier 2+ igniters).
+     * step (tier 2+ igniters). The placed block matches the igniter tier (#84).
      */
-    public void fillAnimated(ServerLevel level, int totalTicks, boolean particleBurst) {
+    public void fillAnimated(ServerLevel level, int totalTicks, boolean particleBurst, int tier) {
         List<BlockPos> positions = interiorPositions();
         if (positions.isEmpty()) {
             return;
@@ -369,10 +370,10 @@ public final class VaultPortalShape {
         }
         int rows = frameHeight - 2;
         if (totalTicks <= 1 || rows == 0) {
-            fill(level);
+            fill(level, tier);
             return;
         }
-        BlockState portal = ModBlocks.VAULT_PORTAL.get().defaultBlockState().setValue(VaultPortalBlock.AXIS, axis);
+        BlockState portal = ModBlocks.portalForTier(tier).get().defaultBlockState().setValue(VaultPortalBlock.AXIS, axis);
         level.getServer().schedule(level.getServer().wrapRunnable(new FillTask(level, positions, rows, totalTicks, portal)));
     }
 
@@ -427,7 +428,7 @@ public final class VaultPortalShape {
             int to = Math.min(positions.size(), from + rowsThisTick * perRow);
             for (int i = from; i < to; i++) {
                 BlockPos pos = positions.get(i);
-                if (level.getBlockState(pos).isAir() || level.getBlockState(pos).is(ModBlocks.VAULT_PORTAL)) {
+                if (level.getBlockState(pos).isAir() || level.getBlockState(pos).is(ModTags.Blocks.VAULT_PORTALS)) {
                     level.setBlock(pos, portal, Block.UPDATE_CLIENTS);
                 }
             }
@@ -483,7 +484,7 @@ public final class VaultPortalShape {
         if (state.is(ModBlocks.VAULT_FRAME)) {
             return Kind.FRAME;
         }
-        if (state.is(ModBlocks.VAULT_PORTAL)) {
+        if (state.is(ModTags.Blocks.VAULT_PORTALS)) {
             return Kind.PORTAL;
         }
         return Kind.OTHER;

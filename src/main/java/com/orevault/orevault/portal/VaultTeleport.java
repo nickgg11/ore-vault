@@ -5,8 +5,8 @@ import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 import com.orevault.orevault.OreVault;
-import com.orevault.orevault.block.ModBlocks;
 import com.orevault.orevault.item.VaultIgniterItem;
+import com.orevault.orevault.tags.ModTags;
 import com.orevault.orevault.team.TeamHelper;
 import com.orevault.orevault.worldgen.VaultDimensions;
 
@@ -287,7 +287,7 @@ public final class VaultTeleport {
         Direction exitDirection = exitDirection(player, axis);
 
         BlockPos exit = portalPos;
-        for (int steps = 0; steps < 4 && level.getBlockState(exit.relative(exitDirection)).is(ModBlocks.VAULT_PORTAL); steps++) {
+        for (int steps = 0; steps < 4 && level.getBlockState(exit.relative(exitDirection)).is(ModTags.Blocks.VAULT_PORTALS); steps++) {
             exit = exit.relative(exitDirection);
         }
         exit = exit.relative(exitDirection);

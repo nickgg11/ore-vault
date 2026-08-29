@@ -1,7 +1,10 @@
 {
   "itemGroup.orevault": "Ore Vault",
   "block.orevault.vault_frame": "Vault Frame",
-  "block.orevault.vault_portal": "Ore Vault Portal",
+  "block.orevault.vault_portal_common": "Ore Vault Portal (Common)",
+  "block.orevault.vault_portal_uncommon": "Ore Vault Portal (Uncommon)",
+  "block.orevault.vault_portal_rare": "Ore Vault Portal (Rare)",
+  "block.orevault.vault_portal_legendary": "Ore Vault Portal (Legendary)",
   "item.orevault.vault_igniter": "Crude Vault Igniter",
   "item.orevault.attuned_vault_igniter": "Attuned Vault Igniter",
   "item.orevault.resonant_vault_igniter": "Resonant Vault Igniter",

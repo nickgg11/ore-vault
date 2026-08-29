@@ -135,7 +135,7 @@ When an FTB Team is disbanded, the team's Vault dimension is deleted. This inclu
 - Valid frame: rectangular, all four sides made of Vault Frame blocks
 - Interior dimensions: minimum 2 wide × 3 tall, maximum 21 wide × 21 tall
 - Interior must be entirely air or existing portal blocks
-- If valid: fills interior with Ore Vault Portal blocks oriented to match the frame axis
+- If valid: fills interior with the tier-matched Ore Vault Portal variant, oriented to match the frame axis
 - If invalid: plays a failure sound, no portal created
 
 **Ore Vault Portal Block**
@@ -143,6 +143,7 @@ When an FTB Team is disbanded, the team's Vault dimension is deleted. This inclu
 - Hardness: -1.0 (unbreakable), blast resistance: 3,600,000
 - Light level: 11
 - Has HORIZONTAL_AXIS block state property for orientation
+- Four variants, one per igniter tier (#84): common (green), uncommon (blue), rare (purple), legendary (orange) — the igniter's tier selects which variant fills the frame. All four share one near-white texture tinted client-side via BlockColors (`tintindex`), and everything that recognises "a portal block" uses the `orevault:vault_portals` block tag.
 - Implements MC 26.1's `Portal` interface: entering starts the vanilla nether-style charge-up — 80 ticks (4 seconds) inside the portal with the wavy "confusion" screen overlay, giving players the chance to step back out — followed by a portal travel sound and the teleport
 - `entityInside()` handles teleportation (players only); FTB team required (teamless players get a hint instead of portal charge-up)
 - `updateShape()` breaks to air if a neighbouring block is neither Vault Frame nor portal block (whole-frame re-validation)
@@ -161,6 +162,8 @@ Else (requires an FTB team):
 ```
 
 Return position is stored in `player.getPersistentData()` under key `orevault_return` as an NBT compound with x/y/z integers. This survives death and dimension changes. The saved spot is walked out along the approach direction past the last portal block, so returning never instantly re-triggers the portal.
+
+> **Ore-block-look portals (investigation, #84):** the portal interior is a flat translucent plane (nether-portal style), so a literal ore-block appearance would need a full-cube model or a block-entity renderer — losing the flat translucency. Conclusion: keep the tinted plane; an "ore-look" would be done as a texture swap (ore-vein pattern on the plane), not a block-shaped portal.
 
 > **Spawn safety (implementation note):** the open air layer (§3.1) means the default entry needs no terrain carving — the player arrives standing on the deepslate surface in open air. Custom entry points (Tier 3+) scan upward from the stored block for a 2-block air pocket, carving one only if none is found nearby (e.g. the entry was set against a solid wall).
 
