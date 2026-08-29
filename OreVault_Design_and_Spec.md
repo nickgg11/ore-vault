@@ -110,7 +110,7 @@ Dimensions are created dynamically the first time any member of a team activates
 - Open air layer at the top of the dimension: 64 blocks tall (Y=256–319), giving players an open working space when they enter
 - Grass surface at Y=255, then a 4-block dirt band (Y=251–254)
 - Stone from Y=0 up to the dirt band; deepslate below Y=0 (Y=-64…-1)
-- Default entry point: feet at Y=256, standing on the grass surface
+- Default entry point: the heightmap surface at the mirrored XZ (first air block above the ground, verified 2-high), falling back to feet at Y=256; the exit portal is built standing on that surface
 - No aquifers, no caves by default (open to adding cave generation as a future node)
 - Ore generation handled entirely by the custom chunk generator, not static placed features
 - A hard floor of 40% stone content is enforced regardless of skill tree state — the Vault will never be more than 60% ore by volume

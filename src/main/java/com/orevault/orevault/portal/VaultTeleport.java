@@ -28,6 +28,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 
@@ -112,7 +113,7 @@ public final class VaultTeleport {
         }
 
         int tier = VaultIgniterItem.highestTierLevel(player);
-        BlockPos defaultAnchor = defaultEntry(player);
+        BlockPos defaultAnchor = safeSurface(vault, player.blockPosition());
         Optional<BlockPos> custom = tier >= 3 ? entryPoint(player) : Optional.empty();
         BlockPos target = custom.map(pos -> findSafeFooting(vault, pos)).orElse(defaultAnchor);
 
@@ -141,9 +142,27 @@ public final class VaultTeleport {
         );
     }
 
-    /** Mirrored XZ, feet standing on the grass surface (§3.2, §3.1 air layer). */
-    private static BlockPos defaultEntry(ServerPlayer player) {
-        return new BlockPos(player.blockPosition().getX(), VaultDimensions.defaultEntryY(), player.blockPosition().getZ());
+    /**
+     * Safe landing spot at the mirrored XZ (#77): reads the MOTION_BLOCKING
+     * heightmap (generating the chunk if needed) and scans down from the
+     * surface for a 2-block air pocket, falling back to the default entry
+     * height. Also used by {@link VaultPortalShape#ensureReturnPortal} to sit
+     * the exit portal on the actual surface.
+     */
+    public static BlockPos safeSurface(ServerLevel level, BlockPos at) {
+        int x = at.getX();
+        int z = at.getZ();
+        level.getChunk(x >> 4, z >> 4); // ensure generated so the heightmap is populated
+        int surface = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
+        int minY = level.getMinY() + 1;
+        int maxY = Math.min(surface, level.getMaxY() - 2);
+        for (int y = maxY; y >= minY; y--) {
+            BlockPos feet = new BlockPos(x, y, z);
+            if (level.getBlockState(feet).isAir() && level.getBlockState(feet.above()).isAir()) {
+                return feet;
+            }
+        }
+        return new BlockPos(x, VaultDimensions.defaultEntryY(), z);
     }
 
     // ----- Vault -> Overworld -----
@@ -197,7 +216,7 @@ public final class VaultTeleport {
         }
 
         int tier = VaultIgniterItem.highestTierLevel(player);
-        BlockPos defaultAnchor = defaultEntry(player);
+        BlockPos defaultAnchor = safeSurface(vault, player.blockPosition());
         Optional<BlockPos> custom = tier >= 3 ? entryPoint(player) : Optional.empty();
         BlockPos target = custom.map(pos -> findSafeFooting(vault, pos)).orElse(defaultAnchor);
 

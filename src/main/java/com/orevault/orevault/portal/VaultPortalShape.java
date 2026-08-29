@@ -6,7 +6,6 @@ import java.util.Optional;
 
 import com.orevault.orevault.block.ModBlocks;
 import com.orevault.orevault.block.VaultPortalBlock;
-import com.orevault.orevault.worldgen.VaultDimensions;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -265,7 +264,8 @@ public final class VaultPortalShape {
      * player-placed block. Returns true if the exit portal now exists.
      */
     public static boolean ensureReturnPortal(ServerLevel level, BlockPos anchor, Direction.Axis axis) {
-        int feetY = VaultDimensions.defaultEntryY();
+        // Sit the frame on the actual surface at the anchor XZ (#77).
+        int feetY = VaultTeleport.safeSurface(level, anchor).getY();
         int fixedBase = fixedCoord(anchor, axis) + 3;
         int minH = horizCoord(anchor, axis) - 1;
         int maxH = minH + 3;
