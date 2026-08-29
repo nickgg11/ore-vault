@@ -4,6 +4,7 @@ import com.orevault.orevault.OreVault;
 
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -57,6 +58,25 @@ public final class ModBlocks {
             case 4 -> VAULT_PORTAL_LEGENDARY;
             default -> VAULT_PORTAL_COMMON;
         };
+    }
+
+    /**
+     * Inverse of {@link #portalForTier}: the igniter tier a portal block
+     * represents, or 0 if the state is not a portal block. Lets the return
+     * portal upgrade itself without storing a separate high-water mark — the
+     * placed blocks already record which tier built them (#86).
+     */
+    public static int tierOfPortal(BlockState state) {
+        if (state.is(VAULT_PORTAL_LEGENDARY)) {
+            return 4;
+        }
+        if (state.is(VAULT_PORTAL_RARE)) {
+            return 3;
+        }
+        if (state.is(VAULT_PORTAL_UNCOMMON)) {
+            return 2;
+        }
+        return state.is(VAULT_PORTAL_COMMON) ? 1 : 0;
     }
 
     private ModBlocks() {

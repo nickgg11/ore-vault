@@ -272,63 +272,75 @@ public final class VaultPortalShape {
     }
 
     /**
-     * Best-effort exit portal at the vault's default entry point (§3.2): a
-     * free-standing 4×5 frame (2×3 interior) standing on the surface, offset
-     * three blocks along the plane normal from the anchor so arriving players
-     * never land inside it. Idempotent — existing frame/portal cells are
-     * kept, and the whole area is left untouched if any required cell holds a
-     * player-placed block. Returns true if the exit portal now exists.
+     * The team's one and only return portal, at the fixed Vault anchor (§3.2):
+     * a free-standing 4×5 frame with a 2×3 interior standing on the surface,
+     * offset three blocks along the plane normal from the anchor so arriving
+     * players never land inside it.
+     *
+     * <p><strong>A single plane</strong>, like a vanilla portal. The frame
+     * blocks are full cubes, so one plane of portal blocks is visible and
+     * usable from both sides; the earlier two-plane build produced a 2-block
+     * thick slab of 12 portal blocks (#85).</p>
+     *
+     * <p>Idempotent, and <strong>tier-upgrading</strong>: the interior is
+     * filled with the portal variant matching {@code tier}, but an existing
+     * portal is only ever upgraded, never downgraded (#86). The blocks
+     * themselves record the tier — each variant is a distinct block — so no
+     * separate high-water mark needs storing.</p>
+     *
+     * <p>The whole area is left untouched if any required cell holds a
+     * player-placed block. Returns true if the return portal now exists.</p>
      */
-    public static boolean ensureReturnPortal(ServerLevel level, BlockPos anchor, Direction.Axis axis) {
+    public static boolean ensureReturnPortal(ServerLevel level, BlockPos anchor, Direction.Axis axis, int tier) {
         // Sit the frame on the actual surface at the anchor XZ (#77).
         int feetY = VaultTeleport.safeSurface(level, anchor).getY();
-        int fixedBase = fixedCoord(anchor, axis) + 3;
+        int fixed = fixedCoord(anchor, axis) + 3;
         int minH = horizCoord(anchor, axis) - 1;
         int maxH = minH + 3;
         int minY = feetY;
         int maxY = feetY + 4;
         BlockState frame = ModBlocks.VAULT_FRAME.get().defaultBlockState();
-        BlockState portal = ModBlocks.VAULT_PORTAL_COMMON.get().defaultBlockState().setValue(VaultPortalBlock.AXIS, axis);
 
         // Idempotency check: every cell must be clear or already correct.
-        for (int plane = 0; plane <= 1; plane++) {
-            int fixed = fixedBase + plane;
-            for (int h = minH; h <= maxH; h++) {
-                for (int y = minY; y <= maxY; y++) {
-                    boolean frameCell = h == minH || h == maxH || y == minY || y == maxY;
-                    BlockState existing = level.getBlockState(at(h, y, fixed, axis));
-                    boolean acceptable = frameCell
-                            ? existing.isAir() || existing.is(ModBlocks.VAULT_FRAME)
-                            : existing.isAir() || existing.is(ModTags.Blocks.VAULT_PORTALS);
-                    if (!acceptable) {
-                        return false;
-                    }
+        for (int h = minH; h <= maxH; h++) {
+            for (int y = minY; y <= maxY; y++) {
+                boolean frameCell = h == minH || h == maxH || y == minY || y == maxY;
+                BlockState existing = level.getBlockState(at(h, y, fixed, axis));
+                boolean acceptable = frameCell
+                        ? existing.isAir() || existing.is(ModBlocks.VAULT_FRAME)
+                        : existing.isAir() || existing.is(ModTags.Blocks.VAULT_PORTALS);
+                if (!acceptable) {
+                    return false;
                 }
             }
         }
 
+        // Never downgrade an existing portal: take the highest tier present.
+        int effectiveTier = tier;
+        for (int h = minH + 1; h < maxH; h++) {
+            for (int y = minY + 1; y < maxY; y++) {
+                effectiveTier = Math.max(effectiveTier, ModBlocks.tierOfPortal(level.getBlockState(at(h, y, fixed, axis))));
+            }
+        }
+        BlockState portal = ModBlocks.portalForTier(effectiveTier).get()
+                .defaultBlockState()
+                .setValue(VaultPortalBlock.AXIS, axis);
+
         // Frame first, then interior, so updateShape validation sees a complete frame.
-        for (int plane = 0; plane <= 1; plane++) {
-            int fixed = fixedBase + plane;
-            for (int h = minH; h <= maxH; h++) {
-                for (int y = minY; y <= maxY; y++) {
-                    boolean frameCell = h == minH || h == maxH || y == minY || y == maxY;
-                    BlockPos pos = at(h, y, fixed, axis);
-                    BlockState wanted = frameCell ? frame : portal;
-                    if (frameCell && !level.getBlockState(pos).is(ModBlocks.VAULT_FRAME)) {
-                        level.setBlock(pos, wanted, Block.UPDATE_CLIENTS);
-                    }
+        for (int h = minH; h <= maxH; h++) {
+            for (int y = minY; y <= maxY; y++) {
+                boolean frameCell = h == minH || h == maxH || y == minY || y == maxY;
+                BlockPos pos = at(h, y, fixed, axis);
+                if (frameCell && !level.getBlockState(pos).is(ModBlocks.VAULT_FRAME)) {
+                    level.setBlock(pos, frame, Block.UPDATE_CLIENTS);
                 }
             }
         }
-        for (int plane = 0; plane <= 1; plane++) {
-            int fixed = fixedBase + plane;
-            for (int h = minH + 1; h < maxH; h++) {
-                for (int y = minY + 1; y < maxY; y++) {
-                    BlockPos pos = at(h, y, fixed, axis);
-                    if (!level.getBlockState(pos).is(ModTags.Blocks.VAULT_PORTALS)) {
-                        level.setBlock(pos, portal, Block.UPDATE_CLIENTS);
-                    }
+        for (int h = minH + 1; h < maxH; h++) {
+            for (int y = minY + 1; y < maxY; y++) {
+                BlockPos pos = at(h, y, fixed, axis);
+                if (!level.getBlockState(pos).is(portal.getBlock())) {
+                    level.setBlock(pos, portal, Block.UPDATE_CLIENTS);
                 }
             }
         }
