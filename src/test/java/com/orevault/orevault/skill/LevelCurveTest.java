@@ -1,5 +1,6 @@
 package com.orevault.orevault.skill;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -106,5 +107,59 @@ class LevelCurveTest {
         assertThrows(IllegalArgumentException.class, () -> LevelCurve.compute(0, GAIN_PER_HOUR, TARGET_HOURS));
         assertThrows(IllegalArgumentException.class, () -> LevelCurve.compute(225, 0.0, TARGET_HOURS));
         assertThrows(IllegalArgumentException.class, () -> LevelCurve.compute(225, GAIN_PER_HOUR, 0));
+    }
+
+    // ----- curve_divisor (§4.3 step 6, #24) -----
+
+    /**
+     * The divisor is the pack author's grind knob: it must move the absolute
+     * cost of every level and nothing else. If it changed the shape, the §4.3
+     * milestone table and every level requirement in §6 would silently mean
+     * something different at a non-default setting.
+     */
+    @Test
+    void curveDivisorScalesEveryThresholdUniformly() {
+        int treeCost = NodeDefs.totalTreeCost(Tree.RESONANCE);
+        long[] full = LevelCurve.compute(treeCost, GAIN_PER_HOUR, TARGET_HOURS, 1.0).levelCosts();
+        long[] halved = LevelCurve.compute(treeCost, GAIN_PER_HOUR, TARGET_HOURS, 2.0).levelCosts();
+
+        assertEquals(full.length, halved.length);
+        for (int i = 0; i < full.length; i++) {
+            assertEquals(full[i] / 2.0, halved[i], 1.0, "level " + (i + 1) + " cost");
+        }
+    }
+
+    @Test
+    void curveDivisorLeavesTheLastToFirstRatioUnchanged() {
+        int treeCost = NodeDefs.totalTreeCost(Tree.RESONANCE);
+        long[] halved = LevelCurve.compute(treeCost, GAIN_PER_HOUR, TARGET_HOURS, 2.0).levelCosts();
+
+        double ratio = (double) halved[halved.length - 1] / halved[0];
+        assertEquals(LevelCurve.LAST_TO_FIRST_RATIO, ratio, 1.0);
+    }
+
+    @Test
+    void curveDivisorHalvesTheTotalGrind() {
+        int treeCost = NodeDefs.totalTreeCost(Tree.RESONANCE);
+        LevelCurve halved = LevelCurve.compute(treeCost, GAIN_PER_HOUR, TARGET_HOURS, 2.0);
+
+        assertEquals(Math.round(GAIN_PER_HOUR * TARGET_HOURS / 2.0), halved.totalCost());
+        // Points per level is a property of the tree, not of the grind knob.
+        assertEquals(Math.ceilDiv(treeCost, NodeCosts.LEVEL_CAP), halved.pointsPerLevel());
+    }
+
+    @Test
+    void defaultDivisorMatchesTheThreeArgumentCurve() {
+        int treeCost = NodeDefs.totalTreeCost(Tree.RESONANCE);
+
+        assertArrayEquals(
+                LevelCurve.compute(treeCost, GAIN_PER_HOUR, TARGET_HOURS).levelCosts(),
+                LevelCurve.compute(treeCost, GAIN_PER_HOUR, TARGET_HOURS, 1.0).levelCosts());
+    }
+
+    @Test
+    void rejectsNonPositiveDivisor() {
+        assertThrows(IllegalArgumentException.class, () -> LevelCurve.compute(225, GAIN_PER_HOUR, TARGET_HOURS, 0.0));
+        assertThrows(IllegalArgumentException.class, () -> LevelCurve.compute(225, GAIN_PER_HOUR, TARGET_HOURS, -1.0));
     }
 }

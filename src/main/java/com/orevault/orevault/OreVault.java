@@ -8,6 +8,7 @@ import com.orevault.orevault.debug.VaultDiag;
 import com.orevault.orevault.event.FtbEvents;
 import com.orevault.orevault.event.PortalEvents;
 import com.orevault.orevault.item.ModItems;
+import com.orevault.orevault.resonance.ResonanceSystem;
 import com.orevault.orevault.worldgen.VaultDimensions;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -31,6 +32,9 @@ public class OreVault {
 
         // Portal protection (creative-mode break cancelling).
         NeoForge.EVENT_BUS.register(PortalEvents.class);
+
+        // Resonance pool, levels and skill-point awards; computes the §4.3 curve at server start.
+        NeoForge.EVENT_BUS.register(ResonanceSystem.class);
 
         // Playtest diagnostics (#82): block-break instrumentation + /orevault diag.
         NeoForge.EVENT_BUS.register(VaultDiag.class);

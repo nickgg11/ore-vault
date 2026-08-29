@@ -10,5 +10,6 @@
   "item.orevault.resonant_vault_igniter": "Resonant Vault Igniter",
   "item.orevault.sovereign_vault_igniter": "Sovereign Vault Igniter",
   "message.orevault.vault_arrival": "Welcome to the Ore Vault!",
-  "message.orevault.overworld_return": "Welcome back to the Overworld."
+  "message.orevault.overworld_return": "Welcome back to the Overworld.",
+  "message.orevault.resonance_level_up": "Resonance level %s — %s skill points earned"
 }

@@ -36,23 +36,48 @@ public final class LevelCurve {
     }
 
     /**
-     * Computes the level-cost curve.
+     * Computes the level-cost curve at the default grind ({@code curveDivisor}
+     * of 1.0).
      *
      * @param totalTreeCost   sum of every tier cost in the tree; sets the points awarded per level
      * @param soloGainPerHour average Resonance/Animus gained per hour by a solo player
      * @param targetPlayHours target hours to fully complete the tree
      */
     public static LevelCurve compute(int totalTreeCost, double soloGainPerHour, int targetPlayHours) {
+        return compute(totalTreeCost, soloGainPerHour, targetPlayHours, 1.0);
+    }
+
+    /**
+     * Computes the level-cost curve.
+     *
+     * <p>{@code curveDivisor} (§4.3 step 6) divides the total gain the curve is
+     * spread over, so it scales every threshold by the same factor and leaves
+     * the shape — the {@value #LAST_TO_FIRST_RATIO}:1 last-to-first ratio and
+     * the §4.3 milestone spacing — exactly as authored. That is the whole point
+     * of applying it here rather than to node costs or the level cap: a pack
+     * author can make Ore Vault a 40-hour mod without invalidating any level
+     * requirement in §6.</p>
+     *
+     * @param totalTreeCost   sum of every tier cost in the tree; sets the points awarded per level
+     * @param soloGainPerHour average Resonance/Animus gained per hour by a solo player
+     * @param targetPlayHours target hours to fully complete the tree
+     * @param curveDivisor    divides the total gain; 2.0 is half the grind, 0.5 is double it
+     */
+    public static LevelCurve compute(int totalTreeCost, double soloGainPerHour, int targetPlayHours,
+                                     double curveDivisor) {
         if (totalTreeCost < 1) {
             throw new IllegalArgumentException("totalTreeCost must be >= 1, got " + totalTreeCost);
         }
         if (soloGainPerHour <= 0 || targetPlayHours <= 0) {
             throw new IllegalArgumentException("soloGainPerHour and targetPlayHours must be positive");
         }
+        if (curveDivisor <= 0) {
+            throw new IllegalArgumentException("curveDivisor must be positive, got " + curveDivisor);
+        }
 
         int levelCap = NodeCosts.LEVEL_CAP;
         int pointsPerLevel = Math.ceilDiv(totalTreeCost, levelCap);
-        double totalGain = soloGainPerHour * targetPlayHours;
+        double totalGain = soloGainPerHour * targetPlayHours / curveDivisor;
 
         long[] costs = new long[levelCap];
         if (levelCap == 1) {
