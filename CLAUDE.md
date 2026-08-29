@@ -152,7 +152,68 @@ Two constraints:
   `.java` starts.
 
 `.tools/` and `.gradle-home/` are gitignored, so a fresh clone has no language server
-until they're restored.
+until they're restored. `jdtls-local` itself is **untracked** — it is not in git, so it
+exists only in the primary checkout on this machine. Worktrees and fresh clones do not
+get it, and its launcher resolves `.tools/` four directories up, which is wrong from
+inside `.claude/worktrees/<name>/`. Both are reasons the "launch from the repo root"
+rule above matters.
+
+## Skills and plugins
+
+Installed on this machine and loaded every session. Pass the bare name to the Skill
+tool; a leading slash means it runs only when the user types it.
+
+| Plugin | What it provides |
+| --- | --- |
+| `superpowers` | 14 process skills, invoked as `superpowers:<name>` |
+| `mattpocock-skills` | 25 engineering and writing skills, `mattpocock-skills:<name>` |
+| `claude-md-management` | the `claude-md-improver` skill, plus `/revise-claude-md` |
+| `remember` | automatic session capture through hooks, plus `/doctor` |
+| `feature-dev` | `/feature-dev` |
+| `serena` | an MCP server for semantic code navigation, run through `uvx` |
+
+`superpowers` covers brainstorming, systematic-debugging, test-driven-development,
+writing-plans, executing-plans, verification-before-completion, requesting-code-review,
+receiving-code-review, finishing-a-development-branch, using-git-worktrees,
+dispatching-parallel-agents, subagent-driven-development, writing-skills and
+using-superpowers.
+
+From `mattpocock-skills`, these fire on their own when relevant: `diagnosing-bugs`,
+`grilling`, `tdd`, `prototype`, `research`, `domain-modeling`, `codebase-design`,
+`code-review`, `resolving-merge-conflicts`, `wizard`, `writing-for-agents`. These wait
+for you to type them: `/ask-matt`, `/grill-me`, `/grill-with-docs`, `/implement`,
+`/improve-codebase-architecture`, `/to-spec`, `/to-tickets`, `/triage`, `/wayfinder`,
+`/handoff`, `/teach`, `/to-questionnaire`, `/wait-what`.
+
+Project-scoped skills live in `.claude/skills/`. `address-review` pulls the unresolved
+review comments off a PR, fixes them, pushes, and replies on each thread. User-level
+skills in `~/.claude/skills/` are `find-skills`, `humanizer` and `skill-vetter`.
+
+Two overlaps to be deliberate about. There are **two TDD skills** —
+`superpowers:test-driven-development` and `mattpocock-skills:tdd`. The work so far has
+used the superpowers one, and the Red-Green-Refactor evidence in existing PR bodies
+follows its format; stay on it rather than mixing conventions mid-project. Separately,
+`mattpocock-skills:code-review` is a local pass over a diff and has nothing to do with
+either the `/code-review` command or the GitHub workflow below.
+
+`remember` captures sessions on its own through SessionStart, UserPromptSubmit and
+PostToolUse hooks, writing to `.remember/` at the repo root with its own `.gitignore`.
+Hooks are read once at startup, so enabling or updating the plugin needs a restart
+before anything is captured. `/doctor` reports whether capture is actually live.
+
+## Automated PR review
+
+`.github/workflows/claude-code-review.yml` runs `anthropics/claude-code-action@v1` on
+every PR opened, pushed, reopened or marked ready, one review at a time per PR with new
+pushes cancelling the run in flight.
+
+**A green check does not prove a review happened.** The job gates on
+`CLAUDE_CODE_OAUTH_TOKEN` through a step output, because the secrets context cannot be
+used in a job-level `if:`. With no token it skips both the checkout and the action and
+still reports success, which is deliberate — a missing secret shouldn't fail a check on
+every PR — but it means a silent no-op looks identical to a clean review. That secret
+was added on 2026-08-29; every run before then skipped. If you need to know whether a
+review really ran, check that steps 3 and 4 executed rather than trusting the tick.
 
 ## Conventions
 
@@ -166,6 +227,10 @@ until they're restored.
   density rather than narrating what the code already says.
 - `debug/VaultDiag.java` is playtest instrumentation, held to a lighter bar than
   gameplay code.
+- Prose written for humans — issue bodies, PR descriptions, ticket comments, replies
+  in this chat — goes through the `humanizer` skill's rules. No inflated significance,
+  no bolded inline-header lists, no rule-of-three padding, no emoji. Say the specific
+  thing.
 
 ## Out of scope for review
 
