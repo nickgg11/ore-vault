@@ -16,12 +16,11 @@ import net.minecraft.world.phys.Vec3;
  * The orb an ore break pays out in (§4.2). Absorption credits the breaker's
  * team Resonance pool — never the absorbing player's experience.
  *
- * <p>Colour is blue/cyan per §11; the renderer that draws it is [40], so until
- * then it renders as nothing in-world and only the pickup is observable.</p>
+ * <p>Colour is blue/cyan per §11, applied by the shared orb renderer.</p>
  */
 public class ResonanceOrbEntity extends VaultOrbEntity {
 
-    /** Blue/cyan (§11), read by the renderer in [40]. */
+    /** Blue/cyan (§11). */
     public static final int TINT = 0x3FC7E8;
 
     public ResonanceOrbEntity(EntityType<? extends ResonanceOrbEntity> type, Level level) {
@@ -37,6 +36,11 @@ public class ResonanceOrbEntity extends VaultOrbEntity {
         ResonanceOrbEntity orb = new ResonanceOrbEntity(level, pos, teamId, value);
         level.addFreshEntity(orb);
         return orb;
+    }
+
+    @Override
+    public int getTint() {
+        return TINT;
     }
 
     @Override

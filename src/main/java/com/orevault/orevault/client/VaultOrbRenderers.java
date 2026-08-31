@@ -2,7 +2,6 @@ package com.orevault.orevault.client;
 
 import com.orevault.orevault.entity.ModEntities;
 
-import net.minecraft.client.renderer.entity.NoopRenderer;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 
@@ -16,9 +15,9 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent;
  * dedicated server perfectly happy — the asymmetry §CLAUDE.md's side-safety rule
  * is about.</p>
  *
- * <p>{@link NoopRenderer} is a placeholder. The real renderer — a tinted orb
- * sized by value, blue/cyan per §11 — is [40], so until that lands orbs are
- * collectable but invisible.</p>
+ * <p>Both orb types share {@link VaultOrbRenderer}, which takes its tint from
+ * the entity (§11). That is the whole reason the tint lives on the entity rather
+ * than in the renderer: the Animus orb registers here and needs nothing else.</p>
  */
 public final class VaultOrbRenderers {
 
@@ -31,6 +30,6 @@ public final class VaultOrbRenderers {
     }
 
     private static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
-        event.registerEntityRenderer(ModEntities.RESONANCE_ORB.get(), NoopRenderer::new);
+        event.registerEntityRenderer(ModEntities.RESONANCE_ORB.get(), VaultOrbRenderer::new);
     }
 }

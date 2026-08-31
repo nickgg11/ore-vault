@@ -1300,16 +1300,24 @@ Nine nodes modify what an ore break drops, and the order they apply in changes t
 | Stage | Nodes |
 |---|---|
 | 1. Consume | Tithe (block consumed, no drops), Brittle Stone (shatter roll) |
-| 2. Quantity | Ore Doubling, Greedy Seams, Automated Extraction |
-| 3. Fortune | Vein Fortune, Vault's Purity's +1 Fortune |
+| 2. Fortune | Vein Fortune, Vault's Purity's +1 Fortune |
+| 3. Quantity | Ore Doubling, Greedy Seams, Automated Extraction |
 | 4. Transform | Smelter's Intuition, Runic Attunement (Attuned marking), dust/Mekanism substitution |
 | 5. Bonus | Stone Memory, Ancient Knowledge, Stonecaller, Vault Echo, Deep Harvest |
 
-> **Fortune is the awkward stage.** `BlockDropsEvent` fires *after* `Block#getDrops` has already rolled the loot table, so a Fortune bonus cannot simply be added there. Stage 3 therefore discards the existing drop list and re-rolls `state.getDrops(...)` with a copy of the tool carrying the appropriate Fortune level. Everything else operates on the list in place.
+> **Fortune is the awkward stage.** `BlockDropsEvent` fires *after* `Block#getDrops` has already rolled the loot table, so a Fortune bonus cannot simply be added there. The Fortune stage therefore discards the existing drop list and re-rolls `state.getDrops(...)` with a copy of the tool carrying the appropriate Fortune level. Everything else operates on the list in place.
+>
+> That re-roll is why Fortune runs before Quantity rather than after it, which is a change from the original ordering. Rolling Quantity first and then discarding the list would have silently deleted everything Ore Doubling and Greedy Seams had just added, whenever a Fortune node was also unlocked. The current order also answers the other two ordering questions cleanly: Consume short-circuits before Fortune ever rolls, and Transform still follows Quantity, so Smelter's Intuition smelts the doubled output.
+
+Consume, Fortune and Quantity **contribute** to an outcome the pipeline applies once, rather than editing the drop list themselves. That is what makes two guarantees structural instead of conventional: Quantity multipliers compose multiplicatively because they are multiplied together, and the loot table is re-rolled exactly once no matter how many nodes raise Fortune. Transform and Bonus do edit the list, because replacing and appending compose in the obvious way and there is nothing to accumulate.
 
 ### Resonance Orb Entity
 
-Subclass or repurpose `ExperienceOrb` for Resonance and Animus orbs. Override the pickup behaviour to add to the team pool instead of player XP. Use a custom renderer (or simply recolour via render type) to distinguish from vanilla XP — suggested colours: Resonance = blue/cyan, Animus = red/dark red.
+Resonance and Animus orbs share a `VaultOrbEntity` base that pays a team pool rather than player XP. It is **modelled on `ExperienceOrb` rather than extending it**: the two behaviours that matter here are exactly the two vanilla hard-codes wrongly for a team-owned orb — `playerTouch` grants the toucher experience, and the follow logic chases the nearest player of any allegiance. Subclassing would have left both one missed override away from paying out to whoever walked past.
+
+Movement is server-authoritative. Vanilla runs the follow logic on both sides and lets the client predict, which works because "nearest player" is knowable client-side; team membership is not, so a client prediction would pull orbs toward players who cannot collect them. The client interpolates what the server sends, which is why the entity type uses a short update interval.
+
+One renderer draws both types. It reuses the vanilla orb sprite sheet — an orb should read as an orb and differ by colour — sizing by value on vanilla's own thresholds and taking its tint from the entity: Resonance = blue/cyan, Animus = red/dark red.
 
 ### Node Cost Constants
 
@@ -1410,9 +1418,10 @@ Use this to track progress. Update at the end of each development session.
 - [ ] Tier 3+ skips the wait and the cooldown
 
 ### Resonance System
-- [x] Resonance orb entity — registered and collectable; the visual distinction from XP is the
-      renderer task, so orbs are invisible until it lands
-- [ ] Resonance orb spawns on ore break in Vault
+- [x] Resonance orb entity — registered, collectable and drawn: vanilla orb sprite sized by
+      value, tinted blue/cyan, shared with the Animus orb post-1.0
+- [x] Resonance orb spawns on ore break in Vault — 2/5/12 by rarity, ×1.75 when Tithe consumed
+      the block; machine breaks award nothing (§4.2)
 - [x] Orb floats to nearest team member in radius — 8 blocks base, server-authoritative;
       only members of the owning team attract or collect it
 - [x] Team Resonance pool accumulation
@@ -1422,7 +1431,8 @@ Use this to track progress. Update at the end of each development session.
 - [x] Remove `ASSUMED_TEAM_SIZE` from `NodeCosts` and `LevelCurve`
 - [x] Skill point award on level-up — every level crossed is paid; the notification is an
       overlay message until the network channel lands, then it becomes a real toast
-- [ ] Drop pipeline (5 ordered stages on `BlockDropsEvent`)
+- [x] Drop pipeline (5 ordered stages on `BlockDropsEvent`) — the single listener, the stage
+      contract and the Fortune re-roll; the nine node effects register into it as they land
 - [ ] Vein index: completion detection, Twin Veins registration, player-placed ore excluded
 - [x] Refund: `3 XP levels × tier cost`, free for 10 min after a reset — window state and
       `startFreeRespecWindow` are in place; the reset that opens it is owned by the reset ticket

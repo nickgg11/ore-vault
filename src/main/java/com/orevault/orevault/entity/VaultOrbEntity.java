@@ -138,6 +138,41 @@ public abstract class VaultOrbEntity extends Entity {
         return teamId;
     }
 
+    /**
+     * Sprite index on the vanilla orb sheet, which is how an orb shows its worth
+     * at a glance. Vanilla's thresholds are reused deliberately rather than
+     * rescaled for Resonance: the §4.2 base rates land across the first four
+     * sizes as it is — a common ore at 2 is the smallest orb, uncommon at 5 the
+     * next, rare at 12 the next, a Tithed rare at 21 the next — and matching
+     * vanilla means the size reads the same way players already expect.
+     */
+    public int getIcon() {
+        int value = getValue();
+        if (value >= 2477) {
+            return 10;
+        } else if (value >= 1237) {
+            return 9;
+        } else if (value >= 617) {
+            return 8;
+        } else if (value >= 307) {
+            return 7;
+        } else if (value >= 149) {
+            return 6;
+        } else if (value >= 73) {
+            return 5;
+        } else if (value >= 37) {
+            return 4;
+        } else if (value >= 17) {
+            return 3;
+        } else if (value >= 7) {
+            return 2;
+        }
+        return value >= 3 ? 1 : 0;
+    }
+
+    /** Packed RGB the renderer tints this orb with (§11). */
+    public abstract int getTint();
+
     /** Blocks from which this orb is drawn to a team member. */
     protected double attractionRadius() {
         return BASE_ATTRACTION_RADIUS;
@@ -145,8 +180,8 @@ public abstract class VaultOrbEntity extends Entity {
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder entityData) {
-        // Value is synced because the renderer sizes the orb by it ([40]); the
-        // team id is not, because only the server ever decides who may collect.
+        // Value is synced because the renderer sizes the orb by it; the team id
+        // is not, because only the server ever decides who may collect.
         entityData.define(DATA_VALUE, 0);
     }
 
