@@ -1410,9 +1410,11 @@ Use this to track progress. Update at the end of each development session.
 - [ ] Tier 3+ skips the wait and the cooldown
 
 ### Resonance System
-- [ ] Resonance orb entity (visual distinction from XP)
+- [x] Resonance orb entity — registered and collectable; the visual distinction from XP is the
+      renderer task, so orbs are invisible until it lands
 - [ ] Resonance orb spawns on ore break in Vault
-- [ ] Orb floats to nearest team member in radius
+- [x] Orb floats to nearest team member in radius — 8 blocks base, server-authoritative;
+      only members of the owning team attract or collect it
 - [x] Team Resonance pool accumulation
 - [x] Level curve: cap 30, `ceil(totalTreeCost / 30)` points per level
 - [x] `[resonance]` config block: `target_play_hours`, `curve_divisor`
