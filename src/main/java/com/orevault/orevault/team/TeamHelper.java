@@ -56,9 +56,21 @@ public final class TeamHelper {
         return getTeamById(teamId).map(Team::getOnlineMembers).orElse(List.of());
     }
 
-    /** Total member count of the given team (0 if the team is unknown). */
+    /**
+     * Total member count of the given team.
+     *
+     * <p><b>Falls back to 1, not 0.</b> Every player is a team of at least
+     * themselves (§2), and {@link #getTeamId} already returns the player's own
+     * UUID when FTB Teams has no record — a UUID that is deliberately not a team
+     * id, so looking it up here finds nothing. Returning 0 for that case fed
+     * {@code TeamScaling.teamPoolGain} a divisor of zero, which throws, on the
+     * orb-pickup path. A team that genuinely has no members cannot be earning
+     * Resonance, so 1 is the only answer that is ever right.</p>
+     */
     public static int teamSize(UUID teamId) {
-        return getTeamById(teamId).map(team -> team.getMembers().size()).orElse(0);
+        return getTeamById(teamId)
+                .map(team -> Math.max(1, team.getMembers().size()))
+                .orElse(1);
     }
 
     /** Whether the player's team has at most one member (solo). */
