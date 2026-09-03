@@ -43,12 +43,14 @@ public final class OreVaultServerConfig {
         TARGET_PLAY_HOURS = BUILDER
                 .comment("Target hours of play to make the full Resonance tree purchasable (level 30).",
                         "Read once at server start; changing it requires a restart.")
+                .translation("orevault.configuration.resonance.target_play_hours")
                 .defineInRange("target_play_hours", 100, 1, 10000);
         CURVE_DIVISOR = BUILDER
                 .comment("Divides the total Resonance required across the whole curve.",
                         "2.0 = half the grind; 0.5 = double it. The shape of the curve is unchanged,",
                         "so every level requirement in the skill tree keeps its intended pacing.",
                         "Read once at server start; changing it requires a restart.")
+                .translation("orevault.configuration.resonance.curve_divisor")
                 .defineInRange("curve_divisor", 1.0, 0.01, 100.0);
         BUILDER.pop();
 
@@ -56,10 +58,12 @@ public final class OreVaultServerConfig {
         VAULT_PRESENCE_ENABLED = BUILDER
                 .comment("Whether the Vault Presence skill nodes are enabled.",
                         "Set to false to disable cross-dimension chunk loading entirely.")
+                .translation("orevault.configuration.chunk_loading.vault_presence_enabled")
                 .define("vault_presence_enabled", true);
         MAX_LOADED_CHUNKS_PER_TEAM = BUILDER
                 .comment("Hard ceiling on simultaneous loaded chunks per team, regardless of node level.",
                         "Set to 0 for unlimited (not recommended).")
+                .translation("orevault.configuration.chunk_loading.max_loaded_chunks_per_team")
                 .defineInRange("max_loaded_chunks_per_team", 32, 0, Integer.MAX_VALUE);
         BUILDER.pop();
 
@@ -68,12 +72,14 @@ public final class OreVaultServerConfig {
                 .comment("Override the automatic rarity classification for specific ore blocks.",
                         "Format: \"modid:block_id=common|uncommon|rare\"",
                         "Example: \"minecraft:diamond_ore=rare\"")
+                .translation("orevault.configuration.ore_classification.overrides")
                 .defineListAllowEmpty("overrides", List.of(), () -> "", OreVaultServerConfig::validateOverride);
         BUILDER.pop();
 
         BUILDER.push("disturbed_zones");
         MAX_ZONES_PER_TEAM = BUILDER
                 .comment("Maximum number of Disturbed Zone blocks placeable per team.")
+                .translation("orevault.configuration.disturbed_zones.max_zones_per_team")
                 .defineInRange("max_zones_per_team", 10, 1, Integer.MAX_VALUE);
         BUILDER.pop();
 
@@ -81,24 +87,27 @@ public final class OreVaultServerConfig {
         ALLOW_BACKUP_ON_RESET = BUILDER
                 .comment("Whether team members can take backups before resetting.",
                         "Disable if disk space is a concern.")
+                .translation("orevault.configuration.reset.allow_backup_on_reset")
                 .define("allow_backup_on_reset", true);
         BUILDER.pop();
 
         BUILDER.push("debug");
         ENABLE_DEBUG_COMMANDS = BUILDER
-                .comment("Whether the /orevault debug commands are usable.",
+                .comment("Whether the /orevault debug commands are usable. Off by default.",
                         "Gates /orevault diag and /orevault testore, which fills a cube with ore.",
                         "Operator permission is required on top of this — the flag decides whether",
                         "the command exists at all, not who may run it.",
-                        "Default true while the mod is pre-1.0 and being playtested. Flip to false,",
-                        "and delete the whole [debug] block, before release.")
-                .define("enable_debug_commands", true);
+                        "Turn on from the mods menu (Mods -> Ore Vault -> Config) while playtesting.",
+                        "The whole [debug] block is removed before release (#120).")
+                .translation("orevault.configuration.debug.enable_debug_commands")
+                .define("enable_debug_commands", false);
         LOG_RESONANCE_GAIN = BUILDER
                 .comment("Print a chat line to the collecting player every time an orb pays Resonance.",
-                        "Playtest instrumentation: there is no other readout of the pool until the",
-                        "Tome UI lands. Turn off for normal play; the whole [debug] block goes away",
-                        "before 1.0.")
-                .define("log_resonance_gain", true);
+                        "Off by default. Playtest instrumentation: there is no other readout of the",
+                        "pool until the Tome UI lands, so turn this on from the mods menu when you",
+                        "need to see Resonance arriving. Removed before release (#120).")
+                .translation("orevault.configuration.debug.log_resonance_gain")
+                .define("log_resonance_gain", false);
         BUILDER.pop();
 
         SPEC = BUILDER.build();

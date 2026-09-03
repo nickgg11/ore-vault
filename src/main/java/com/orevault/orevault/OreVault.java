@@ -2,6 +2,7 @@ package com.orevault.orevault;
 
 import com.mojang.logging.LogUtils;
 import com.orevault.orevault.block.ModBlocks;
+import com.orevault.orevault.client.VaultConfigScreen;
 import com.orevault.orevault.client.VaultOrbRenderers;
 import com.orevault.orevault.client.VaultPortalColors;
 import com.orevault.orevault.config.OreVaultServerConfig;
@@ -43,7 +44,8 @@ public class OreVault {
         // then pays the break's Resonance (#26). No other class listens for drops.
         NeoForge.EVENT_BUS.register(DropPipeline.class);
 
-        // Playtest diagnostics (#82): block-break instrumentation + /orevault diag.
+        // Playtest instrumentation: /orevault diag and /orevault testore, plus the
+        // Resonance pickup readout. Both gated on [debug] in config (#120).
         NeoForge.EVENT_BUS.register(VaultDiag.class);
 
         // Server-side config (§10).
@@ -60,12 +62,14 @@ public class OreVault {
         // Entity registry ([21]: Resonance orb; the Animus orb lands post-1.0).
         ModEntities.ENTITY_TYPES.register(modEventBus);
 
-        // Client-side rendering. Both must stay behind the dist check: a
-        // common-path reference to a client class kills a dedicated server at
-        // class-load, and no unit test here would catch it.
+        // Client-side rendering and the mods-menu Config button. All three must
+        // stay behind the dist check: a common-path reference to a client class
+        // kills a dedicated server at class-load, and no unit test here would
+        // catch it.
         if (FMLEnvironment.getDist().isClient()) {
             VaultPortalColors.register(modEventBus);
             VaultOrbRenderers.register(modEventBus);
+            VaultConfigScreen.register(modContainer);
         }
 
         // Registrations are added incrementally in later tasks:
