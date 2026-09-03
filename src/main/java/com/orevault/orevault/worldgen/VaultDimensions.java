@@ -130,6 +130,46 @@ public final class VaultDimensions {
     }
 
     /**
+     * The team a Vault dimension belongs to, or {@code null} if the level is not
+     * a Vault. Inverse of {@link #dimensionKey}, parsed from the level's own id
+     * rather than looked up in {@link #TEAM_DIMENSIONS} so it answers correctly
+     * for a Vault whose team has no entry yet.
+     *
+     * <p>Break handling derives the owning team this way rather than from the
+     * breaking player, because a machine has no player and because the world was
+     * generated against the owner's skill tree — the drops belong to whoever the
+     * dimension belongs to.</p>
+     */
+    public static @Nullable UUID teamIdFor(Level level) {
+        if (!isVaultDimension(level)) {
+            return null;
+        }
+        String raw = level.dimension().identifier().getPath().substring("vault_".length());
+        if (raw.length() != 32) {
+            return null;
+        }
+        try {
+            return UUID.fromString(new StringBuilder(raw)
+                    .insert(20, '-').insert(16, '-').insert(12, '-').insert(8, '-')
+                    .toString());
+        } catch (IllegalArgumentException malformed) {
+            return null;
+        }
+    }
+
+    /**
+     * The team's current skill snapshot, refreshed on the main thread.
+     *
+     * <p>Break handling reads this rather than {@code OreVaultTeamData} directly.
+     * Both would be correct on the main thread, but two views of skill state is
+     * exactly how they drift — the snapshot is the one source, and worldgen
+     * already depends on it.</p>
+     */
+    public static VaultChunkGenerator.SkillSnapshot skillSnapshot(UUID teamId) {
+        return SKILL_SNAPSHOTS.getOrDefault(teamId, VaultChunkGenerator.SkillSnapshot.EMPTY);
+    }
+
+    /**
      * Default entry Y for the base dimension: the bottom of the configured air
      * layer (#76), falling back to the pre-config height while no server has
      * loaded the layer stack yet. Both variants share the same surface — they

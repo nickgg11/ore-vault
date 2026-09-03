@@ -6,6 +6,7 @@ import com.orevault.orevault.client.VaultOrbRenderers;
 import com.orevault.orevault.client.VaultPortalColors;
 import com.orevault.orevault.config.OreVaultServerConfig;
 import com.orevault.orevault.debug.VaultDiag;
+import com.orevault.orevault.event.DropPipeline;
 import com.orevault.orevault.event.FtbEvents;
 import com.orevault.orevault.entity.ModEntities;
 import com.orevault.orevault.event.PortalEvents;
@@ -37,6 +38,10 @@ public class OreVault {
 
         // Resonance pool, levels and skill-point awards; computes the §4.3 curve at server start.
         NeoForge.EVENT_BUS.register(ResonanceSystem.class);
+
+        // The single BlockDropsEvent listener (#92): runs the node stages in order,
+        // then pays the break's Resonance (#26). No other class listens for drops.
+        NeoForge.EVENT_BUS.register(DropPipeline.class);
 
         // Playtest diagnostics (#82): block-break instrumentation + /orevault diag.
         NeoForge.EVENT_BUS.register(VaultDiag.class);

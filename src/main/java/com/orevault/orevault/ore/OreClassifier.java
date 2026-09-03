@@ -147,6 +147,20 @@ public final class OreClassifier {
         return getRarity(state.getBlock());
     }
 
+    /**
+     * Whether this block was classified at all — that is, whether it is in
+     * {@code c:ores}.
+     *
+     * <p>Distinct from {@link #getRarity}, which answers {@code UNCOMMON} for
+     * anything it has never seen. That default is right for a rarity question
+     * and wrong for an existence one: without this, every block of stone in the
+     * Vault would read as an uncommon ore and pay 5 Resonance.</p>
+     */
+    public static boolean isClassifiedOre(BlockState state) {
+        Identifier id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        return id != null && CLASSIFICATION.containsKey(id);
+    }
+
     /** Session rarity of a block; defaults to {@link Rarity#UNCOMMON}. */
     public static Rarity getRarity(Block block) {
         Identifier id = BuiltInRegistries.BLOCK.getKey(block);
