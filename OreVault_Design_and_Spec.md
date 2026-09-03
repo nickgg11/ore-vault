@@ -1367,7 +1367,7 @@ Use this to track progress. Update at the end of each development session.
 ### Infrastructure
 - [x] Forge 26.1 project scaffold (build.gradle, settings.gradle, mods.toml)
 - [x] FTB Teams hard dependency declared and verified
-- [ ] Package structure created (`block`, `item`, `portal`, `worldgen`, `data`, `config`, `client`, `event`) — `data`/`config`/`event`/`skill`/`team`/`worldgen`/`ore` done; `block`/`item`/`portal`/`client` land in later phases
+- [x] Package structure created (`block`, `item`, `portal`, `worldgen`, `data`, `config`, `client`, `event`) — plus `skill`, `team`, `ore`, `resonance`, `entity`, `tags` and `debug`
 - [x] `OreVault.java` main mod class
 - [x] `NodeCosts.java` constants file
 - [x] `OreVaultTeamData` SavedData class
@@ -1377,10 +1377,13 @@ Use this to track progress. Update at the end of each development session.
 
 ### Dimension
 - [x] Dimension type JSON (`ore_vault.json`, `ore_vault_expanded.json`)
-- [ ] Dimension types differentiated: base `min_y: 0` / `height: 320`, expanded `min_y: -64` / `height: 384` (they are currently byte-identical)
+- [x] Dimension types differentiated: base `min_y: 0` / `height: 320`, expanded `min_y: -64` / `height: 384`
 - [x] Dynamic dimension registration per team
-- [ ] **Lazy creation only** — remove the `ServerStartedEvent` sweep and the `TeamCreated` handler; create on first portal trip
-- [ ] **`server.markWorldsDirty()` after inserting the level into the world map** (#82 / #89)
+- [x] **Lazy creation on the portal path only** — `TeamCreated` initializes team data and nothing else;
+      only `VaultDimensions#findOrCreate` makes a new Vault. The `ServerStartedEvent` pass is still
+      there and is meant to be: it re-registers Vaults already on disk before anyone connects, because
+      a player may have logged out inside one. Creating versus restoring are different things (#82, #89)
+- [x] **`server.markWorldsDirty()` after inserting the level into the world map** (#82 / #89)
 - [ ] Dimension deletion on team disband
 - [x] Custom chunk generator skeleton
 - [x] Open air layer at the top (69 blocks), solid fill below with grass surface
@@ -1393,7 +1396,7 @@ Use this to track progress. Update at the end of each development session.
 
 ### Portal and Igniter
 - [x] Vault Frame block
-- [ ] Vault Frame `minecraft:mineable/pickaxe` tag in the **`minecraft` namespace** (#87)
+- [x] Vault Frame `minecraft:mineable/pickaxe` tag in the **`minecraft` namespace** (#87)
 - [ ] Vault Frame crafting recipe (8 iron + 1 redstone)
 - [x] `VaultPortalShape` scanner (both axes, 2×3 to 21×21)
 - [x] Ore Vault Portal block (no collision, unbreakable, AXIS state)
@@ -1411,10 +1414,10 @@ Use this to track progress. Update at the end of each development session.
 - [x] Return position persistence (player persistent data)
 - [x] Teleport cooldown (80 ticks)
 - [x] Nether-style portal wait (80 ticks) with wavy overlay and travel sound
-- [ ] **Fixed team anchor at X=0, Z=0** — remove Overworld XZ mirroring entirely
-- [ ] Exactly one return portal per Vault, built at the anchor, single-plane (#85)
-- [ ] Return portal tier-coloured to the highest igniter tier seen (#86)
-- [ ] Remove the team-required gate and its message (#88 — the condition can never be false)
+- [x] **Fixed team anchor at X=0, Z=0** — Overworld XZ mirroring removed
+- [x] Exactly one return portal per Vault, built at the anchor, single-plane (#85) — `VaultPortalShape#ensureReturnPortal`
+- [x] Return portal tier-coloured to the highest igniter tier seen (#86)
+- [x] Remove the team-required gate and its message (#88 — the condition can never be false)
 - [ ] Tier 3+ skips the wait and the cooldown
 
 ### Resonance System
