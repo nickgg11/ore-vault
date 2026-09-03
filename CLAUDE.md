@@ -234,6 +234,17 @@ a ticket is superseded and name what replaced it; and quote real test counts fro
 `build/test-results/test/*.xml` rather than a Gradle `BUILD SUCCESSFUL`, which is identical for a
 cached no-op.
 
+## Textures
+
+Every PNG under `assets/orevault/textures/` is **64×64 where possible and never below 32×32**
+(§13 Polish). Vanilla's 16×16 is not the target — Minecraft renders higher-resolution textures
+fine without a resource pack. The six textures shipped so far are 16×16 and predate the rule
+being enforced; #69 replaces them.
+
+This covers textures the mod ships. It does not cover vanilla sprites the mod borrows: the
+Resonance orb tints `minecraft:textures/entity/experience/experience_orb.png` and ships nothing
+of its own, which is deliberate and not a gap to fill.
+
 ## Conventions
 
 - Commits: `feat:`, `fix:`, `docs:`, `ci:`, with the issue number in the subject —

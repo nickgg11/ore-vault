@@ -1577,7 +1577,13 @@ Use this to track progress. Update at the end of each development session.
 - [ ] All crafting recipes
 - [ ] `en_us.json` lang file (all block names, item names, node names, tooltips)
 - [ ] Mod icon (`pack.png`)
-- [ ] Block and item textures — **at least 64×64** for all Ore Vault assets ([68])
+- [ ] Block and item textures — **64×64 preferred, 32×32 the hard floor** for every Ore Vault
+      asset ([68]). Vanilla is 16×16; Minecraft renders higher-resolution textures without a
+      resource pack, so this is a choice about how the mod looks rather than a limitation to work
+      around. It applies to anything shipped under `assets/orevault/textures/`. It does **not**
+      apply to vanilla sprites the mod borrows — the Resonance orb tints
+      `minecraft:textures/entity/experience/experience_orb.png` and ships no texture of its own,
+      and re-sizing a vanilla sprite is not ours to do
 - [ ] Translucent portal texture (nether-portal-style see-through, gray theme)
 - [ ] Blockstate JSONs
 - [ ] Model JSONs
