@@ -85,6 +85,7 @@ already correct — match it, don't "fix" it:
 | `SavedDataType<T>` + codec | `SavedData` load/save overrides |
 | `CompoundTag#getCompoundOrEmpty` | `getCompound` returning null |
 | `RegisterColorHandlersEvent.BlockTintSources` | `ColorHandlerEvent.Block` |
+| `Commands.hasPermission(Commands.LEVEL_GAMEMASTERS)` | `source.hasPermission(2)` |
 
 Nullability uses **JSpecify** (`org.jspecify.annotations.Nullable`), not the
 NeoForge or JetBrains annotations.
