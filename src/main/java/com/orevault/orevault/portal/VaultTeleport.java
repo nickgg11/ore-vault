@@ -19,8 +19,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Relative;
 import net.minecraft.world.level.Level;
@@ -42,17 +40,18 @@ import net.minecraft.world.phys.Vec3;
  * Overworld → Vault: saves the return position (outside the portal plane, on
  * the approach side), finds/creates the team's dimension, ensures the exit
  * portal at the vault's default entry point, and lands on the mirrored XZ
- * standing on the surface — or at the player's custom entry point for tier 3+.
+ * standing on the surface — or at the player's selected entry point (tier 2+).
  * Vault → Overworld: returns to the saved position, falling back to world
  * spawn.</li>
- * <li>{@link #handlePortal} — the tier-4 instant path (§3.3): direct teleport,
+ * <li>{@link #handlePortal} — the tier-3+ instant path (§3.3): direct teleport,
  * no portal wait and no cooldown.</li>
  * </ul>
  *
- * <p>Arrival effects on entering the Vault: Speed I (tier 2, 5s), Haste I
- * (tier 3, 10s), Haste II (tier 4, 15s). Arrivals in both directions show an
- * action-bar overlay message (#78). The re-entry cooldown is the vanilla
- * portal cooldown (80 ticks, §3.2); tier 4 skips it.</p>
+ * <p>No potion effects are applied on arrival. The tiers grant persistent
+ * capabilities instead of stats (§3.3, #100); see {@code VaultIgniterItem}.
+ * Arrivals in both directions show an action-bar overlay message (#78). The
+ * re-entry cooldown is the vanilla portal cooldown (80 ticks, §3.2); tier 3+
+ * skips it.</p>
  */
 public final class VaultTeleport {
 
@@ -60,13 +59,13 @@ public final class VaultTeleport {
     public static final String RETURN_TAG = "orevault_return";
     /** Portal charge-up time while standing inside, in ticks (§3.2). */
     public static final int PORTAL_WAIT_TICKS = 80;
-    /** Re-entry cooldown after a portal trip in ticks (§3.2); tier 4 skips it (§3.3). */
+    /** Re-entry cooldown after a portal trip in ticks (§3.2); tier 3+ skips it (§3.3). */
     public static final int PORTAL_COOLDOWN_TICKS = 80;
 
     private VaultTeleport() {
     }
 
-    /** Direct teleport used by the tier-4 instant path (§3.3). */
+    /** Direct teleport used by the tier-3+ instant path (§3.3). */
     public static void handlePortal(ServerPlayer player) {
         if (player.isSpectator()) {
             return;
@@ -113,7 +112,9 @@ public final class VaultTeleport {
 
         int tier = VaultIgniterItem.highestTierLevel(player);
         BlockPos anchor = vaultAnchor(vault);
-        Optional<BlockPos> custom = tier >= 3 ? entryPoint(player) : Optional.empty();
+        Optional<BlockPos> custom = VaultIgniterItem.entryPointCapacity(player) > 0
+                ? VaultIgniterItem.selectedEntryPoint(player)
+                : Optional.empty();
         BlockPos target = custom.map(pos -> findSafeFooting(vault, pos)).orElse(anchor);
 
         // The team's one return portal lives at the fixed anchor (§3.2);
@@ -123,11 +124,10 @@ public final class VaultTeleport {
                 .orElse(Direction.Axis.X);
         VaultPortalShape.ensureReturnPortal(vault, anchor, axis, tier);
 
-        int finalTier = tier;
+        boolean instant = VaultIgniterItem.hasInstantTravel(player);
         TeleportTransition.PostTeleportTransition post = TeleportTransition.PLAY_PORTAL_SOUND.then(entity -> {
             if (entity instanceof ServerPlayer p) {
-                p.setPortalCooldown(finalTier >= 4 ? 0 : PORTAL_COOLDOWN_TICKS);
-                applyArrivalEffects(p, finalTier);
+                p.setPortalCooldown(instant ? 0 : PORTAL_COOLDOWN_TICKS);
                 p.sendOverlayMessage(Component.translatable("message.orevault.vault_arrival"));
             }
         });
@@ -204,7 +204,7 @@ public final class VaultTeleport {
         );
     }
 
-    // ----- direct (tier-4) paths -----
+    // ----- direct (tier-3+) paths -----
 
     private static void teleportToVault(ServerPlayer player) {
         MinecraftServer server = server(player);
@@ -225,7 +225,9 @@ public final class VaultTeleport {
 
         int tier = VaultIgniterItem.highestTierLevel(player);
         BlockPos anchor = vaultAnchor(vault);
-        Optional<BlockPos> custom = tier >= 3 ? entryPoint(player) : Optional.empty();
+        Optional<BlockPos> custom = VaultIgniterItem.entryPointCapacity(player) > 0
+                ? VaultIgniterItem.selectedEntryPoint(player)
+                : Optional.empty();
         BlockPos target = custom.map(pos -> findSafeFooting(vault, pos)).orElse(anchor);
 
         Direction.Axis axis = current.getBlockState(player.blockPosition())
@@ -234,7 +236,6 @@ public final class VaultTeleport {
         VaultPortalShape.ensureReturnPortal(vault, anchor, axis, tier);
 
         teleport(player, vault, target.getX() + 0.5, target.getY(), target.getZ() + 0.5);
-        applyArrivalEffects(player, tier); // no cooldown: tier 4 (§3.3)
         player.sendOverlayMessage(Component.translatable("message.orevault.vault_arrival"));
     }
 
@@ -342,21 +343,6 @@ public final class VaultTeleport {
         return Optional.of(new BlockPos(x.get(), y.get(), z.get()));
     }
 
-    /** The player's custom Vault entry point (§3.3, tier 3+), if stored. */
-    private static Optional<BlockPos> entryPoint(ServerPlayer player) {
-        Optional<CompoundTag> opt = player.getPersistentData().getCompound(VaultIgniterItem.ENTRY_POINT_TAG);
-        if (opt.isEmpty()) {
-            return Optional.empty();
-        }
-        CompoundTag tag = opt.get();
-        Optional<Integer> x = tag.getInt("x");
-        Optional<Integer> y = tag.getInt("y");
-        Optional<Integer> z = tag.getInt("z");
-        if (x.isEmpty() || y.isEmpty() || z.isEmpty()) {
-            return Optional.empty();
-        }
-        return Optional.of(new BlockPos(x.get(), y.get(), z.get()));
-    }
 
     /**
      * Spawn footing for a custom entry point: stand on top of the stored
@@ -375,15 +361,4 @@ public final class VaultTeleport {
         return new BlockPos(entry.getX(), entry.getY() + 1, entry.getZ());
     }
 
-    /** Arrival effects on entering the Vault, by igniter tier (§3.3). */
-    private static void applyArrivalEffects(ServerPlayer player, int tier) {
-        switch (tier) {
-            case 2 -> player.addEffect(new MobEffectInstance(MobEffects.SPEED, 5 * 20, 0));
-            case 3 -> player.addEffect(new MobEffectInstance(MobEffects.HASTE, 10 * 20, 0));
-            case 4 -> player.addEffect(new MobEffectInstance(MobEffects.HASTE, 15 * 20, 1));
-            default -> {
-                // Tier 1: no arrival effect.
-            }
-        }
-    }
 }

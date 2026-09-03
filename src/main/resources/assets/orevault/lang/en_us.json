@@ -17,6 +17,10 @@
   "message.orevault.vault_arrival": "Welcome to the Ore Vault!",
   "message.orevault.overworld_return": "Welcome back to the Overworld.",
   "message.orevault.resonance_level_up": "Resonance level %s — %s skill points earned",
+  "message.orevault.entry_point_set": "Vault entry point set.",
+  "message.orevault.entry_point_stored": "Vault entry point %s of %s set.",
+  "message.orevault.entry_point_selected": "Entry point %s of %s — %s, %s, %s",
+  "message.orevault.entry_point_none": "No Vault entry points set yet. Right-click a block inside your Vault.",
 
   "orevault.configuration.title": "Ore Vault",
   "orevault.configuration.section.orevault.server.toml": "Ore Vault Settings",
