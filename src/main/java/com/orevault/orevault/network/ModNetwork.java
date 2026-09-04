@@ -2,6 +2,8 @@ package com.orevault.orevault.network;
 
 import java.util.UUID;
 
+import org.jspecify.annotations.Nullable;
+
 import com.orevault.orevault.OreVault;
 import com.orevault.orevault.data.OreVaultTeamData;
 import com.orevault.orevault.data.PlayerStats;
@@ -48,8 +50,9 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
  * real work now, because {@code SkillTree} and {@code TradeoffToggle} already
  * exist and a no-op purchase handler is a security hole waiting for someone to
  * fill it in a hurry. The clientbound packets are defined with their real
- * payload shape but handle to nothing: their consumers are the Tome screens
- * ([34]–[35]), and the client handlers land in [39] (#40). Reset voting (§3.5)
+ * payload shape and are routed to {@code ClientPacketHandlers} through the
+ * callback in {@link #setClientHandler}, which stores them for the Tome screens
+ * ([34]–[35]) to read. Reset voting (§3.5)
  * is defined and rejected with a log line until Phase 8 (#94) builds the state
  * machine behind it.</p>
  */
@@ -165,7 +168,9 @@ public final class ModNetwork {
         registrar.playToServer(ToggleTradeoff.TYPE, ToggleTradeoff.CODEC, ModNetwork::onToggleTradeoff);
         registrar.playToServer(CastResetVote.TYPE, CastResetVote.CODEC, ModNetwork::onCastResetVote);
 
-        // Clientbound: the payloads are final, the handlers are [39]'s (#40).
+        // Clientbound: routed to the client callback, which is installed only
+        // on a client. On a dedicated server these register so the channel
+        // matches, and never fire.
         registrar.playToClient(SyncTeamProgress.TYPE, SyncTeamProgress.CODEC, ModNetwork::onClientPayload);
         registrar.playToClient(ResetVoteStatus.TYPE, ResetVoteStatus.CODEC, ModNetwork::onClientPayload);
     }
@@ -232,15 +237,41 @@ public final class ModNetwork {
     // ----- clientbound -----
 
     /**
-     * Placeholder for every clientbound payload until [39] (#40) adds the real
-     * client handlers.
+     * The client's handler for clientbound payloads, installed by
+     * {@code OreVaultClient} at startup ([39]).
      *
-     * <p>Deliberately not a client class. Anything that touches the Tome screen
-     * has to live behind the dist check, and a handler registered from common
-     * code that reaches for a screen is how a dedicated server dies at
-     * class-load.</p>
+     * <p>A callback rather than a direct call. This class is common code and
+     * cannot name anything under {@code client/} — a common-path reference to a
+     * client class kills a dedicated server at class-load, and no unit test in
+     * this tree catches it. Holding a functional interface keeps the reference
+     * one-way: the client knows about the network, the network does not know
+     * about the client.</p>
+     */
+    @FunctionalInterface
+    public interface ClientHandler {
+        void handle(CustomPacketPayload payload, IPayloadContext context);
+    }
+
+    private static volatile @Nullable ClientHandler clientHandler;
+
+    /** Installs the client's payload handler. Called only from client code. */
+    public static void setClientHandler(ClientHandler handler) {
+        clientHandler = handler;
+    }
+
+    /**
+     * Routes a clientbound payload to the client handler.
+     *
+     * <p>Stays silent-but-logged when none is installed. That is the normal
+     * state on a dedicated server, which registers these payload types so the
+     * channel matches the client's but will never receive one.</p>
      */
     private static void onClientPayload(CustomPacketPayload payload, IPayloadContext context) {
-        OreVault.LOGGER.debug("Received {} with no client handler yet (#40)", payload.type().id());
+        ClientHandler handler = clientHandler;
+        if (handler == null) {
+            OreVault.LOGGER.debug("Received {} with no client handler installed", payload.type().id());
+            return;
+        }
+        handler.handle(payload, context);
     }
 }

@@ -1,0 +1,58 @@
+package com.orevault.orevault.client;
+
+import com.orevault.orevault.OreVault;
+import com.orevault.orevault.network.ModNetwork;
+
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.common.NeoForge;
+
+/**
+ * The client entrypoint: everything that only exists on a client is registered
+ * from here (§11).
+ *
+ * <p>{@code @Mod(dist = Dist.CLIENT)} means this class is never constructed —
+ * never even loaded — on a dedicated server. That is a stronger guarantee than
+ * the {@code FMLEnvironment.getDist().isClient()} check these registrations used
+ * to sit behind in {@link OreVault}: a runtime check still requires the enclosing
+ * class to resolve every type it mentions, so one careless edit inside the branch
+ * could still crash a server at class-load. Here the JVM never sees the class at
+ * all, and no unit test in this tree can catch the difference, so the structural
+ * version is worth the extra file.</p>
+ *
+ * <p>Screens are not registered yet. The Tome ([34]/[35]) and the reset vote
+ * screen ([38]) do not exist; when they do, their key bindings and
+ * {@code RegisterMenuScreensEvent} registration belong here.</p>
+ */
+@Mod(value = OreVault.MODID, dist = Dist.CLIENT)
+public final class OreVaultClient {
+
+    public OreVaultClient(IEventBus modEventBus, ModContainer modContainer) {
+        // Block tint sources for the four tier-coloured portal blocks.
+        VaultPortalColors.register(modEventBus);
+
+        // Entity renderers: the Resonance orb, and the Animus orb post-1.0.
+        VaultOrbRenderers.register(modEventBus);
+
+        // The Config button on this mod's page in the mods list.
+        VaultConfigScreen.register(modContainer);
+
+        // Client packet handling. ModNetwork registers the payloads from common
+        // code and cannot name a client class, so it holds this callback instead.
+        ModNetwork.setClientHandler(ClientPacketHandlers::handle);
+
+        NeoForge.EVENT_BUS.addListener(OreVaultClient::onLoggingOut);
+    }
+
+    /**
+     * Drops the synced team state on disconnect, so the next world does not open
+     * the Tome showing the previous server's Resonance until its first sync
+     * lands.
+     */
+    private static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        ClientPacketHandlers.clear();
+    }
+}

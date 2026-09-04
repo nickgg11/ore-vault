@@ -1520,9 +1520,13 @@ Use this to track progress. Update at the end of each development session.
 ### UI — Tome of the Deep Seam
 - [x] Network channel (`ModNetwork`) — five payloads on one channel (#33). Purchase and tradeoff
       toggle are server-authoritative and live; the clientbound progress and reset-vote payloads
-      have their final shape but no client handler until [39] (#40), and reset voting is refused
-      until the state machine in #94. Refund has no packet yet — it needs the Tome to have
-      somewhere to trigger it from ([35])
+      have their final shape and are handled on the client as of [39] (#40); reset voting is
+      refused until the state machine in #94. Refund has no packet yet — it needs the Tome to
+      have somewhere to trigger it from ([35])
+- [x] Client entrypoint (`OreVaultClient`) + client packet handlers (`ClientPacketHandlers`) (#40)
+      — a `@Mod(dist = CLIENT)` class the JVM never loads on a dedicated server, which is a
+      stronger guarantee than the `FMLEnvironment` check it replaced. Synced team progress is
+      stored for the Tome screens to read; screen registration lands with [34]/[35]/[38]
 - [x] Tome item (auto-given on first join; recipe is [67]) (#34) — right-click opens the screen
       through an opener the client installs; until [34] lands it says so rather than doing nothing.
       Kept out of the offhand by canEquip plus a server-side inventoryTick eviction
