@@ -2,6 +2,7 @@ package com.orevault.orevault.entity;
 
 import java.util.UUID;
 
+import com.orevault.orevault.debug.VaultDiag;
 import com.orevault.orevault.resonance.ResonanceSystem;
 
 import net.minecraft.server.level.ServerLevel;
@@ -47,7 +48,9 @@ public class ResonanceOrbEntity extends VaultOrbEntity {
     protected void onAbsorbed(ServerPlayer player, UUID teamId, int value) {
         // The team is credited, not the player: a solo player is a team of one
         // (§2), so this is the same call either way and there is no player-XP path.
-        ResonanceSystem.addResonance(player.level().getServer(), teamId, value);
+        ResonanceSystem.LevelUp levelUp =
+                ResonanceSystem.addResonance(player.level().getServer(), teamId, value);
+        VaultDiag.onResonanceGained(player, teamId, value, levelUp);
     }
 
     @Override

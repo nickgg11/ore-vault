@@ -3,15 +3,27 @@ package com.orevault.orevault.debug;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.jspecify.annotations.Nullable;
 
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+
 import com.orevault.orevault.OreVault;
+import com.orevault.orevault.block.VaultFrameBlock;
+import com.orevault.orevault.block.VaultPortalBlock;
+import com.orevault.orevault.config.OreVaultServerConfig;
+import com.orevault.orevault.data.OreVaultTeamData;
+import com.orevault.orevault.event.OreDropHandler;
+import com.orevault.orevault.ore.OreClassifier;
+import com.orevault.orevault.resonance.ResonanceSystem;
 import com.orevault.orevault.team.TeamHelper;
 import com.orevault.orevault.worldgen.VaultDimensions;
 
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.blocks.BlockStateArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -21,6 +33,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -52,7 +66,16 @@ import static net.minecraft.commands.Commands.literal;
  * speed — plus the server tick at which the dimension was created (startup
  * dimensions were created at tick 0, team-created ones mid-session).</p>
  *
- * <p>Temporary: removed once #82 is root-caused.</p>
+ * <p>It has since picked up two playtest aids for the Resonance loop:
+ * {@link #onResonanceGained} prints what each orb paid, and
+ * {@code /orevault testore [radius] [ore]} fills a cube with ore so the loop can
+ * be exercised without an hour of mining.</p>
+ *
+ * <p><b>Temporary, all of it.</b> #82 and #89 are both root-caused and closed,
+ * so the three passive listeners have outlived their purpose and now log a line
+ * per left-click in a Vault. The Resonance readout goes when the Tome gives the
+ * pool a real display ([35]). This whole class should leave the tree before
+ * 1.0.</p>
  */
 public final class VaultDiag {
 
@@ -61,6 +84,12 @@ public final class VaultDiag {
 
     /** Vault dimensions created after server startup, keyed by creation server tick (#82). */
     private static final Map<ResourceKey<Level>, Integer> CREATED_AT_TICK = new ConcurrentHashMap<>();
+
+    /** Cube half-width filled by {@code /orevault testore} when none is given. */
+    private static final int DEFAULT_TEST_RADIUS = 6;
+
+    /** Ceiling on the same. A radius of 32 is a 65³ cube — 274k setBlock calls. */
+    private static final int MAX_TEST_RADIUS = 32;
 
     private VaultDiag() {
     }
@@ -104,16 +133,137 @@ public final class VaultDiag {
         }
     }
 
-    // ----- /orevault diag [pos] -----
+    // ----- Resonance gain readout -----
+
+    /**
+     * Prints what an orb just paid, to the player who collected it.
+     *
+     * <p>Until the Tome lands there is no readout of the pool at all: an orb
+     * drifts over, disappears, and the only visible feedback is the level-up
+     * overlay, which fires once every few hundred breaks. That makes a working
+     * build and a broken one look identical while mining, which is exactly the
+     * false negative this exists to prevent.</p>
+     *
+     * <p>The line quotes the pool <em>after</em> team scaling rather than the
+     * orb's face value, because those differ on any team larger than one and the
+     * difference is the part worth watching (§4.2).</p>
+     */
+    public static void onResonanceGained(ServerPlayer player, UUID teamId, int orbValue, ResonanceSystem.LevelUp levelUp) {
+        if (!OreVaultServerConfig.logResonanceGain()) {
+            return;
+        }
+        MinecraftServer server = player.level().getServer();
+        if (server == null) {
+            return;
+        }
+        OreVaultTeamData data = OreVaultTeamData.getOrCreate(server.overworld(), teamId);
+        int percent = (int) Math.round(ResonanceSystem.progressToNextLevel(data, ResonanceSystem.curve()) * 100);
+
+        StringBuilder line = new StringBuilder(String.format(
+                "+%d Resonance → pool %d · level %d (%d%% to %d)",
+                orbValue, data.getResonancePool(), levelUp.newLevel(), percent, levelUp.newLevel() + 1));
+        if (levelUp.leveledUp()) {
+            line.append(String.format(" · LEVEL UP, +%d skill points (%d unspent)",
+                    levelUp.pointsAwarded(), data.getResonanceSkillPoints()));
+        }
+        player.sendSystemMessage(Component.literal(TAG + " " + line));
+    }
+
+    // ----- commands -----
 
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(
-                literal("orevault").then(literal("diag")
-                        .executes(ctx -> run(ctx.getSource(), null))
-                        .then(argument("pos", BlockPosArgument.blockPos())
-                                .executes(ctx -> run(ctx.getSource(), BlockPosArgument.getLoadedBlockPos(ctx, "pos")))))
+                literal("orevault")
+                        .then(literal("diag")
+                                .executes(ctx -> run(ctx.getSource(), null))
+                                .then(argument("pos", BlockPosArgument.blockPos())
+                                        .executes(ctx -> run(ctx.getSource(), BlockPosArgument.getLoadedBlockPos(ctx, "pos")))))
+                        .then(literal("testore")
+                                // 26.1 replaced the int permission level with a
+                                // PermissionSet; LEVEL_GAMEMASTERS is the old 2.
+                                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                                .executes(ctx -> fillTestOre(ctx.getSource(), DEFAULT_TEST_RADIUS, Blocks.COAL_ORE))
+                                .then(argument("radius", IntegerArgumentType.integer(1, MAX_TEST_RADIUS))
+                                        .executes(ctx -> fillTestOre(ctx.getSource(),
+                                                IntegerArgumentType.getInteger(ctx, "radius"), Blocks.COAL_ORE))
+                                        .then(argument("ore", BlockStateArgument.block(event.getBuildContext()))
+                                                .executes(ctx -> fillTestOre(ctx.getSource(),
+                                                        IntegerArgumentType.getInteger(ctx, "radius"),
+                                                        BlockStateArgument.getBlock(ctx, "ore").getState().getBlock())))))
         );
+    }
+
+    // ----- /orevault testore [radius] [ore] -----
+
+    /**
+     * Fills a cube around the player with an ore, so the Resonance loop can be
+     * exercised in a minute instead of an hour.
+     *
+     * <p>A command rather than a worldgen switch on purpose. Dense generation
+     * would only affect chunks not yet generated, so testing it means abandoning
+     * the Vault you are standing in and walking until the terrain changes. This
+     * works where you already are, and deleting the method is the whole
+     * revert.</p>
+     *
+     * <p>It reports the block's <em>live</em> classification and what that pays,
+     * because the classifier resolves rarity from placed features at server
+     * start — so which vanilla ore counts as rare is a property of the pack, not
+     * something that can be assumed here.</p>
+     */
+    private static int fillTestOre(CommandSourceStack source, int radius, Block ore) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal("Player-only command"));
+            return 0;
+        }
+        ServerLevel level = (ServerLevel) player.level();
+        if (!VaultDimensions.isVaultDimension(level)) {
+            source.sendFailure(Component.literal("Not in a Vault dimension"));
+            return 0;
+        }
+
+        BlockState state = ore.defaultBlockState();
+        BlockPos centre = player.blockPosition();
+        int filled = 0;
+        for (BlockPos pos : BlockPos.betweenClosed(centre.offset(-radius, -radius, -radius),
+                centre.offset(radius, radius, radius))) {
+            if (!isSafeToOverwrite(level, pos, centre)) {
+                continue;
+            }
+            level.setBlock(pos.immutable(), state, Block.UPDATE_ALL);
+            filled++;
+        }
+
+        String classification = OreClassifier.isClassifiedOre(state)
+                ? OreClassifier.getRarity(state) + ", " + OreDropHandler.baseResonance(OreClassifier.getRarity(state))
+                        + " Resonance each"
+                : "NOT a classified ore — this will pay nothing";
+        int total = filled;
+        source.sendSuccess(() -> Component.literal(String.format(
+                "%s filled %d block(s) with %s (%s)",
+                TAG, total, ore.getName().getString(), classification)), false);
+        OreVault.LOGGER.info("{} testore radius={} block={} filled={} ({})",
+                TAG, radius, ore, filled, classification);
+        return 1;
+    }
+
+    /**
+     * Keeps the command from bricking the Vault it is run in: bedrock is the
+     * floor, the portal is the way out, and burying the player in ore would
+     * suffocate them.
+     */
+    private static boolean isSafeToOverwrite(ServerLevel level, BlockPos pos, BlockPos centre) {
+        if (pos.getX() == centre.getX() && pos.getZ() == centre.getZ()
+                && pos.getY() >= centre.getY() && pos.getY() <= centre.getY() + 1) {
+            return false; // the two blocks the player occupies
+        }
+        BlockState existing = level.getBlockState(pos);
+        // Matched by type, not by holder: there are four tier-coloured portal
+        // blocks and naming one of them would leave the other three fillable.
+        return !existing.isAir()
+                && !existing.is(Blocks.BEDROCK)
+                && !(existing.getBlock() instanceof VaultPortalBlock)
+                && !(existing.getBlock() instanceof VaultFrameBlock);
     }
 
     private static int run(CommandSourceStack source, @Nullable BlockPos explicitPos) {

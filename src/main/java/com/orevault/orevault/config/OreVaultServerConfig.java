@@ -32,6 +32,9 @@ public final class OreVaultServerConfig {
     // [reset]
     private static final ModConfigSpec.BooleanValue ALLOW_BACKUP_ON_RESET;
 
+    // Debug — playtest instrumentation, removed before 1.0.
+    private static final ModConfigSpec.BooleanValue LOG_RESONANCE_GAIN;
+
     public static final ModConfigSpec SPEC;
 
     static {
@@ -80,6 +83,15 @@ public final class OreVaultServerConfig {
                 .define("allow_backup_on_reset", true);
         BUILDER.pop();
 
+        BUILDER.push("debug");
+        LOG_RESONANCE_GAIN = BUILDER
+                .comment("Print a chat line to the collecting player every time an orb pays Resonance.",
+                        "Playtest instrumentation: there is no other readout of the pool until the",
+                        "Tome UI lands. Turn off for normal play; the whole [debug] block goes away",
+                        "before 1.0.")
+                .define("log_resonance_gain", true);
+        BUILDER.pop();
+
         SPEC = BUILDER.build();
     }
 
@@ -110,6 +122,17 @@ public final class OreVaultServerConfig {
 
     public static boolean allowBackupOnReset() {
         return ALLOW_BACKUP_ON_RESET.get();
+    }
+
+    /**
+     * Whether an orb pickup prints a chat line to the collector (playtest only).
+     *
+     * <p>Reads the raw spec value rather than going through a loaded check,
+     * which is fine because every caller is on the server thread after config
+     * load. Goes away with the rest of the {@code [debug]} block.</p>
+     */
+    public static boolean logResonanceGain() {
+        return LOG_RESONANCE_GAIN.get();
     }
 
     /** Parsed classification overrides: block id → rarity ({@code common|uncommon|rare}). */

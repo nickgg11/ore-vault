@@ -227,6 +227,11 @@ Blocks broken by machines in a ticket-loaded Vault chunk **never award Resonance
 
 What automation *does* get is the Automated Extraction node (§6.1), which increases machine **yield** inside the Vault and makes machine-broken ore count toward vein completion (§11) and player statistics. Automation is therefore worth building for materials, and worth nothing for progression — progression is always earned by hand.
 
+**Vanilla XP is untouched.**
+Ore broken in a Vault drops vanilla experience exactly as it would in the Overworld. Resonance is an addition, never a substitution: a player who mines here must not end up behind one who mined the same ore outside, or the dimension becomes a trap rather than a reward. Nothing in the mod calls or suppresses `popExperience`, and nothing should — the Resonance orb is a separate entity that pays the team pool, and the two systems do not interact.
+
+The one place they touch deliberately is Vault Echo (§6.1), which grants vanilla XP equal to the Resonance awarded, and the Ore Quality branch (§6.1), which drops bonus vanilla XP. Both are *additions* on top of the vanilla amount, which is another reason the baseline must stay intact.
+
 ---
 
 ### 3.5 Dimension Reset

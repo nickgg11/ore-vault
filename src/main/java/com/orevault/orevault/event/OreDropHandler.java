@@ -62,7 +62,14 @@ public final class OreDropHandler {
                 context.level(), Vec3.atCenterOf(context.pos()), context.teamId(), awarded);
     }
 
-    private static int baseResonance(OreClassifier.Rarity rarity) {
+    /**
+     * The §4.2 base rate for a rarity, before Tithe and before team scaling.
+     *
+     * <p>Public because it is a readout as well as a rule: the playtest command
+     * quotes it when filling a test area, and the Tome's node tooltips will want
+     * the same number rather than restating it.</p>
+     */
+    public static int baseResonance(OreClassifier.Rarity rarity) {
         return switch (rarity) {
             case COMMON -> COMMON_RESONANCE;
             case UNCOMMON -> UNCOMMON_RESONANCE;
