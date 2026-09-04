@@ -126,7 +126,9 @@ public class VaultPortalBlock extends Block implements Portal {
         if (!(entity instanceof ServerPlayer player)) {
             return;
         }
-        if (VaultIgniterItem.highestTierLevel(player) >= 4) {
+        // Tier 3+, moved down from tier 4 in #100. Asked by capability rather
+        // than tier number so the next move does not have to find this line.
+        if (VaultIgniterItem.hasInstantTravel(player)) {
             if (!player.isOnPortalCooldown()) {
                 VaultTeleport.handlePortal(player);
             }

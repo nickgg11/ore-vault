@@ -1407,10 +1407,13 @@ Use this to track progress. Update at the end of each development session.
 - [x] Ore Vault Portal block (no collision, unbreakable, AXIS state)
 - [x] Portal frame integrity check (`updateShape`)
 - [x] Vault Igniter Tier 1 item
-- [ ] Igniter tier capabilities overhaul — potion buffs removed, capabilities per §3.3
-- [ ] Tier 2: one personal entry point
-- [ ] Tier 3: instant travel + 3 personal entry points
+- [x] Igniter tier capabilities overhaul — potion buffs removed, capabilities per §3.3 (#100)
+- [x] Tier 2: one personal entry point
+- [x] Tier 3: instant travel + 3 personal entry points — stored and cycled with a right-click
+      in the air; the waypoint *list UI* needs the network channel and screens from Phase 4
 - [ ] Tier 4: reset button gate + Vault Anchor recipe ingredient (returned as crafting remainder)
+      — `VaultIgniterItem#canResetVault` exists; nothing calls it until the reset flow (Phase 8)
+      and the Vault Anchor block (#30) land
 - [ ] Resonance Crystal item + recipe (4 Attuned ore + 1 Amethyst Shard)
 
 ### Teleportation
@@ -1423,7 +1426,7 @@ Use this to track progress. Update at the end of each development session.
 - [x] Exactly one return portal per Vault, built at the anchor, single-plane (#85) — `VaultPortalShape#ensureReturnPortal`
 - [x] Return portal tier-coloured to the highest igniter tier seen (#86)
 - [x] Remove the team-required gate and its message (#88 — the condition can never be false)
-- [ ] Tier 3+ skips the wait and the cooldown
+- [x] Tier 3+ skips the wait and the cooldown
 
 ### Resonance System
 - [x] Resonance orb entity — registered, collectable and drawn: vanilla orb sprite sized by
