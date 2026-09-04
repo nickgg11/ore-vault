@@ -2,6 +2,7 @@ package com.orevault.orevault;
 
 import com.mojang.logging.LogUtils;
 import com.orevault.orevault.block.ModBlocks;
+import com.orevault.orevault.config.ConfigReload;
 import com.orevault.orevault.config.OreVaultServerConfig;
 import com.orevault.orevault.debug.VaultDiag;
 import com.orevault.orevault.event.DropPipeline;
@@ -45,8 +46,11 @@ public class OreVault {
         // Resonance pickup readout. Both gated on [debug] in config (#120).
         NeoForge.EVENT_BUS.register(VaultDiag.class);
 
-        // Server-side config (§10).
+        // Server-side config (§10). The reload listener re-sends the command
+        // tree so a config change lands without a world reload; ModConfigEvent
+        // is a mod-bus event, so it goes on modEventBus, not the game bus.
         modContainer.registerConfig(ModConfig.Type.SERVER, OreVaultServerConfig.SPEC);
+        modEventBus.addListener(ConfigReload::onReloading);
 
         // Block registry ([16]; extended by [17], [27], [29]).
         ModBlocks.BLOCKS.register(modEventBus);
