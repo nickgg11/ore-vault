@@ -5,6 +5,7 @@ import org.jspecify.annotations.Nullable;
 import com.orevault.orevault.OreVault;
 import com.orevault.orevault.network.ModNetwork;
 import com.orevault.orevault.network.ModNetwork.ResetVoteStatus;
+import com.orevault.orevault.network.ModNetwork.SyncSkillTree;
 import com.orevault.orevault.network.ModNetwork.SyncTeamProgress;
 
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -39,6 +40,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public final class ClientPacketHandlers {
 
     private static volatile @Nullable SyncTeamProgress teamProgress;
+    private static volatile @Nullable SyncSkillTree skillTree;
     private static volatile @Nullable ResetVoteStatus resetVote;
 
     private ClientPacketHandlers() {
@@ -49,6 +51,11 @@ public final class ClientPacketHandlers {
     /** Last team progress the server sent, or {@code null} before the first sync. */
     public static @Nullable SyncTeamProgress teamProgress() {
         return teamProgress;
+    }
+
+    /** Unlocked tiers and this player's tradeoffs, or {@code null} before the first sync. */
+    public static @Nullable SyncSkillTree skillTree() {
+        return skillTree;
     }
 
     /** State of a running reset vote, or {@code null} when no vote is open. */
@@ -66,6 +73,7 @@ public final class ClientPacketHandlers {
      */
     public static void clear() {
         teamProgress = null;
+        skillTree = null;
         resetVote = null;
     }
 
@@ -84,6 +92,11 @@ public final class ClientPacketHandlers {
                 teamProgress = sync;
                 OreVault.LOGGER.debug("Team progress synced: Resonance level {} pool {} ({} unspent)",
                         sync.resonance().level(), sync.resonance().pool(), sync.resonance().unspentPoints());
+            });
+            case ModNetwork.SyncSkillTree tree -> context.enqueueWork(() -> {
+                skillTree = tree;
+                OreVault.LOGGER.debug("Skill tree synced: {} node(s) unlocked, {} tradeoff(s) active",
+                        tree.resonanceTiers().size(), tree.activeTradeoffs().size());
             });
             case ModNetwork.ResetVoteStatus vote -> context.enqueueWork(() -> resetVote = vote);
             default -> OreVault.LOGGER.warn("Unhandled clientbound payload {}", payload.type().id());
