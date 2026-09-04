@@ -7,14 +7,19 @@ import java.util.UUID;
 
 import com.orevault.orevault.OreVault;
 import com.orevault.orevault.data.OreVaultTeamData;
+import com.orevault.orevault.item.ModItems;
 import com.orevault.orevault.team.TeamHelper;
 import dev.ftb.mods.ftbteams.api.event.TeamCreatedEvent;
 import dev.ftb.mods.ftbteams.api.event.TeamDeletedEvent;
 import dev.ftb.mods.ftbteams.api.neoforge.FTBTeamsEvent;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 /**
  * FTB Teams lifecycle hooks (§9, §11):
@@ -27,6 +32,9 @@ import net.neoforged.bus.api.SubscribeEvent;
  * <p>Registered on the game event bus by {@link OreVault}.</p>
  */
 public final class FtbEvents {
+
+    /** Persistent-data flag: this player has already been given a Tome ([33]). */
+    private static final String TOME_GRANTED_TAG = "orevault_tome_granted";
 
     private FtbEvents() {
     }
@@ -57,6 +65,39 @@ public final class FtbEvents {
         }
         deleteDataFile(server, teamId);
         OreVault.LOGGER.info("Deleted Ore Vault team data for team {}", teamId);
+    }
+
+    /**
+     * Grants the Tome on first join (§8, [33]).
+     *
+     * <p><b>Listens to the vanilla login event, not FTB's party-join event.</b>
+     * {@code PlayerJoinedPartyTeamEvent} fires only when someone joins a
+     * <em>party</em>, and a solo player never joins one — so hooking it, as the
+     * ticket originally described, would hand a Tome to everyone except the
+     * players most likely to be playing alone. Every player is a team of one
+     * (§2), so the grant has to key off the player existing, not off a party.</p>
+     *
+     * <p>Granted once, tracked by a flag in persistent data rather than by
+     * scanning the inventory. Scanning would re-grant the book every login to
+     * anyone who deliberately binned it, which reads as the mod fighting the
+     * player. Losing it is recoverable through the recipe ([67]).</p>
+     */
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+        CompoundTag data = player.getPersistentData();
+        if (data.getBooleanOr(TOME_GRANTED_TAG, false)) {
+            return;
+        }
+        data.putBoolean(TOME_GRANTED_TAG, true);
+
+        ItemStack tome = new ItemStack(ModItems.TOME.get());
+        if (!player.getInventory().add(tome)) {
+            player.drop(tome, false);
+        }
+        OreVault.LOGGER.info("Granted the Tome of the Deep Seam to {}", player.getGameProfile().name());
     }
 
     /** Deletes the team's SavedData file ({@code <world>/data/orevault/team_<uuid>.dat}). */

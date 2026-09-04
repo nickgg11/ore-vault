@@ -35,6 +35,10 @@ public final class ModItems {
     public static final DeferredItem<VaultIgniterItem> SOVEREIGN_VAULT_IGNITER =
             ITEMS.registerItem("sovereign_vault_igniter", properties -> new VaultIgniterItem(properties, VaultIgniterItem.Tier.SOVEREIGN));
 
+    /** The Tome of the Deep Seam (§8): the skill-tree UI, granted on first join ([33]). */
+    public static final DeferredItem<TomeItem> TOME =
+            ITEMS.registerItem("tome_of_the_deep_seam", TomeItem::new);
+
     /**
      * Item form of the Vault Frame block. Formally part of [68] (models/textures),
      * but registered here so the portal can actually be built in survival before
@@ -60,6 +64,7 @@ public final class ModItems {
                     .icon(() -> new ItemStack(VAULT_IGNITER.get()))
                     .displayItems((parameters, output) -> {
                         output.accept(VAULT_FRAME_ITEM.get());
+                        output.accept(TOME.get());
                         output.accept(VAULT_IGNITER.get());
                         output.accept(ATTUNED_VAULT_IGNITER.get());
                         output.accept(RESONANT_VAULT_IGNITER.get());

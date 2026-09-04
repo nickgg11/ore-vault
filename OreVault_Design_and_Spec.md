@@ -1377,7 +1377,9 @@ Use this to track progress. Update at the end of each development session.
 - [x] `NodeCosts.java` constants file
 - [x] `OreVaultTeamData` SavedData class
 - [x] `PlayerStats` data class
-- [ ] FTB Teams event hooks (CREATED, PLAYER_JOINED, DISBANDED) — CREATED + DISBANDED done; PLAYER_JOINED (Tome grant) pending Tome item
+- [x] FTB Teams event hooks (CREATED, DISBANDED) plus the first-join Tome grant (#34). The grant
+      listens to the vanilla login event, **not** FTB's PlayerJoinedPartyTeamEvent: that fires only
+      for party joins, so a solo player would never receive a Tome
 - [x] Per-team dimension key generation
 
 ### Dimension
@@ -1521,7 +1523,9 @@ Use this to track progress. Update at the end of each development session.
       have their final shape but no client handler until [39] (#40), and reset voting is refused
       until the state machine in #94. Refund has no packet yet — it needs the Tome to have
       somewhere to trigger it from ([35])
-- [ ] Tome item (auto-given on first spawn, craftable cobblestone + book)
+- [x] Tome item (auto-given on first join; recipe is [67]) (#34) — right-click opens the screen
+      through an opener the client installs; until [34] lands it says so rather than doing nothing.
+      Kept out of the offhand by canEquip plus a server-side inventoryTick eviction
 - [ ] Main screen shell (Resonance tab for 1.0; Animus and Ore Memory tabs land with their epics)
 - [ ] Resonance tree tab — node graph renderer
 - [ ] Node locked/unlocked/toggleable visual states
