@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.jspecify.annotations.Nullable;
@@ -31,51 +32,45 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
 /**
- * Playtest diagnostics for #82 ("blocks unbreakable in team-created Vaults").
+ * Playtest instrumentation. Everything here is temporary and none of it is
+ * gameplay.
  *
- * <p>Passive instrumentation on the game event bus logs — at
- * {@link EventPriority#LOWEST}, so after every other listener — the three
- * events that gate block breaking inside any vault dimension:
- * {@code LeftClickBlock} (cancelled by claim/protection mods),
- * {@code PlayerEvent.BreakSpeed} (a mod zeroing the break speed freezes the
- * crack progress forever), and {@code BreakBlockEvent} (26.1's renamed
- * {@code BlockEvent.BreakEvent}). All lines are tagged {@value #TAG} so the
- * pack's {@code logs/latest.log} can be grepped.</p>
+ * <p>It began as passive logging for #82 ("blocks unbreakable in team-created
+ * Vaults"): three listeners at {@code EventPriority.LOWEST} on
+ * {@code LeftClickBlock}, {@code PlayerEvent.BreakSpeed} and
+ * {@code BreakBlockEvent}. Both #82 and #89 are root-caused and closed, and the
+ * listeners were firing on every left-click in a Vault, so they are gone —
+ * a diagnostic that outlives its bug is just noise in the log you need next.</p>
  *
- * <p>The {@code /orevault diag [pos]} command prints the same state
- * synchronously for the aimed-at (or given) block: spawn protection, world
- * border, may-interact, gamemode, computed destroy progress and item destroy
- * speed — plus the server tick at which the dimension was created (startup
- * dimensions were created at tick 0, team-created ones mid-session).</p>
+ * <p>What remains is on demand rather than always-on:</p>
+ * <ul>
+ *   <li>{@link #onResonanceGained} prints what each orb paid, because until the
+ *       Tome ([35]) there is no readout of the pool at all and a working build
+ *       looks exactly like a broken one while mining.</li>
+ *   <li>{@code /orevault diag [pos]} prints break state for a block: spawn
+ *       protection, world border, may-interact, gamemode, destroy progress, and
+ *       the server tick the dimension was created at.</li>
+ *   <li>{@code /orevault testore [radius] [ore]} fills a cube with ore so the
+ *       Resonance loop can be exercised in a minute.</li>
+ * </ul>
  *
- * <p>It has since picked up two playtest aids for the Resonance loop:
- * {@link #onResonanceGained} prints what each orb paid, and
- * {@code /orevault testore [radius] [ore]} fills a cube with ore so the loop can
- * be exercised without an hour of mining.</p>
- *
- * <p><b>Temporary, all of it.</b> #82 and #89 are both root-caused and closed,
- * so the three passive listeners have outlived their purpose and now log a line
- * per left-click in a Vault. The Resonance readout goes when the Tome gives the
- * pool a real display ([35]). This whole class should leave the tree before
- * 1.0.</p>
+ * <p>Both commands are gated on {@code [debug] enable_debug_commands} <em>and</em>
+ * operator permission. The config gate is what makes the class safe to ship in a
+ * pre-1.0 jar; it is not a substitute for deleting it. This whole file should
+ * leave the tree before 1.0.</p>
  */
 public final class VaultDiag {
 
@@ -97,40 +92,6 @@ public final class VaultDiag {
     /** Records that a vault dimension was created at the given server tick (#82 diagnostics). */
     public static void markCreated(ResourceKey<Level> key, int serverTick) {
         CREATED_AT_TICK.put(key, serverTick);
-    }
-
-    // ----- passive instrumentation -----
-
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
-        if (event.getLevel() instanceof ServerLevel level && VaultDimensions.isVaultDimension(level)) {
-            OreVault.LOGGER.info("{} LEFT_CLICK dim={} pos={} player={} canceled={} useBlock={}",
-                    TAG, level.dimension().identifier(), event.getPos(),
-                    event.getEntity().getName().getString(), event.isCanceled(), event.getUseBlock());
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onBreakSpeed(PlayerEvent.BreakSpeed event) {
-        if (event.getEntity().level() instanceof ServerLevel level && VaultDimensions.isVaultDimension(level)) {
-            OreVault.LOGGER.info("{} BREAK_SPEED dim={} pos={} block={} original={} new={} canceled={} player={}",
-                    TAG, level.dimension().identifier(),
-                    event.getPosition().map(BlockPos::toString).orElse("unknown"),
-                    event.getState(), event.getOriginalSpeed(), event.getNewSpeed(), event.isCanceled(),
-                    event.getEntity().getName().getString());
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onBreakBlock(BreakBlockEvent event) {
-        if (event.getLevel() instanceof ServerLevel level && VaultDimensions.isVaultDimension(level)) {
-            Player player = event.getPlayer();
-            OreVault.LOGGER.info("{} BREAK_BLOCK dim={} pos={} block={} canceled={} notifyClient={} player={} mayInteract={} spawnProtection={}",
-                    TAG, level.dimension().identifier(), event.getPos(), event.getState(),
-                    event.isCanceled(), event.shouldNotifyClient(), player.getName().getString(),
-                    level.mayInteract(player, event.getPos()),
-                    level.getServer().isUnderSpawnProtection(level, event.getPos(), player));
-        }
     }
 
     // ----- Resonance gain readout -----
@@ -171,18 +132,35 @@ public final class VaultDiag {
 
     // ----- commands -----
 
+    /**
+     * Operator <em>and</em> the config flag, applied to the {@code /orevault}
+     * root so every subcommand inherits it and none can be added without it.
+     *
+     * <p>Two independent gates because they answer different questions. The flag
+     * says whether these commands exist on this server at all; the permission
+     * says who may run them where they do. An op on a server that has not opted
+     * in still gets nothing, which is the point — {@code testore} rewrites
+     * terrain, and shipping it live-by-default in a pre-1.0 jar is how someone
+     * loses a Vault they cared about.</p>
+     *
+     * <p>26.1 replaced the int permission level with a {@code PermissionSet};
+     * {@code LEVEL_GAMEMASTERS} is the old 2.</p>
+     */
+    private static Predicate<CommandSourceStack> debugCommandsAllowed() {
+        return Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS)
+                .and(source -> OreVaultServerConfig.enableDebugCommands());
+    }
+
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(
                 literal("orevault")
+                        .requires(debugCommandsAllowed())
                         .then(literal("diag")
                                 .executes(ctx -> run(ctx.getSource(), null))
                                 .then(argument("pos", BlockPosArgument.blockPos())
                                         .executes(ctx -> run(ctx.getSource(), BlockPosArgument.getLoadedBlockPos(ctx, "pos")))))
                         .then(literal("testore")
-                                // 26.1 replaced the int permission level with a
-                                // PermissionSet; LEVEL_GAMEMASTERS is the old 2.
-                                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                                 .executes(ctx -> fillTestOre(ctx.getSource(), DEFAULT_TEST_RADIUS, Blocks.COAL_ORE))
                                 .then(argument("radius", IntegerArgumentType.integer(1, MAX_TEST_RADIUS))
                                         .executes(ctx -> fillTestOre(ctx.getSource(),

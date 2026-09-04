@@ -33,6 +33,7 @@ public final class OreVaultServerConfig {
     private static final ModConfigSpec.BooleanValue ALLOW_BACKUP_ON_RESET;
 
     // Debug — playtest instrumentation, removed before 1.0.
+    private static final ModConfigSpec.BooleanValue ENABLE_DEBUG_COMMANDS;
     private static final ModConfigSpec.BooleanValue LOG_RESONANCE_GAIN;
 
     public static final ModConfigSpec SPEC;
@@ -84,6 +85,14 @@ public final class OreVaultServerConfig {
         BUILDER.pop();
 
         BUILDER.push("debug");
+        ENABLE_DEBUG_COMMANDS = BUILDER
+                .comment("Whether the /orevault debug commands are usable.",
+                        "Gates /orevault diag and /orevault testore, which fills a cube with ore.",
+                        "Operator permission is required on top of this — the flag decides whether",
+                        "the command exists at all, not who may run it.",
+                        "Default true while the mod is pre-1.0 and being playtested. Flip to false,",
+                        "and delete the whole [debug] block, before release.")
+                .define("enable_debug_commands", true);
         LOG_RESONANCE_GAIN = BUILDER
                 .comment("Print a chat line to the collecting player every time an orb pays Resonance.",
                         "Playtest instrumentation: there is no other readout of the pool until the",
@@ -125,14 +134,29 @@ public final class OreVaultServerConfig {
     }
 
     /**
+     * Whether the {@code /orevault} debug commands are usable.
+     *
+     * <p>Guarded on {@link ModConfigSpec#isLoaded()} because this is read from a
+     * Brigadier {@code requires} predicate. Those normally run well after config
+     * load — the command tree is built at server start and evaluated when it is
+     * sent to a player — but a requirement that throws would break command
+     * dispatch for everything under {@code /orevault}, and a debug flag is not
+     * worth that risk. Unloaded reads as disabled.</p>
+     */
+    public static boolean enableDebugCommands() {
+        return SPEC.isLoaded() && ENABLE_DEBUG_COMMANDS.get();
+    }
+
+    /**
      * Whether an orb pickup prints a chat line to the collector (playtest only).
      *
-     * <p>Reads the raw spec value rather than going through a loaded check,
-     * which is fine because every caller is on the server thread after config
-     * load. Goes away with the rest of the {@code [debug]} block.</p>
+     * <p>Loaded-guarded for the same reason as {@link #enableDebugCommands()}:
+     * this runs on the orb-pickup path, and a debug readout must never be the
+     * thing that throws inside a pickup. Goes away with the rest of the
+     * {@code [debug]} block.</p>
      */
     public static boolean logResonanceGain() {
-        return LOG_RESONANCE_GAIN.get();
+        return SPEC.isLoaded() && LOG_RESONANCE_GAIN.get();
     }
 
     /** Parsed classification overrides: block id → rarity ({@code common|uncommon|rare}). */
