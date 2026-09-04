@@ -1516,7 +1516,11 @@ Use this to track progress. Update at the end of each development session.
 - [ ] Ore Memory tab — team/player stats panels, trophies (cosmetic; deferred)
 
 ### UI — Tome of the Deep Seam
-- [ ] Network channel (`ModNetwork`) — tree state, pool, level, tradeoff toggles, node purchase/refund
+- [x] Network channel (`ModNetwork`) — five payloads on one channel (#33). Purchase and tradeoff
+      toggle are server-authoritative and live; the clientbound progress and reset-vote payloads
+      have their final shape but no client handler until [39] (#40), and reset voting is refused
+      until the state machine in #94. Refund has no packet yet — it needs the Tome to have
+      somewhere to trigger it from ([35])
 - [ ] Tome item (auto-given on first spawn, craftable cobblestone + book)
 - [ ] Main screen shell (Resonance tab for 1.0; Animus and Ore Memory tabs land with their epics)
 - [ ] Resonance tree tab — node graph renderer
