@@ -45,7 +45,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * the vanilla nether-style charge-up ({@link #getPortalTransitionTime}), the
  * wavy "confusion" screen overlay ({@link #getLocalTransition}) and a portal
  * travel sound, then {@link #getPortalDestination} routes through
- * {@link VaultTeleport}. Tier-4 igniter holders skip the wait entirely.</li>
+ * {@link VaultTeleport}. Tier-3+ igniter holders skip the wait entirely.</li>
  * <li>No team gate (§3.2, §9): FTB Teams auto-creates a single-member team for
  * every player who logs in, so "has a team" can never be false and any check
  * against it is dead code. Solo players get a solo Vault.</li>
@@ -106,7 +106,7 @@ public class VaultPortalBlock extends Block implements Portal {
      * Portal entry (§3.2): the client call only creates the local portal
      * processor for the warp overlay; all gating is server side.
      * <ul>
-     * <li>Tier 4 igniter (§3.3): instant direct teleport, no wait, no cooldown.</li>
+     * <li>Tier 3+ igniter (§3.3): instant direct teleport, no wait, no cooldown.</li>
      * <li>No FTB team (§3.1): action-bar hint + fizzle sound (#80),
      * rate-limited via the portal cooldown.</li>
      * <li>Otherwise: the vanilla {@link Portal} flow — wait, overlay, travel
