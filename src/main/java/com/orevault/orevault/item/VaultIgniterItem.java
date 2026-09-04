@@ -3,6 +3,7 @@ package com.orevault.orevault.item;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
 
@@ -10,6 +11,7 @@ import com.orevault.orevault.block.ModBlocks;
 import com.orevault.orevault.portal.VaultPortalShape;
 import com.orevault.orevault.worldgen.VaultDimensions;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -23,6 +25,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 
@@ -170,6 +174,55 @@ public class VaultIgniterItem extends Item {
     public static boolean canResetVault(Player player) {
         Tier best = highestTier(player);
         return best != null && best.unlocksReset();
+    }
+
+    // ----- tooltip -----
+
+    /**
+     * Explains what this tier does and how to use it (§3.3).
+     *
+     * <p>There is nowhere else a player can learn this. The igniter's whole
+     * value is a capability with a non-obvious input — right-click a Vault Frame
+     * to open a portal, right-click a block inside to store a waypoint,
+     * right-click the air to cycle between them — and none of that is
+     * discoverable by trying things. The tooltip carries it until the guide book
+     * (#124) exists.</p>
+     *
+     * <p>Each tier lists its own capability plus the ones below it, because a
+     * player holding a Resonant igniter should not have to find the Attuned one
+     * to learn it can also store waypoints.</p>
+     */
+    @Override
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display,
+                                Consumer<Component> builder, TooltipFlag flag) {
+        builder.accept(Component.translatable("tooltip.orevault.igniter.ignite")
+                .withStyle(ChatFormatting.GRAY));
+
+        if (tier.entryPoints() == 1) {
+            builder.accept(Component.translatable("tooltip.orevault.igniter.entry_single")
+                    .withStyle(ChatFormatting.GRAY));
+        } else if (tier.entryPoints() > 1) {
+            builder.accept(Component.translatable("tooltip.orevault.igniter.entry_multi", tier.entryPoints())
+                    .withStyle(ChatFormatting.GRAY));
+            builder.accept(Component.translatable("tooltip.orevault.igniter.entry_cycle")
+                    .withStyle(ChatFormatting.DARK_GRAY));
+        }
+
+        if (tier.instantTravel()) {
+            builder.accept(Component.translatable("tooltip.orevault.igniter.instant")
+                    .withStyle(ChatFormatting.AQUA));
+        }
+        if (tier.unlocksReset()) {
+            builder.accept(Component.translatable("tooltip.orevault.igniter.reset")
+                    .withStyle(ChatFormatting.LIGHT_PURPLE));
+        }
+
+        // Named last so the upgrade path reads as a next step rather than a
+        // limitation of the item in hand.
+        if (tier.level() < Tier.SOVEREIGN.level()) {
+            builder.accept(Component.translatable("tooltip.orevault.igniter.upgrade")
+                    .withStyle(ChatFormatting.DARK_GRAY));
+        }
     }
 
     // ----- interaction -----

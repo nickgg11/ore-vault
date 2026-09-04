@@ -14,6 +14,14 @@
   "item.orevault.resonant_vault_igniter": "Resonant Vault Igniter",
   "item.orevault.sovereign_vault_igniter": "Sovereign Vault Igniter",
 
+  "tooltip.orevault.igniter.ignite": "Right-click a Vault Frame to open a portal",
+  "tooltip.orevault.igniter.entry_single": "Right-click a block inside your Vault to set your arrival point",
+  "tooltip.orevault.igniter.entry_multi": "Right-click a block inside your Vault to store an arrival point (up to %s)",
+  "tooltip.orevault.igniter.entry_cycle": "Right-click the air to switch between stored points",
+  "tooltip.orevault.igniter.instant": "Instant travel — no portal charge, no cooldown",
+  "tooltip.orevault.igniter.reset": "Unlocks the Vault Reset button",
+  "tooltip.orevault.igniter.upgrade": "A higher tier grants more",
+
   "message.orevault.vault_arrival": "Welcome to the Ore Vault!",
   "message.orevault.overworld_return": "Welcome back to the Overworld.",
   "message.orevault.resonance_level_up": "Resonance level %s — %s skill points earned",
