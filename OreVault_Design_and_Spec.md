@@ -1167,13 +1167,13 @@ Configuration is intentionally minimal. Most values are derived dynamically from
 ```toml
 [resonance]
     # Target hours of play to make the full Resonance tree purchasable (level 30).
-    # Read once at server start; changing it requires a restart.
+    # Read once at server start; takes effect on the next world load.
     target_play_hours = 100
 
     # Divides the total Resonance required across the whole curve.
     # 2.0 = half the grind; 0.5 = double it. The shape of the curve is unchanged,
     # so every level requirement in the skill tree keeps its intended pacing.
-    # Read once at server start; changing it requires a restart.
+    # Read once at server start; takes effect on the next world load.
     curve_divisor = 1.0
 
 [chunk_loading]
@@ -1200,6 +1200,34 @@ Configuration is intentionally minimal. Most values are derived dynamically from
     # Disable if disk space is a concern.
     allow_backup_on_reset = true
 ```
+
+A temporary `[debug]` block also exists — `enable_debug_commands` and `log_resonance_gain` — and is
+removed with the rest of the playtest instrumentation before 1.0 (#120).
+
+**When a change takes effect.** The config screen is reachable in game from Escape → Mods → Ore Vault
+→ Config, and NeoForge only offers a `SERVER` config there in a singleplayer world that is not
+published to LAN. What a saved change does from there varies, so each value says so in its own
+comment and tooltip rather than leaving the player to guess:
+
+| Setting | Takes effect |
+| --- | --- |
+| `resonance.target_play_hours` | next world load — the curve is computed once at server start |
+| `resonance.curve_divisor` | next world load — same curve |
+| `ore_classification.overrides` | next world load — `OreClassifier` builds its table at server start |
+| `chunk_loading.*` | nothing reads it yet ([30], [52]) |
+| `disturbed_zones.max_zones_per_team` | nothing reads it yet (post-1.0) |
+| `reset.allow_backup_on_reset` | nothing reads it yet ([80]) |
+| `debug.enable_debug_commands` | immediately |
+| `debug.log_resonance_gain` | immediately — read on each orb pickup |
+
+The three world-load values are marked `worldRestart()` on the spec builder, which is what makes the
+config screen warn about it instead of silently accepting an edit that does nothing until a reload.
+
+`enable_debug_commands` is immediate but needed help to look that way. The Brigadier `requires`
+predicate is evaluated server-side on every execution, so the command really does start working the
+moment the flag flips — but the *client's* copy of the command tree is only sent on login, so the
+command stayed invisible and un-completable until a reload. `ConfigReload` listens for
+`ModConfigEvent.Reloading` and re-sends the tree to everyone online, which re-runs the predicate.
 
 **Values derived automatically (not configurable):**
 - Level thresholds for Resonance and Animus (derived from tree structure, scaled by `curve_divisor`)

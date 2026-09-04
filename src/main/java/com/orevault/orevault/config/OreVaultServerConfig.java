@@ -42,27 +42,32 @@ public final class OreVaultServerConfig {
         BUILDER.push("resonance");
         TARGET_PLAY_HOURS = BUILDER
                 .comment("Target hours of play to make the full Resonance tree purchasable (level 30).",
-                        "Read once at server start; changing it requires a restart.")
+                        "ResonanceSystem computes the curve once at server start and holds it, so this",
+                        "takes effect on the next world load, not on save.")
                 .translation("orevault.configuration.resonance.target_play_hours")
+                .worldRestart()
                 .defineInRange("target_play_hours", 100, 1, 10000);
         CURVE_DIVISOR = BUILDER
                 .comment("Divides the total Resonance required across the whole curve.",
                         "2.0 = half the grind; 0.5 = double it. The shape of the curve is unchanged,",
                         "so every level requirement in the skill tree keeps its intended pacing.",
-                        "Read once at server start; changing it requires a restart.")
+                        "Read once at server start alongside target_play_hours; needs a world reload.")
                 .translation("orevault.configuration.resonance.curve_divisor")
+                .worldRestart()
                 .defineInRange("curve_divisor", 1.0, 0.01, 100.0);
         BUILDER.pop();
 
         BUILDER.push("chunk_loading");
         VAULT_PRESENCE_ENABLED = BUILDER
                 .comment("Whether the Vault Presence skill nodes are enabled.",
-                        "Set to false to disable cross-dimension chunk loading entirely.")
+                        "Set to false to disable cross-dimension chunk loading entirely.",
+                        "INERT: nothing reads this yet. Vault Presence lands with [52] (#53).")
                 .translation("orevault.configuration.chunk_loading.vault_presence_enabled")
                 .define("vault_presence_enabled", true);
         MAX_LOADED_CHUNKS_PER_TEAM = BUILDER
                 .comment("Hard ceiling on simultaneous loaded chunks per team, regardless of node level.",
-                        "Set to 0 for unlimited (not recommended).")
+                        "Set to 0 for unlimited (not recommended).",
+                        "INERT: nothing reads this yet. The chunk loader is [30] (#31).")
                 .translation("orevault.configuration.chunk_loading.max_loaded_chunks_per_team")
                 .defineInRange("max_loaded_chunks_per_team", 32, 0, Integer.MAX_VALUE);
         BUILDER.pop();
@@ -71,14 +76,18 @@ public final class OreVaultServerConfig {
         ORE_CLASSIFICATION_OVERRIDES = BUILDER
                 .comment("Override the automatic rarity classification for specific ore blocks.",
                         "Format: \"modid:block_id=common|uncommon|rare\"",
-                        "Example: \"minecraft:diamond_ore=rare\"")
+                        "Example: \"minecraft:diamond_ore=rare\"",
+                        "OreClassifier builds its table once at server start, so this takes effect",
+                        "on the next world load.")
                 .translation("orevault.configuration.ore_classification.overrides")
+                .worldRestart()
                 .defineListAllowEmpty("overrides", List.of(), () -> "", OreVaultServerConfig::validateOverride);
         BUILDER.pop();
 
         BUILDER.push("disturbed_zones");
         MAX_ZONES_PER_TEAM = BUILDER
-                .comment("Maximum number of Disturbed Zone blocks placeable per team.")
+                .comment("Maximum number of Disturbed Zone blocks placeable per team.",
+                        "INERT: nothing reads this yet. Disturbed Zones are post-1.0 (#90).")
                 .translation("orevault.configuration.disturbed_zones.max_zones_per_team")
                 .defineInRange("max_zones_per_team", 10, 1, Integer.MAX_VALUE);
         BUILDER.pop();
@@ -86,7 +95,8 @@ public final class OreVaultServerConfig {
         BUILDER.push("reset");
         ALLOW_BACKUP_ON_RESET = BUILDER
                 .comment("Whether team members can take backups before resetting.",
-                        "Disable if disk space is a concern.")
+                        "Disable if disk space is a concern.",
+                        "INERT: nothing reads this yet. Backup export is [80] (#96).")
                 .translation("orevault.configuration.reset.allow_backup_on_reset")
                 .define("allow_backup_on_reset", true);
         BUILDER.pop();
@@ -98,6 +108,8 @@ public final class OreVaultServerConfig {
                         "Operator permission is required on top of this — the flag decides whether",
                         "the command exists at all, not who may run it.",
                         "Turn on from the mods menu (Mods -> Ore Vault -> Config) while playtesting.",
+                        "Takes effect on save: the command tree is re-sent to everyone online, so",
+                        "the commands appear without reloading the world.",
                         "The whole [debug] block is removed before release (#120).")
                 .translation("orevault.configuration.debug.enable_debug_commands")
                 .define("enable_debug_commands", false);

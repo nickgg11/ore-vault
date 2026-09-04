@@ -55,31 +55,31 @@
 
   "orevault.configuration.resonance": "Resonance",
   "orevault.configuration.resonance.target_play_hours": "Target Play Hours",
-  "orevault.configuration.resonance.target_play_hours.tooltip": "Hours of hand-mining that should make the whole Resonance tree purchasable. Read once at server start; changing it needs a restart.",
+  "orevault.configuration.resonance.target_play_hours.tooltip": "Hours of hand-mining that should make the whole Resonance tree purchasable. The curve is built once when the world loads, so a change here applies the next time you load it.",
   "orevault.configuration.resonance.curve_divisor": "Curve Divisor",
-  "orevault.configuration.resonance.curve_divisor.tooltip": "Scales the whole grind without changing the curve's shape. 2.0 halves it, 0.5 doubles it. Every skill-tree level requirement keeps its intended pacing. Needs a restart.",
+  "orevault.configuration.resonance.curve_divisor.tooltip": "Scales the whole grind without changing the curve's shape. 2.0 halves it, 0.5 doubles it. Every skill-tree level requirement keeps its intended pacing. Applies on the next world load.",
 
   "orevault.configuration.chunk_loading": "Chunk Loading",
   "orevault.configuration.chunk_loading.vault_presence_enabled": "Enable Vault Presence",
-  "orevault.configuration.chunk_loading.vault_presence_enabled.tooltip": "Whether the Vault Presence nodes work at all. Off disables cross-dimension chunk loading entirely.",
+  "orevault.configuration.chunk_loading.vault_presence_enabled.tooltip": "Whether the Vault Presence nodes work at all. Off disables cross-dimension chunk loading entirely. Does nothing yet: Vault Presence has not been built.",
   "orevault.configuration.chunk_loading.max_loaded_chunks_per_team": "Max Loaded Chunks Per Team",
-  "orevault.configuration.chunk_loading.max_loaded_chunks_per_team.tooltip": "Hard ceiling on chunks one team can keep loaded, whatever their node level says. 0 means unlimited, which is not recommended.",
+  "orevault.configuration.chunk_loading.max_loaded_chunks_per_team.tooltip": "Hard ceiling on chunks one team can keep loaded, whatever their node level says. 0 means unlimited, which is not recommended. Does nothing yet: the chunk loader has not been built.",
 
   "orevault.configuration.ore_classification": "Ore Classification",
   "orevault.configuration.ore_classification.overrides": "Rarity Overrides",
-  "orevault.configuration.ore_classification.overrides.tooltip": "Force a rarity for specific ore blocks instead of letting the classifier decide. Format: modid:block_id=common|uncommon|rare",
+  "orevault.configuration.ore_classification.overrides.tooltip": "Force a rarity for specific ore blocks instead of letting the classifier decide. Format: modid:block_id=common|uncommon|rare. The table is built when the world loads, so a change applies the next time you load it.",
 
   "orevault.configuration.disturbed_zones": "Disturbed Zones",
   "orevault.configuration.disturbed_zones.max_zones_per_team": "Max Zones Per Team",
-  "orevault.configuration.disturbed_zones.max_zones_per_team.tooltip": "How many Disturbed Zone blocks one team may place. Post-1.0 feature; the setting is inert until it ships.",
+  "orevault.configuration.disturbed_zones.max_zones_per_team.tooltip": "How many Disturbed Zone blocks one team may place. Does nothing yet: Disturbed Zones are a post-1.0 feature.",
 
   "orevault.configuration.reset": "Vault Reset",
   "orevault.configuration.reset.allow_backup_on_reset": "Allow Backup On Reset",
-  "orevault.configuration.reset.allow_backup_on_reset.tooltip": "Whether a team may export a copy of their Vault before resetting it. Turn off if disk space is tight.",
+  "orevault.configuration.reset.allow_backup_on_reset.tooltip": "Whether a team may export a copy of their Vault before resetting it. Does nothing yet: Vault reset has not been built.",
 
   "orevault.configuration.debug": "Debug",
   "orevault.configuration.debug.enable_debug_commands": "Enable Debug Commands",
-  "orevault.configuration.debug.enable_debug_commands.tooltip": "Unlocks /orevault diag and /orevault testore, which overwrites terrain with ore. Operator permission is still required. Playtest tooling — leave off for normal play.",
+  "orevault.configuration.debug.enable_debug_commands.tooltip": "Unlocks /orevault diag and /orevault testore, which overwrites terrain with ore. Operator permission is still required. Applies as soon as you save, no world reload needed. Playtest tooling: leave off for normal play.",
   "orevault.configuration.debug.log_resonance_gain": "Log Resonance Gain",
   "orevault.configuration.debug.log_resonance_gain.tooltip": "Print a chat line each time an orb pays Resonance, showing the pool, level and progress. The only readout of the pool until the Tome exists."
 }
