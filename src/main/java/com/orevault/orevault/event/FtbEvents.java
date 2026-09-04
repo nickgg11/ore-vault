@@ -8,6 +8,7 @@ import java.util.UUID;
 import com.orevault.orevault.OreVault;
 import com.orevault.orevault.data.OreVaultTeamData;
 import com.orevault.orevault.item.ModItems;
+import com.orevault.orevault.network.ModNetwork;
 import com.orevault.orevault.team.TeamHelper;
 import dev.ftb.mods.ftbteams.api.event.TeamCreatedEvent;
 import dev.ftb.mods.ftbteams.api.event.TeamDeletedEvent;
@@ -87,6 +88,11 @@ public final class FtbEvents {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
+        // Before anything else: the Tome draws from the last sync it was sent,
+        // and a client that has never been told anything renders "connecting"
+        // forever. This is the only push a player who never mines will get.
+        ModNetwork.syncTo(player);
+
         CompoundTag data = player.getPersistentData();
         if (data.getBooleanOr(TOME_GRANTED_TAG, false)) {
             return;

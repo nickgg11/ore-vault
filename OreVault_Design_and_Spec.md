@@ -1530,7 +1530,10 @@ Use this to track progress. Update at the end of each development session.
 - [x] Tome item (auto-given on first join; recipe is [67]) (#34) — right-click opens the screen
       through an opener the client installs; until [34] lands it says so rather than doing nothing.
       Kept out of the offhand by canEquip plus a server-side inventoryTick eviction
-- [ ] Main screen shell (Resonance tab for 1.0; Animus and Ore Memory tabs land with their epics)
+- [x] Main screen shell (Resonance tab for 1.0; Animus and Ore Memory tabs land with their epics)
+      (#35) — vanilla `TabNavigationBar`/`TabManager`, all three tabs present and switching, each
+      one a placeholder that names what will fill it. `TomeTab` adds the body draw call vanilla's
+      `Tab` lacks, since two of the three pages are a node graph rather than a column of widgets
 - [ ] Resonance tree tab — node graph renderer
 - [ ] Node locked/unlocked/toggleable visual states
 - [ ] Fork indicator — unchosen branches shown locked
@@ -1538,7 +1541,10 @@ Use this to track progress. Update at the end of each development session.
 - [ ] Keystone visual treatment (distinct from small nodes and notables)
 - [ ] Tradeoff toggle disabled with a reason while inside the Vault
 - [ ] Ultimine node conditional visibility
-- [ ] Team Resonance level bar and skill point display
+- [x] Team Resonance level bar and skill point display (#35) — the Tome's header, one row per
+      tree: level, unspent points, a progress bar and the pool on hover. Drawn only once a sync
+      has arrived; before that it says it is waiting rather than showing zeroes. The server
+      pushes on login and on every Resonance gain
 - [ ] Seismic Sense ore-density readout (gated on the node)
 - [ ] Vault reset button (conditional on Tier 4 igniter)
 - [ ] Reset voting dialog

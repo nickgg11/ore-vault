@@ -82,8 +82,8 @@ public final class ClientPacketHandlers {
         switch (payload) {
             case ModNetwork.SyncTeamProgress sync -> context.enqueueWork(() -> {
                 teamProgress = sync;
-                OreVault.LOGGER.debug("Team progress synced: level {} pool {} ({} unspent)",
-                        sync.level(), sync.pool(), sync.unspentPoints());
+                OreVault.LOGGER.debug("Team progress synced: Resonance level {} pool {} ({} unspent)",
+                        sync.resonance().level(), sync.resonance().pool(), sync.resonance().unspentPoints());
             });
             case ModNetwork.ResetVoteStatus vote -> context.enqueueWork(() -> resetVote = vote);
             default -> OreVault.LOGGER.warn("Unhandled clientbound payload {}", payload.type().id());

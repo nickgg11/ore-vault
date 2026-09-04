@@ -5,6 +5,7 @@ import java.util.UUID;
 import com.orevault.orevault.OreVault;
 import com.orevault.orevault.config.OreVaultServerConfig;
 import com.orevault.orevault.data.OreVaultTeamData;
+import com.orevault.orevault.network.ModNetwork;
 import com.orevault.orevault.skill.LevelCurve;
 import com.orevault.orevault.skill.NodeDef.Tree;
 import com.orevault.orevault.skill.NodeDefs;
@@ -146,6 +147,10 @@ public final class ResonanceSystem {
         if (result.leveledUp()) {
             announce(teamId, result);
         }
+        // The pool moved, so the Tome's header is now stale on every open client
+        // ([34]). Pushed on every gain rather than only on a level-up: the
+        // progress bar is the part players watch while mining.
+        ModNetwork.syncTeam(server, teamId);
         return result;
     }
 
