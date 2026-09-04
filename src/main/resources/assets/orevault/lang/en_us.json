@@ -1,16 +1,54 @@
 {
   "itemGroup.orevault": "Ore Vault",
+
   "entity.orevault.resonance_orb": "Resonance Orb",
+
   "block.orevault.vault_frame": "Vault Frame",
   "block.orevault.vault_portal_common": "Ore Vault Portal (Common)",
   "block.orevault.vault_portal_uncommon": "Ore Vault Portal (Uncommon)",
   "block.orevault.vault_portal_rare": "Ore Vault Portal (Rare)",
   "block.orevault.vault_portal_legendary": "Ore Vault Portal (Legendary)",
+
   "item.orevault.vault_igniter": "Crude Vault Igniter",
   "item.orevault.attuned_vault_igniter": "Attuned Vault Igniter",
   "item.orevault.resonant_vault_igniter": "Resonant Vault Igniter",
   "item.orevault.sovereign_vault_igniter": "Sovereign Vault Igniter",
+
   "message.orevault.vault_arrival": "Welcome to the Ore Vault!",
   "message.orevault.overworld_return": "Welcome back to the Overworld.",
-  "message.orevault.resonance_level_up": "Resonance level %s — %s skill points earned"
+  "message.orevault.resonance_level_up": "Resonance level %s — %s skill points earned",
+
+  "orevault.configuration.title": "Ore Vault",
+  "orevault.configuration.section.orevault.server.toml": "Ore Vault Settings",
+  "orevault.configuration.section.orevault.server.toml.title": "Ore Vault Settings",
+
+  "orevault.configuration.resonance": "Resonance",
+  "orevault.configuration.resonance.target_play_hours": "Target Play Hours",
+  "orevault.configuration.resonance.target_play_hours.tooltip": "Hours of hand-mining that should make the whole Resonance tree purchasable. Read once at server start; changing it needs a restart.",
+  "orevault.configuration.resonance.curve_divisor": "Curve Divisor",
+  "orevault.configuration.resonance.curve_divisor.tooltip": "Scales the whole grind without changing the curve's shape. 2.0 halves it, 0.5 doubles it. Every skill-tree level requirement keeps its intended pacing. Needs a restart.",
+
+  "orevault.configuration.chunk_loading": "Chunk Loading",
+  "orevault.configuration.chunk_loading.vault_presence_enabled": "Enable Vault Presence",
+  "orevault.configuration.chunk_loading.vault_presence_enabled.tooltip": "Whether the Vault Presence nodes work at all. Off disables cross-dimension chunk loading entirely.",
+  "orevault.configuration.chunk_loading.max_loaded_chunks_per_team": "Max Loaded Chunks Per Team",
+  "orevault.configuration.chunk_loading.max_loaded_chunks_per_team.tooltip": "Hard ceiling on chunks one team can keep loaded, whatever their node level says. 0 means unlimited, which is not recommended.",
+
+  "orevault.configuration.ore_classification": "Ore Classification",
+  "orevault.configuration.ore_classification.overrides": "Rarity Overrides",
+  "orevault.configuration.ore_classification.overrides.tooltip": "Force a rarity for specific ore blocks instead of letting the classifier decide. Format: modid:block_id=common|uncommon|rare",
+
+  "orevault.configuration.disturbed_zones": "Disturbed Zones",
+  "orevault.configuration.disturbed_zones.max_zones_per_team": "Max Zones Per Team",
+  "orevault.configuration.disturbed_zones.max_zones_per_team.tooltip": "How many Disturbed Zone blocks one team may place. Post-1.0 feature; the setting is inert until it ships.",
+
+  "orevault.configuration.reset": "Vault Reset",
+  "orevault.configuration.reset.allow_backup_on_reset": "Allow Backup On Reset",
+  "orevault.configuration.reset.allow_backup_on_reset.tooltip": "Whether a team may export a copy of their Vault before resetting it. Turn off if disk space is tight.",
+
+  "orevault.configuration.debug": "Debug",
+  "orevault.configuration.debug.enable_debug_commands": "Enable Debug Commands",
+  "orevault.configuration.debug.enable_debug_commands.tooltip": "Unlocks /orevault diag and /orevault testore, which overwrites terrain with ore. Operator permission is still required. Playtest tooling — leave off for normal play.",
+  "orevault.configuration.debug.log_resonance_gain": "Log Resonance Gain",
+  "orevault.configuration.debug.log_resonance_gain.tooltip": "Print a chat line each time an orb pays Resonance, showing the pool, level and progress. The only readout of the pool until the Tome exists."
 }
