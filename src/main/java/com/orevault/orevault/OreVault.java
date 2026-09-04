@@ -11,6 +11,7 @@ import com.orevault.orevault.event.DropPipeline;
 import com.orevault.orevault.event.FtbEvents;
 import com.orevault.orevault.entity.ModEntities;
 import com.orevault.orevault.event.PortalEvents;
+import com.orevault.orevault.network.ModNetwork;
 import com.orevault.orevault.item.ModItems;
 import com.orevault.orevault.resonance.ResonanceSystem;
 import com.orevault.orevault.worldgen.VaultDimensions;
@@ -72,7 +73,9 @@ public class OreVault {
             VaultConfigScreen.register(modContainer);
         }
 
-        // Registrations are added incrementally in later tasks:
-        //   [32] network.
+        // Network channel ([32]): mod event bus, not the game bus — a payload
+        // listener on the wrong bus never fires and every packet becomes an
+        // unknown-channel disconnect.
+        modEventBus.addListener(ModNetwork::register);
     }
 }
