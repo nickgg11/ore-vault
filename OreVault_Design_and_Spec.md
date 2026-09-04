@@ -409,12 +409,12 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 | **[NOTABLE]** | A single-tier node granting a *distinct mechanic* rather than a bigger number. Always pure upside. |
 | **[KEYSTONE]** | Build-defining, expensive, and **always carries a real downside**. A keystone should change how you mine, not just how fast. All keystones live in the Mastery cluster at the bottom of the tree. |
 | **[FORK PARENT: name]** | A tiered node that costs points and **does nothing until specialized**. Its tiers act through whichever option is chosen. |
-| **[FORK OPTION: name]** | **Costs 0 points.** Requires its parent at tier 1 and decides what the parent's tiers do. One option at a time; siblings lock until refunded, and refunding an option is free. |
+| **[FORK OPTION: name]** | **Costs 0 points.** Requires its parent at tier 1 and decides what the parent's tiers do. One option at a time; siblings lock until refunded, refunding is free, and swapping is allowed **only while outside the Vault.** |
 | **[TRADEOFF]** | Toggleable on and off at no cost, **but only while outside the Vault.** |
 | **[EXCLUSIVE: other]** | Cannot be held at the same time as the named node. Unlike a fork, both sides are paid for. |
 | **[ULTIMINE ONLY]** | Only appears if FTB Ultimine is loaded. Hidden entirely otherwise, never shown as locked. |
 
-> **Why tradeoffs are only toggleable outside the Vault.** Previously they could be flipped at any moment, which meant no commitment: a player would enable Tithe while mining ore and disable it before touching stone, taking every upside and paying no cost. Requiring the toggle to happen outside makes a tradeoff a loadout you commit to before you delve, which is the whole point of the mechanic, while keeping the freedom to change strategy between trips.
+> **Why tradeoffs and fork options can only be changed outside the Vault.** Previously they could be flipped at any moment, which meant no commitment: a player would enable Tithe while mining ore and disable it before touching stone, taking every upside and paying no cost. Requiring the toggle to happen outside makes a tradeoff a loadout you commit to before you delve, which is the whole point of the mechanic, while keeping the freedom to change strategy between trips.
 
 ---
 
@@ -459,6 +459,24 @@ A fork is now **one paid node plus free specializations**, not a row of rival no
   parent's tiers actually do. Exactly one option may be active; the siblings lock until refunded.
 - Refunding a fork option is **free** — it cost nothing, so unpicking it costs nothing. Refunding the
   parent follows the normal §4.4 XP price and clears the option with it.
+
+**Tiering is not lost — it moved.** Every fork that was tiered is still tiered to exactly the same
+depth; the tiers now sit on the parent and the option says what each one does. Common Focus was
+T1/T2/T3 at +25/50/80%, and it still is: Ore Attunement is a three-tier node and Common Focus is a
+table keyed by which of those three tiers you have bought. The number of decisions is unchanged, the
+number of paid steps is unchanged, and the per-tier effects are the original values moved verbatim.
+What changed is that you buy the tiers once instead of once per rival branch.
+
+**An option must cover every tier its parent has.** A parent tier with nothing behind it in the
+chosen option is a paid step that does nothing — Hoarder's Instinct had exactly that gap when the
+forks were converted and gained a third tier to close it. The only sanctioned exception is a tier
+range the option itself gates, like Ore Working's Mekanism tiers, which are hidden rather than empty.
+
+**Swapping an option is free, but only outside the Vault.** Same rule as tradeoffs (§6 notation), for
+the same reason: inside, a player would re-specialize per vein — Rare Focus for the deepslate layer,
+Common Focus on the way back up — and take every upside of a choice they never actually made. Outside,
+the fork is a loadout you commit to before you delve and can rethink between trips. The restriction is
+on *changing* an option, not on holding one; nothing about your build stops working when you enter.
 
 This replaces three sequential Ore Boost nodes with one Ore Attunement node and three choices, which
 is what the fork was always supposed to be: the old chain stacked, so everyone bought all three in
@@ -922,6 +940,7 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 |---|---|
 | 1 | Orbs are stationary and permanent; nearby orbs merge into caches |
 | 2 | Cache collection pays ×(1 + 0.1 × N), capped at ×3 |
+| 3 | Caches pull in orbs from neighbouring caches within 8 blocks; cap raised to ×4 |
 
 > The previous version of this node removed orb attraction and gave a flat 2× on manual pickup, which was strictly worse than Magnetism Tier 1 in ordinary play — an exclusive choice where one side was simply wrong. Merging plus permanence makes it a different way to mine (clear-then-sweep) rather than a worse one.
 
