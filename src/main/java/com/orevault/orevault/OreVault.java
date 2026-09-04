@@ -2,9 +2,6 @@ package com.orevault.orevault;
 
 import com.mojang.logging.LogUtils;
 import com.orevault.orevault.block.ModBlocks;
-import com.orevault.orevault.client.VaultConfigScreen;
-import com.orevault.orevault.client.VaultOrbRenderers;
-import com.orevault.orevault.client.VaultPortalColors;
 import com.orevault.orevault.config.OreVaultServerConfig;
 import com.orevault.orevault.debug.VaultDiag;
 import com.orevault.orevault.event.DropPipeline;
@@ -19,7 +16,6 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 
@@ -63,15 +59,8 @@ public class OreVault {
         // Entity registry ([21]: Resonance orb; the Animus orb lands post-1.0).
         ModEntities.ENTITY_TYPES.register(modEventBus);
 
-        // Client-side rendering and the mods-menu Config button. All three must
-        // stay behind the dist check: a common-path reference to a client class
-        // kills a dedicated server at class-load, and no unit test here would
-        // catch it.
-        if (FMLEnvironment.getDist().isClient()) {
-            VaultPortalColors.register(modEventBus);
-            VaultOrbRenderers.register(modEventBus);
-            VaultConfigScreen.register(modContainer);
-        }
+        // Everything client-side lives in OreVaultClient, a @Mod(dist = CLIENT)
+        // entrypoint the JVM never loads on a dedicated server ([39]).
 
         // Network channel ([32]): mod event bus, not the game bus — a payload
         // listener on the wrong bus never fires and every packet becomes an
