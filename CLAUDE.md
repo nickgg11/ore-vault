@@ -224,6 +224,16 @@ every PR — but it means a silent no-op looks identical to a clean review. That
 was added on 2026-08-29; every run before then skipped. If you need to know whether a
 review really ran, check that steps 3 and 4 executed rather than trusting the tick.
 
+## Issues and PRs
+
+`.github/TICKET_WORKFLOW.md` is the checklist for writing, updating and closing tickets. Read it
+before closing an issue or opening a PR. The short version, because these are the ones that got
+missed: tick the acceptance criteria you met and comment on the ones you didn't, naming the
+blocker; put `Closes #N` in the PR body for every ticket the PR finishes; use `NOT_PLANNED` when
+a ticket is superseded and name what replaced it; and quote real test counts from
+`build/test-results/test/*.xml` rather than a Gradle `BUILD SUCCESSFUL`, which is identical for a
+cached no-op.
+
 ## Conventions
 
 - Commits: `feat:`, `fix:`, `docs:`, `ci:`, with the issue number in the subject —
