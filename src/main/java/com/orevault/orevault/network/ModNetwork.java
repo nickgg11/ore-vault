@@ -1,5 +1,7 @@
 package com.orevault.orevault.network;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 import org.jspecify.annotations.Nullable;
@@ -8,10 +10,13 @@ import com.orevault.orevault.OreVault;
 import com.orevault.orevault.data.OreVaultTeamData;
 import com.orevault.orevault.data.PlayerStats;
 import com.orevault.orevault.resonance.ResonanceSystem;
+import com.orevault.orevault.skill.LevelCurve;
 import com.orevault.orevault.skill.SkillTree;
 import com.orevault.orevault.skill.TradeoffToggle;
 import com.orevault.orevault.team.TeamHelper;
 
+import io.netty.buffer.ByteBuf;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -19,6 +24,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
@@ -61,8 +67,11 @@ public final class ModNetwork {
     /**
      * Bumping this string breaks connections to servers on the old version.
      * It changes when a payload's fields change, not when a handler does.
+     *
+     * <p>2: {@link SyncTeamProgress} carries both trees instead of Resonance
+     * alone ([34]).</p>
      */
-    public static final String PROTOCOL_VERSION = "1";
+    public static final String PROTOCOL_VERSION = "2";
 
     private ModNetwork() {
     }
@@ -112,7 +121,7 @@ public final class ModNetwork {
     }
 
     /**
-     * Server pushes the team's Resonance state for the Tome's header (§8).
+     * One tree's state, as the Tome's header draws it (§8).
      *
      * <p>The pool is sent as a long and the progress as a float rather than
      * sending the curve and letting the client derive them. The curve depends on
@@ -120,15 +129,38 @@ public final class ModNetwork {
      * so a client-side derivation would quietly disagree with the server on any
      * pack that tunes it.</p>
      */
-    public record SyncTeamProgress(long pool, int level, int unspentPoints, float progressToNext)
+    public record TreeProgress(long pool, int level, int unspentPoints, float progressToNext) {
+        public static final StreamCodec<ByteBuf, TreeProgress> CODEC =
+                StreamCodec.composite(
+                        ByteBufCodecs.VAR_LONG, TreeProgress::pool,
+                        ByteBufCodecs.VAR_INT, TreeProgress::level,
+                        ByteBufCodecs.VAR_INT, TreeProgress::unspentPoints,
+                        ByteBufCodecs.FLOAT, TreeProgress::progressToNext,
+                        TreeProgress::new);
+    }
+
+    /**
+     * Server pushes both skill trees' state for the Tome's header (§8).
+     *
+     * <p>Both travel in one packet because the header draws them together and
+     * they change together — a level-up pays skill points, which is two of the
+     * four numbers on each row. Two packets would let the header render a
+     * half-applied update.</p>
+     *
+     * <p>Animus is carried from the first version even though nothing feeds it
+     * yet: {@code AnimusSystem} is post-1.0 (#25), so its numbers are the zeroes
+     * sitting in {@code OreVaultTeamData} and its progress is always 0. Sending
+     * the real stored values rather than omitting the tree keeps the Animus tab
+     * honest — it shows what the server actually has — and means #25 wires up
+     * without another protocol bump.</p>
+     */
+    public record SyncTeamProgress(TreeProgress resonance, TreeProgress animus)
             implements CustomPacketPayload {
         public static final Type<SyncTeamProgress> TYPE = new Type<>(id("sync_team_progress"));
         public static final StreamCodec<RegistryFriendlyByteBuf, SyncTeamProgress> CODEC =
                 StreamCodec.composite(
-                        ByteBufCodecs.VAR_LONG, SyncTeamProgress::pool,
-                        ByteBufCodecs.VAR_INT, SyncTeamProgress::level,
-                        ByteBufCodecs.VAR_INT, SyncTeamProgress::unspentPoints,
-                        ByteBufCodecs.FLOAT, SyncTeamProgress::progressToNext,
+                        TreeProgress.CODEC, SyncTeamProgress::resonance,
+                        TreeProgress.CODEC, SyncTeamProgress::animus,
                         SyncTeamProgress::new);
 
         @Override
@@ -175,6 +207,66 @@ public final class ModNetwork {
         registrar.playToClient(ResetVoteStatus.TYPE, ResetVoteStatus.CODEC, ModNetwork::onClientPayload);
     }
 
+    // ----- pushing progress to clients -----
+
+    /**
+     * Sends one player their own team's progress.
+     *
+     * <p>Used on login, where {@link #syncTeam} cannot be trusted: FTB Teams may
+     * not have filed the player under a team yet, and this path must work for
+     * the player who just connected.</p>
+     */
+    public static void syncTo(ServerPlayer player) {
+        MinecraftServer server = player.level().getServer();
+        if (server == null) {
+            return;
+        }
+        PacketDistributor.sendToPlayer(player, progressOf(server, TeamHelper.getTeamId(player)));
+    }
+
+    /**
+     * Pushes a team's progress to every online member.
+     *
+     * <p>Called whenever something moves one of the eight numbers the Tome's
+     * header draws — a Resonance gain, a purchase, a refund. The Tome is drawn
+     * every frame from the last thing the client was told, so a change that does
+     * not push here is a header that silently goes stale while it is open.</p>
+     */
+    public static void syncTeam(MinecraftServer server, UUID teamId) {
+        Collection<ServerPlayer> members = TeamHelper.getOnlineTeamMembers(teamId);
+        if (members.isEmpty()) {
+            // Same hole as TeamHelper.teamSize (#128): before FTB Teams files a
+            // player, getTeamId hands back the player's own UUID, which is not a
+            // team id and matches no team, so the member lookup comes back empty
+            // for someone who is standing right there with the Tome open.
+            ServerPlayer solo = server.getPlayerList().getPlayer(teamId);
+            if (solo == null) {
+                return;
+            }
+            members = List.of(solo);
+        }
+        SyncTeamProgress payload = progressOf(server, teamId);
+        for (ServerPlayer member : members) {
+            PacketDistributor.sendToPlayer(member, payload);
+        }
+    }
+
+    /** Reads both trees out of SavedData. Main thread only. */
+    private static SyncTeamProgress progressOf(MinecraftServer server, UUID teamId) {
+        OreVaultTeamData data = OreVaultTeamData.getOrCreate(server.overworld(), teamId);
+        LevelCurve curve = ResonanceSystem.curve();
+        TreeProgress resonance = new TreeProgress(
+                data.getResonancePool(),
+                ResonanceSystem.levelOf(data, curve),
+                data.getResonanceSkillPoints(),
+                (float) ResonanceSystem.progressToNextLevel(data, curve));
+        // No curve for Animus until #25, so no progress to report. The level and
+        // point counts are the stored ones, which are the truth: zero.
+        TreeProgress animus = new TreeProgress(
+                data.getAnimusPool(), data.getAnimusLevel(), data.getAnimusSkillPoints(), 0.0F);
+        return new SyncTeamProgress(resonance, animus);
+    }
+
     // ----- serverbound handlers -----
 
     private static void onPurchaseNode(PurchaseNode payload, IPayloadContext context) {
@@ -201,6 +293,7 @@ public final class ModNetwork {
 
             data.addResonanceSkillPoints(-cost);
             data.setDirty();
+            syncTeam(overworld.getServer(), teamId);
             OreVault.LOGGER.debug("{} purchased {} for {} point(s)",
                     player.getGameProfile().name(), payload.nodeId(), cost);
         });
