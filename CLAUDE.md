@@ -12,6 +12,13 @@ Suggestions built on those APIs are wrong here.
 `§3.1`, and cite work items as `[13]` (task) or `#82` (issue). Keep that up: when
 behaviour and spec disagree, the spec wins or the spec gets updated in the same PR.
 
+`DESIGN_LOG.md` carries the **why**: dated playtest feedback, what was decided, and
+what was tried and rejected. The spec states the design; the log states how it got
+there. **Read it before proposing a change to the skill tree, the Tome UI or the
+Resonance curve** — several entries record a version that read well on paper and
+failed in play, and the rejected version is usually the one a fresh reading of the
+spec arrives at again. Add an entry when a playtest changes a design decision.
+
 ## Build
 
 ```

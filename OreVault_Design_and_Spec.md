@@ -343,6 +343,16 @@ A 1-point node costs 3 XP levels to refund; the 10-point Vault Expansion keyston
 
 The previous formula (`investedPoints / totalTreeCost * 50`) priced every node identically regardless of what it cost, which made a single early mistake nearly free and a late-game respec effectively impossible (~3,250 levels). Because several nodes are exclusive pairs and one-way forks (§6.1), permanent-feeling refunds would have turned every fork into a trap.
 
+**Fork options are free both ways.** A `[FORK OPTION]` costs 0 skill points to pick, so it costs 0 XP
+to unpick — a free choice that is expensive to reverse is a trap, and the fork is meant to be a
+decision you can revisit as the build changes. Refunding a fork *parent* is priced normally and
+clears the chosen option along with it.
+
+**Anchors are never refunded.** They are not bought, hold no points, and unlock from points spent. An
+anchor can therefore re-lock: refund enough of the tree and a cluster closes behind you. Nodes already
+purchased inside a closed cluster keep working — the gate governs buying, not keeping — but nothing
+further in it can be bought until the spend is back above the threshold.
+
 **Free respec window:** refunds cost nothing for 10 minutes after a dimension reset (§3.5).
 
 ---
@@ -395,19 +405,112 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 | Marker | Meaning |
 |---|---|
 | *(unmarked)* | **Small node.** A tiered percentage bonus with no downside. These are the filler you path through — individually modest, collectively the bulk of the tree. |
-| **[NOTABLE]** | A single-tier node at the end of a cluster granting a *distinct mechanic* rather than a bigger number. Always pure upside. |
-| **[KEYSTONE]** | Build-defining, expensive, and **always carries a real downside**. A keystone should change how you mine, not just how fast. |
-| **[FORK: name]** | A one-way choice. Purchasing any branch of a fork locks the others until refunded. Every option is intended to be viable — the fork is a decision, not a trap. |
+| **[ANCHOR]** | The head of a cluster. **Not purchasable and free.** Unlocks once enough skill points have been spent in the tree, and gates everything in its cluster. |
+| **[NOTABLE]** | A single-tier node granting a *distinct mechanic* rather than a bigger number. Always pure upside. |
+| **[KEYSTONE]** | Build-defining, expensive, and **always carries a real downside**. A keystone should change how you mine, not just how fast. All keystones live in the Mastery cluster at the bottom of the tree. |
+| **[FORK PARENT: name]** | A tiered node that costs points and **does nothing until specialized**. Its tiers act through whichever option is chosen. |
+| **[FORK OPTION: name]** | **Costs 0 points.** Requires its parent at tier 1 and decides what the parent's tiers do. One option at a time; siblings lock until refunded, refunding is free, and swapping is allowed **only while outside the Vault.** |
 | **[TRADEOFF]** | Toggleable on and off at no cost, **but only while outside the Vault.** |
-| **[ULTIMINE]** | Only appears if FTB Ultimine is loaded. |
+| **[EXCLUSIVE: other]** | Cannot be held at the same time as the named node. Unlike a fork, both sides are paid for. |
+| **[ULTIMINE ONLY]** | Only appears if FTB Ultimine is loaded. Hidden entirely otherwise, never shown as locked. |
 
-> **Why tradeoffs are only toggleable outside the Vault.** Previously they could be flipped at any moment, which meant no commitment: a player would enable Tithe while mining ore and disable it before touching stone, taking every upside and paying no cost. Requiring the toggle to happen outside makes a tradeoff a loadout you commit to before you delve, which is the whole point of the mechanic, while keeping the freedom to change strategy between trips.
+> **Why tradeoffs and fork options can only be changed outside the Vault.** Previously they could be flipped at any moment, which meant no commitment: a player would enable Tithe while mining ore and disable it before touching stone, taking every upside and paying no cost. Requiring the toggle to happen outside makes a tradeoff a loadout you commit to before you delve, which is the whole point of the mechanic, while keeping the freedom to change strategy between trips.
 
 ---
 
 ### 6.1 Resonance Tree
 
-#### BRANCH: Vein
+#### Shape of the tree
+
+The tree is a **vertical run of clusters**, not a grid of branches. Each cluster is a named stage of
+the miner's craft, and each one begins with an **anchor**: a node you cannot buy, which unlocks once
+you have spent enough skill points anywhere in the tree. The cluster's nodes fan out below its
+anchor, staggered left and right of the centre line rather than stacked in columns.
+
+The grid this replaces put unrelated nodes directly above one another — Gravel Purge sat under Common
+Ore Boost while both were available from the start — so the layout implied a prerequisite chain that
+did not exist. Vertical position now means one thing only: how deep into the craft you are.
+
+| Cluster | Anchor unlocks at | What it is |
+|---|---|---|
+| **Prospecting** | 0 points | Reading the rock. Open from the first point. |
+| **Excavation** | 10 points | Moving rock in bulk, and choosing what shape it comes in. |
+| **Assay** | 25 points | Telling one ore from another; what the stone remembers. |
+| **Metallurgy** | 45 points | Getting more out of each ore than the ore contains. |
+| **Deep Lore** | 70 points | The Vault answering back. |
+| **Broad Cut** | 25 points | Wide-swing mining. Absent entirely without FTB Ultimine. |
+| **Mastery** | 100 points | Keystones only, at the bottom of the tree. |
+
+**Anchors are not purchasable and cost nothing.** They gate, they name the stage, and they are what
+the eye follows down the tree. The gate is *points spent in this tree*, not team level: a team that
+has ground to level 25 without committing to anything has not earned Mastery, and a team that has
+spent 100 points has, whatever their level says. Level requirements still apply per node, as before.
+
+Gate values are stated in points and will need tuning against the tree's total cost — they are
+roughly 0 / 4% / 11% / 20% / 31% / 45% of a full build.
+
+#### Forks
+
+A fork is now **one paid node plus free specializations**, not a row of rival nodes:
+
+- The **fork parent** is an ordinary tiered node. It costs points and has **no effect at all** until
+  specialized. Buying it is committing to the mechanic; it is not yet committing to a flavour of it.
+- Each **fork option** costs **0 points**, requires the parent at tier 1, and decides what the
+  parent's tiers actually do. Exactly one option may be active; the siblings lock until refunded.
+- Refunding a fork option is **free** — it cost nothing, so unpicking it costs nothing. Refunding the
+  parent follows the normal §4.4 XP price and clears the option with it.
+
+**Tiering is not lost — it moved.** Every fork that was tiered is still tiered to exactly the same
+depth; the tiers now sit on the parent and the option says what each one does. Common Focus was
+T1/T2/T3 at +25/50/80%, and it still is: Ore Attunement is a three-tier node and Common Focus is a
+table keyed by which of those three tiers you have bought. The number of decisions is unchanged, the
+number of paid steps is unchanged, and the per-tier effects are the original values moved verbatim.
+What changed is that you buy the tiers once instead of once per rival branch.
+
+**An option must cover every tier its parent has.** A parent tier with nothing behind it in the
+chosen option is a paid step that does nothing — Hoarder's Instinct had exactly that gap when the
+forks were converted and gained a third tier to close it. The only sanctioned exception is a tier
+range the option itself gates, like Ore Working's Mekanism tiers, which are hidden rather than empty.
+
+**Swapping an option is free, but only outside the Vault.** Same rule as tradeoffs (§6 notation), for
+the same reason: inside, a player would re-specialize per vein — Rare Focus for the deepslate layer,
+Common Focus on the way back up — and take every upside of a choice they never actually made. Outside,
+the fork is a loadout you commit to before you delve and can rethink between trips. The restriction is
+on *changing* an option, not on holding one; nothing about your build stops working when you enter.
+
+This replaces three sequential Ore Boost nodes with one Ore Attunement node and three choices, which
+is what the fork was always supposed to be: the old chain stacked, so everyone bought all three in
+the same order and nothing was ever decided.
+
+#### What the code still has to catch up on
+
+`NodeDefs.java` predates this section and is the authority for nothing. Reconciling it is [87] (#103)
+with the fork mechanic in [86] (#102). Precisely:
+
+| In code | Action |
+|---|---|
+| `common_ore_boost`, `uncommon_ore_boost`, `rare_ore_boost` | **Remove.** Replaced by `ore_attunement` plus the three free Focus options. |
+| `ore_sense` | **Rename** to `vein_fortune`. The name "Ore Sense" now belongs to Prospector's Eye. |
+| `motherlode` | **Remove.** Replaced by `vein_singularity`, a Vein Shape option. |
+| `disturbed_zone_unlock` | **Remove.** Deferred to the post-1.0 Animus epic (#90). |
+| `ultimine_gambit` | Keep; display name is "Volatile Veins: Ultimine Gambit". |
+| *(new)* | `vein_shaping`, `ore_working`, `resonant_draw` — the three fork parents authored here. |
+| *(new)* | The seven cluster anchors, which are data, not purchasable nodes. |
+
+Unlocked tiers persist keyed by node id in `OreVaultTeamData`, so **every removal and rename above is
+a save-data change** and needs a migration that reads the old id, not just a new constant. A team that
+bought Ore Sense to tier 3 must find Vein Fortune at tier 3, and a team that bought the three Ore
+Boosts must be refunded the points rather than silently losing them.
+
+#### Reading a node
+
+Every node in this section carries its class in its tag line — `[NOTABLE]`, `[KEYSTONE]`,
+`[FORK PARENT: name]`, `[FORK OPTION: name]`, `[TRADEOFF]`, `[EXCLUSIVE: other]`, `[ULTIMINE ONLY]` —
+and the Tome draws each class distinctly (§8). An unmarked node is a small node.
+
+#### CLUSTER: Prospecting
+
+> Reading the rock. Nothing here requires a decision. Open from the first skill point.
 
 **Vein Expansion**
 > Increases the size of ore veins generated in newly explored Vault chunks.
@@ -421,6 +524,45 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 | 5 | +100% vein size | 3 | 10 | Tier 4 |
 
 ---
+
+**Stone Memory**
+> Stone and deepslate drop XP and provide additional benefits at higher tiers when mined inside the Vault.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | Stone drops 1 XP when mined | 1 | 0 | None |
+| 2 | +2 XP; stone occasionally drops flint | 1 | 3 | Tier 1 |
+| 3 | +3 XP; deepslate drops a small amount of Resonance | 2 | 6 | Tier 2 |
+| 4 | +4 XP; small chance stone drops a random common ore nugget | 2 | 10 | Tier 3 |
+| 5 | +5 XP; rare chance stone triggers a Resonance burst equal to Vault Echo T3 | 3 | 14 | Tier 4 |
+
+---
+
+**Gravel Purge**
+> Removes gravel and clay from Vault generation in newly explored chunks.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | No gravel or clay generates | 1 | 1 | None |
+
+---
+
+**Efficient Miner**
+> Reduces hunger drain inside the Vault, with additional effects at higher tiers.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | −20% hunger drain | 1 | 0 | None |
+| 2 | −45% hunger drain; food restores 20% more saturation inside the Vault | 1 | 3 | Tier 1 |
+| 3 | −65% hunger drain; eating grants brief Regeneration I | 2 | 6 | Tier 2 |
+| 4 | −85% hunger drain; no starvation damage (hunger can reach 0 but won't damage) | 2 | 10 | Tier 3 |
+| 5 | Hunger and saturation frozen completely; eating still grants the Regeneration I from Tier 3 | 3 | 15 | Tier 4 |
+
+---
+
+#### CLUSTER: Excavation
+
+> Moving rock in bulk, and deciding what shape it comes in. **Anchor unlocks at 10 skill points spent anywhere in the Resonance tree.**
 
 **Vein Proliferation**
 > Increases the number of ore veins generated per chunk.
@@ -447,139 +589,6 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 
 ---
 
-**Vault Echo**
-> When a vein is fully mined, a Resonance burst is awarded.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +25 Resonance burst on vein completion | 1 | 3 | Vein Expansion T2 |
-| 2 | +35 Resonance burst | 1 | 6 | Tier 1 |
-| 3 | +50 Resonance burst | 2 | 9 | Tier 2 |
-
----
-
-**Echo Chamber** `[NOTABLE]`
-> Vault Echo bursts also grant vanilla XP equal to the Resonance awarded. Finishing a vein becomes worth doing for its own sake rather than something that happens incidentally.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | Vault Echo bursts additionally grant XP 1:1 with the Resonance awarded | 3 | 11 | Vault Echo T3 |
-
----
-
-**Deep Harvest** `[NOTABLE]`
-> Ore mined below Y=0 — the deepslate band that only exists in an expanded Vault — drops an additional Resonance orb. The reward for committing to the Vault Expansion keystone.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | Ore below Y=0 drops one extra Resonance orb | 4 | 20 | Deep Veins T2, Vault Expansion |
-
----
-
-**Twin Veins**
-> When a vein is fully mined to completion, there is a chance a second identical vein spawns adjacent to the mined area with a visual flash effect.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | 1% chance on vein completion | 2 | 6 | Vein Expansion T3 |
-| 2 | 5% chance on vein completion | 2 | 10 | Tier 1 |
-| 3 | 10% chance on vein completion | 3 | 14 | Tier 2 |
-
-> Veins created by Twin Veins are registered into the vein index (§11) exactly as generated veins are, so they themselves can trigger Vault Echo and Twin Veins on completion.
-
----
-
-**[FORK: Vein Shape]**
-> How ore is distributed through a chunk. Choose exactly one; the other two lock until refunded. All three are subject to the 40% stone floor and all three apply *after* Vein Expansion and Vein Proliferation, overriding the resulting count and size.
-
-**Abundance** `[FORK: Vein Shape]`
-> Many small deposits scattered throughout. Reliable, steady, never a dry chunk.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +50% vein count, −20% vein size | 3 | 7 | Vein Proliferation T2 |
-| 2 | +100% vein count, −20% vein size | 4 | 12 | Tier 1 |
-
----
-
-**Vein Singularity** `[FORK: Vein Shape]` `[KEYSTONE]`
-> All ore in a chunk is concentrated into 1–3 enormous deposits. Finding one is a jackpot; many chunks have nothing at all. *(This replaces the earlier "Motherlode" node, which was mechanically identical to Vein Expansion with a different name — taken to its extreme it becomes a genuine keystone instead.)*
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Chunk ore consolidated into 1–3 veins; total ore volume unchanged | 3 | 7 | Vein Proliferation T2 |
-| 2 | Consolidation intensifies; +25% total ore volume, ~40% of chunks generate no ore at all | 4 | 12 | Tier 1 |
-
----
-
-**Stratified** `[FORK: Vein Shape]`
-> Ore generates in flat horizontal bands sorted by rarity instead of scattered blobs. Rare ore always sits at a known depth. Rewards planned strip-mining over wandering.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Ore generates in rarity-sorted layers; band positions shown in the Tome | 3 | 7 | Vein Proliferation T2 |
-| 2 | Bands thicken and purify — each band is near-single-ore | 4 | 12 | Tier 1 |
-
----
-
-#### BRANCH: Ore Quality
-
-**Ore Attunement**
-> Opens the rarity focus fork. On its own it grants a small across-the-board bonus.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +10% vein count for all ore rarities | 1 | 1 | None |
-
----
-
-**[FORK: Ore Focus]**
-> Choose which rarity band the Vault favours. Exactly one of the three; the others lock until refunded — or until **Full Spectrum**. *(These three replace the previous Common/Uncommon/Rare Ore Boost chain, which stacked sequentially and so was never a decision — everyone bought all three in the same order.)*
-
-**Common Focus** `[FORK: Ore Focus]`
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +25% common ore vein count | 1 | 3 | Ore Attunement |
-| 2 | +50% common ore vein count | 2 | 6 | Tier 1 |
-| 3 | +80% common ore vein count | 2 | 10 | Tier 2 |
-
-**Uncommon Focus** `[FORK: Ore Focus]`
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +25% uncommon ore vein count | 1 | 3 | Ore Attunement |
-| 2 | +50% uncommon ore vein count | 2 | 6 | Tier 1 |
-| 3 | +80% uncommon ore vein count | 2 | 10 | Tier 2 |
-
-**Rare Focus** `[FORK: Ore Focus]`
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +30% rare ore vein count | 2 | 5 | Ore Attunement |
-| 2 | +60% rare ore vein count | 2 | 9 | Tier 1 |
-| 3 | +100% rare ore vein count | 3 | 13 | Tier 2 |
-
----
-
-**Full Spectrum** `[KEYSTONE]`
-> The Vault stops favouring anything. The two focus branches you did not choose apply at half effect alongside the one you did — but the Vault's generosity is spread thin, and every ore yields less Resonance.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | Unchosen Ore Focus branches apply at 50% effect at their purchased tier depth; **−20% Resonance from all ore** | 8 | 22 | Any Ore Focus T3 |
-
----
-
-**Gravel Purge**
-> Removes gravel and clay from Vault generation in newly explored chunks.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | No gravel or clay generates | 1 | 1 | None |
-
----
-
 **Stone Reduction**
 > Replaces a portion of filler stone with ore-bearing rock, increasing ore surface area.
 
@@ -587,6 +596,113 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 |---|---|---|---|---|
 | 1 | 10% of filler stone replaced with ore-adjacent stone | 1 | 3 | Gravel Purge |
 | 2 | 20% replaced | 2 | 7 | Tier 1 |
+
+---
+
+**Vein Shaping** `[FORK PARENT: Vein Shape]`
+> Decides the shape ore takes in newly generated chunks. **Inert until specialized:** pick one of the three Vein Shape options below and every tier of this node applies through it. All three shapes are subject to the 40% stone floor, and all three apply *after* Vein Expansion and Vein Proliferation, overriding the resulting count and size.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | Shaping applies at its listed strength | 2 | 4 | Vein Proliferation T2 |
+| 2 | Shaping applies at double strength | 3 | 8 | Tier 1 |
+
+---
+
+**Abundance** `[FORK OPTION: Vein Shape]`
+> Many small deposits scattered throughout. Reliable, steady, never a dry chunk.
+
+**Costs 0 skill points.** Requires Vein Shaping tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+
+| Vein Shaping tier | Effect through this option |
+|---|---|
+| 1 | +50% vein count, −20% vein size |
+| 2 | +100% vein count, −20% vein size |
+
+---
+
+**Vein Singularity** `[FORK OPTION: Vein Shape]`
+> All ore in a chunk is concentrated into 1–3 enormous deposits. Finding one is a jackpot; many chunks have nothing at all. *(Replaces the earlier "Motherlode" node, which was mechanically identical to Vein Expansion under a different name. It carried a `[KEYSTONE]` tag while forks were paid nodes; as a free option under Vein Shaping it is a shape choice like its two siblings, and keystones now live only in Mastery.)*
+
+**Costs 0 skill points.** Requires Vein Shaping tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+
+| Vein Shaping tier | Effect through this option |
+|---|---|
+| 1 | Chunk ore consolidated into 1–3 veins; total ore volume unchanged |
+| 2 | Consolidation intensifies; +25% total ore volume, ~40% of chunks generate no ore at all |
+
+---
+
+**Stratified** `[FORK OPTION: Vein Shape]`
+> Ore generates in flat horizontal bands sorted by rarity instead of scattered blobs. Rare ore always sits at a known depth. Rewards planned strip-mining over wandering.
+
+**Costs 0 skill points.** Requires Vein Shaping tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+
+| Vein Shaping tier | Effect through this option |
+|---|---|
+| 1 | Ore generates in rarity-sorted layers; band positions shown in the Tome |
+| 2 | Bands thicken and purify — each band is near-single-ore |
+
+---
+
+**Volatile Veins** `[TRADEOFF]`
+> Increases vein size by 25%, but each ore broken has a small chance of causing the remaining connected vein to vanish instantly, replaced with air, with no drops. A pity counter prevents more than three consecutive triggers; after three triggers the next several ore breaks are guaranteed safe. The pity counter resets on logout.
+> When using FTB Ultimine, the disappearance roll occurs once per Ultimine operation rather than per block.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | +25% vein size, 1–3% disappearance chance (balance TBD) | 2 | 6 | Vein Expansion T2 |
+
+---
+
+#### CLUSTER: Assay
+
+> Telling one ore from another, and knowing what the stone remembers. **Anchor unlocks at 25 skill points spent anywhere in the Resonance tree.**
+
+**Ore Attunement** `[FORK PARENT: Ore Focus]`
+> Decides which rarity band the Vault favours. **Inert until specialized:** pick Common, Uncommon or Rare Focus below and every tier of this node applies through it. Exactly one Focus at a time — the others lock until refunded, or until **Full Spectrum** lifts the restriction entirely.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | Focus applies at its listed strength | 1 | 3 | None |
+| 2 | Focus applies at its second-tier strength | 2 | 6 | Tier 1 |
+| 3 | Focus applies at its third-tier strength | 2 | 10 | Tier 2 |
+
+---
+
+**Common Focus** `[FORK OPTION: Ore Focus]`
+
+**Costs 0 skill points.** Requires Ore Attunement tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+
+| Ore Attunement tier | Effect through this option |
+|---|---|
+| 1 | +25% common ore vein count |
+| 2 | +50% common ore vein count |
+| 3 | +80% common ore vein count |
+
+---
+
+**Uncommon Focus** `[FORK OPTION: Ore Focus]`
+
+**Costs 0 skill points.** Requires Ore Attunement tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+
+| Ore Attunement tier | Effect through this option |
+|---|---|
+| 1 | +25% uncommon ore vein count |
+| 2 | +50% uncommon ore vein count |
+| 3 | +80% uncommon ore vein count |
+
+---
+
+**Rare Focus** `[FORK OPTION: Ore Focus]`
+
+**Costs 0 skill points.** Requires Ore Attunement tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+
+| Ore Attunement tier | Effect through this option |
+|---|---|
+| 1 | +30% rare ore vein count |
+| 2 | +60% rare ore vein count |
+| 3 | +100% rare ore vein count |
 
 ---
 
@@ -612,16 +728,25 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 
 ---
 
-#### BRANCH: Fortune
-
-**Vein Fortune**
-> Grants a passive Fortune effect to all ore mining inside the Vault. Stacks additively with tool enchantments. *(Renamed from "Ore Sense", which described a sensing mechanic it never had — that name now belongs to Prospector's Eye below.)*
+**Ancient Knowledge**
+> Ore blocks drop bonus vanilla XP orbs in addition to standard amounts.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | Fortune I equivalent | 2 | 5 | Vein Proliferation T1 |
-| 2 | Fortune II equivalent | 3 | 9 | Tier 1 |
-| 3 | Fortune III equivalent | 4 | 13 | Tier 2 |
+| 1 | +1 XP per ore mined | 1 | 2 | Stone Memory T1 |
+| 2 | +2 XP per ore mined | 1 | 5 | Tier 1 |
+| 3 | +4 XP per ore mined | 2 | 9 | Tier 2 |
+
+---
+
+**Stonecaller** `[NOTABLE]`
+> The Vault's stone remembers what grows near it. Stone mined inside the Vault has a chance to convert into the ore type of the nearest vein within 8 blocks. Standing in rich rock makes even the filler pay.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 (only tier) | Stone has a 3% chance to drop the ore type of the nearest vein within 8 blocks | 3 | 12 | Stone Memory T4 |
+
+> Uses the vein index (§11) for the nearest-vein lookup — no flood fill, no scan. If no indexed vein is within range the roll is skipped, so this is worthless in stripped-out areas and best in fresh chunks, which is the intended pull.
 
 ---
 
@@ -634,34 +759,81 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 
 ---
 
-**[FORK: Yield]**
-> How ore drops are multiplied. Choose one; the other locks until refunded. Vein Fortune above is available to both.
+**Stone Curse** `[TRADEOFF]`
+> Stone Memory XP gain is tripled, but stone drops no items (no cobblestone, no flint, no nuggets).
 
-**Ore Doubling** `[FORK: Yield]`
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | 3× Stone Memory XP, stone drops nothing | 2 | 4 | Stone Memory T2 |
+
+---
+
+#### CLUSTER: Metallurgy
+
+> Getting more out of each ore than the ore contains. **Anchor unlocks at 45 skill points spent anywhere in the Resonance tree.**
+
+**Vein Fortune**
+> Grants a passive Fortune effect to all ore mining inside the Vault. Stacks additively with tool enchantments. *(Renamed from "Ore Sense", which described a sensing mechanic it never had — that name now belongs to Prospector's Eye below.)*
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | Fortune I equivalent | 2 | 5 | Vein Proliferation T1 |
+| 2 | Fortune II equivalent | 3 | 9 | Tier 1 |
+| 3 | Fortune III equivalent | 4 | 13 | Tier 2 |
+
+---
+
+**Ore Working** `[FORK PARENT: Yield]`
+> Squeezes more out of each ore block than it contains. **Inert until specialized:** pick Ore Doubling or Smelter's Intuition below and every tier of this node applies through it. Vein Fortune is separate and feeds both.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | Working applies at its listed strength | 2 | 8 | Vein Fortune T1 |
+| 2 | Working applies at its second-tier strength | 2 | 12 | Tier 1 |
+| 3 | Working applies at its third-tier strength | 3 | 16 | Tier 2 |
+| 4 | *(Ore Doubling + Mekanism only)* | 7 | 20 | Tier 3 |
+| 5 | *(Ore Doubling + Mekanism only)* | 10 | 25 | Tier 4 |
+| 6 | *(Ore Doubling + Mekanism only)* | 15 | 30 | Tier 5 |
+
+> Tiers 4–6 exist only when Ore Doubling is the chosen option **and** Mekanism is loaded; they are
+> hidden otherwise, not shown as locked. Smelter's Intuition tops out at tier 3, so a team on that
+> option sees a three-tier node. Costs above are the ones the Mekanism tiers previously carried on
+> Ore Doubling itself, moved here with the rest of the paid tiers.
+
+---
+
+**Ore Doubling** `[FORK OPTION: Yield]`
 > Raw multiplication. Fallback order: Mekanism processing output → mod ore dust (`c:dusts/<ore>`) → extra raw ore.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +25% average ore yield | 3 | 8 | Vein Fortune T1 |
-| 2 | +50% average ore yield | 3 | 12 | Tier 1 |
-| 3 | Guaranteed 2× ore yield | 4 | 16 | Tier 2 |
+**Costs 0 skill points.** Requires Ore Working tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
-> **Mekanism tiers (only if Mekanism is loaded):**
+| Ore Working tier | Effect through this option |
+|---|---|
+| 1 | +25% average ore yield |
+| 2 | +50% average ore yield |
+| 3 | Guaranteed 2× ore yield |
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 4 | Drops Clumps (3×) | 7 | 20 | Tier 3 |
-| 5 | Drops Shards (4×) | 10 | 25 | Tier 4 |
-| 6 | Drops Crystals (5×) | 15 | 30 | Tier 5 |
+> **Mekanism tiers.** Ore Working extends to tiers 4–6 only while this option is chosen and Mekanism
+> is loaded:
 
-**Smelter's Intuition** `[FORK: Yield]`
+| Ore Working tier | Effect through this option |
+|---|---|
+| 4 | Drops Clumps (3×) |
+| 5 | Drops Shards (4×) |
+| 6 | Drops Crystals (5×) |
+
+---
+
+**Smelter's Intuition** `[FORK OPTION: Yield]`
 > No extra material, but what you get needs no furnace. A chance that ore blocks drop the already-smelted result rather than raw ore.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | 15% chance of smelted drop | 2 | 8 | Vein Fortune T1 |
-| 2 | 40% chance | 3 | 12 | Tier 1 |
-| 3 | 75% chance | 4 | 16 | Tier 2 |
+**Costs 0 skill points.** Requires Ore Working tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+
+| Ore Working tier | Effect through this option |
+|---|---|
+| 1 | 15% chance of smelted drop |
+| 2 | 40% chance |
+| 3 | 75% chance |
 
 ---
 
@@ -678,93 +850,99 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 
 ---
 
-#### BRANCH: XP and Stone
-
-**Stone Memory**
-> Stone and deepslate drop XP and provide additional benefits at higher tiers when mined inside the Vault.
+**Vault Fever** `[TRADEOFF]`
+> Grants permanent Haste II inside the Vault. You mine faster than you can listen — the Vault yields less Resonance for every ore taken.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | Stone drops 1 XP when mined | 1 | 0 | None |
-| 2 | +2 XP; stone occasionally drops flint | 1 | 3 | Tier 1 |
-| 3 | +3 XP; deepslate drops a small amount of Resonance | 2 | 6 | Tier 2 |
-| 4 | +4 XP; small chance stone drops a random common ore nugget | 2 | 10 | Tier 3 |
-| 5 | +5 XP; rare chance stone triggers a Resonance burst equal to Vault Echo T3 | 3 | 14 | Tier 4 |
+| 1 | Haste II inside the Vault, −25% Resonance from ore | 2 | 7 | Efficient Miner T2 |
+
+> The cost used to be +50% hunger drain, which Efficient Miner Tier 5 (hunger frozen entirely) cancelled outright — the two together gave permanent free Haste II. Pricing Fever in Resonance instead makes the two nodes independent, and leaves Efficient Miner as a clean quality-of-life ladder with no hidden interaction.
 
 ---
 
-**Stonecaller** `[NOTABLE]`
-> The Vault's stone remembers what grows near it. Stone mined inside the Vault has a chance to convert into the ore type of the nearest vein within 8 blocks. Standing in rich rock makes even the filler pay.
+#### CLUSTER: Deep Lore
+
+> The Vault answering back. Bursts, echoes, and reaching into it from outside. **Anchor unlocks at 70 skill points spent anywhere in the Resonance tree.**
+
+**Vault Echo**
+> When a vein is fully mined, a Resonance burst is awarded.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 (only tier) | Stone has a 3% chance to drop the ore type of the nearest vein within 8 blocks | 3 | 12 | Stone Memory T4 |
-
-> Uses the vein index (§11) for the nearest-vein lookup — no flood fill, no scan. If no indexed vein is within range the roll is skipped, so this is worthless in stripped-out areas and best in fresh chunks, which is the intended pull.
+| 1 | +25 Resonance burst on vein completion | 1 | 3 | Vein Expansion T2 |
+| 2 | +35 Resonance burst | 1 | 6 | Tier 1 |
+| 3 | +50 Resonance burst | 2 | 9 | Tier 2 |
 
 ---
 
-**Ancient Knowledge**
-> Ore blocks drop bonus vanilla XP orbs in addition to standard amounts.
+**Echo Chamber** `[NOTABLE]`
+> Vault Echo bursts also grant vanilla XP equal to the Resonance awarded. Finishing a vein becomes worth doing for its own sake rather than something that happens incidentally.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | +1 XP per ore mined | 1 | 2 | Stone Memory T1 |
-| 2 | +2 XP per ore mined | 1 | 5 | Tier 1 |
-| 3 | +4 XP per ore mined | 2 | 9 | Tier 2 |
+| 1 (only tier) | Vault Echo bursts additionally grant XP 1:1 with the Resonance awarded | 3 | 11 | Vault Echo T3 |
 
 ---
 
-#### BRANCH: Hunger
-
-**Efficient Miner**
-> Reduces hunger drain inside the Vault, with additional effects at higher tiers.
+**Twin Veins**
+> When a vein is fully mined to completion, there is a chance a second identical vein spawns adjacent to the mined area with a visual flash effect.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | −20% hunger drain | 1 | 0 | None |
-| 2 | −45% hunger drain; food restores 20% more saturation inside the Vault | 1 | 3 | Tier 1 |
-| 3 | −65% hunger drain; eating grants brief Regeneration I | 2 | 6 | Tier 2 |
-| 4 | −85% hunger drain; no starvation damage (hunger can reach 0 but won't damage) | 2 | 10 | Tier 3 |
-| 5 | Hunger and saturation frozen completely; eating still grants the Regeneration I from Tier 3 | 3 | 15 | Tier 4 |
+| 1 | 1% chance on vein completion | 2 | 6 | Vein Expansion T3 |
+| 2 | 5% chance on vein completion | 2 | 10 | Tier 1 |
+| 3 | 10% chance on vein completion | 3 | 14 | Tier 2 |
+
+> Veins created by Twin Veins are registered into the vein index (§11) exactly as generated veins are, so they themselves can trigger Vault Echo and Twin Veins on completion.
 
 ---
 
-#### BRANCH: Utility
+**Deep Harvest** `[NOTABLE]`
+> Ore mined below Y=0 — the deepslate band that only exists in an expanded Vault — drops an additional Resonance orb. The reward for committing to the Vault Expansion keystone.
 
-**[FORK: Orb Collection]**
-> How Resonance orbs reach you. Choose one; the other locks until refunded.
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 (only tier) | Ore below Y=0 drops one extra Resonance orb | 4 | 20 | Deep Veins T2, Vault Expansion |
 
-**Resonance Magnetism** `[FORK: Orb Collection]`
+---
+
+**Resonant Draw** `[FORK PARENT: Orb Collection]`
+> Changes how Resonance orbs reach you. **Inert until specialized:** pick Resonance Magnetism or Hoarder's Instinct below and every tier of this node applies through it.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | Draw applies at its listed strength | 1 | 5 | None |
+| 2 | Draw applies at its second-tier strength | 1 | 9 | Tier 1 |
+| 3 | Draw applies at its third-tier strength | 2 | 13 | Tier 2 |
+
+---
+
+**Resonance Magnetism** `[FORK OPTION: Orb Collection]`
 > Orbs are drawn to the player from greater distances. Convenience — mine and never think about collection again.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Orb attraction radius: 8 blocks | 1 | 2 | None |
-| 2 | Orb attraction radius: 16 blocks | 1 | 5 | Tier 1 |
-| 3 | Orb attraction radius: 24 blocks | 2 | 9 | Tier 2 |
+**Costs 0 skill points.** Requires Resonant Draw tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
-**Hoarder's Instinct** `[FORK: Orb Collection]`
-> Orbs never move toward you — but they never despawn either, and orbs that come to rest near each other merge into a single growing cache. Collecting a merged cache of N orbs pays a bonus. Rewards clearing an area completely, then sweeping it.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Orbs are stationary and permanent; nearby orbs merge into caches | 2 | 4 | None |
-| 2 | Cache collection pays ×(1 + 0.1 × N), capped at ×3 | 2 | 8 | Tier 1 |
-
-> The previous version of this node removed orb attraction and gave a flat 2× on manual pickup, which was strictly worse than Magnetism Tier 1 in ordinary play — an exclusive choice where one side was simply wrong. Merging plus permanence makes it a different way to mine (clear-then-sweep) rather than a worse one.
+| Resonant Draw tier | Effect through this option |
+|---|---|
+| 1 | Orb attraction radius: 8 blocks |
+| 2 | Orb attraction radius: 16 blocks |
+| 3 | Orb attraction radius: 24 blocks |
 
 ---
 
-**Automated Extraction**
-> Machines mining inside the Vault extract more from each block. **Machine-broken blocks never award Resonance** (§3.4) — this node is about materials, not progression.
+**Hoarder's Instinct** `[FORK OPTION: Orb Collection]`
+> Orbs never move toward you — but they never despawn either, and orbs that come to rest near each other merge into a single growing cache. Collecting a merged cache of N orbs pays a bonus. Rewards clearing an area completely, then sweeping it.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +25% ore yield from machine-broken blocks in the Vault; machine breaks count toward vein completion and statistics | 2 | 8 | Vault Presence T1 |
-| 2 | +50% ore yield from machine-broken blocks | 3 | 12 | Tier 1 |
+**Costs 0 skill points.** Requires Resonant Draw tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
-> **Implementation:** hook `BlockDropsEvent`, whose `getBreaker()` is a `@Nullable Entity` ("or null if unknown") and whose drop list is mutable. This covers machines that route through `Block.dropResources` / `Level.destroyBlock`, which is the large majority. Mods that build drops themselves and insert straight into their own inventory will not fire it; that gap is accepted.
+| Resonant Draw tier | Effect through this option |
+|---|---|
+| 1 | Orbs are stationary and permanent; nearby orbs merge into caches |
+| 2 | Cache collection pays ×(1 + 0.1 × N), capped at ×3 |
+| 3 | Caches pull in orbs from neighbouring caches within 8 blocks; cap raised to ×4 |
+
+> The previous version of this node removed orb attraction and gave a flat 2× on manual pickup, which was strictly worse than Magnetism Tier 1 in ordinary play — an exclusive choice where one side was simply wrong. Merging plus permanence makes it a different way to mine (clear-then-sweep) rather than a worse one.
 
 ---
 
@@ -781,6 +959,18 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 
 ---
 
+**Automated Extraction**
+> Machines mining inside the Vault extract more from each block. **Machine-broken blocks never award Resonance** (§3.4) — this node is about materials, not progression.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | +25% ore yield from machine-broken blocks in the Vault; machine breaks count toward vein completion and statistics | 2 | 8 | Vault Presence T1 |
+| 2 | +50% ore yield from machine-broken blocks | 3 | 12 | Tier 1 |
+
+> **Implementation:** hook `BlockDropsEvent`, whose `getBreaker()` is a `@Nullable Entity` ("or null if unknown") and whose drop list is mutable. This covers machines that route through `Block.dropResources` / `Level.destroyBlock`, which is the large majority. Mods that build drops themselves and insert straight into their own inventory will not fire it; that gap is accepted.
+
+---
+
 **Seismic Sense** `[NOTABLE]`
 > The Tome gains a directional readout of surrounding ore density — which way the rock gets richer, at chunk granularity. Navigation rather than power.
 
@@ -790,16 +980,43 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 
 ---
 
-**Vault Expansion** `[KEYSTONE]`
-> The Vault's floor drops away. Bedrock moves from Y=0 down to Y=−64, opening a 63-block deepslate band that carries the highest ore density in the mod. **Requires a dimension reset to take effect** — the existing Vault, and everything built in it, is regenerated.
+**Vault's Blessing** `[EXCLUSIVE: Vault's Purity]`
+> The Vault sustains what you bring into it. Potion effects do not tick down at all while you are inside.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 (only tier) | Vault re-created under `ore_vault_expanded` on next reset; deepslate band below Y=0 unlocked | 10 | 18 | Rare Focus T3 *or* Full Spectrum, Vein Expansion T5, Efficient Miner T4 |
+| 1 | Potion effect durations are frozen inside the Vault | 3 | 8 | None |
 
 ---
 
-#### BRANCH: FTB Ultimine `[ULTIMINE ONLY — hidden if FTB Ultimine not loaded]`
+**Vault's Purity** `[EXCLUSIVE: Vault's Blessing]`
+> Nothing comes in with you. Potion effects are stripped on entry and cannot be applied inside — and the Vault rewards the discipline directly.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | No potion effects can exist inside the Vault; while unaffected: **+20% Resonance and +1 effective Fortune** | 3 | 8 | None |
+
+> Purity previously granted nothing at all in exchange for stripping effects — 2 skill points of pure downside that only ever mattered against witches, which do not spawn in a Vault. As a pair these now describe two real builds: stack potions and keep them forever, or forgo them entirely for flat power that never runs out.
+
+---
+
+> **Deferred to the Animus epic.** The **Disturbed Zone Unlock** node previously sat at the root of this tree. Disturbed Zones and the whole Animus system have moved to a separate post-1.0 epic, and this node moves with them — it will re-enter the Resonance tree as a Core-branch node when that epic is scheduled.
+
+---
+
+**Tithe** `[TRADEOFF]`
+> 25% of ore blocks mined are consumed by the Vault (block breaks, no drop). The Resonance value of the consumed ore is multiplied by 1.75 and added to the pool. Only affects ore blocks — Stone Memory bonus drops, nuggets, flint, and other secondary sources are unaffected.
+> In-game tooltip explicitly states: "Does not affect bonus drops from Stone Memory or other secondary sources."
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | 25% ore consumed, 1.75× Resonance on consumed ores | 2 | 5 | None |
+
+---
+
+#### CLUSTER: Broad Cut `[ULTIMINE ONLY]`
+
+> Wide-swing mining. The whole cluster is absent unless FTB Ultimine is loaded. **Anchor unlocks at 25 skill points spent anywhere in the Resonance tree.**
 
 **Ultimine Expansion**
 > Increases the maximum number of blocks FTB Ultimine can break per operation inside the Vault.
@@ -822,9 +1039,46 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 
 ---
 
-#### KEYSTONES
+**Volatile Veins: Ultimine Gambit** `[TRADEOFF]`
+> When using FTB Ultimine with Volatile Veins active, the effective block count for disappearance checks is increased by 1, increasing the risk. In exchange, successful Ultimine operations that don't trigger disappearance award a 20% Resonance bonus.
 
-Keystones are permanent until refunded — they are not toggleable. Each is a commitment.
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 | Riskier Ultimine, 20% Resonance bonus on safe operations | 2 | 9 | Volatile Veins, Ultimine Expansion T1 |
+
+---
+
+#### CLUSTER: Mastery
+
+> Keystones only. Each one changes how you mine and each one costs you something. **Anchor unlocks at 100 skill points spent anywhere in the Resonance tree.**
+
+> **Open balance issue — these costs predate the cluster.** Greedy Seams and Resonant Overload are
+> priced at 4 points and level 6, and Brittle Stone at 5 points and level 13. Those numbers were set
+> when a keystone could be bought early: the note under Resonant Overload below says outright that
+> undercutting Ore Doubling T3 by buying it at 4 points "early is a real option". Behind a 100-point
+> gate that option no longer exists, so the prices are wrong rather than merely cheap. **Re-tune the
+> cost, level requirement and prereq of all five keystones against the Mastery gate before
+> implementing this cluster**, and either restore the early-buy option somewhere else or delete the
+> paragraph that promises it. Left as-is deliberately: retuning five keystones is a balance decision,
+> not a transcription, and it should be made on purpose rather than folded into a restructure.
+
+**Vault Expansion** `[KEYSTONE]`
+> The Vault's floor drops away. Bedrock moves from Y=0 down to Y=−64, opening a 63-block deepslate band that carries the highest ore density in the mod. **Requires a dimension reset to take effect** — the existing Vault, and everything built in it, is regenerated.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 (only tier) | Vault re-created under `ore_vault_expanded` on next reset; deepslate band below Y=0 unlocked | 10 | 18 | Ore Attunement T3, Vein Expansion T5, Efficient Miner T4 |
+
+---
+
+**Full Spectrum** `[KEYSTONE]`
+> The Vault stops favouring anything. The two focus branches you did not choose apply at half effect alongside the one you did — but the Vault's generosity is spread thin, and every ore yields less Resonance.
+
+| Tier | Effect | Cost | Level Req | Prereq |
+|---|---|---|---|---|
+| 1 (only tier) | Unchosen Ore Focus options apply at 50% effect alongside the chosen one; **−20% Resonance from all ore** | 8 | 22 | Ore Attunement T3 |
+
+---
 
 **Greedy Seams** `[KEYSTONE]` `[EXCLUSIVE: Resonant Overload]`
 > Take the material now and pay for it in progress. Ore yields double; the Vault gives back only half the Resonance.
@@ -852,85 +1106,6 @@ Keystones are permanent until refunded — they are not toggleable. Each is a co
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
 | 1 (only tier) | All blocks in the Vault break instantly; each ore block has a 10% chance to shatter with no drops | 5 | 13 | Vein Fortune T2 |
-
----
-
-#### TRADEOFF NODES
-
-Toggleable on and off at no cost, **but only while outside the Vault** (see Notation). Toggle state is saved per-player, not per-team — one player can run a tradeoff another doesn't want.
-
-**Volatile Veins** `[TRADEOFF]`
-> Increases vein size by 25%, but each ore broken has a small chance of causing the remaining connected vein to vanish instantly, replaced with air, with no drops. A pity counter prevents more than three consecutive triggers; after three triggers the next several ore breaks are guaranteed safe. The pity counter resets on logout.
-> When using FTB Ultimine, the disappearance roll occurs once per Ultimine operation rather than per block.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +25% vein size, 1–3% disappearance chance (balance TBD) | 2 | 6 | Vein Expansion T2 |
-
----
-
-**Volatile Veins: Ultimine Gambit** `[TRADEOFF]` `[ULTIMINE ONLY]`
-> When using FTB Ultimine with Volatile Veins active, the effective block count for disappearance checks is increased by 1, increasing the risk. In exchange, successful Ultimine operations that don't trigger disappearance award a 20% Resonance bonus.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Riskier Ultimine, 20% Resonance bonus on safe operations | 2 | 9 | Volatile Veins, Ultimine Expansion T1 |
-
----
-
-**Stone Curse** `[TRADEOFF]`
-> Stone Memory XP gain is tripled, but stone drops no items (no cobblestone, no flint, no nuggets).
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | 3× Stone Memory XP, stone drops nothing | 2 | 4 | Stone Memory T2 |
-
----
-
-**Vault Fever** `[TRADEOFF]`
-> Grants permanent Haste II inside the Vault. You mine faster than you can listen — the Vault yields less Resonance for every ore taken.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Haste II inside the Vault, −25% Resonance from ore | 2 | 7 | Efficient Miner T2 |
-
-> The cost used to be +50% hunger drain, which Efficient Miner Tier 5 (hunger frozen entirely) cancelled outright — the two together gave permanent free Haste II. Pricing Fever in Resonance instead makes the two nodes independent, and leaves Efficient Miner as a clean quality-of-life ladder with no hidden interaction.
-
----
-
-**Tithe** `[TRADEOFF]`
-> 25% of ore blocks mined are consumed by the Vault (block breaks, no drop). The Resonance value of the consumed ore is multiplied by 1.75 and added to the pool. Only affects ore blocks — Stone Memory bonus drops, nuggets, flint, and other secondary sources are unaffected.
-> In-game tooltip explicitly states: "Does not affect bonus drops from Stone Memory or other secondary sources."
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | 25% ore consumed, 1.75× Resonance on consumed ores | 2 | 5 | None |
-
----
-
-#### EXCLUSIVE NODE PAIRS
-
-**Vault's Blessing** `[EXCLUSIVE: Vault's Purity]`
-> The Vault sustains what you bring into it. Potion effects do not tick down at all while you are inside.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Potion effect durations are frozen inside the Vault | 3 | 8 | None |
-
----
-
-**Vault's Purity** `[EXCLUSIVE: Vault's Blessing]`
-> Nothing comes in with you. Potion effects are stripped on entry and cannot be applied inside — and the Vault rewards the discipline directly.
-
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | No potion effects can exist inside the Vault; while unaffected: **+20% Resonance and +1 effective Fortune** | 3 | 8 | None |
-
-> Purity previously granted nothing at all in exchange for stripping effects — 2 skill points of pure downside that only ever mattered against witches, which do not spawn in a Vault. As a pair these now describe two real builds: stack potions and keep them forever, or forgo them entirely for flat power that never runs out.
-
----
-
-> **Deferred to the Animus epic.** The **Disturbed Zone Unlock** node previously sat at the root of this tree. Disturbed Zones and the whole Animus system have moved to a separate post-1.0 epic, and this node moves with them — it will re-enter the Resonance tree as a Core-branch node when that epic is scheduled.
 
 ---
 
@@ -1070,12 +1245,41 @@ Animus orbs drop from mobs killed in Disturbed Zones, behaving identically to XP
 
 ### Tab 1: Resonance Tree
 
-- Visual node graph rendered with connecting lines showing prerequisites
-- Nodes display: name, current tier, max tier, skill point cost, level requirement, and a short description
-- Locked nodes are dimmed with a tooltip explaining what is required to unlock
-- Tradeoff nodes show a toggle switch UI element
-- Exclusive nodes show a lock icon when the conflicting node is active
-- Ultimine nodes hidden entirely if FTB Ultimine not loaded
+**Layout.** Clusters run top to bottom in the §6.1 order. Each cluster is headed by its anchor,
+drawn centred and wider than an ordinary node, with the cluster's nodes **staggered** below it —
+alternating left and right of the centre line rather than filling a grid. Fork options sit directly
+under their parent, side by side. The reference is Diablo 4's skill paths: a spine you follow
+downward with clusters fanning off it, not a spreadsheet.
+
+Vertical position must never imply a relationship that does not exist. Two nodes are drawn one above
+the other only when one requires the other or they share a cluster spine.
+
+**Edges.** Prerequisite lines connect **border to border**, stopping at the edge of each node box —
+never routed to the box centre, which draws the line across the node and over its text.
+
+**Node boxes size to their content.** A box is as wide as its name needs, within a minimum and a
+maximum; names are not truncated at a fixed width.
+
+**Per node:** name, current tier / max tier, next tier's skill-point cost and level requirement, and
+a short description on hover.
+
+**Class is visible without hovering:**
+
+| Class | Treatment |
+|---|---|
+| Small | Plain box |
+| Anchor | Wide, centred, no cost shown; displays its points-spent gate and whether it is met |
+| Notable | Larger box, distinct frame |
+| Keystone | Largest, ornamented, unmistakable — grouped in Mastery at the bottom |
+| Fork parent | Marked as a fork; shows which option is active, or that it is **inert** while none is |
+| Fork option | Small, attached under the parent, marked free; siblings shown locked once one is picked |
+| Tradeoff | Toggle element on the node |
+| Exclusive | Lock mark when its partner is held |
+
+- Locked nodes are dimmed, with a tooltip naming the specific requirement that is missing
+- A fork parent with no option chosen is flagged as doing nothing — this is the state most likely to
+  be mistaken for a bug
+- Ultimine nodes hidden entirely if FTB Ultimine not loaded; the Broad Cut cluster disappears whole
 - Team's current Resonance level and skill point count shown in the top bar
 - Team's Resonance pool progress toward next level shown as a bar
 
@@ -1485,7 +1689,20 @@ Use this to track progress. Update at the end of each development session.
 - [x] Node-by-node refund (new formula)
 - [ ] Tradeoff toggle per-player persistence — **toggleable only outside the Vault**
 - [ ] Exclusive node pair enforcement
-- [ ] Fork enforcement (one branch, others locked until refunded)
+- [ ] Fork enforcement — parent is inert until an option is chosen; one option at a time; options
+      cost 0 points to pick and 0 XP to unpick (§4.4)
+- [ ] Cluster anchors — seven non-purchasable nodes gating on points spent in the tree (§6.1). An
+      anchor can re-lock when points are refunded below its threshold; already-purchased nodes in a
+      closed cluster keep working
+- [ ] Node removals and renames with save migration — `common`/`uncommon`/`rare_ore_boost` and
+      `motherlode` removed with a point refund, `disturbed_zone_unlock` removed, `ore_sense` renamed
+      to `vein_fortune` carrying its tier. See the table in §6.1
+- [ ] New fork parents: `vein_shaping`, `ore_working`, `resonant_draw`
+
+> The **branch** groupings below are the old organisation, kept only because this is a build
+> checklist and the names are how the work was scoped. **§6.1's cluster table is authoritative** for
+> where a node actually sits in the tree; a node's branch no longer affects anything the player sees.
+
 - **Vein Branch**
   - [ ] Vein Expansion (T1-T5)
   - [ ] Vein Proliferation (T1-T5)
@@ -1494,10 +1711,10 @@ Use this to track progress. Update at the end of each development session.
   - [ ] Echo Chamber *(notable, new)*
   - [ ] Deep Harvest *(notable, new)*
   - [ ] Twin Veins (T1-T3)
-  - [ ] **[FORK: Vein Shape]** Abundance / Vein Singularity *(keystone, replaces Motherlode)* / Stratified *(new)*
+  - [ ] **[FORK: Vein Shape]** `vein_shaping` parent + Abundance / Vein Singularity / Stratified as free options
 - **Ore Quality Branch**
   - [ ] Ore Attunement *(new fork root)*
-  - [ ] **[FORK: Ore Focus]** Common / Uncommon / Rare Focus (T1-T3 each) *(replaces the three sequential Ore Boosts)*
+  - [ ] **[FORK: Ore Focus]** `ore_attunement` parent + Common / Uncommon / Rare Focus as free options (replaces the three sequential Ore Boosts)
   - [ ] Full Spectrum *(keystone, new)*
   - [ ] Gravel Purge (T1)
   - [ ] Stone Reduction (T1-T2)
@@ -1506,7 +1723,7 @@ Use this to track progress. Update at the end of each development session.
 - **Fortune Branch**
   - [ ] Vein Fortune (T1-T3) *(renamed from Ore Sense)*
   - [ ] Prospector's Eye *(notable, new)*
-  - [ ] **[FORK: Yield]** Ore Doubling (T1-T3, T4-T6 Mekanism) / Smelter's Intuition (T1-T3)
+  - [ ] **[FORK: Yield]** `ore_working` parent (T1-T3, T4-T6 Mekanism+Doubling only) + Ore Doubling / Smelter's Intuition as free options
   - [ ] Runic Attunement (T1-T3) — Attuned ore → Resonance Crystals
 - **XP and Stone Branch**
   - [ ] Stone Memory (T1-T5)
@@ -1515,7 +1732,7 @@ Use this to track progress. Update at the end of each development session.
 - **Hunger Branch**
   - [ ] Efficient Miner (T1-T5)
 - **Utility Branch**
-  - [ ] **[FORK: Orb Collection]** Resonance Magnetism (T1-T3) / Hoarder's Instinct (T1-T2, reworked)
+  - [ ] **[FORK: Orb Collection]** `resonant_draw` parent + Resonance Magnetism / Hoarder's Instinct as free options
   - [ ] Automated Extraction (T1-T2) — yield only, never Resonance
   - [ ] Vault Presence (T1-T3)
   - [ ] Seismic Sense *(notable, new)*
@@ -1562,13 +1779,16 @@ Use this to track progress. Update at the end of each development session.
       (#35) — vanilla `TabNavigationBar`/`TabManager`, all three tabs present and switching, each
       one a placeholder that names what will fill it. `TomeTab` adds the body draw call vanilla's
       `Tab` lacks, since two of the three pages are a node graph rather than a column of widgets
-- [x] Resonance tree tab — node graph renderer (#36) — grid derived by `TreeLayout` from branch and
-      prerequisite depth rather than hand-placed coordinates, so a new node needs no layout edit.
-      Elbow edges, green once the prerequisite is met. Drag to pan, wheel to scroll
-- [x] Node locked/unlocked/toggleable visual states (#36) — border colour carries the state: gold
-      maxed, green owned, cyan tradeoff active, white available, grey locked. The tooltip names the
-      specific reason a node is locked rather than only dimming it
-- [ ] Fork indicator — unchosen branches shown locked *(needs the fork mechanic, [86])*
+- [ ] Resonance tree tab — cluster/stagger renderer. The grid version shipped in #36 and was replaced
+      on playtest: it stacked unrelated nodes, implying prerequisites that did not exist, and its
+      edges ran to node centres so lines crossed the boxes. The layout is now anchors and staggered
+      clusters per §6.1, edges terminate at box borders, and boxes size to their name. Panning,
+      scrolling and click-to-purchase from #36 carry over
+- [ ] Node locked/unlocked/toggleable visual states — state by colour landed in #36 (gold maxed,
+      green owned, cyan tradeoff active, white available, grey locked) with the lock reason named in
+      the tooltip. Still needs the per-class frames from §8
+- [ ] Fork indicator — parent marked inert while unspecialized, siblings locked once one is picked
+- [ ] Anchor nodes — wide, centred, showing their points-spent gate and whether it is met
 - [x] Exclusive node lock indicator (#36) — a mark on the node whose partner is already owned, plus
       the reason in the tooltip
 - [ ] Keystone visual treatment (distinct from small nodes and notables)
@@ -1625,6 +1845,12 @@ Use this to track progress. Update at the end of each development session.
       apply to vanilla sprites the mod borrows — the Resonance orb tints
       `minecraft:textures/entity/experience/experience_orb.png` and ships no texture of its own,
       and re-sizing a vanilla sprite is not ours to do
+- [ ] Tome node art — the skill-tree nodes want **craggly, stained-paper** frames rather than the
+      plain filled boxes they have now: something that reads as a page in an old miner's book. The
+      Tome's top bar is already right and should not change. **Readability wins over texture** —
+      node name, tier and cost stay legible at every GUI scale, so the paper is a frame and a wash,
+      not a busy fill behind text. A frame per node class (small / anchor / notable / keystone /
+      fork parent / fork option) is what §8's class treatments need to hang on
 - [ ] Translucent portal texture (nether-portal-style see-through, gray theme)
 - [ ] Blockstate JSONs
 - [ ] Model JSONs
