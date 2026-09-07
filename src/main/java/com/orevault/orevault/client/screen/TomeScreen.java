@@ -11,6 +11,7 @@ import net.minecraft.client.gui.components.tabs.TabManager;
 import net.minecraft.client.gui.components.tabs.TabNavigationBar;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -78,9 +79,8 @@ public final class TomeScreen extends Screen {
     protected void init() {
         this.tabNavigationBar = TabNavigationBar.builder(this.tabManager, this.width)
                 .addTabs(
-                        new PlaceholderTab(
-                                Component.translatable("screen.orevault.tome.tab.resonance"),
-                                Component.translatable("screen.orevault.tome.pending.resonance")),
+                        new ResonanceTreeTab(
+                                Component.translatable("screen.orevault.tome.tab.resonance")),
                         new PlaceholderTab(
                                 Component.translatable("screen.orevault.tome.tab.animus"),
                                 Component.translatable("screen.orevault.tome.pending.animus")),
@@ -191,6 +191,61 @@ public final class TomeScreen extends Screen {
 
     private static float clampProgress(float progress) {
         return Math.max(0.0F, Math.min(1.0F, progress));
+    }
+
+    // ----- input -----
+
+    /*
+     * Mouse events reach the selected tab only when they land inside the content
+     * area, so the tab bar keeps its own clicks. Everything falls through to
+     * super when the tab does not consume it, which is what keeps Escape, the
+     * tab buttons and keyboard navigation working.
+     */
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (forwardable(event.x(), event.y()) instanceof TomeTab tab
+                && tab.mouseClicked(event, doubleClick, contentArea())) {
+            return true;
+        }
+        return super.mouseClicked(event, doubleClick);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        // Not gated on position: a drag that began in the content area has to be
+        // told it ended even if the pointer left, or the tab stays stuck to the
+        // cursor.
+        if (this.tabManager.getCurrentTab() instanceof TomeTab tab
+                && tab.mouseReleased(event, contentArea())) {
+            return true;
+        }
+        return super.mouseReleased(event);
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        if (this.tabManager.getCurrentTab() instanceof TomeTab tab
+                && tab.mouseDragged(event, dragX, dragY, contentArea())) {
+            return true;
+        }
+        return super.mouseDragged(event, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (forwardable(mouseX, mouseY) instanceof TomeTab tab
+                && tab.mouseScrolled(mouseX, mouseY, scrollX, scrollY, contentArea())) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    /** The current tab, but only if the given point is inside the content area. */
+    private @Nullable Object forwardable(double mouseX, double mouseY) {
+        return contentArea().containsPoint((int) mouseX, (int) mouseY)
+                ? this.tabManager.getCurrentTab()
+                : null;
     }
 
     // ----- behaviour -----

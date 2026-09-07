@@ -1562,13 +1562,20 @@ Use this to track progress. Update at the end of each development session.
       (#35) — vanilla `TabNavigationBar`/`TabManager`, all three tabs present and switching, each
       one a placeholder that names what will fill it. `TomeTab` adds the body draw call vanilla's
       `Tab` lacks, since two of the three pages are a node graph rather than a column of widgets
-- [ ] Resonance tree tab — node graph renderer
-- [ ] Node locked/unlocked/toggleable visual states
-- [ ] Fork indicator — unchosen branches shown locked
-- [ ] Exclusive node lock indicator
+- [x] Resonance tree tab — node graph renderer (#36) — grid derived by `TreeLayout` from branch and
+      prerequisite depth rather than hand-placed coordinates, so a new node needs no layout edit.
+      Elbow edges, green once the prerequisite is met. Drag to pan, wheel to scroll
+- [x] Node locked/unlocked/toggleable visual states (#36) — border colour carries the state: gold
+      maxed, green owned, cyan tradeoff active, white available, grey locked. The tooltip names the
+      specific reason a node is locked rather than only dimming it
+- [ ] Fork indicator — unchosen branches shown locked *(needs the fork mechanic, [86])*
+- [x] Exclusive node lock indicator (#36) — a mark on the node whose partner is already owned, plus
+      the reason in the tooltip
 - [ ] Keystone visual treatment (distinct from small nodes and notables)
-- [ ] Tradeoff toggle disabled with a reason while inside the Vault
-- [ ] Ultimine node conditional visibility
+- [ ] Tradeoff toggle disabled with a reason while inside the Vault *(server refuses it (#104); the
+      screen does not yet grey the toggle out ahead of the refusal)*
+- [x] Ultimine node conditional visibility (#36) — Ultimine nodes are dropped from the node list
+      before layout, so they leave no gap. Read from the client's own mod list until `SoftDeps` ([41])
 - [x] Team Resonance level bar and skill point display (#35) — the Tome's header, one row per
       tree: level, unspent points, a progress bar and the pool on hover. Drawn only once a sync
       has arrived; before that it says it is waiting rather than showing zeroes. The server

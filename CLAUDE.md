@@ -86,6 +86,21 @@ already correct — match it, don't "fix" it:
 | `CompoundTag#getCompoundOrEmpty` | `getCompound` returning null |
 | `RegisterColorHandlersEvent.BlockTintSources` | `ColorHandlerEvent.Block` |
 | `Commands.hasPermission(Commands.LEVEL_GAMEMASTERS)` | `source.hasPermission(2)` |
+| `GuiGraphicsExtractor` | `GuiGraphics` |
+| `Screen#extractRenderState(graphics, mx, my, a)` | `Screen#render(...)` |
+| `Screen#extractBackground(...)` | `Screen#renderBackground(...)` |
+| `graphics.text(font, …)` / `centeredText` | `drawString` / `drawCenteredString` |
+| `mouseClicked(MouseButtonEvent, boolean)` | `mouseClicked(double, double, int)` |
+| `mouseDragged(MouseButtonEvent, dx, dy)` | `mouseDragged(double, double, int, double, double)` |
+
+The GUI renames are the 1.21.9 render-state rework carried into 26.1: a screen no
+longer draws, it *extracts render state* that the renderer replays. Signatures
+otherwise line up with the old ones. `MouseButtonEvent` is a record of
+`(x, y, buttonInfo)` with a `button()` accessor.
+
+Decompiled 26.1 sources — the fastest way to settle any of this — are at
+`.gradle/repositories/ng_dummy_ng/net/neoforged/neoforge/<neo_version>/neoforge-<neo_version>-sources.jar`
+(patched Minecraft) and the matching jar under `.gradle-home/caches/modules-2/` (NeoForge's own).
 
 Nullability uses **JSpecify** (`org.jspecify.annotations.Nullable`), not the
 NeoForge or JetBrains annotations.

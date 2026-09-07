@@ -1,7 +1,9 @@
 package com.orevault.orevault.network;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.jspecify.annotations.Nullable;
@@ -69,9 +71,9 @@ public final class ModNetwork {
      * It changes when a payload's fields change, not when a handler does.
      *
      * <p>2: {@link SyncTeamProgress} carries both trees instead of Resonance
-     * alone ([34]).</p>
+     * alone ([34]). 3: {@link SyncSkillTree} added ([35]).</p>
      */
-    public static final String PROTOCOL_VERSION = "2";
+    public static final String PROTOCOL_VERSION = "3";
 
     private ModNetwork() {
     }
@@ -169,6 +171,36 @@ public final class ModNetwork {
         }
     }
 
+    /**
+     * Server pushes what the Resonance tree tab needs to draw node states (§8).
+     *
+     * <p>Separate from {@link SyncTeamProgress} because the two change on wildly
+     * different schedules: the header's numbers move on every orb, this moves
+     * only on a purchase or a toggle. Folding ~40 entries into the packet that
+     * fires per pickup would be the most-sent packet in the mod carrying the
+     * least-changing data.</p>
+     *
+     * <p>Tiers are team state; active tradeoffs are per-player (§6.1), so this
+     * packet is addressed to one player and never broadcast verbatim.</p>
+     */
+    public record SyncSkillTree(Map<String, Integer> resonanceTiers, List<String> activeTradeoffs)
+            implements CustomPacketPayload {
+        public static final Type<SyncSkillTree> TYPE = new Type<>(id("sync_skill_tree"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, SyncSkillTree> CODEC =
+                StreamCodec.composite(
+                        ByteBufCodecs.<ByteBuf, String, Integer, Map<String, Integer>>map(
+                                HashMap::new, ByteBufCodecs.STRING_UTF8, ByteBufCodecs.VAR_INT),
+                        SyncSkillTree::resonanceTiers,
+                        ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()),
+                        SyncSkillTree::activeTradeoffs,
+                        SyncSkillTree::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
     /** Server broadcasts the state of a running reset vote (§3.5). Phase 8 (#94). */
     public record ResetVoteStatus(int votesFor, int votesNeeded, int secondsRemaining)
             implements CustomPacketPayload {
@@ -204,6 +236,7 @@ public final class ModNetwork {
         // on a client. On a dedicated server these register so the channel
         // matches, and never fire.
         registrar.playToClient(SyncTeamProgress.TYPE, SyncTeamProgress.CODEC, ModNetwork::onClientPayload);
+        registrar.playToClient(SyncSkillTree.TYPE, SyncSkillTree.CODEC, ModNetwork::onClientPayload);
         registrar.playToClient(ResetVoteStatus.TYPE, ResetVoteStatus.CODEC, ModNetwork::onClientPayload);
     }
 
@@ -221,7 +254,39 @@ public final class ModNetwork {
         if (server == null) {
             return;
         }
-        PacketDistributor.sendToPlayer(player, progressOf(server, TeamHelper.getTeamId(player)));
+        UUID teamId = TeamHelper.getTeamId(player);
+        PacketDistributor.sendToPlayer(player, progressOf(server, teamId));
+        PacketDistributor.sendToPlayer(player, skillTreeOf(server, teamId, player));
+    }
+
+    /**
+     * Sends one player the tree state behind the Tome's node graph.
+     *
+     * <p>Per-player rather than per-team because the active tradeoff set is
+     * per-player (§6.1), so there is no one payload the whole team could
+     * share.</p>
+     */
+    public static void syncSkillTreeTo(ServerPlayer player) {
+        MinecraftServer server = player.level().getServer();
+        if (server == null) {
+            return;
+        }
+        PacketDistributor.sendToPlayer(player, skillTreeOf(server, TeamHelper.getTeamId(player), player));
+    }
+
+    /** Sends every online member the tree state, each with their own toggles. */
+    public static void syncSkillTree(MinecraftServer server, UUID teamId) {
+        for (ServerPlayer member : onlineMembers(server, teamId)) {
+            PacketDistributor.sendToPlayer(member, skillTreeOf(server, teamId, member));
+        }
+    }
+
+    private static SyncSkillTree skillTreeOf(MinecraftServer server, UUID teamId, ServerPlayer player) {
+        OreVaultTeamData data = OreVaultTeamData.getOrCreate(server.overworld(), teamId);
+        PlayerStats stats = data.getOrCreatePlayerStats(player.getUUID());
+        return new SyncSkillTree(
+                Map.copyOf(data.resonanceTree().getUnlockedTiers()),
+                List.copyOf(stats.getActiveTradeoffs()));
     }
 
     /**
@@ -233,22 +298,27 @@ public final class ModNetwork {
      * not push here is a header that silently goes stale while it is open.</p>
      */
     public static void syncTeam(MinecraftServer server, UUID teamId) {
-        Collection<ServerPlayer> members = TeamHelper.getOnlineTeamMembers(teamId);
-        if (members.isEmpty()) {
-            // Same hole as TeamHelper.teamSize (#128): before FTB Teams files a
-            // player, getTeamId hands back the player's own UUID, which is not a
-            // team id and matches no team, so the member lookup comes back empty
-            // for someone who is standing right there with the Tome open.
-            ServerPlayer solo = server.getPlayerList().getPlayer(teamId);
-            if (solo == null) {
-                return;
-            }
-            members = List.of(solo);
-        }
         SyncTeamProgress payload = progressOf(server, teamId);
-        for (ServerPlayer member : members) {
+        for (ServerPlayer member : onlineMembers(server, teamId)) {
             PacketDistributor.sendToPlayer(member, payload);
         }
+    }
+
+    /**
+     * Online members of a team, with the solo fallback.
+     *
+     * <p>Same hole as {@code TeamHelper.teamSize} (#128): before FTB Teams files
+     * a player, {@code getTeamId} hands back the player's own UUID, which is not
+     * a team id and matches no team — so the member lookup comes back empty for
+     * someone standing right there with the Tome open.</p>
+     */
+    private static Collection<ServerPlayer> onlineMembers(MinecraftServer server, UUID teamId) {
+        Collection<ServerPlayer> members = TeamHelper.getOnlineTeamMembers(teamId);
+        if (!members.isEmpty()) {
+            return members;
+        }
+        ServerPlayer solo = server.getPlayerList().getPlayer(teamId);
+        return solo == null ? List.of() : List.of(solo);
     }
 
     /** Reads both trees out of SavedData. Main thread only. */
@@ -288,12 +358,16 @@ public final class ModNetwork {
             if (result != SkillTree.UnlockResult.OK) {
                 OreVault.LOGGER.debug("Purchase of {} by {} refused: {}",
                         payload.nodeId(), player.getGameProfile().name(), result);
+                // The client thought this was buyable and it was not, so its copy
+                // of the tree is wrong. Correcting it costs one packet.
+                syncSkillTreeTo(player);
                 return;
             }
 
             data.addResonanceSkillPoints(-cost);
             data.setDirty();
             syncTeam(overworld.getServer(), teamId);
+            syncSkillTree(overworld.getServer(), teamId);
             OreVault.LOGGER.debug("{} purchased {} for {} point(s)",
                     player.getGameProfile().name(), payload.nodeId(), cost);
         });
@@ -316,6 +390,10 @@ public final class ModNetwork {
             if (result.allowed()) {
                 data.setDirty();
             }
+            // Sent whether or not the toggle was allowed: a refused toggle means
+            // the client drew a state the server does not agree with, and the
+            // correction is exactly what it needs.
+            syncSkillTreeTo(player);
         });
     }
 
