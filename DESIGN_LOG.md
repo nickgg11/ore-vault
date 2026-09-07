@@ -14,6 +14,39 @@ Newest first.
 
 ---
 
+## 2026-09-07 — Three lanes, and edges that route through gaps
+
+Implementing the cluster/stagger renderer (#136) forced two choices the spec had left open.
+
+**Three lanes, not five.** §6.1 asks for nodes staggered left and right of a centre line, which is a
+centre lane and one either side. Five lanes were tried first because they make the tree shorter, and
+they were wrong for two reasons. A five-lane tree is roughly 900 pixels wide, which does not fit a
+Tome page at a normal GUI scale — so it pans horizontally, across the cluster order, instead of
+scrolling down it. And the widest fork in the tree has three options, so five lanes meant every fork
+sat in a band with two leftover lanes beside it that nothing could use, because a node placed there
+would read as belonging to the fork.
+
+Three lanes make the tree tall and narrow. That is the right shape for a book: the clusters already
+run top to bottom, so the scroll follows the reading order, and a fork fills a band exactly.
+
+**Edges are routed, not drawn straight.** The grid drew an elbow between two box centres, which is
+why lines crossed the boxes in between. Replacing it with a shortest-path router would have been the
+obvious fix and would have needed a collision test against every box on every frame.
+
+Instead the geometry is arranged so that crossing is impossible. Every box in a band shares a top
+edge and a height, so the gap between two bands is an empty horizontal strip all the way across, and
+the left and right gutters are empty vertical strips. An edge only ever travels through a gap or a
+gutter. Boxes one band apart get a short elbow through the gap between them; anything further apart
+goes out into a gutter and back. No route can cross a box, whatever nodes are added later, and the
+test asserts it as a property of the routing rather than of today's node set.
+
+**Rejected: shortening "Volatile Veins: Ultimine Gambit".** It is the longest name in the tree by
+some margin and it was the one name that would not fit the box-width cap. §6.1 pins it as a display
+name deliberately, so the cap moved to fit the name rather than the reverse. A test fails if a future
+node outgrows it, which is the right place to have that argument.
+
+---
+
 ## 2026-09-03 — Skill tree redesigned around clusters
 
 **Feedback (playtest of the #36 grid renderer).**

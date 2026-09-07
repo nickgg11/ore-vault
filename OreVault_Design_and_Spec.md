@@ -2219,16 +2219,25 @@ Use this to track progress. Update at the end of each development session.
       (#35) — vanilla `TabNavigationBar`/`TabManager`, all three tabs present and switching, each
       one a placeholder that names what will fill it. `TomeTab` adds the body draw call vanilla's
       `Tab` lacks, since two of the three pages are a node graph rather than a column of widgets
-- [ ] Resonance tree tab — cluster/stagger renderer. The grid version shipped in #36 and was replaced
-      on playtest: it stacked unrelated nodes, implying prerequisites that did not exist, and its
-      edges ran to node centres so lines crossed the boxes. The layout is now anchors and staggered
-      clusters per §6.1, edges terminate at box borders, and boxes size to their name. Panning,
-      scrolling and click-to-purchase from #36 carry over
-- [ ] Node locked/unlocked/toggleable visual states — state by colour landed in #36 (gold maxed,
+- [x] Resonance tree tab — cluster/stagger renderer (#136). The grid version shipped in #36 and was
+      replaced on playtest: it stacked unrelated nodes, implying prerequisites that did not exist, and
+      its edges ran to node centres so lines crossed the boxes. The layout is now anchors and
+      staggered clusters per §6.1, edges terminate at box borders, and boxes size to their name.
+      Panning, scrolling and click-to-purchase from #36 carry over.
+      Three lanes, not five: §6.1 asks for nodes staggered either side of a centre line, and three is
+      also the widest fork in the tree, so a fork fills a band exactly. The tree is therefore tall and
+      narrow, which suits a book — the scroll follows the cluster order instead of running across it
+- [x] Node locked/unlocked/toggleable visual states — state by colour landed in #36 (gold maxed,
       green owned, cyan tradeoff active, white available, grey locked) with the lock reason named in
-      the tooltip. Still needs the per-class frames from §8
-- [ ] Fork indicator — parent marked inert while unspecialized, siblings locked once one is picked
-- [ ] Anchor nodes — wide, centred, showing their points-spent gate and whether it is met
+      the tooltip. #136 added the per-class ring: keystone, pact, growth, notable and fork each get a
+      second outline inside the state border, so class stays legible in every purchase state. The
+      craggly per-class *frames* are art and belong to #69
+- [x] Fork indicator (#136) — a bought but unspecialized parent reads "Not specialised" on the node
+      itself rather than only in its tooltip, since a paid node that is lit up and does nothing is the
+      state most likely to be reported as a bug. Siblings show as locked once one option is picked
+- [x] Anchor nodes (#136) — wide, centred, showing their points-spent gate and whether it is met.
+      Drawn from `Cluster` rather than from `NodeDefs`, and unreachable from the hit test, so no click
+      path can offer to buy one
 - [x] Exclusive node lock indicator (#36) — a mark on the node whose partner is already owned, plus
       the reason in the tooltip
 - [ ] Keystone visual treatment (distinct from small nodes and notables)
