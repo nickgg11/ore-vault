@@ -20,19 +20,19 @@ import org.junit.jupiter.api.Test;
  *
  * <p>The two properties that matter to a reader of the screen are that no two
  * nodes are dealt the same cell, and that a node sits below its prerequisites
- * inside its own branch. Both are easy to break by accident when nodes are
+ * inside its own cluster. Both are easy to break by accident when nodes are
  * added, and neither is visible without launching a client — which is exactly
  * the case for testing them here.</p>
  */
 class TreeLayoutTest {
 
-    private static NodeDef node(String id, String branch, String... prereqIds) {
+    private static NodeDef node(String id, Cluster cluster, String... prereqIds) {
         List<Prereq> prereqs = new ArrayList<>();
         for (String prereqId : prereqIds) {
             prereqs.add(new Prereq(prereqId, 1));
         }
-        return new NodeDef(id, id, Tree.RESONANCE, branch,
-                new int[] {1}, new int[] {0}, prereqs, false, null, false);
+        return new NodeDef(id, id, Tree.RESONANCE, cluster, NodeClass.SMALL, null, null,
+                new int[] {1}, new int[] {0}, prereqs, null, false);
     }
 
     // ----- the properties the screen depends on -----
@@ -51,7 +51,7 @@ class TreeLayoutTest {
     }
 
     @Test
-    void aNodeSitsBelowItsPrerequisitesInTheSameBranch() {
+    void aNodeSitsBelowItsPrerequisitesInTheSameCluster() {
         TreeLayout.Layout layout = TreeLayout.of(NodeDefs.getByTree(Tree.RESONANCE));
 
         for (NodeDef def : NodeDefs.getByTree(Tree.RESONANCE)) {
@@ -59,7 +59,7 @@ class TreeLayoutTest {
             for (Prereq prereq : def.prereqs()) {
                 TreeLayout.Cell from = layout.cell(prereq.nodeId());
                 if (from == null || from.column() != cell.column()) {
-                    continue; // cross-branch edges are drawn, not ordered
+                    continue; // cross-cluster edges are drawn, not ordered
                 }
                 assertTrue(from.row() < cell.row(),
                         def.id() + " is drawn above its prerequisite " + prereq.nodeId());
@@ -68,17 +68,17 @@ class TreeLayoutTest {
     }
 
     @Test
-    void columnsFollowBranchOrderInNodeDefs() {
+    void columnsFollowClusterOrderInNodeDefs() {
         List<NodeDef> nodes = NodeDefs.getByTree(Tree.RESONANCE);
         TreeLayout.Layout layout = TreeLayout.of(nodes);
 
-        List<String> firstAppearance = new ArrayList<>();
+        List<Cluster> firstAppearance = new ArrayList<>();
         for (NodeDef def : nodes) {
-            if (!firstAppearance.contains(def.branch())) {
-                firstAppearance.add(def.branch());
+            if (!firstAppearance.contains(def.cluster())) {
+                firstAppearance.add(def.cluster());
             }
         }
-        assertEquals(firstAppearance, layout.branches());
+        assertEquals(firstAppearance, layout.clusters());
         assertEquals(firstAppearance.size(), layout.columnCount());
     }
 
@@ -89,7 +89,7 @@ class TreeLayoutTest {
         // What the Ultimine filter produces: a visible node whose prerequisite
         // was removed from the list before layout.
         TreeLayout.Layout layout = TreeLayout.of(List.of(
-                node("visible", "Ultimine", "hidden")));
+                node("visible", Cluster.BROAD_CUT, "hidden")));
 
         assertNull(layout.cell("hidden"));
         assertEquals(1, layout.cells().size());
@@ -97,11 +97,11 @@ class TreeLayoutTest {
     }
 
     @Test
-    void deeperNodesSortBelowShallowOnesInTheSameBranch() {
+    void deeperNodesSortBelowShallowOnesInTheSameCluster() {
         TreeLayout.Layout layout = TreeLayout.of(List.of(
-                node("third", "B", "second"),
-                node("first", "B"),
-                node("second", "B", "first")));
+                node("third", Cluster.EXCAVATION, "second"),
+                node("first", Cluster.EXCAVATION),
+                node("second", Cluster.EXCAVATION, "first")));
 
         assertEquals(0, layout.cell("first").row());
         assertEquals(1, layout.cell("second").row());
@@ -109,9 +109,9 @@ class TreeLayoutTest {
     }
 
     @Test
-    void rootsOfTheSameBranchShareADepthButNotACell() {
+    void rootsOfTheSameClusterShareADepthButNotACell() {
         TreeLayout.Layout layout = TreeLayout.of(List.of(
-                node("a", "Utility"), node("b", "Utility"), node("c", "Utility")));
+                node("a", Cluster.CLAIM), node("b", Cluster.CLAIM), node("c", Cluster.CLAIM)));
 
         assertEquals(Set.of(0, 1, 2), Set.of(
                 layout.cell("a").row(), layout.cell("b").row(), layout.cell("c").row()));
@@ -124,8 +124,8 @@ class TreeLayoutTest {
         // the failure mode is a client crash on opening the Tome, and the guard
         // that prevents it is invisible until someone deletes it.
         TreeLayout.Layout layout = TreeLayout.of(List.of(
-                node("x", "Loop", "y"),
-                node("y", "Loop", "x")));
+                node("x", Cluster.MASTERY, "y"),
+                node("y", Cluster.MASTERY, "x")));
 
         assertEquals(2, layout.cells().size());
         assertNotNull(layout.cell("x"));
@@ -138,6 +138,6 @@ class TreeLayoutTest {
 
         assertEquals(0, layout.columnCount());
         assertEquals(0, layout.rowCount());
-        assertTrue(layout.branches().isEmpty());
+        assertTrue(layout.clusters().isEmpty());
     }
 }

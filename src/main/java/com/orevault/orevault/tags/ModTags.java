@@ -22,6 +22,20 @@ public final class ModTags {
                 Identifier.fromNamespaceAndPath(OreVault.MODID, "vault_portals")
         );
 
+        /**
+         * Natural stone for {@code PlayerStats#stoneBroken} and Stonecutter's Patience (§6.1).
+         *
+         * <p>Ships containing {@code #minecraft:base_stone_overworld} — stone, granite, diorite,
+         * andesite, tuff and deepslate — and {@code #c:stones}, so modded stone that follows either
+         * convention counts with no per-mod work here. A pack can extend the tag in a datapack for
+         * anything that follows neither, which is the whole point of counting against a tag rather
+         * than a hard-coded list in a kitchen-sink context.</p>
+         */
+        public static final TagKey<Block> VAULT_STONE = TagKey.create(
+                Registries.BLOCK,
+                Identifier.fromNamespaceAndPath(OreVault.MODID, "vault_stone")
+        );
+
         private Blocks() {
         }
     }

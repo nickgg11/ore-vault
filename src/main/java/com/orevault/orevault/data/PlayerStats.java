@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import com.orevault.orevault.skill.NodeEffects;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
@@ -45,6 +46,15 @@ public final class PlayerStats {
     private long resonanceSession;
     private int vaultEchoTriggers;
     private int twinVeinsTriggers;
+
+    // ----- vein completion (§6.1 Deep Lore, §8) -----
+    // Zero-defaulted like everything else here, so a tag written before these existed reads
+    // correctly and a team's history simply starts from the version they upgraded on.
+    private int veinsCompleted;
+    private int veinDisciplineStreak;
+
+    // ----- survival (§6.1 Claim, §8) -----
+    private int deathsInVault;
 
     // ----- mob stats (§8) -----
     private final Map<String, Integer> mobsKilled = new HashMap<>();
@@ -101,6 +111,19 @@ public final class PlayerStats {
 
     public int getTwinVeinsTriggers() {
         return twinVeinsTriggers;
+    }
+
+    public int getVeinsCompleted() {
+        return veinsCompleted;
+    }
+
+    /** Current Vein Discipline streak (§6.1). Decays by three on abandon, never resets to zero. */
+    public int getVeinDisciplineStreak() {
+        return veinDisciplineStreak;
+    }
+
+    public int getDeathsInVault() {
+        return deathsInVault;
     }
 
     public Map<String, Integer> getMobsKilled() {
@@ -195,6 +218,27 @@ public final class PlayerStats {
         twinVeinsTriggers++;
     }
 
+    /** A vein finished: the lifetime count rises and the Vein Discipline streak extends. */
+    public void recordVeinCompleted() {
+        veinsCompleted++;
+        veinDisciplineStreak++;
+    }
+
+    /**
+     * A part-mined vein was walked away from.
+     *
+     * <p>Drops the streak by three rather than clearing it. A hard reset makes one stray swing
+     * cost fifteen veins of work, and the rational answer to that is to stop exploring and mine
+     * defensively, which is the opposite of what the completion nodes are for (§6.1).</p>
+     */
+    public void recordVeinAbandoned() {
+        veinDisciplineStreak = NodeEffects.veinDisciplineAfterAbandon(veinDisciplineStreak);
+    }
+
+    public void recordDeathInVault() {
+        deathsInVault++;
+    }
+
     public void recordMobKill(String mobId) {
         mobsKilled.merge(mobId, 1, Integer::sum);
     }
@@ -258,6 +302,9 @@ public final class PlayerStats {
         tag.putLong("resonance_session", resonanceSession);
         tag.putInt("vault_echo_triggers", vaultEchoTriggers);
         tag.putInt("twin_veins_triggers", twinVeinsTriggers);
+        tag.putInt("veins_completed", veinsCompleted);
+        tag.putInt("vein_discipline_streak", veinDisciplineStreak);
+        tag.putInt("deaths_in_vault", deathsInVault);
         tag.putLong("animus_lifetime", animusLifetime);
         tag.putLong("animus_session", animusSession);
         tag.putInt("volatile_veins_triggers", volatileVeinsTriggers);
@@ -287,6 +334,11 @@ public final class PlayerStats {
         stats.resonanceSession = tag.getLongOr("resonance_session", 0L);
         stats.vaultEchoTriggers = tag.getIntOr("vault_echo_triggers", 0);
         stats.twinVeinsTriggers = tag.getIntOr("twin_veins_triggers", 0);
+        // Added after v1. Zero is both the correct default and the correct starting value, so a
+        // tag written before these existed reads correctly with no data-version step of its own.
+        stats.veinsCompleted = tag.getIntOr("veins_completed", 0);
+        stats.veinDisciplineStreak = tag.getIntOr("vein_discipline_streak", 0);
+        stats.deathsInVault = tag.getIntOr("deaths_in_vault", 0);
         stats.animusLifetime = tag.getLongOr("animus_lifetime", 0L);
         stats.animusSession = tag.getLongOr("animus_session", 0L);
         stats.volatileVeinsTriggers = tag.getIntOr("volatile_veins_triggers", 0);

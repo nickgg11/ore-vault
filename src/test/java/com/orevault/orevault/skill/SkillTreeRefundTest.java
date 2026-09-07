@@ -79,11 +79,18 @@ class SkillTreeRefundTest {
     }
 
     @Test
-    void fullResonanceRespecIsExpensiveButNotImpossible() {
-        int fullTree = NodeDefs.totalTreeCost(Tree.RESONANCE);
-        int totalXp = NodeCosts.REFUND_XP_PER_POINT * fullTree;
-        assertEquals(3 * fullTree, totalXp);
-        // The old formula put a late respec near 3,250 levels — effectively a trap.
-        assertTrue(totalXp < 1000, "full respec costs " + totalXp + " XP levels");
+    void refundPriceIsProportionalToWhatIsBeingUndone() {
+        // The property the §4.4 formula exists for, and the one that stops any fork being a trap:
+        // no single decision costs more than its own price to undo. The old formula scaled every
+        // refund with total tree investment, which put a late respec near 3,250 levels whether you
+        // were unpicking a keystone or a 1-point filler node.
+        int worstSingleTier = 0;
+        for (NodeDef def : NodeDefs.getByTree(Tree.RESONANCE)) {
+            for (int cost : def.costs()) {
+                worstSingleTier = Math.max(worstSingleTier, NodeCosts.REFUND_XP_PER_POINT * cost);
+            }
+        }
+        assertTrue(worstSingleTier <= 50,
+                "the priciest single tier costs " + worstSingleTier + " XP levels to undo");
     }
 }
