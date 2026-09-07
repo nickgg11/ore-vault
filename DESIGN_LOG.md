@@ -14,6 +14,39 @@ Newest first.
 
 ---
 
+## 2026-09-07 — Descriptions, prerequisite chains, and zoom
+
+**Feedback (playtest of the hub renderer).**
+
+- "Some of the node descriptions aren't working, they just [say] `node.orevault.<node name>.desc`."
+- "The ring design is cool but there is a clarity issue on the outer ring nodes, it's hard to tell
+  what the prerequisite nodes are to unlock them."
+- "Since the tree is so big now the zoom should be able to go out farther."
+
+**Decisions.**
+
+| Decision | Reasoning |
+|---|---|
+| Write the 49 missing node names and descriptions, taken from §6.1 rather than invented | Half the tree had no lang entry at all. Names survived because the Tome falls back to `NodeDef#name()`; descriptions have nothing to fall back to, so the tooltip printed the key. The spec already carries a written description for all but three nodes, and using it keeps the two from drifting. |
+| `NodeLangTest` fails the build if any node lacks either key, or if a key names a node that is gone | The bug is invisible except by hovering one node at a time, and 30 nodes arrived in a single pass (#137). It was verified by deliberately breaking one key and watching the test catch it, rather than trusting that it would. |
+| Hovering a node lights its **whole** chain of prerequisites, not just the immediate ones | The question a player is asking on an outer ring is what do I have to buy to get this, and the honest answer is the path, not the last step of it. The halo sits outside the box so the node's own purchase colour stays readable underneath. |
+| A locked node's reason **names** what is in the way | "Needs an earlier node first" was true and useless. It now names the node and the tier, the level and the level you are, or the cost and the points you hold. |
+| The tooltip lists every prerequisite whether or not the node is locked, with the cluster each one is in | The chain highlight answers "where", the tooltip answers "what", and cross-cluster prerequisites are the ones a player cannot find by looking — Ancient Traces in Assay waits on Vault Expansion in Mastery. |
+| Mouse wheel zooms between 0.2x and 1.5x, anchored on the pointer; drag still pans | Wheel used to scroll vertically, which a 944 by 6008 page makes nearly useless — it is a two-axis canvas, not a column. Anchoring on the pointer is what makes "zoom out, find the cluster, zoom back in on it" one gesture instead of a zoom followed by hunting for where it went. |
+| Zoomed out, node text is dropped and lines are thickened | Three-pixel text is not small text, it is noise over the shape the player zoomed out to see. Lines are drawn in tree coordinates and scaled with everything else, so at a fifth of full size a hairline is a fifth of a pixel and simply is not there — zooming out to see the shape of the tree and losing the lines that give it that shape would be a poor trade. |
+| A zoom readout in the corner | A zoom nobody knows about is not a zoom, and the previous build had none, which is why the feedback was phrased as wanting the existing one to go farther. |
+
+**Rejected.**
+
+- **A minimum zoom that fits the whole tree on one screen.** That is about 0.09x, at which a node box
+  is two pixels and a cluster is a smudge. 0.2x puts a whole cluster on screen and the run of hubs
+  within a couple of drags, which is as far out as the picture still says anything.
+- **Keeping wheel-scroll and putting zoom on a modifier.** The tree is a canvas that has to be crossed
+  in both directions; panning is what drag is for, and reserving the wheel for the axis that needs it
+  least would have kept the more useful gesture behind a chord.
+
+---
+
 ## 2026-09-07 — Hubs, not lanes: the tree radiates
 
 **Feedback (playtest of the #136 band renderer, before it merged).**

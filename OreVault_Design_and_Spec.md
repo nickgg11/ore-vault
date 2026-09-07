@@ -1673,8 +1673,23 @@ change size when it is bought.
 the screen. Prerequisite lines are one pixel wide, and against a translucent backdrop they read
 against whatever the player happened to be standing in front of.
 
+**The page zooms.** The tree is larger than any screen, so the mouse wheel scales it between a fifth
+and one and a half times full size, anchored on the pointer so what is under the cursor stays under
+it. Zoomed far out, node text is dropped rather than drawn illegibly small, and lines are thickened
+so they stay one pixel on screen — the shape of the tree is the thing being looked at, and it is
+made of lines. A readout says how far out the view is, because a zoom nobody knows about is not a
+zoom.
+
+**Hovering a node lights its whole chain of prerequisites**, back to the cluster's anchor: the boxes
+gain a halo and the edges between them are redrawn on top in the same colour. On an outer ring the
+node that unlocks another is rings and an arc away, and tracing that by eye was the problem this
+solves. The tooltip says the same thing in words — every prerequisite named, with the tier needed,
+the cluster it is in, and green or red for whether it is met — and a locked node's reason names the
+node or the number standing in the way rather than saying that one exists.
+
 **Per node:** name, current tier / max tier, next tier's skill-point cost and level requirement, and
-a short description on hover.
+a short description on hover. **Every node has a description**; a node without one shows the player a
+raw translation key, which is a visible defect rather than a missing nicety.
 
 **Class is visible without hovering:**
 

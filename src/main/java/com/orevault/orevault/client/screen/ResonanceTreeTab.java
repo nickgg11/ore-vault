@@ -1,6 +1,9 @@
 package com.orevault.orevault.client.screen;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -79,6 +82,28 @@ public final class ResonanceTreeTab implements TomeTab {
     /** Pointer travel, in pixels, past which a press is a pan rather than a click. */
     private static final int DRAG_SLOP = 4;
 
+    /**
+     * How far the tree can be pushed away.
+     *
+     * <p>The page is a little under a thousand pixels across and six thousand
+     * down, which is more canvas than panning alone is a reasonable way to cross.
+     * A fifth of full size puts a whole cluster on screen at once and the run of
+     * hubs within a couple of drags.</p>
+     */
+    private static final float MIN_ZOOM = 0.20f;
+    private static final float MAX_ZOOM = 1.50f;
+    private static final float ZOOM_STEP = 1.12f;
+
+    /**
+     * Zoom levels below which a node's lines stop being drawn.
+     *
+     * <p>Three-pixel text is not small text, it is noise laid over the shape the
+     * player zoomed out to see. The boxes, their state colours and the edges
+     * between them carry the structure on their own.</p>
+     */
+    private static final float DETAIL_ZOOM = 0.55f;
+    private static final float NAME_ZOOM = 0.36f;
+
     private static final int COLOR_MAXED = 0xFFFFC44F;
     private static final int COLOR_UNLOCKED = 0xFF6FCF6F;
     private static final int COLOR_AVAILABLE = 0xFFE8E8E8;
@@ -100,6 +125,15 @@ public final class ResonanceTreeTab implements TomeTab {
     private static final int COLOR_EDGE = 0xFF6B6152;
     private static final int COLOR_EDGE_MET = 0xFF7FC77F;
     private static final int COLOR_SPINE = 0xFF8A7A4E;
+
+    /**
+     * The hovered node's whole chain of prerequisites.
+     *
+     * <p>An outer-ring node is several rings and an arc away from what unlocks
+     * it, and reading that off a static picture means tracing a line by eye.
+     * Hovering lights the entire path back to the hub instead.</p>
+     */
+    private static final int COLOR_CHAIN = 0xFFFFD98A;
 
     // Per-class treatment (§8). A node's class is the first thing a reader
     // should be able to tell without a tooltip, so it is carried by the border
@@ -125,6 +159,7 @@ public final class ResonanceTreeTab implements TomeTab {
 
     private int scrollX;
     private int scrollY;
+    private float zoom = 1.0f;
     private boolean centred;
     private boolean pressed;
     private double pressX;
@@ -319,25 +354,114 @@ public final class ResonanceTreeTab implements TomeTab {
         int points = progress.resonance().unspentPoints();
         int spent = pointsSpent(tiers);
 
+        NodeDef hovered = nodeAt(area, mouseX, mouseY);
+        Set<String> chain = chainOf(hovered);
+        View view = view(area);
+
+        // The scissor is taken before the zoom, so it stays the screen rectangle
+        // this tab was handed. Everything after is drawn in tree coordinates and
+        // scaled into place.
         graphics.enableScissor(area.left(), area.top(), area.right(), area.bottom());
-        drawSpine(graphics, placed, area);
-        drawEdges(graphics, area, tiers);
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(originX(area), originY(area));
+        graphics.pose().scale(zoom, zoom);
+
+        drawSpine(graphics, placed, view);
+        drawEdges(graphics, view, tiers, chain);
         for (Anchor anchor : placed.anchors()) {
-            drawAnchor(graphics, font, area, anchor, spent);
+            drawAnchor(graphics, font, view, anchor, spent);
         }
-        NodeDef hovered = null;
         for (NodeDef def : nodes) {
-            if (drawNode(graphics, font, placed, area, def, tiers, active, teamLevel, points, spent,
-                    mouseX, mouseY)) {
-                hovered = def;
-            }
+            drawNode(graphics, font, placed, view, def, tiers, active, teamLevel, points, spent, chain);
         }
+
+        graphics.pose().popMatrix();
         graphics.disableScissor();
 
+        drawZoomReadout(graphics, font, area);
         if (hovered != null) {
             graphics.setComponentTooltipForNextFrame(font,
                     tooltip(hovered, tiers, active, teamLevel, points, spent), mouseX, mouseY);
         }
+    }
+
+    /**
+     * The part of the tree on screen, in tree coordinates.
+     *
+     * <p>Culling has to happen in the same space the drawing does, and after the
+     * zoom that is no longer the screen rectangle. Zoomed out, the page is a few
+     * thousand line segments and all but a couple of clusters' worth are off the
+     * edge of it.</p>
+     */
+    private record View(double left, double top, double right, double bottom) {
+
+        boolean showsBox(int x, int y, int width, int height) {
+            return x + width >= left && x <= right && y + height >= top && y <= bottom;
+        }
+
+        boolean showsSegment(int x0, int y0, int x1, int y1) {
+            return Math.max(x0, x1) >= left && Math.min(x0, x1) <= right
+                    && Math.max(y0, y1) >= top && Math.min(y0, y1) <= bottom;
+        }
+    }
+
+    private float originX(ScreenRectangle area) {
+        return area.left() + PADDING - scrollX;
+    }
+
+    private float originY(ScreenRectangle area) {
+        return area.top() + PADDING - scrollY;
+    }
+
+    private View view(ScreenRectangle area) {
+        return new View((area.left() - originX(area)) / zoom, (area.top() - originY(area)) / zoom,
+                (area.right() - originX(area)) / zoom, (area.bottom() - originY(area)) / zoom);
+    }
+
+    /**
+     * How thick a one-pixel line has to be drawn to stay one pixel on screen.
+     *
+     * <p>Lines are drawn in tree coordinates and scaled down with everything
+     * else, so at a fifth of full size a hairline is a fifth of a pixel and
+     * simply is not there. Zooming out to see the shape of the tree and losing
+     * the lines that give it that shape would be a poor trade.</p>
+     */
+    private int lineWeight() {
+        return Math.max(1, Math.round(1f / zoom));
+    }
+
+    /**
+     * Every node the hovered one waits on, however far back.
+     *
+     * <p>Not only its immediate prerequisites. A node on an outer ring is reached
+     * through a chain, and the question a player is actually asking — what do I
+     * have to buy to get this — is answered by the whole path back to the hub
+     * rather than by the last step of it.</p>
+     */
+    private Set<String> chainOf(@Nullable NodeDef hovered) {
+        if (hovered == null) {
+            return Set.of();
+        }
+        Set<String> chain = new HashSet<>();
+        Deque<String> pending = new ArrayDeque<>();
+        pending.add(hovered.id());
+        while (!pending.isEmpty()) {
+            String id = pending.poll();
+            if (!chain.add(id)) {
+                continue;
+            }
+            NodeDef def = NodeDefs.get(id);
+            if (def == null) {
+                continue;
+            }
+            for (Prereq prereq : def.prereqs()) {
+                pending.add(prereq.nodeId());
+            }
+            if (def.forkParentId() != null) {
+                pending.add(def.forkParentId());
+            }
+        }
+        return chain;
     }
 
     /**
@@ -348,13 +472,20 @@ public final class ResonanceTreeTab implements TomeTab {
      * a poor first frame for a screen whose whole job is to show a tree.</p>
      */
     private void centreOnFirstDraw(ScreenRectangle area) {
-        if (centred || layout == null || layout.anchors().isEmpty()) {
+        if (centred || layout == null || layout.anchors().isEmpty() || area.width() <= 0) {
             return;
         }
         centred = true;
         Anchor first = layout.anchors().getFirst();
-        scrollX = first.centerX() + PADDING - area.width() / 2;
-        scrollY = first.centerY() + PADDING - area.height() / 2;
+        scrollX = Math.round(PADDING + first.centerX() * zoom - area.width() / 2f);
+        scrollY = Math.round(PADDING + first.centerY() * zoom - area.height() / 2f);
+    }
+
+    /** Says how far out the tree is, so the zoom is discoverable at all. */
+    private void drawZoomReadout(GuiGraphicsExtractor graphics, Font font, ScreenRectangle area) {
+        graphics.text(font,
+                Component.translatable("screen.orevault.tome.zoom", Math.round(zoom * 100)),
+                area.left() + 6, area.bottom() - font.lineHeight - 5, COLOR_LOCKED);
     }
 
     /**
@@ -386,10 +517,10 @@ public final class ResonanceTreeTab implements TomeTab {
      * keeps clear above and below every hub. It is what makes the clusters read
      * as an order to work down rather than as a scattering of islands.</p>
      */
-    private void drawSpine(GuiGraphicsExtractor graphics, TreeLayout.Layout placed, ScreenRectangle area) {
+    private void drawSpine(GuiGraphicsExtractor graphics, TreeLayout.Layout placed, View view) {
         List<Anchor> anchors = placed.anchors();
         for (int i = 0; i + 1 < anchors.size(); i++) {
-            stroke(graphics, area,
+            stroke(graphics, view,
                     TreeLayout.spine(placed, anchors.get(i).cluster(), anchors.get(i + 1).cluster()),
                     COLOR_SPINE);
         }
@@ -408,15 +539,31 @@ public final class ResonanceTreeTab implements TomeTab {
      * node back but the cluster's own gate, and drawing the spoke is what makes a
      * cluster read as radiating from its anchor rather than merely surrounding
      * it.</p>
+     *
+     * <p>Whatever is on the hovered node's chain is drawn last, so it sits over
+     * the edges it crosses instead of under them.</p>
      */
-    private void drawEdges(GuiGraphicsExtractor graphics, ScreenRectangle area,
-                           Map<String, Integer> tiers) {
+    private void drawEdges(GuiGraphicsExtractor graphics, View view, Map<String, Integer> tiers,
+                           Set<String> chain) {
+        List<Wire> lit = new ArrayList<>();
         for (Wire wire : wires) {
+            if (onChain(wire, chain)) {
+                lit.add(wire);
+                continue;
+            }
             boolean met = wire.sourceId() == null
                     ? tiers.getOrDefault(wire.targetId(), 0) > 0
                     : tiers.getOrDefault(wire.sourceId(), 0) >= wire.minTier();
-            stroke(graphics, area, wire.route(), met ? COLOR_EDGE_MET : COLOR_EDGE);
+            stroke(graphics, view, wire.route(), met ? COLOR_EDGE_MET : COLOR_EDGE);
         }
+        for (Wire wire : lit) {
+            stroke(graphics, view, wire.route(), COLOR_CHAIN);
+        }
+    }
+
+    private static boolean onChain(Wire wire, Set<String> chain) {
+        return chain.contains(wire.targetId())
+                && (wire.sourceId() == null || chain.contains(wire.sourceId()));
     }
 
     /**
@@ -427,20 +574,22 @@ public final class ResonanceTreeTab implements TomeTab {
      * {@link #nodeAt} cannot return it, so there is no path by which a click
      * reaches one.</p>
      */
-    private void drawAnchor(GuiGraphicsExtractor graphics, Font font, ScreenRectangle area, Anchor anchor,
+    private void drawAnchor(GuiGraphicsExtractor graphics, Font font, View view, Anchor anchor,
                             int spent) {
-        int x = screenX(area, anchor.x());
-        int y = screenY(area, anchor.y());
-        if (y + anchor.height() < area.top() || y > area.bottom()
-                || x + anchor.width() < area.left() || x > area.right()) {
+        if (!view.showsBox(anchor.x() - 2, anchor.y() - 2, anchor.width() + 4, anchor.height() + 4)) {
             return;
         }
+        int x = anchor.x();
+        int y = anchor.y();
         boolean open = spent >= anchor.gate();
         int color = open ? COLOR_ANCHOR_OPEN : COLOR_ANCHOR_SHUT;
 
         graphics.fill(x - 2, y - 2, x + anchor.width() + 2, y + anchor.height() + 2, COLOR_ANCHOR_FILL);
-        graphics.outline(x - 2, y - 2, anchor.width() + 4, anchor.height() + 4, color);
-        graphics.outline(x, y, anchor.width(), anchor.height(), color);
+        frame(graphics, x - 2, y - 2, anchor.width() + 4, anchor.height() + 4, color);
+        frame(graphics, x, y, anchor.width(), anchor.height(), color);
+        if (zoom < NAME_ZOOM) {
+            return;
+        }
 
         int textY = y + (anchor.height() - (font.lineHeight * 2 + 2)) / 2;
         graphics.centeredText(font, Component.literal(anchor.cluster().displayName()),
@@ -452,36 +601,43 @@ public final class ResonanceTreeTab implements TomeTab {
                 open ? COLOR_UNLOCKED : COLOR_LOCKED);
     }
 
+    /** A rectangle outline that survives being zoomed out. */
+    private void frame(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int color) {
+        int weight = lineWeight();
+        graphics.fill(x, y, x + width, y + weight, color);
+        graphics.fill(x, y + height - weight, x + width, y + height, color);
+        graphics.fill(x, y, x + weight, y + height, color);
+        graphics.fill(x + width - weight, y, x + width, y + height, color);
+    }
+
     /**
      * Draws one route.
      *
      * <p>Segments are arbitrary now that routes arc around a hub, so each is
-     * rasterised rather than handed to {@code horizontalLine}. Anything wholly
-     * off-screen is dropped before it costs a pixel: a full tree is a few thousand
-     * segments and only a couple of clusters are ever in view.</p>
+     * rasterised rather than handed to {@code horizontalLine}. Anything wholly out
+     * of view is dropped before it costs a pixel: the page is a few thousand
+     * segments and only a couple of clusters are ever on screen.</p>
      */
-    private void stroke(GuiGraphicsExtractor graphics, ScreenRectangle area, List<Point> route, int color) {
+    private void stroke(GuiGraphicsExtractor graphics, View view, List<Point> route, int color) {
+        int weight = lineWeight();
         for (int i = 0; i + 1 < route.size(); i++) {
             Point a = route.get(i);
             Point b = route.get(i + 1);
-            line(graphics, area, screenX(area, a.x()), screenY(area, a.y()),
-                    screenX(area, b.x()), screenY(area, b.y()), color);
+            if (view.showsSegment(a.x(), a.y(), b.x(), b.y())) {
+                line(graphics, a.x(), a.y(), b.x(), b.y(), weight, color);
+            }
         }
     }
 
     /** One segment, axis-aligned where it can be and stepped where it cannot. */
-    private void line(GuiGraphicsExtractor graphics, ScreenRectangle area, int x0, int y0, int x1, int y1,
+    private void line(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1, int weight,
                       int color) {
-        if (Math.max(x0, x1) < area.left() || Math.min(x0, x1) > area.right()
-                || Math.max(y0, y1) < area.top() || Math.min(y0, y1) > area.bottom()) {
-            return;
-        }
         if (x0 == x1) {
-            graphics.verticalLine(x0, Math.min(y0, y1) - 1, Math.max(y0, y1), color);
+            graphics.fill(x0, Math.min(y0, y1), x0 + weight, Math.max(y0, y1) + weight, color);
             return;
         }
         if (y0 == y1) {
-            graphics.horizontalLine(Math.min(x0, x1), Math.max(x0, x1), y0, color);
+            graphics.fill(Math.min(x0, x1), y0, Math.max(x0, x1) + weight, y0 + weight, color);
             return;
         }
         int dx = Math.abs(x1 - x0);
@@ -492,7 +648,7 @@ public final class ResonanceTreeTab implements TomeTab {
         int x = x0;
         int y = y0;
         while (true) {
-            graphics.fill(x, y, x + 1, y + 1, color);
+            graphics.fill(x, y, x + weight, y + weight, color);
             if (x == x1 && y == y1) {
                 return;
             }
@@ -508,36 +664,41 @@ public final class ResonanceTreeTab implements TomeTab {
         }
     }
 
-    /** Draws one node; returns whether the pointer is over it. */
-    private boolean drawNode(GuiGraphicsExtractor graphics, Font font, TreeLayout.Layout placed,
-                             ScreenRectangle area, NodeDef def, Map<String, Integer> tiers,
-                             Set<String> active, int teamLevel, int points, int spent,
-                             int mouseX, int mouseY) {
+    /** Draws one node. */
+    private void drawNode(GuiGraphicsExtractor graphics, Font font, TreeLayout.Layout placed,
+                          View view, NodeDef def, Map<String, Integer> tiers, Set<String> active,
+                          int teamLevel, int points, int spent, Set<String> chain) {
         Box box = placed.box(def.id());
-        if (box == null) {
-            return false;
+        if (box == null || !view.showsBox(box.x(), box.y(), box.width(), box.height())) {
+            return;
         }
-        int x = screenX(area, box.x());
-        int y = screenY(area, box.y());
-        if (y + box.height() < area.top() || y > area.bottom()
-                || x + box.width() < area.left() || x > area.right()) {
-            return false;
-        }
-
+        int x = box.x();
+        int y = box.y();
         int tier = tiers.getOrDefault(def.id(), 0);
         int border = borderColor(def, tiers, active, teamLevel, points, spent);
+
         graphics.fill(x, y, x + box.width(), y + box.height(), COLOR_NODE_FILL);
-        graphics.outline(x, y, box.width(), box.height(), border);
+        if (chain.contains(def.id())) {
+            // A halo outside the box rather than a recoloured border, so a lit
+            // node's own purchase state is still readable while it is lit.
+            frame(graphics, x - 2, y - 2, box.width() + 4, box.height() + 4, COLOR_CHAIN);
+        }
+        frame(graphics, x, y, box.width(), box.height(), border);
         if (isEmphasised(def.nodeClass())) {
             // Keystones, pacts and notables get a second ring rather than a
             // different fill, so class survives every purchase state.
-            graphics.outline(x + 1, y + 1, box.width() - 2, box.height() - 2, classColor(def.nodeClass()));
+            frame(graphics, x + 1, y + 1, box.width() - 2, box.height() - 2, classColor(def.nodeClass()));
+        }
+        if (zoom < NAME_ZOOM) {
+            return;
         }
 
         // The box was measured from every line it can draw, so both lines fit.
         graphics.text(font, displayName(def), x + TreeLayout.TEXT_PADDING, y + 4, border);
-        graphics.text(font, detail(def, tier), x + TreeLayout.TEXT_PADDING, y + 4 + font.lineHeight + 2,
-                tier >= def.maxTier() ? COLOR_MAXED : COLOR_BODY);
+        if (zoom >= DETAIL_ZOOM) {
+            graphics.text(font, detail(def, tier), x + TreeLayout.TEXT_PADDING,
+                    y + 4 + font.lineHeight + 2, tier >= def.maxTier() ? COLOR_MAXED : COLOR_BODY);
+        }
 
         if (def.tradeoff() && tier > 0) {
             graphics.fill(x + box.width() - 9, y + 4, x + box.width() - 4, y + 9,
@@ -546,8 +707,6 @@ public final class ResonanceTreeTab implements TomeTab {
         if (def.isExclusive() && tiers.getOrDefault(def.exclusiveWith(), 0) > 0) {
             graphics.text(font, Component.literal("x"), x + box.width() - 10, y + 3, COLOR_LOCKED);
         }
-
-        return mouseX >= x && mouseX < x + box.width() && mouseY >= y && mouseY < y + box.height();
     }
 
     /**
@@ -636,38 +795,95 @@ public final class ResonanceTreeTab implements TomeTab {
      * act on, and the free-option case is settled before the point balance so an
      * empty pool never blocks a pick that costs nothing.</p>
      */
-    private @Nullable String lockReason(NodeDef def, Map<String, Integer> tiers, int teamLevel, int points,
-                                        int spent) {
+    private @Nullable Lock lockReason(NodeDef def, Map<String, Integer> tiers, int teamLevel, int points,
+                                      int spent) {
         int tier = tiers.getOrDefault(def.id(), 0);
         if (tier >= def.maxTier()) {
-            return "screen.orevault.tome.node.locked.maxed";
+            return new Lock("screen.orevault.tome.node.locked.maxed");
         }
         for (Prereq prereq : def.prereqs()) {
             if (tiers.getOrDefault(prereq.nodeId(), 0) < prereq.minTier()) {
-                return "screen.orevault.tome.node.locked.prereq";
+                return new Lock("screen.orevault.tome.node.locked.prereq",
+                        nameOf(prereq.nodeId()), prereq.minTier());
             }
         }
+        if (def.forkParentId() != null && tiers.getOrDefault(def.forkParentId(), 0) < 1) {
+            return new Lock("screen.orevault.tome.node.locked.prereq", nameOf(def.forkParentId()), 1);
+        }
         if (spent < NodeDefs.anchorGate(def.cluster())) {
-            return "screen.orevault.tome.node.locked.anchor";
+            return new Lock("screen.orevault.tome.node.locked.anchor",
+                    NodeDefs.anchorGate(def.cluster()), spent);
         }
         if (def.nodeClass() == NodeClass.FORK_OPTION) {
             for (NodeDef sibling : NodeDefs.forkOptions(def.forkParentId())) {
                 if (!sibling.id().equals(def.id()) && tiers.getOrDefault(sibling.id(), 0) > 0) {
-                    return "screen.orevault.tome.node.locked.fork";
+                    return new Lock("screen.orevault.tome.node.locked.fork", displayName(sibling));
                 }
             }
             return null; // free, so neither level nor points can stand in the way
         }
         if (def.isExclusive() && tiers.getOrDefault(def.exclusiveWith(), 0) > 0) {
-            return "screen.orevault.tome.node.locked.exclusive";
+            return new Lock("screen.orevault.tome.node.locked.exclusive", nameOf(def.exclusiveWith()));
         }
         if (teamLevel < def.levelReqs()[tier]) {
-            return "screen.orevault.tome.node.locked.level";
+            return new Lock("screen.orevault.tome.node.locked.level", def.levelReqs()[tier], teamLevel);
         }
         if (points < def.costs()[tier]) {
-            return "screen.orevault.tome.node.locked.points";
+            return new Lock("screen.orevault.tome.node.locked.points", def.costs()[tier], points);
         }
         return null;
+    }
+
+    /**
+     * Why a node cannot be bought, and which node or number is in the way.
+     *
+     * <p>"Needs an earlier node first" was true and useless: on an outer ring the
+     * node it means is several rings and an arc away, and finding it by eye is
+     * the thing that was reported as unclear. The reason now names it.</p>
+     */
+    private record Lock(String key, Object... args) {
+
+        Component text() {
+            return Component.translatable(key, args);
+        }
+    }
+
+    /** A node's display name by id, for a message that has to point at another node. */
+    private static Component nameOf(String nodeId) {
+        NodeDef def = NodeDefs.get(nodeId);
+        return def == null ? Component.literal(nodeId) : displayName(def);
+    }
+
+    /**
+     * What this node waits on, spelled out.
+     *
+     * <p>Shown whether or not the node is locked. The tooltip is the only place a
+     * player can read the requirement as words rather than trace an arc, and once
+     * the node is bought the list is how they see what it cost them to reach.</p>
+     */
+    private List<Component> requirements(NodeDef def, Map<String, Integer> tiers) {
+        List<Component> lines = new ArrayList<>();
+        if (def.forkParentId() != null) {
+            lines.add(requirementLine(def.forkParentId(), 1, tiers));
+        }
+        for (Prereq prereq : def.prereqs()) {
+            lines.add(requirementLine(prereq.nodeId(), prereq.minTier(), tiers));
+        }
+        if (lines.isEmpty()) {
+            return lines;
+        }
+        lines.addFirst(Component.translatable("screen.orevault.tome.node.requires")
+                .withStyle(ChatFormatting.GRAY));
+        return lines;
+    }
+
+    private Component requirementLine(String nodeId, int minTier, Map<String, Integer> tiers) {
+        boolean met = tiers.getOrDefault(nodeId, 0) >= minTier;
+        NodeDef other = NodeDefs.get(nodeId);
+        String cluster = other == null ? "?" : other.cluster().displayName();
+        return Component.translatable("screen.orevault.tome.node.requires.entry",
+                        nameOf(nodeId), minTier, cluster)
+                .withStyle(met ? ChatFormatting.GREEN : ChatFormatting.RED);
     }
 
     private List<Component> tooltip(NodeDef def, Map<String, Integer> tiers, Set<String> active,
@@ -690,13 +906,17 @@ public final class ResonanceTreeTab implements TomeTab {
             lines.add(Component.translatable("screen.orevault.tome.node.inert.hint")
                     .withStyle(ChatFormatting.YELLOW));
         }
+        lines.addAll(requirements(def, tiers));
+        int gate = NodeDefs.anchorGate(def.cluster());
+        if (gate > 0) {
+            lines.add(Component.translatable("screen.orevault.tome.node.requires.cluster",
+                            def.cluster().displayName(), gate, spent)
+                    .withStyle(spent >= gate ? ChatFormatting.GREEN : ChatFormatting.RED));
+        }
 
-        String reason = lockReason(def, tiers, teamLevel, points, spent);
+        Lock reason = lockReason(def, tiers, teamLevel, points, spent);
         if (reason != null && tier < def.maxTier()) {
-            Component line = reason.endsWith(".anchor")
-                    ? Component.translatable(reason, NodeDefs.anchorGate(def.cluster()), spent)
-                    : Component.translatable(reason);
-            lines.add(line.copy().withStyle(ChatFormatting.RED));
+            lines.add(reason.text().copy().withStyle(ChatFormatting.RED));
         } else if (reason == null) {
             lines.add(Component.translatable("screen.orevault.tome.node.click_to_buy")
                     .withStyle(ChatFormatting.GREEN));
@@ -766,9 +986,21 @@ public final class ResonanceTreeTab implements TomeTab {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollDeltaX, double scrollDeltaY,
                                  ScreenRectangle area) {
-        int step = TreeLayout.NODE_HEIGHT + TreeLayout.RING_GAP;
-        scrollY -= (int) Math.round(scrollDeltaY * step / 2.0);
-        scrollX -= (int) Math.round(scrollDeltaX * step / 2.0);
+        if (scrollDeltaY == 0) {
+            return false;
+        }
+        float next = Math.clamp(zoom * (float) Math.pow(ZOOM_STEP, scrollDeltaY), MIN_ZOOM, MAX_ZOOM);
+        if (next == zoom) {
+            return true;
+        }
+        // Anchored on the pointer: whatever is under it stays under it, which is
+        // what makes zooming out to find a cluster and back in on it one gesture
+        // rather than a zoom followed by hunting for where it went.
+        double treeX = (mouseX - originX(area)) / zoom;
+        double treeY = (mouseY - originY(area)) / zoom;
+        zoom = next;
+        scrollX = (int) Math.round(area.left() + PADDING + treeX * zoom - mouseX);
+        scrollY = (int) Math.round(area.top() + PADDING + treeY * zoom - mouseY);
         clampScroll(area);
         return true;
     }
@@ -811,14 +1043,11 @@ public final class ResonanceTreeTab implements TomeTab {
         if (layout == null) {
             return null;
         }
+        int treeX = (int) Math.floor((mouseX - originX(area)) / zoom);
+        int treeY = (int) Math.floor((mouseY - originY(area)) / zoom);
         for (NodeDef def : nodes) {
             Box box = layout.box(def.id());
-            if (box == null) {
-                continue;
-            }
-            int x = screenX(area, box.x());
-            int y = screenY(area, box.y());
-            if (mouseX >= x && mouseX < x + box.width() && mouseY >= y && mouseY < y + box.height()) {
+            if (box != null && box.contains(treeX, treeY)) {
                 return def;
             }
         }
@@ -827,31 +1056,31 @@ public final class ResonanceTreeTab implements TomeTab {
 
     // ----- geometry -----
 
-    private int screenX(ScreenRectangle area, int treeX) {
-        return area.left() + PADDING + treeX - scrollX;
-    }
-
-    private int screenY(ScreenRectangle area, int treeY) {
-        return area.top() + PADDING + treeY - scrollY;
-    }
-
     private int contentWidth() {
-        return layout == null ? 0 : layout.width() + PADDING * 2;
+        return layout == null ? 0 : Math.round(layout.width() * zoom) + PADDING * 2;
     }
 
     private int contentHeight() {
-        return layout == null ? 0 : layout.height() + PADDING * 2;
+        return layout == null ? 0 : Math.round(layout.height() * zoom) + PADDING * 2;
     }
 
     /**
      * Keeps the tree on screen.
      *
-     * <p>When it is smaller than the area the scroll is pinned to 0 rather than
-     * allowed to go negative, so a short tree sits at the top-left instead of
-     * drifting off it.</p>
+     * <p>Zoomed far enough out the whole tree is smaller than the page, and
+     * pinning the scroll to zero there would shove it into the top-left corner —
+     * exactly when the player is trying to look at the shape of the whole thing.
+     * Below that point the scroll centres it instead.</p>
      */
     private void clampScroll(ScreenRectangle area) {
-        scrollX = Math.max(0, Math.min(scrollX, Math.max(0, contentWidth() - area.width())));
-        scrollY = Math.max(0, Math.min(scrollY, Math.max(0, contentHeight() - area.height())));
+        scrollX = clampAxis(scrollX, contentWidth(), area.width());
+        scrollY = clampAxis(scrollY, contentHeight(), area.height());
+    }
+
+    private static int clampAxis(int scroll, int content, int available) {
+        if (content <= available) {
+            return (content - available) / 2;
+        }
+        return Math.clamp(scroll, 0, content - available);
     }
 }
