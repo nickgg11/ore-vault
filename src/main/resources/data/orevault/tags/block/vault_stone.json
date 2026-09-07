@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "#minecraft:base_stone_overworld",
+    {
+      "id": "#c:stones",
+      "required": false
+    }
+  ]
+}

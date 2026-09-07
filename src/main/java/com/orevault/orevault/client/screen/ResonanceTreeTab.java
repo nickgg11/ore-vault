@@ -178,9 +178,9 @@ public final class ResonanceTreeTab implements TomeTab {
     }
 
     private void drawBranchLabels(GuiGraphicsExtractor graphics, Font font, ScreenRectangle area) {
-        for (int column = 0; column < layout.branches().size(); column++) {
+        for (int column = 0; column < layout.clusters().size(); column++) {
             int x = columnX(area, column);
-            graphics.text(font, Component.literal(layout.branches().get(column)),
+            graphics.text(font, Component.literal(layout.clusters().get(column).displayName()),
                     x, area.top() + PADDING - scrollY, COLOR_BRANCH);
         }
     }

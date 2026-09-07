@@ -1348,6 +1348,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 | 1 (only tier) | Completing 5 veins within a single chunk fires a Resonance burst worth 3× Vault Echo T3 and reveals every remaining vein in that chunk | 4 | 16 | Twin Veins T2 |
 
 > Named to avoid reusing "Motherlode", which is a removed node id and would collide in existing save data. Counts veins completed in the chunk over all time, not per trip, so it fires once per chunk.
+>
+> **Watch the storage.** An all-time per-chunk counter is a map that only ever grows, in a file written on every save, for a dimension a team explores without limit. Store the partial counts (1 to 4) in one map and, when a chunk fires, drop its count and add the chunk to a set of fired chunks. The counts stay small because they are work in progress; the fired set is the part that accumulates, at 8 bytes per chunk cleared — a team that clears ten thousand chunks pays about 80 KB, which is affordable and, unlike the count map, cannot be pruned without letting a chunk fire twice.
 
 ---
 

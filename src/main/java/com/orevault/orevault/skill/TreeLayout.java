@@ -20,22 +20,26 @@ import com.orevault.orevault.skill.NodeDef.Prereq;
  * <p>{@link NodeDef} carries no coordinates and deliberately still does not: a
  * hand-placed graph has to be re-authored every time a node is added, and the
  * node set is still moving (#102, #103). The grid falls out of two things the
- * definitions already state — the branch a node belongs to, and what it
+ * definitions already state — the cluster a node belongs to, and what it
  * requires — so a new node lands somewhere sensible with no layout edit at
  * all.</p>
  *
  * <ul>
- *   <li><b>Column</b> is the node's branch, in the order branches first appear
+ *   <li><b>Column</b> is the node's cluster, in the order clusters first appear
  *       in {@code NodeDefs}. That order is the one a reader of the spec sees.</li>
- *   <li><b>Row</b> orders a branch's nodes by prerequisite depth, so a node
- *       always sits below everything inside its own branch that it needs.</li>
+ *   <li><b>Row</b> orders a cluster's nodes by prerequisite depth, so a node
+ *       always sits below everything inside its own cluster that it needs.</li>
  * </ul>
  *
- * <p>Depth is a whole-tree measure, not a per-branch one, so a node gated behind
- * another branch still sorts after its cheap neighbours. Rows are then assigned
- * by position within the branch rather than by depth directly, because several
- * nodes commonly share a depth — three root nodes in one branch would otherwise
+ * <p>Depth is a whole-tree measure, not a per-cluster one, so a node gated behind
+ * another cluster still sorts after its cheap neighbours. Rows are then assigned
+ * by position within the cluster rather than by depth directly, because several
+ * nodes commonly share a depth — three root nodes in one cluster would otherwise
  * be dealt the same cell.</p>
+ *
+ * <p><b>This is still the grid.</b> §6.1 replaced it with anchors and staggered
+ * clusters, and #136 replaces this class with a renderer that draws that. Column
+ * per cluster is the closest the grid gets to the new shape in the meantime.</p>
  *
  * <h2>No Minecraft here</h2>
  *
@@ -48,20 +52,20 @@ public final class TreeLayout {
     private TreeLayout() {
     }
 
-    /** A node's grid position. {@code column} is its branch, {@code row} its rank within it. */
-    public record Cell(String nodeId, String branch, int column, int row) {
+    /** A node's grid position. {@code column} is its cluster, {@code row} its rank within it. */
+    public record Cell(String nodeId, Cluster cluster, int column, int row) {
     }
 
     /**
      * A whole tree's placement.
      *
-     * @param branches branch labels, left to right
+     * @param clusters clusters, left to right
      * @param cells    node id to position, in the order the nodes were given
      */
-    public record Layout(List<String> branches, Map<String, Cell> cells, int columnCount, int rowCount) {
+    public record Layout(List<Cluster> clusters, Map<String, Cell> cells, int columnCount, int rowCount) {
 
         public Layout {
-            branches = List.copyOf(branches);
+            clusters = List.copyOf(clusters);
             cells = Map.copyOf(cells);
         }
 
@@ -94,37 +98,37 @@ public final class TreeLayout {
         // between nodes at equal depth, so the grid matches the reading order of
         // NodeDefs rather than hash order.
         Map<String, Integer> declarationOrder = new HashMap<>();
-        Set<String> branchOrder = new LinkedHashSet<>();
+        Set<Cluster> clusterOrder = new LinkedHashSet<>();
         for (int i = 0; i < nodes.size(); i++) {
             declarationOrder.put(nodes.get(i).id(), i);
-            branchOrder.add(nodes.get(i).branch());
+            clusterOrder.add(nodes.get(i).cluster());
         }
-        List<String> branches = new ArrayList<>(branchOrder);
+        List<Cluster> clusters = new ArrayList<>(clusterOrder);
 
-        Map<String, List<NodeDef>> byBranch = new LinkedHashMap<>();
-        for (String branch : branches) {
-            byBranch.put(branch, new ArrayList<>());
+        Map<Cluster, List<NodeDef>> byCluster = new LinkedHashMap<>();
+        for (Cluster cluster : clusters) {
+            byCluster.put(cluster, new ArrayList<>());
         }
         for (NodeDef def : nodes) {
-            byBranch.get(def.branch()).add(def);
+            byCluster.get(def.cluster()).add(def);
         }
 
         Map<String, Cell> cells = new LinkedHashMap<>();
         int rowCount = 0;
-        for (int column = 0; column < branches.size(); column++) {
-            String branch = branches.get(column);
-            List<NodeDef> inBranch = byBranch.get(branch);
-            inBranch.sort(Comparator
+        for (int column = 0; column < clusters.size(); column++) {
+            Cluster cluster = clusters.get(column);
+            List<NodeDef> inCluster = byCluster.get(cluster);
+            inCluster.sort(Comparator
                     .comparingInt((NodeDef def) -> depths.getOrDefault(def.id(), 0))
                     .thenComparingInt(def -> declarationOrder.get(def.id())));
-            for (int row = 0; row < inBranch.size(); row++) {
-                NodeDef def = inBranch.get(row);
-                cells.put(def.id(), new Cell(def.id(), branch, column, row));
+            for (int row = 0; row < inCluster.size(); row++) {
+                NodeDef def = inCluster.get(row);
+                cells.put(def.id(), new Cell(def.id(), cluster, column, row));
             }
-            rowCount = Math.max(rowCount, inBranch.size());
+            rowCount = Math.max(rowCount, inCluster.size());
         }
 
-        return new Layout(branches, cells, branches.size(), rowCount);
+        return new Layout(clusters, cells, clusters.size(), rowCount);
     }
 
     /**

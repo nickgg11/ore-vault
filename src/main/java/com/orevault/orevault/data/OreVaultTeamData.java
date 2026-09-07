@@ -8,6 +8,7 @@ import com.mojang.serialization.Codec;
 import com.orevault.orevault.OreVault;
 import com.orevault.orevault.skill.NodeCosts;
 import com.orevault.orevault.skill.NodeDef.Tree;
+import com.orevault.orevault.skill.NodeMigration;
 import com.orevault.orevault.skill.SkillTree;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
@@ -44,7 +45,7 @@ public final class OreVaultTeamData extends SavedData {
      * <p>This class grows through every remaining phase, so the cost of not
      * having this is a schema change becoming a wipe rather than a migration.</p>
      */
-    public static final int CURRENT_DATA_VERSION = 1;
+    public static final int CURRENT_DATA_VERSION = 2;
 
     private static final String DATA_VERSION_KEY = "data_version";
 
@@ -310,8 +311,46 @@ public final class OreVaultTeamData extends SavedData {
         CompoundTag out = tag.copy();
         // v0 (unversioned, written before #104) -> v1: no structural change. The
         // version stamp is the only addition, so there is nothing to rewrite.
+        if (storedVersion < 2) {
+            migrateNodeIdsToV2(out);
+        }
         OreVault.LOGGER.info("Migrating Ore Vault team data from version {} to {}", storedVersion, CURRENT_DATA_VERSION);
         return out;
+    }
+
+    /**
+     * v1 -> v2: the §6.1 node renames and removals.
+     *
+     * <p>Ore Sense became Vein Fortune and Efficient Miner became Miner's Constitution, both
+     * carrying their tier. The three Ore Boosts, Motherlode and Disturbed Zone Unlock were removed
+     * and their points handed back to the team's unspent pool — points really were spent on them,
+     * and this build offers nothing to spend them on again.</p>
+     *
+     * <p>Only the Resonance tree is touched; no Animus id changed.</p>
+     */
+    private static void migrateNodeIdsToV2(CompoundTag out) {
+        CompoundTag stored = out.getCompoundOrEmpty("resonance_nodes");
+        Map<String, Integer> tiers = new HashMap<>();
+        for (String key : stored.keySet()) {
+            tiers.put(key, stored.getIntOr(key, 0));
+        }
+
+        NodeMigration.Result result = NodeMigration.apply(tiers);
+        if (!NodeMigration.isNeeded(tiers)) {
+            return;
+        }
+
+        CompoundTag migrated = new CompoundTag();
+        for (Map.Entry<String, Integer> entry : result.tiers().entrySet()) {
+            migrated.putInt(entry.getKey(), entry.getValue());
+        }
+        out.put("resonance_nodes", migrated);
+        out.putInt("resonance_skill_points",
+                out.getIntOr("resonance_skill_points", 0) + result.pointsRefunded());
+
+        OreVault.LOGGER.info(
+                "Rewrote {} Resonance node ids to the §6.1 names and refunded {} skill points for removed nodes",
+                tiers.size(), result.pointsRefunded());
     }
 
     private static CompoundTag tiersToNbt(Map<String, Integer> tiers) {
