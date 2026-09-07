@@ -14,7 +14,51 @@ Newest first.
 
 ---
 
+## 2026-09-07 — Hubs, not lanes: the tree radiates
+
+**Feedback (playtest of the #136 band renderer, before it merged).**
+
+- "The spec document states that the skill tree should look like the one in Diablo 4, so there should
+  be central nodes that the sub nodes radiate from, right now it's just a list downward."
+- "The background is too transparent to see the connecting lines clearly."
+- "The node boxes do not expand to account for the required writing not fitting in the boxes."
+
+**Decisions.**
+
+| Decision | Reasoning |
+|---|---|
+| Each cluster becomes a **hub**: the anchor at the centre, the cluster's nodes on rings around it, hubs strung down one spine | Three lanes read as a list because that is what three lanes are. Staggering nodes either side of a centre line is not the same thing as radiating from a centre, and the spec's own reference — Diablo 4's tree — is hubs you follow down a spine, each surrounded by its own skills. Distance from the anchor now carries the meaning vertical position used to. |
+| Radial distance from a hub is **prerequisite depth inside that cluster**, and nothing else | The rule #136 exists for, restated in the new geometry. A node on the first ring waits on nothing but the cluster gate, which is why it gets a spoke straight to the anchor. |
+| A **corridor** either side of vertical is kept empty at every radius | The spine has to run through the middle of a cluster to reach the next hub, and an edge leaving a cluster has to get out past every ring. Reserving the wedge gives both a place to go that is free by construction rather than free today. |
+| A prerequisite in **another cluster no longer counts** toward depth | Found while asserting the new rule. Vein Proliferation opens Excavation and requires Vein Expansion over in Prospecting, and the old depth count put it on the second ring with an empty first ring underneath it — a node visibly held back by something that is not on the page. |
+| The page is drawn **opaque** | The tree sat on the screen's translucent backdrop, and one-pixel prerequisite lines competed with whatever the player was standing in front of. A tree that is only readable facing a wall is not readable. |
+| A box is measured from **every line it will ever draw** | It was measured from the node's name. The second line is the tier, the cost and the level requirement, and for a specialised fork parent it is the chosen option's display name — routinely longer than the parent's own. Measuring all of them, including the states the node is not in yet, is also what stops a box resizing when it is bought and shoving its neighbours. |
+
+**The cost, stated plainly.** The page is now 944 by 6008 pixels, against roughly 500 by 1540 for the
+bands. A radial cluster is wide because a box lying broadside to its hub pushes the next ring out by
+half its own width, and eight clusters stacked at that radius are tall. Panning already worked in
+both directions and the tab now opens centred on the first hub rather than on an empty corner. If it
+plays too large, the lever is a narrower, taller node box — wrapping the name onto its own line
+roughly halves ring spacing — not a return to lanes.
+
+**Superseded.**
+
+- **Three lanes.** Recorded in the entry below and correct for a band layout, which this is not. The
+  reasoning there — that a 900-pixel-wide tree pans sideways across the cluster order instead of
+  scrolling down it — did not survive contact with the actual complaint, which is that a tall narrow
+  tree reads as a list no matter how well the lanes are packed. The tree is now wide *and* tall, and
+  the cluster order is still the scroll direction.
+- **Band gaps and gutters as the routing proof.** Replaced by the same idea in polar form: rings are
+  disjoint annuli, boxes on a ring do not overlap in angle, and the corridor is clear at every
+  radius. An edge travels along a node's own ray, around an arc inside a gap, or up a corridor, and
+  nothing else. The gutters survive unchanged for edges between clusters.
+
+---
+
 ## 2026-09-07 — Three lanes, and edges that route through gaps
+
+**Superseded the same day by the entry above.** Kept because the routing argument carried over and
+the lane reasoning is the one a fresh reading of the spec keeps arriving at.
 
 Implementing the cluster/stagger renderer (#136) forced two choices the spec had left open.
 

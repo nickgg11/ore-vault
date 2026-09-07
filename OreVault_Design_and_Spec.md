@@ -424,14 +424,17 @@ Identical to Resonance: one point per level, spent in the Mob tree tab. Refund c
 
 #### Shape of the tree
 
-The tree is a **vertical run of clusters**, not a grid of branches. Each cluster is a named stage of
-the miner's craft, and each one begins with an **anchor**: a node you cannot buy, which unlocks once
-you have spent enough skill points anywhere in the tree. The cluster's nodes fan out below its
-anchor, staggered left and right of the centre line rather than stacked in columns.
+The tree is a **run of clusters**, not a grid of branches. Each cluster is a named stage of the
+miner's craft, and each one is built around an **anchor**: a node you cannot buy, which unlocks once
+you have spent enough skill points anywhere in the tree. The anchor sits at the middle of its
+cluster and the cluster's nodes **radiate outward from it**, on rings. The anchors themselves run
+down a single vertical spine, in the order below.
 
-The grid this replaces put unrelated nodes directly above one another — Gravel Purge sat under Common
-Ore Boost while both were available from the start — so the layout implied a prerequisite chain that
-did not exist. Vertical position now means one thing only: how deep into the craft you are.
+Distance from the anchor means one thing: how many prerequisites deep inside that cluster the node
+is. Nodes with nothing to wait for sit on the first ring around the anchor; a node that requires one
+of those sits on the second, and so on. The grid this replaces put unrelated nodes directly above
+one another — Gravel Purge sat under Common Ore Boost while both were available from the start — so
+the layout implied a prerequisite chain that did not exist.
 
 | Cluster | Anchor unlocks at | What it is |
 |---|---|---|
@@ -1640,20 +1643,35 @@ Animus orbs drop from mobs killed in Disturbed Zones, behaving identically to XP
 
 ### Tab 1: Resonance Tree
 
-**Layout.** Clusters run top to bottom in the §6.1 order. Each cluster is headed by its anchor,
-drawn centred and wider than an ordinary node, with the cluster's nodes **staggered** below it —
-alternating left and right of the centre line rather than filling a grid. Fork options sit directly
-under their parent, side by side. The reference is Diablo 4's skill paths: a spine you follow
-downward with clusters fanning off it, not a spreadsheet.
+**Layout.** The reference is Diablo 4's skill tree: hubs you follow down a spine, each one with its
+own skills radiating around it. Each cluster is drawn as a **hub** — its anchor at the centre, and
+the cluster's nodes on **rings** around it, so a node's distance from its anchor is its prerequisite
+depth inside that cluster and nothing else. A node on the first ring is joined to the anchor by a
+**spoke**, because the anchor's gate really is the only thing holding it. Fork options sit together
+on the ring just outside their parent. Hub centres run down one vertical **spine**, in the §6.1
+cluster order, joined by a line.
 
-Vertical position must never imply a relationship that does not exist. Two nodes are drawn one above
-the other only when one requires the other or they share a cluster spine.
+Nothing is placed straight above or below a hub. A wedge either side of vertical is kept empty at
+every radius, giving each cluster a **corridor** the spine runs through and any edge leaving the
+cluster can use. What is left is two sectors, and the cluster's nodes fan into them, left and right.
+
+Position must never imply a relationship that does not exist. Two nodes are drawn one outside the
+other only when one requires the other.
 
 **Edges.** Prerequisite lines connect **border to border**, stopping at the edge of each node box —
-never routed to the box centre, which draws the line across the node and over its text.
+never routed to the box centre, which draws the line across the node and over its text. A line only
+ever travels along a node's own ray out from its hub, around an arc inside the empty gap between two
+rings, or up and down a corridor, so it cannot cross a node box.
 
-**Node boxes size to their content.** A box is as wide as its name needs, within a minimum and a
-maximum; names are not truncated at a fixed width.
+**Node boxes size to their content.** A box is as wide as the **widest line it will ever draw**,
+within a minimum and a maximum. That is not the same as the widest name: the second line carries the
+tier, the cost and the level requirement, and a specialised fork parent's second line carries the
+display name of the option it is set to. Nothing is truncated at a fixed width, and a box does not
+change size when it is bought.
+
+**The page is opaque.** The tree is drawn on its own solid page rather than over the world behind
+the screen. Prerequisite lines are one pixel wide, and against a translucent backdrop they read
+against whatever the player happened to be standing in front of.
 
 **Per node:** name, current tier / max tier, next tier's skill-point cost and level requirement, and
 a short description on hover.
@@ -1663,13 +1681,13 @@ a short description on hover.
 | Class | Treatment |
 |---|---|
 | Small | Plain box |
-| Anchor | Wide, centred, no cost shown; displays its points-spent gate and whether it is met |
+| Anchor | At the centre of its cluster, framed twice over, no cost shown; displays its points-spent gate and whether it is met |
 | Notable | Larger box, distinct frame |
 | Keystone | Largest, ornamented, unmistakable — grouped in Mastery at the bottom |
 | Pact | Keystone ornamentation in a different, colder frame, so it reads as dangerous without reading as a keystone. A pact in Excavation must not look like a keystone that has escaped Mastery |
 | Growth | Plain box while live. Once its condition can no longer be met, greyed out and labelled **Outgrown**, with its effect shown struck through — the point is spent and the player should be able to see why |
 | Fork parent | Marked as a fork; shows which option is active, or that it is **inert** while none is |
-| Fork option | Small, attached under the parent, marked free; siblings shown locked once one is picked |
+| Fork option | Small, on the ring just outside the parent and beside its siblings, marked free; siblings shown locked once one is picked |
 | Tradeoff | Toggle element on the node |
 | Exclusive | Lock mark when its partner is held |
 
@@ -2219,14 +2237,16 @@ Use this to track progress. Update at the end of each development session.
       (#35) — vanilla `TabNavigationBar`/`TabManager`, all three tabs present and switching, each
       one a placeholder that names what will fill it. `TomeTab` adds the body draw call vanilla's
       `Tab` lacks, since two of the three pages are a node graph rather than a column of widgets
-- [x] Resonance tree tab — cluster/stagger renderer (#136). The grid version shipped in #36 and was
-      replaced on playtest: it stacked unrelated nodes, implying prerequisites that did not exist, and
-      its edges ran to node centres so lines crossed the boxes. The layout is now anchors and
-      staggered clusters per §6.1, edges terminate at box borders, and boxes size to their name.
-      Panning, scrolling and click-to-purchase from #36 carry over.
-      Three lanes, not five: §6.1 asks for nodes staggered either side of a centre line, and three is
-      also the widest fork in the tree, so a fork fills a band exactly. The tree is therefore tall and
-      narrow, which suits a book — the scroll follows the cluster order instead of running across it
+- [x] Resonance tree tab — hub renderer (#136, #147). The grid version shipped in #36 and was replaced
+      on playtest: it stacked unrelated nodes, implying prerequisites that did not exist, and its edges
+      ran to node centres so lines crossed the boxes. A band-and-lane layout replaced it and was itself
+      rejected on playtest for reading as a list. The layout is now a hub per cluster — anchor at the
+      centre, nodes on rings around it, hubs down one spine — per §6.1 and §8. Edges terminate at box
+      borders and travel only along a node's own ray, an arc inside a ring gap, or a corridor, so none
+      can cross a box. Boxes size to the widest line they will ever draw, not to the node's name, and
+      the page is opaque so one-pixel edges do not compete with the world behind the screen.
+      Panning, scrolling and click-to-purchase from #36 carry over; the tab opens centred on the first
+      hub. The page is 944 by 6008 pixels, which is the price of a radial cluster — see `DESIGN_LOG.md`
 - [x] Node locked/unlocked/toggleable visual states — state by colour landed in #36 (gold maxed,
       green owned, cyan tradeoff active, white available, grey locked) with the lock reason named in
       the tooltip. #136 added the per-class ring: keystone, pact, growth, notable and fork each get a

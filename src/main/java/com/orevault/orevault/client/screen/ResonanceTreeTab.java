@@ -12,6 +12,7 @@ import com.orevault.orevault.client.ClientPacketHandlers;
 import com.orevault.orevault.network.ModNetwork;
 import com.orevault.orevault.network.ModNetwork.SyncSkillTree;
 import com.orevault.orevault.network.ModNetwork.SyncTeamProgress;
+import com.orevault.orevault.skill.Cluster;
 import com.orevault.orevault.skill.NodeClass;
 import com.orevault.orevault.skill.NodeDef;
 import com.orevault.orevault.skill.NodeDef.Prereq;
@@ -34,7 +35,7 @@ import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /**
- * Tab 1 of the Tome: the Resonance skill tree, drawn as clusters (§8, #136).
+ * Tab 1 of the Tome: the Resonance skill tree, drawn as hubs (§8, #136, #147).
  *
  * <h2>Nothing here decides anything</h2>
  *
@@ -45,21 +46,31 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
  * sync says it did. That is slower to feel than an optimistic update and it is
  * the only version that cannot end up showing a purchase the server refused.</p>
  *
- * <h2>What the grid got wrong</h2>
+ * <h2>What this class owns</h2>
  *
- * <p>[35] drew a column per cluster and was rejected on playtest. The placement
- * fixes live in {@link TreeLayout}; this class is responsible for the two halves
- * that are drawing rather than geometry — edges are stroked along the route the
- * layout returns, whose ends sit on box borders, and a box is drawn at the width
- * the layout gave it, which was measured from the node's own name.</p>
+ * <p>Placement is {@link TreeLayout}'s and is unit tested. What is left here is
+ * drawing, and three parts of it were playtest findings in their own right:</p>
+ *
+ * <ul>
+ *   <li>The page is drawn <b>opaque</b>. It used to be the screen's own
+ *       translucent backdrop, which left the edges competing with whatever the
+ *       player happened to be standing in front of. A skill tree that is only
+ *       readable while facing a wall is not readable.</li>
+ *   <li>Edges are stroked as arbitrary segments rather than as axis-aligned
+ *       runs, because the routes are arcs around a hub now.</li>
+ *   <li>A box is measured from <b>every line it can ever draw</b>, not from its
+ *       name. The second line carries the tier, the cost and the level, and for
+ *       a fork parent it carries an option's name, any of which can be longer
+ *       than the node is called.</li>
+ * </ul>
  *
  * <h2>Panning, and why a click is decided on release</h2>
  *
- * <p>The tree is taller than the screen at any sane GUI scale, so dragging pans
- * it. A drag begins with the same button-down as a purchase, so the purchase
- * fires on <em>release</em>, and only if the pointer never travelled far enough
- * to count as a drag. Deciding on press instead would buy a node every time
- * someone grabbed the canvas next to one.</p>
+ * <p>The tree is larger than the screen in both directions at any sane GUI
+ * scale, so dragging pans it. A drag begins with the same button-down as a
+ * purchase, so the purchase fires on <em>release</em>, and only if the pointer
+ * never travelled far enough to count as a drag. Deciding on press instead would
+ * buy a node every time someone grabbed the canvas next to one.</p>
  */
 public final class ResonanceTreeTab implements TomeTab {
 
@@ -71,12 +82,24 @@ public final class ResonanceTreeTab implements TomeTab {
     private static final int COLOR_MAXED = 0xFFFFC44F;
     private static final int COLOR_UNLOCKED = 0xFF6FCF6F;
     private static final int COLOR_AVAILABLE = 0xFFE8E8E8;
-    private static final int COLOR_LOCKED = 0xFF5A5A5A;
+    private static final int COLOR_LOCKED = 0xFF6E6E6E;
     private static final int COLOR_TRADEOFF_ON = 0xFF4FC3F7;
-    private static final int COLOR_BODY = 0xFF9A9A9A;
-    private static final int COLOR_NODE_FILL = 0xB0101010;
-    private static final int COLOR_EDGE = 0xFF3A3A3A;
-    private static final int COLOR_EDGE_MET = 0xFF5F8F5F;
+    private static final int COLOR_BODY = 0xFFA6A6A6;
+
+    /**
+     * The page.
+     *
+     * <p>Fully opaque on purpose. The tree used to be drawn straight onto the
+     * screen's translucent backdrop, and the edges — thin, dark and one pixel
+     * wide — disappeared into whatever the world behind happened to be.</p>
+     */
+    private static final int COLOR_PAGE = 0xFF13110D;
+    private static final int COLOR_PAGE_EDGE = 0xFF2A2519;
+    private static final int COLOR_NODE_FILL = 0xFF1D1A13;
+
+    private static final int COLOR_EDGE = 0xFF6B6152;
+    private static final int COLOR_EDGE_MET = 0xFF7FC77F;
+    private static final int COLOR_SPINE = 0xFF8A7A4E;
 
     // Per-class treatment (§8). A node's class is the first thing a reader
     // should be able to tell without a tooltip, so it is carried by the border
@@ -89,15 +112,20 @@ public final class ResonanceTreeTab implements TomeTab {
 
     private static final int COLOR_ANCHOR_OPEN = 0xFFCFC49A;
     private static final int COLOR_ANCHOR_SHUT = 0xFF6A6250;
-    private static final int COLOR_ANCHOR_FILL = 0xC0161208;
+    private static final int COLOR_ANCHOR_FILL = 0xFF231D10;
+
+    /** Widest point total a hub's gate line can be asked to render. */
+    private static final int GATE_MEASURE = 9999;
 
     private final Component title;
     private final List<NodeDef> nodes;
 
     private TreeLayout.@Nullable Layout layout;
+    private List<Wire> wires = List.of();
 
     private int scrollX;
     private int scrollY;
+    private boolean centred;
     private boolean pressed;
     private double pressX;
     private double pressY;
@@ -142,9 +170,104 @@ public final class ResonanceTreeTab implements TomeTab {
      */
     private TreeLayout.Layout layout(Font font) {
         if (layout == null) {
-            layout = TreeLayout.of(nodes, def -> font.width(displayName(def)));
+            layout = TreeLayout.of(nodes,
+                    def -> widestLine(font, def),
+                    cluster -> widestHubLine(font, cluster));
+            wires = routes(layout);
         }
         return layout;
+    }
+
+    /**
+     * One drawn line, with what decides its colour.
+     *
+     * <p>{@code sourceId} is the prerequisite; {@code null} means a spoke from the
+     * hub, which is lit once the node it reaches has been bought at all.</p>
+     */
+    private record Wire(List<Point> route, @Nullable String sourceId, int minTier, String targetId) {
+    }
+
+    /**
+     * Every route, built once with the layout.
+     *
+     * <p>A route depends on the placement and nothing else — only its colour
+     * moves — and an arc is thirty-odd points, so rebuilding them all per frame
+     * meant a few thousand throwaway objects sixty times a second for a picture
+     * that never changes.</p>
+     */
+    private List<Wire> routes(TreeLayout.Layout placed) {
+        List<Wire> built = new ArrayList<>();
+        for (NodeDef def : nodes) {
+            Box to = placed.box(def.id());
+            if (to == null) {
+                continue;
+            }
+            for (Prereq prereq : def.prereqs()) {
+                Box from = placed.box(prereq.nodeId());
+                if (from != null) {
+                    built.add(new Wire(TreeLayout.edge(placed, from, to), prereq.nodeId(),
+                            prereq.minTier(), def.id()));
+                }
+            }
+            if (def.forkParentId() != null) {
+                Box from = placed.box(def.forkParentId());
+                if (from != null) {
+                    built.add(new Wire(TreeLayout.edge(placed, from, to), def.forkParentId(), 1,
+                            def.id()));
+                }
+            }
+            List<Point> spoke = TreeLayout.spoke(placed, to);
+            if (!spoke.isEmpty()) {
+                built.add(new Wire(spoke, null, 1, def.id()));
+            }
+        }
+        return List.copyOf(built);
+    }
+
+    /**
+     * The widest line this node's box will ever have to draw.
+     *
+     * <p>Every second line the node can show is measured, not the one it happens
+     * to show right now, because the layout is built once and a box that resized
+     * on purchase would move its neighbours. A fork parent is the case that
+     * matters: once specialised its second line is the chosen option's display
+     * name, which is routinely longer than the parent's own.</p>
+     */
+    private static int widestLine(Font font, NodeDef def) {
+        int widest = font.width(displayName(def));
+        widest = Math.max(widest, font.width(
+                Component.translatable("screen.orevault.tome.node.maxed", def.maxTier())));
+        for (int tier = 0; tier < def.maxTier(); tier++) {
+            widest = Math.max(widest, font.width(Component.translatable(
+                    "screen.orevault.tome.node.tier", tier, def.maxTier(),
+                    def.costs()[tier], def.levelReqs()[tier])));
+        }
+        if (def.nodeClass() == NodeClass.FORK_PARENT) {
+            widest = Math.max(widest,
+                    font.width(Component.translatable("screen.orevault.tome.node.inert")));
+            for (NodeDef option : NodeDefs.forkOptions(def.id())) {
+                widest = Math.max(widest, font.width(Component.translatable(
+                        "screen.orevault.tome.node.specialised", displayName(option))));
+            }
+        }
+        if (def.nodeClass() == NodeClass.FORK_OPTION) {
+            widest = Math.max(widest,
+                    font.width(Component.translatable("screen.orevault.tome.node.option_free")));
+            widest = Math.max(widest,
+                    font.width(Component.translatable("screen.orevault.tome.node.option_taken")));
+        }
+        return widest;
+    }
+
+    /** The widest of a hub's two lines: the cluster's name, and its gate either way round. */
+    private static int widestHubLine(Font font, Cluster cluster) {
+        int widest = font.width(Component.literal(cluster.displayName()));
+        for (String key : new String[] {"screen.orevault.tome.anchor.open",
+                "screen.orevault.tome.anchor.shut"}) {
+            widest = Math.max(widest, font.width(
+                    Component.translatable(key, GATE_MEASURE, GATE_MEASURE)));
+        }
+        return widest;
     }
 
     // ----- Tab -----
@@ -175,6 +298,9 @@ public final class ResonanceTreeTab implements TomeTab {
     public void drawContent(GuiGraphicsExtractor graphics, ScreenRectangle area, int mouseX, int mouseY,
                             float partialTick) {
         Font font = Minecraft.getInstance().font;
+        graphics.fill(area.left(), area.top(), area.right(), area.bottom(), COLOR_PAGE);
+        graphics.horizontalLine(area.left(), area.right(), area.top(), COLOR_PAGE_EDGE);
+
         SyncSkillTree tree = ClientPacketHandlers.skillTree();
         SyncTeamProgress progress = ClientPacketHandlers.teamProgress();
         if (tree == null || progress == null) {
@@ -185,6 +311,7 @@ public final class ResonanceTreeTab implements TomeTab {
         }
 
         TreeLayout.Layout placed = layout(font);
+        centreOnFirstDraw(area);
         clampScroll(area);
         Map<String, Integer> tiers = tree.resonanceTiers();
         Set<String> active = Set.copyOf(tree.activeTradeoffs());
@@ -193,7 +320,8 @@ public final class ResonanceTreeTab implements TomeTab {
         int spent = pointsSpent(tiers);
 
         graphics.enableScissor(area.left(), area.top(), area.right(), area.bottom());
-        drawEdges(graphics, placed, area, tiers);
+        drawSpine(graphics, placed, area);
+        drawEdges(graphics, area, tiers);
         for (Anchor anchor : placed.anchors()) {
             drawAnchor(graphics, font, area, anchor, spent);
         }
@@ -210,6 +338,23 @@ public final class ResonanceTreeTab implements TomeTab {
             graphics.setComponentTooltipForNextFrame(font,
                     tooltip(hovered, tiers, active, teamLevel, points, spent), mouseX, mouseY);
         }
+    }
+
+    /**
+     * Opens on the first hub rather than on the top-left corner.
+     *
+     * <p>A hub tree is centred on a spine, so the corner of its bounding box is
+     * empty space. Landing there reads as an empty page until you drag, which is
+     * a poor first frame for a screen whose whole job is to show a tree.</p>
+     */
+    private void centreOnFirstDraw(ScreenRectangle area) {
+        if (centred || layout == null || layout.anchors().isEmpty()) {
+            return;
+        }
+        centred = true;
+        Anchor first = layout.anchors().getFirst();
+        scrollX = first.centerX() + PADDING - area.width() / 2;
+        scrollY = first.centerY() + PADDING - area.height() / 2;
     }
 
     /**
@@ -235,80 +380,130 @@ public final class ResonanceTreeTab implements TomeTab {
     }
 
     /**
-     * A cluster heading.
+     * The line joining one hub to the next.
      *
-     * <p>Deliberately not a node: it is drawn as a full-width bar, it carries the
-     * points-spent gate rather than a cost, and {@link #nodeAt} cannot return it,
-     * so there is no path by which a click reaches one.</p>
+     * <p>Drawn first and underneath everything, in the corridor {@link TreeLayout}
+     * keeps clear above and below every hub. It is what makes the clusters read
+     * as an order to work down rather than as a scattering of islands.</p>
+     */
+    private void drawSpine(GuiGraphicsExtractor graphics, TreeLayout.Layout placed, ScreenRectangle area) {
+        List<Anchor> anchors = placed.anchors();
+        for (int i = 0; i + 1 < anchors.size(); i++) {
+            stroke(graphics, area,
+                    TreeLayout.spine(placed, anchors.get(i).cluster(), anchors.get(i + 1).cluster()),
+                    COLOR_SPINE);
+        }
+    }
+
+    /**
+     * Prerequisite edges and hub spokes.
+     *
+     * <p>The routes come from {@link TreeLayout}, which starts and ends them on a
+     * box border and only ever runs along a node's own ray, through the gap
+     * between two rings, or up a corridor. The grid this replaces drew a straight
+     * elbow between box centres, which is how a line ended up crossing the text of
+     * every node in between.</p>
+     *
+     * <p>A spoke joins a first-ring node to its hub. Nothing else holds such a
+     * node back but the cluster's own gate, and drawing the spoke is what makes a
+     * cluster read as radiating from its anchor rather than merely surrounding
+     * it.</p>
+     */
+    private void drawEdges(GuiGraphicsExtractor graphics, ScreenRectangle area,
+                           Map<String, Integer> tiers) {
+        for (Wire wire : wires) {
+            boolean met = wire.sourceId() == null
+                    ? tiers.getOrDefault(wire.targetId(), 0) > 0
+                    : tiers.getOrDefault(wire.sourceId(), 0) >= wire.minTier();
+            stroke(graphics, area, wire.route(), met ? COLOR_EDGE_MET : COLOR_EDGE);
+        }
+    }
+
+    /**
+     * A cluster's hub.
+     *
+     * <p>Deliberately not a node: it is drawn as a doubled frame at the centre of
+     * its cluster, it carries the points-spent gate rather than a cost, and
+     * {@link #nodeAt} cannot return it, so there is no path by which a click
+     * reaches one.</p>
      */
     private void drawAnchor(GuiGraphicsExtractor graphics, Font font, ScreenRectangle area, Anchor anchor,
                             int spent) {
         int x = screenX(area, anchor.x());
         int y = screenY(area, anchor.y());
-        if (y + anchor.height() < area.top() || y > area.bottom()) {
+        if (y + anchor.height() < area.top() || y > area.bottom()
+                || x + anchor.width() < area.left() || x > area.right()) {
             return;
         }
         boolean open = spent >= anchor.gate();
         int color = open ? COLOR_ANCHOR_OPEN : COLOR_ANCHOR_SHUT;
 
-        graphics.fill(x, y, x + anchor.width(), y + anchor.height(), COLOR_ANCHOR_FILL);
+        graphics.fill(x - 2, y - 2, x + anchor.width() + 2, y + anchor.height() + 2, COLOR_ANCHOR_FILL);
+        graphics.outline(x - 2, y - 2, anchor.width() + 4, anchor.height() + 4, color);
         graphics.outline(x, y, anchor.width(), anchor.height(), color);
-        graphics.centeredText(font, Component.literal(anchor.cluster().displayName()),
-                x + anchor.width() / 2, y + (anchor.height() - font.lineHeight) / 2, color);
 
-        Component gate = Component.translatable(
-                open ? "screen.orevault.tome.anchor.open" : "screen.orevault.tome.anchor.shut",
-                spent, anchor.gate());
-        graphics.text(font, gate, x + anchor.width() - 6 - font.width(gate),
-                y + (anchor.height() - font.lineHeight) / 2, open ? COLOR_UNLOCKED : COLOR_LOCKED);
+        int textY = y + (anchor.height() - (font.lineHeight * 2 + 2)) / 2;
+        graphics.centeredText(font, Component.literal(anchor.cluster().displayName()),
+                x + anchor.width() / 2, textY, color);
+        graphics.centeredText(font, Component.translatable(
+                        open ? "screen.orevault.tome.anchor.open" : "screen.orevault.tome.anchor.shut",
+                        spent, anchor.gate()),
+                x + anchor.width() / 2, textY + font.lineHeight + 2,
+                open ? COLOR_UNLOCKED : COLOR_LOCKED);
     }
 
     /**
-     * Prerequisite edges.
+     * Draws one route.
      *
-     * <p>The route comes from {@link TreeLayout#edge}, which starts and ends on a
-     * box border and only ever runs through band gaps and the outer gutters. The
-     * grid drew a straight elbow between box centres, which is how a line ended
-     * up crossing the text of every node in between.</p>
+     * <p>Segments are arbitrary now that routes arc around a hub, so each is
+     * rasterised rather than handed to {@code horizontalLine}. Anything wholly
+     * off-screen is dropped before it costs a pixel: a full tree is a few thousand
+     * segments and only a couple of clusters are ever in view.</p>
      */
-    private void drawEdges(GuiGraphicsExtractor graphics, TreeLayout.Layout placed, ScreenRectangle area,
-                           Map<String, Integer> tiers) {
-        for (NodeDef def : nodes) {
-            Box to = placed.box(def.id());
-            if (to == null) {
-                continue;
-            }
-            for (Prereq prereq : def.prereqs()) {
-                Box from = placed.box(prereq.nodeId());
-                if (from == null) {
-                    continue;
-                }
-                boolean met = tiers.getOrDefault(prereq.nodeId(), 0) >= prereq.minTier();
-                stroke(graphics, area, TreeLayout.edge(placed, from, to), met ? COLOR_EDGE_MET : COLOR_EDGE);
-            }
-            if (def.forkParentId() != null) {
-                Box from = placed.box(def.forkParentId());
-                if (from != null) {
-                    boolean met = tiers.getOrDefault(def.forkParentId(), 0) > 0;
-                    stroke(graphics, area, TreeLayout.edge(placed, from, to),
-                            met ? COLOR_EDGE_MET : COLOR_EDGE);
-                }
-            }
-        }
-    }
-
-    /** Draws one route. Every segment is axis-aligned, so each is one line call. */
     private void stroke(GuiGraphicsExtractor graphics, ScreenRectangle area, List<Point> route, int color) {
         for (int i = 0; i + 1 < route.size(); i++) {
             Point a = route.get(i);
             Point b = route.get(i + 1);
-            if (a.x() == b.x()) {
-                graphics.verticalLine(screenX(area, a.x()),
-                        screenY(area, Math.min(a.y(), b.y())) - 1,
-                        screenY(area, Math.max(a.y(), b.y())), color);
-            } else {
-                graphics.horizontalLine(screenX(area, Math.min(a.x(), b.x())),
-                        screenX(area, Math.max(a.x(), b.x())), screenY(area, a.y()), color);
+            line(graphics, area, screenX(area, a.x()), screenY(area, a.y()),
+                    screenX(area, b.x()), screenY(area, b.y()), color);
+        }
+    }
+
+    /** One segment, axis-aligned where it can be and stepped where it cannot. */
+    private void line(GuiGraphicsExtractor graphics, ScreenRectangle area, int x0, int y0, int x1, int y1,
+                      int color) {
+        if (Math.max(x0, x1) < area.left() || Math.min(x0, x1) > area.right()
+                || Math.max(y0, y1) < area.top() || Math.min(y0, y1) > area.bottom()) {
+            return;
+        }
+        if (x0 == x1) {
+            graphics.verticalLine(x0, Math.min(y0, y1) - 1, Math.max(y0, y1), color);
+            return;
+        }
+        if (y0 == y1) {
+            graphics.horizontalLine(Math.min(x0, x1), Math.max(x0, x1), y0, color);
+            return;
+        }
+        int dx = Math.abs(x1 - x0);
+        int dy = -Math.abs(y1 - y0);
+        int sx = x0 < x1 ? 1 : -1;
+        int sy = y0 < y1 ? 1 : -1;
+        int error = dx + dy;
+        int x = x0;
+        int y = y0;
+        while (true) {
+            graphics.fill(x, y, x + 1, y + 1, color);
+            if (x == x1 && y == y1) {
+                return;
+            }
+            int doubled = error * 2;
+            if (doubled >= dy) {
+                error += dy;
+                x += sx;
+            }
+            if (doubled <= dx) {
+                error += dx;
+                y += sy;
             }
         }
     }
@@ -339,7 +534,7 @@ public final class ResonanceTreeTab implements TomeTab {
             graphics.outline(x + 1, y + 1, box.width() - 2, box.height() - 2, classColor(def.nodeClass()));
         }
 
-        // The box was measured from this name, so it fits without truncation.
+        // The box was measured from every line it can draw, so both lines fit.
         graphics.text(font, displayName(def), x + TreeLayout.TEXT_PADDING, y + 4, border);
         graphics.text(font, detail(def, tier), x + TreeLayout.TEXT_PADDING, y + 4 + font.lineHeight + 2,
                 tier >= def.maxTier() ? COLOR_MAXED : COLOR_BODY);
@@ -571,7 +766,7 @@ public final class ResonanceTreeTab implements TomeTab {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollDeltaX, double scrollDeltaY,
                                  ScreenRectangle area) {
-        int step = TreeLayout.NODE_HEIGHT + TreeLayout.BAND_GAP;
+        int step = TreeLayout.NODE_HEIGHT + TreeLayout.RING_GAP;
         scrollY -= (int) Math.round(scrollDeltaY * step / 2.0);
         scrollX -= (int) Math.round(scrollDeltaX * step / 2.0);
         clampScroll(area);
