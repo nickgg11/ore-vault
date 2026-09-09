@@ -235,6 +235,69 @@ public final class NodeCosts {
     public static final int BRITTLE_STONE_COLLATERAL_BLOCKS = 1;
 
     // =====================================================================
+    // Effect magnitudes the node descriptions quote (§6.1, #148)
+    // =====================================================================
+    //
+    // These were all prose before: "occasionally drops flint", "moderate geode
+    // frequency", "a burst of vanilla XP", "1-3% (balance TBD)". A number a player
+    // cannot read is a number the designer has not chosen, and the Tome had no
+    // honest way to describe the node. Pinning them here means the tooltip, the
+    // spec table and the implementation quote one source.
+
+    /** Stone Memory: the per-tier side effects, beyond the flat XP. */
+    public static final double STONE_MEMORY_FLINT_CHANCE = 0.10;
+    public static final double STONE_MEMORY_NUGGET_CHANCE = 0.02;
+    public static final double STONE_MEMORY_BURST_CHANCE = 0.005;
+
+    /** Miner's Constitution: how long the tier 3 Regeneration I lasts, in seconds. */
+    public static final int MINERS_CONSTITUTION_REGEN_SECONDS = 5;
+
+    /** Deep Veins: ore density multiplier applied to the band just above bedrock. */
+    public static final double[] DEEP_VEINS_DENSITY_MULTIPLIERS = {1.5, 2.0};
+    public static final int DEEP_VEINS_BAND_BLOCKS = 30;
+
+    /** Stone Reduction: fraction of the stone touching a vein converted to that vein's ore. */
+    public static final double[] STONE_REDUCTION_CONVERSION = {0.10, 0.20};
+
+    /**
+     * Stratified: the two Y lines that sort ore by rarity.
+     *
+     * <p>Rare at or below {@link #STRATIFIED_RARE_MAX_Y}, uncommon up to
+     * {@link #STRATIFIED_UNCOMMON_MAX_Y}, common above it to the top of the stone band.
+     * Fixed rather than proportional so the answer to "how deep is the rare band" is the
+     * same sentence in both dimension variants — expanding the Vault deepens the rare
+     * band rather than moving every boundary.</p>
+     */
+    public static final int STRATIFIED_RARE_MAX_Y = 60;
+    public static final int STRATIFIED_UNCOMMON_MAX_Y = 150;
+
+    /** Geode Clusters: newly explored chunks per geode, per tier. Overworld is roughly 24. */
+    public static final int[] GEODE_CLUSTERS_CHUNKS_PER_GEODE = {12, 6};
+    public static final int GEODE_CLUSTERS_OVERWORLD_CHUNKS_PER_GEODE = 24;
+
+    /** Ancient Traces: newly explored chunks per ancient debris below Y=0, per tier. */
+    public static final int[] ANCIENT_TRACES_CHUNKS_PER_DEBRIS = {4, 2};
+
+    /**
+     * Volatile Veins: chance per ore break that the rest of the vein vanishes.
+     *
+     * <p>3% rather than the 2% first chosen, because Ultimine Safety subtracts a flat
+     * 1% then 2% (§6.1) and a 2% base would let 3 skill points take the tradeoff to
+     * exactly zero risk. A tradeoff that can be switched off by another node is not a
+     * tradeoff. At 3% the floor is 1% and Ultimine Safety is still worth buying.</p>
+     */
+    public static final double VOLATILE_VEINS_DISAPPEAR_CHANCE = 0.03;
+
+    /** Wanderer's Cache: chance a tier 2 cache also holds an enchanted book. */
+    public static final double WANDERERS_CACHE_BOOK_CHANCE = 0.20;
+
+    /** Pathfinder's Claim: vanilla XP for the first vein mined in a new chunk. */
+    public static final int PATHFINDERS_CLAIM_XP = 50;
+
+    /** Hoarder's Instinct: how close two resting orbs must be to merge into one cache. */
+    public static final int HOARDERS_INSTINCT_MERGE_RADIUS = 4;
+
+    // =====================================================================
     // Resonance tree — CLUSTER: Prospecting
     // =====================================================================
 

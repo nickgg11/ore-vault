@@ -541,7 +541,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 > Prospecting is deliberately the widest cluster: it is the only one open from zero, and it holds all five `[GROWTH]` nodes, which retire out of relevance as the team advances. Its visual weight drops as you progress even though its node count does not.
 
 **Vein Expansion**
-> Increases the size of ore veins generated in newly explored Vault chunks.
+
+> Ore veins in newly explored chunks are larger: +15% size, then +30%, +50%, +75%, +100%.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -554,20 +555,22 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Stone Memory**
-> Stone and deepslate drop XP and provide additional benefits at higher tiers when mined inside the Vault.
+
+> Stone and deepslate mined in the Vault drop XP: +1 per block, rising to +2, +3, +4, +5. Tier 2 also gives stone a 10% chance to drop flint, tier 3 makes deepslate pay 0.5 Resonance, tier 4 gives stone a 2% chance to drop a raw common ore nugget, and tier 5 gives it a 0.5% chance to fire a 50 Resonance burst.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
 | 1 | Stone drops 1 XP when mined | 1 | 0 | None |
-| 2 | +2 XP; stone occasionally drops flint | 1 | 3 | Tier 1 |
-| 3 | +3 XP; deepslate drops a small amount of Resonance | 2 | 6 | Tier 2 |
-| 4 | +4 XP; small chance stone drops a random common ore nugget | 2 | 10 | Tier 3 |
-| 5 | +5 XP; rare chance stone triggers a Resonance burst equal to Vault Echo T3 | 3 | 14 | Tier 4 |
+| 2 | +2 XP; 10% of stone broken drops flint | 1 | 3 | Tier 1 |
+| 3 | +3 XP; deepslate pays 0.5 Resonance per block | 2 | 6 | Tier 2 |
+| 4 | +4 XP; 2% of stone broken drops a raw common ore nugget | 2 | 10 | Tier 3 |
+| 5 | +5 XP; 0.5% of stone broken fires a 50 Resonance burst (Vault Echo T3) | 3 | 14 | Tier 4 |
 
 ---
 
 **Gravel Purge**
-> Removes gravel and clay from Vault generation in newly explored chunks.
+
+> No gravel or clay generates in newly explored Vault chunks.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -576,22 +579,27 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Miner's Constitution**
-> Reduces hunger drain inside the Vault, and at higher tiers toughens the miner. *(Renamed from "Efficient Miner". The tree no longer has a Hunger branch — hunger is one line inside the Prospecting survival group, not a category of its own.)*
+
+> Hunger drains −20% slower inside the Vault, then −45%, −65%, −85%, then not at all. Tier 2 also adds +20% saturation from food, tier 3 grants Regeneration I for 5 seconds when you eat, tier 4 stops starvation damage and adds +2 max hearts, and tier 5 adds +4 max hearts. The extra hearts apply only inside the Vault.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
 | 1 | −20% hunger drain | 1 | 0 | None |
 | 2 | −45% hunger drain; food restores 20% more saturation inside the Vault | 1 | 3 | Tier 1 |
-| 3 | −65% hunger drain; eating grants brief Regeneration I | 2 | 6 | Tier 2 |
+| 3 | −65% hunger drain; eating grants Regeneration I for 5 seconds | 2 | 6 | Tier 2 |
 | 4 | −85% hunger drain; no starvation damage; **+2 max hearts inside the Vault** | 2 | 10 | Tier 3 |
 | 5 | Hunger and saturation frozen completely; eating still grants the Regeneration I from Tier 3; **+4 max hearts inside the Vault** | 3 | 15 | Tier 4 |
 
+> Renamed from "Efficient Miner". The tree no longer has a Hunger branch — hunger is one
+> line inside the Prospecting survival group, not a category of its own.
+>
 > The bonus hearts are an attribute modifier applied on entering the Vault and removed on leaving, so they never follow a player into the overworld. Current health is clamped, not scaled, on removal.
 
 ---
 
 **Sure Footing**
-> The Vault's floor is a long way down and its ceiling is 69 blocks of open air. This is the node that stops that mattering.
+
+> Fall damage taken inside the Vault is halved, then removed entirely.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -601,7 +609,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Deep Breath**
-> Below Y=32 the Vault stops trying to drown or burn you.
+
+> Below Y=32 inside the Vault you cannot drown. Tier 2 adds immunity to fire and lava damage below Y=32.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -613,7 +622,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Novice's Luck** `[GROWTH]`
-> The Vault is kind to people who do not know what they are doing yet.
+
+> +(30 − team level)% ore drops: +28% at team level 2, +10% at level 20, nothing at level 30. Outgrown at the level cap.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -624,7 +634,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Apprentice's Ledger** `[GROWTH]`
-> The first ore of a trip is worth writing down. The hundredth is not.
+
+> The first 100 ore blocks of each Vault trip pay double Resonance. The 101st onward pay normally.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -635,7 +646,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Shallow Grace** `[GROWTH]`
-> While you have never been deep, the shallows pay well.
+
+> +50% Resonance from all ore while your all-time deepest Y is still above 100. Going below Y=100 once ends it permanently.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -646,7 +658,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Guide Vein** `[GROWTH]`
-> A leader vein: a small, obvious deposit the Vault leaves out where a beginner will trip over it.
+
+> One copper or iron vein is guaranteed in every newly explored chunk while the team is below level 15. Chunks generated before then keep theirs afterwards.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -657,7 +670,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Salvager's Eye** `[GROWTH]`
-> Early on, even the waste rock has something in it.
+
+> 5% of stone blocks you break in the Vault drop a raw common ore, while the team is below level 12. Machine-broken stone never rolls it.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -672,7 +686,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 > Moving rock in bulk, and deciding what shape it comes in. **Anchor unlocks at 10 skill points spent anywhere in the Resonance tree.**
 
 **Vein Proliferation**
-> Increases the number of ore veins generated per chunk.
+
+> More ore veins per newly explored chunk: +20% count, then +40%, +65%, +90%, +120%. Capped so stone never falls below 40% of a chunk.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -687,27 +702,30 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Deep Veins**
-> Shifts ore generation weighting toward lower Y levels.
+
+> The lowest 30 blocks above bedrock generate ore at 1.5× the standard density, raised to 2× at tier 2.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | Moderate shift toward lower Y | 2 | 5 | Vein Proliferation T2 |
-| 2 | Strong shift; the lowest 30 blocks above bedrock have 2× standard density | 3 | 9 | Tier 1 |
+| 1 | The lowest 30 blocks above bedrock generate at 1.5× standard ore density | 2 | 5 | Vein Proliferation T2 |
+| 2 | The same band raised to 2× standard ore density | 3 | 9 | Tier 1 |
 
 ---
 
 **Stone Reduction**
-> Replaces a portion of filler stone with ore-bearing rock, increasing ore surface area.
+
+> 10% of the stone blocks touching a vein are converted into that vein's ore, raised to 20% at tier 2. Widens the veins already there rather than adding new ones.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | 10% of filler stone replaced with ore-adjacent stone | 1 | 3 | Gravel Purge |
-| 2 | 20% replaced | 2 | 7 | Tier 1 |
+| 1 | 10% of the stone blocks touching a vein are converted into that vein's ore | 1 | 3 | Gravel Purge |
+| 2 | Raised to 20% of the stone touching a vein | 2 | 7 | Tier 1 |
 
 ---
 
 **Vein Shaping** `[FORK PARENT: Vein Shape]`
-> Decides the shape ore takes in newly generated chunks. **Inert until specialized:** pick one of the three Vein Shape options below and every tier of this node applies through it. All three shapes are subject to the 40% stone floor, and all three apply *after* Vein Expansion and Vein Proliferation, overriding the resulting count and size.
+
+> Sets the shape ore takes in newly generated chunks. Does nothing on its own: pick Abundance, Vein Singularity or Stratified on the ring outside, and tier 1 applies that option at its listed strength while tier 2 doubles it. Applies after Vein Expansion and Vein Proliferation and overrides both, still subject to the 40% stone floor.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -717,7 +735,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Abundance** `[FORK OPTION: Vein Shape]`
-> Many small deposits scattered throughout. Reliable, steady, never a dry chunk.
+
+> Through Vein Shaping tier 1: +50% vein count and −20% vein size. Tier 2: +100% count and −20% size. Every chunk has ore in it.
 
 **Costs 0 skill points.** Requires Vein Shaping tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
@@ -729,7 +748,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Vein Singularity** `[FORK OPTION: Vein Shape]`
-> All ore in a chunk is concentrated into 1–3 enormous deposits. Finding one is a jackpot; many chunks have nothing at all. *(Replaces the earlier "Motherlode" node, which was mechanically identical to Vein Expansion under a different name. It carried a `[KEYSTONE]` tag while forks were paid nodes; as a free option under Vein Shaping it is a shape choice like its two siblings, and keystones now live only in Mastery.)*
+
+> Through Vein Shaping tier 1: all of a chunk's ore is consolidated into 1–3 veins, with total volume unchanged. Tier 2: +25% total volume, and about 40% of chunks generate no ore at all.
 
 **Costs 0 skill points.** Requires Vein Shaping tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
@@ -738,22 +758,29 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 | 1 | Chunk ore consolidated into 1–3 veins; total ore volume unchanged |
 | 2 | Consolidation intensifies; +25% total ore volume, ~40% of chunks generate no ore at all |
 
+> Replaces the earlier "Motherlode" node, which was mechanically identical to Vein Expansion
+> under a different name. It carried a `[KEYSTONE]` tag while forks were paid nodes; as a free
+> option under Vein Shaping it is a shape choice like its two siblings, and keystones now live
+> only in Mastery.
+
 ---
 
 **Stratified** `[FORK OPTION: Vein Shape]`
-> Ore generates in flat horizontal bands sorted by rarity instead of scattered blobs. Rare ore always sits at a known depth. Rewards planned strip-mining over wandering.
+
+> Ore generates in rarity-sorted horizontal bands instead of scattered blobs: rare ore only at Y=60 and below, uncommon from Y=61 to Y=150, common from Y=151 to Y=245. In an expanded Vault the rare band runs down to Y=−63. Vein Shaping tier 2 makes each band near-single-ore and sharpens the boundaries to within 4 blocks.
 
 **Costs 0 skill points.** Requires Vein Shaping tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
 | Vein Shaping tier | Effect through this option |
 |---|---|
-| 1 | Ore generates in rarity-sorted layers; band positions shown in the Tome |
-| 2 | Bands thicken and purify — each band is near-single-ore |
+| 1 | Rare ore only at Y≤60, uncommon Y=61–150, common Y=151–245; the Tome draws the band edges |
+| 2 | Each band becomes near-single-ore, and the boundaries sharpen to within 4 blocks |
 
 ---
 
 **Deep Habit**
-> The longer a single trip runs, the more the Vault gives up. Rewards committing to a delve instead of hearthing out every ten minutes.
+
+> Every 1,000 blocks broken in a single trip adds +5% Resonance for the rest of that trip, up to +25% at 5,000 blocks. Resets to zero when you leave the Vault, and counts only blocks you break yourself.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -764,7 +791,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Long Delve**
-> Time under the rock, rather than rock broken. Pays in comfort rather than yield.
+
+> Every 20 minutes inside the Vault grants a Delve stack worth +10% mining speed and −25% hunger drain, up to 2 stacks, raised to 4 at tier 2. A stack only accrues while you have broken a block in the last 60 seconds, and all stacks are lost on leaving.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -776,17 +804,18 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Volatile Veins** `[TRADEOFF]`
-> Increases vein size by 25%, but each ore broken has a small chance of causing the remaining connected vein to vanish instantly, replaced with air, with no drops. A pity counter prevents more than three consecutive triggers; after three triggers the next several ore breaks are guaranteed safe. The pity counter resets on logout.
-> When using FTB Ultimine, the disappearance roll occurs once per Ultimine operation rather than per block.
+
+> +25% vein size, but every ore block you break has a 3% chance to make the rest of that vein vanish into air with no drops. After 3 triggers in a row the next 10 ore breaks are guaranteed safe; that counter resets on logout. With FTB Ultimine the roll happens once per operation rather than once per block.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | +25% vein size, 1–3% disappearance chance (balance TBD) | 2 | 6 | Vein Expansion T2 |
+| 1 | +25% vein size, 3% disappearance chance per ore block broken | 2 | 6 | Vein Expansion T2 |
 
 ---
 
 **Molten Seam** `[TRADEOFF]`
-> Lava pools generate in the Vault's stone band, each one ringed by a two-block shell of netherrack so you always see one coming before you break into it. Ore mined near the heat comes out already smelted.
+
+> Lava pools generate in the Vault's stone band, each inside a two-block netherrack shell so you see one before you break into it. Ore mined within 8 blocks of lava drops already smelted and pays +25% Resonance. Switching this off stops new pools generating but leaves every pool already placed.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -799,7 +828,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Greedy Seams** `[PACT]` `[EXCLUSIVE: Resonant Overload]`
-> Take the material now and pay for it in progress. Ore yields double; the Vault gives back only half the Resonance.
+
+> +100% ore drops and −50% Resonance from ore. Cannot be held at the same time as Resonant Overload.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -808,7 +838,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Resonant Overload** `[PACT]` `[EXCLUSIVE: Greedy Seams]`
-> The mirror image. Progress at double speed and take home half the material.
+
+> +100% Resonance from ore and −50% ore drops. Cannot be held at the same time as Greedy Seams.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -823,7 +854,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 > Telling one ore from another, and knowing what the stone remembers. **Anchor unlocks at 25 skill points spent anywhere in the Resonance tree.**
 
 **Ore Attunement** `[FORK PARENT: Ore Focus]`
-> Decides which rarity band the Vault favours. **Inert until specialized:** pick Common, Uncommon or Rare Focus below and every tier of this node applies through it. Exactly one Focus at a time — the others lock until refunded, or until **Full Spectrum** lifts the restriction entirely.
+
+> Sets which rarity band the Vault favours. Does nothing on its own: pick Common, Uncommon or Rare Focus on the ring outside, and this node's 3 tiers apply through it. One Focus at a time unless Full Spectrum lifts the restriction.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -834,6 +866,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Common Focus** `[FORK OPTION: Ore Focus]`
+
+> Through Ore Attunement: +25% common ore vein count at tier 1, +50% at tier 2, +80% at tier 3.
 
 **Costs 0 skill points.** Requires Ore Attunement tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
@@ -847,6 +881,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 
 **Uncommon Focus** `[FORK OPTION: Ore Focus]`
 
+> Through Ore Attunement: +25% uncommon ore vein count at tier 1, +50% at tier 2, +80% at tier 3.
+
 **Costs 0 skill points.** Requires Ore Attunement tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
 | Ore Attunement tier | Effect through this option |
@@ -859,6 +895,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 
 **Rare Focus** `[FORK OPTION: Ore Focus]`
 
+> Through Ore Attunement: +30% rare ore vein count at tier 1, +60% at tier 2, +100% at tier 3.
+
 **Costs 0 skill points.** Requires Ore Attunement tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
 | Ore Attunement tier | Effect through this option |
@@ -870,29 +908,32 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Geode Clusters**
-> Amethyst geodes generate inside the Vault at higher frequency than the overworld.
+
+> Amethyst geodes generate in the Vault at one per 12 newly explored chunks, then one per 6. The overworld rate is roughly one per 24.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | Moderate geode frequency | 1 | 4 | Stone Reduction T1 |
-| 2 | High geode frequency | 2 | 8 | Tier 1 |
+| 1 | One geode per 12 newly explored chunks | 1 | 4 | Stone Reduction T1 |
+| 2 | One geode per 6 newly explored chunks | 2 | 8 | Tier 1 |
 
 ---
 
 **Ancient Traces**
-> Ancient debris generates in the Vault — but only in the deepslate band below Y=0, and the Vault refuses to multiply it.
+
+> Ancient debris generates below Y=0 at one per 4 newly explored chunks, then one per 2. Needs an expanded Vault to have a band below Y=0 at all. Debris ignores every ore-multiplying node in the tree and always drops exactly one.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | Sparse ancient debris below Y=0 | 5 | 21 | Rare Focus T2 *or* Full Spectrum, **and** Vault Expansion |
-| 2 | Roughly doubled ancient debris frequency below Y=0 | 5 | 26 | Tier 1 |
+| 1 | One ancient debris per 4 newly explored chunks, below Y=0 only | 5 | 21 | Rare Focus T2 *or* Full Spectrum, **and** Vault Expansion |
+| 2 | Raised to one per 2 newly explored chunks | 5 | 26 | Tier 1 |
 
 > **Balance rules — ancient debris is exempt from everything.** It is not affected by Vein Expansion, Vein Proliferation, the Vein Shape fork, Ore Focus, Vein Fortune, Ore Doubling, Smelter's Intuition, Greedy Seams, Twin Veins, Kindred Rock, or Molten Seam's smelted drop. It generates at a fixed rate and drops exactly one. This is deliberate: the node exists so a team never *has* to go back to the Nether, not so the Vault becomes a netherite farm. Requiring Vault Expansion first also means it arrives at roughly the 20-hour mark rather than early.
 
 ---
 
 **Ancient Knowledge**
-> Ore blocks drop bonus vanilla XP orbs in addition to standard amounts.
+
+> Ore blocks drop +1 bonus XP on top of their normal amount, then +2, then +4.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -903,7 +944,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Stonecutter's Patience**
-> Every block of waste rock you have ever broken is worth a little more XP on the ore that follows it. Rewards tunnelling rather than only ore-hunting.
+
+> +1 XP per ore mined for every 10,000 natural stone blocks you have broken in the Vault, capped at +3, raised to +5 at tier 2.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -915,7 +957,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Calloused Hands**
-> Lifetime blocks broken, on a curve that never stops rising and never runs away. Slow enough that it is a decade-long drip rather than a build.
+
+> Resonance from every ore rises with your lifetime blocks broken, by 0.03 × ln(1 + blocks / 10,000) — about +7% at 100,000 blocks and +12% at 500,000. Tier 2 raises the coefficient to 0.05 and tier 3 to 0.07, giving +17% and +28% at those counts. Hard-capped at +40%.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -936,7 +979,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Vein Sight** `[NOTABLE]`
-> Breaking the first block of a vein outlines the rest of *that* vein through solid stone. You can see what you have started.
+
+> Breaking the first block of a vein outlines the rest of that vein through solid stone for 30 seconds.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -949,7 +993,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Stonecaller** `[NOTABLE]`
-> The Vault's stone remembers what grows near it. Stone mined inside the Vault has a chance to convert into the ore type of the nearest vein within 8 blocks. Standing in rich rock makes even the filler pay.
+
+> Stone you break in the Vault has a 3% chance to drop the ore type of the nearest vein within 8 blocks. Nothing happens if no vein is in range, so it pays in fresh rock and not in stripped-out areas.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -960,7 +1005,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Prospector's Eye** `[NOTABLE]`
-> Breaking the first block of a vein briefly outlines every other vein within 16 blocks through solid stone. Turns exploratory mining into reading the rock.
+
+> Breaking the first block of a vein outlines every other vein within 16 blocks through solid stone for 5 seconds.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -969,7 +1015,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Stone Curse** `[TRADEOFF]`
-> Stone Memory XP gain is tripled, but stone drops no items (no cobblestone, no flint, no nuggets).
+
+> Stone Memory XP is tripled, but stone drops no items at all inside the Vault — no cobblestone, no flint, no nuggets.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -982,7 +1029,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 > Getting more out of each ore than the ore contains. **Anchor unlocks at 45 skill points spent anywhere in the Resonance tree.**
 
 **Vein Fortune**
-> Grants a passive Fortune effect to all ore mining inside the Vault. Stacks additively with tool enchantments. *(Renamed from "Ore Sense", which described a sensing mechanic it never had — that name now belongs to Prospector's Eye above.)*
+
+> Ore mined in the Vault is treated as having Fortune I, then Fortune II, then Fortune III. Adds to the tool's own Fortune rather than replacing it.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -990,10 +1038,14 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 | 2 | Fortune II equivalent | 3 | 9 | Tier 1 |
 | 3 | Fortune III equivalent | 4 | 13 | Tier 2 |
 
+> Renamed from "Ore Sense", which described a sensing mechanic it never had — that name now
+> belongs to Prospector's Eye above.
+
 ---
 
 **Ore Working** `[FORK PARENT: Yield]`
-> Squeezes more out of each ore block than it contains. **Inert until specialized:** pick Ore Doubling or Smelter's Intuition below and every tier of this node applies through it. Vein Fortune is separate and feeds both.
+
+> Squeezes more out of each ore block. Does nothing on its own: pick Ore Doubling or Smelter's Intuition on the ring outside, and this node's tiers apply through it. Tiers 4 to 6 exist only with Ore Doubling chosen and Mekanism loaded. Vein Fortune is separate and applies on top of either option.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1012,7 +1064,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Ore Doubling** `[FORK OPTION: Yield]`
-> Raw multiplication. Fallback order: Mekanism processing output → mod ore dust (`c:dusts/<ore>`) → extra raw ore.
+
+> Through Ore Working: +25% average ore yield at tier 1, +50% at tier 2, a guaranteed 2× at tier 3. With Mekanism loaded, tier 4 drops clumps (3×), tier 5 shards (4×) and tier 6 crystals (5×). Without Mekanism it falls back to mod ore dust, then to extra raw ore.
 
 **Costs 0 skill points.** Requires Ore Working tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
@@ -1034,7 +1087,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Smelter's Intuition** `[FORK OPTION: Yield]`
-> No extra material, but what you get needs no furnace. A chance that ore blocks drop the already-smelted result rather than raw ore.
+
+> Through Ore Working: ore has a 15% chance to drop already smelted instead of raw at tier 1, 40% at tier 2, 75% at tier 3. No extra material — it skips the furnace.
 
 **Costs 0 skill points.** Requires Ore Working tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
@@ -1047,7 +1101,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Runic Attunement**
-> Ore drops have a chance to come out **Attuned** — resonance-charged raw ore. Attuned ore is the only source of Resonance Crystals (§3.3), which every Vault Igniter upgrade and every Vault Anchor requires.
+
+> 5% of ore drops come out Attuned, rising to 12%, then 20%. Four Attuned raw ore of any type plus one amethyst shard craft a Resonance Crystal, which every Vault Igniter upgrade and every Vault Anchor needs.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1060,7 +1115,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Kindred Rock**
-> Mine enough of one thing and the Vault starts handing it to you. Every ore type is tracked separately and there is no limit on how many you can attune to.
+
+> Mining 1,000 blocks of any single ore type permanently grants you +15% Resonance from that type. Tier 2 also makes attuned types break 20% faster. Tracked per player and per ore type, with no limit on how many types you can attune.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1074,7 +1130,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Highwater Mark**
-> The tool in your hand remembers how deep you have been. Ore you mine repairs it, and the deeper your record, the more it repairs.
+
+> Each ore you mine repairs the held tool by 1 durability, plus 1 more for every 16 blocks your all-time deepest Y sits below Y=64 — up to 9 per ore at expanded bedrock. Tier 2 sends the same repair to damaged armour when the held tool needs none. Costs no XP and stacks with Mending.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1088,7 +1145,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Brittle Stone** `[PACT]`
-> The Vault's stone gives way at a touch — and so do its veins. Everything breaks instantly, but ore has a habit of crumbling to nothing.
+
+> Every block in the Vault breaks instantly. In exchange each ore block has a 10% chance to shatter with no drops, and every ore you break destroys 1 adjacent ore block with no drops.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1099,7 +1157,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Vault Fever** `[TRADEOFF]`
-> Grants permanent Haste II inside the Vault. You mine faster than you can listen — the Vault yields less Resonance for every ore taken.
+
+> Haste II for as long as you are inside the Vault, and −25% Resonance from every ore.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1116,7 +1175,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 > This cluster is the half of the old Deep Lore that was about infrastructure rather than echoes. Splitting it out puts chunk tickets, automation and navigation before the burst mechanics rather than alongside them, which is the order a team actually wants them in, and leaves Deep Lore to mean one thing.
 
 **Vault Presence**
-> Increases the number of chunk-loading tickets the team's Vault can maintain simultaneously.
+
+> The team's Vault can keep 4 more chunks loaded at once, then 8 more (12 total), then 16 more (28 total). Server config caps the total, at 32 by default.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1129,7 +1189,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Automated Extraction**
-> Machines mining inside the Vault extract more from each block. **Machine-broken blocks never award Resonance** (§3.4) — this node is about materials, not progression.
+
+> +25% ore yield from blocks broken by machines in the Vault, raised to +50%. Machine-broken blocks still award no Resonance, but they do count toward vein completion and statistics.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1141,7 +1202,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Far Reach**
-> The chunks behind you stay awake for a while after you leave them, so machines keep running while you walk on.
+
+> Chunks you pass through stay loaded for 30 seconds after you leave them, raised to 2 minutes. These count against the Vault Presence limit like any other, oldest evicted first.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1153,7 +1215,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Seismic Sense** `[NOTABLE]`
-> The Tome gains a directional readout of surrounding ore density — which way the rock gets richer, at chunk granularity. Navigation rather than power.
+
+> The Tome gains a compass pointing toward denser rock, at chunk granularity. Tier 2 turns it into a map that draws explored chunks and leaves unexplored ones blank; tier 3 shades the drawn chunks by ore density.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1166,19 +1229,21 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Wanderer's Cache**
-> The Vault leaves something for people who keep walking.
+
+> Every 50 newly explored Vault chunks drops a supply cache of food, torches and a tool repair. Tier 2 doubles the contents and adds a 20% chance of an enchanted book.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
 | 1 | Every 50 newly explored Vault chunks drops a supply cache: food, torches, and a tool repair | 2 | 6 | None |
-| 2 | Caches are larger and occasionally contain an enchanted book | 3 | 12 | Tier 1 |
+| 2 | Cache contents doubled, with a 20% chance of an enchanted book | 3 | 12 | Tier 1 |
 
 > Reads `PlayerStats#chunksExplored`, which is already tracked and currently read by nothing. Cache contents come from a loot table (`orevault:chests/wanderers_cache`) so a pack can retune them without touching code.
 
 ---
 
 **Frontier Bonus**
-> Fresh rock pays better than rock you have already been standing on.
+
+> Ore mined in a chunk generated within the last 10 minutes pays +40% Resonance.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1189,16 +1254,18 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Pathfinder's Claim**
-> Staking new ground is worth something on its own.
+
+> The first vein you mine in each newly generated chunk grants 50 vanilla XP.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | The first vein mined in each newly generated chunk grants a burst of vanilla XP | 2 | 7 | None |
+| 1 | The first vein mined in each newly generated chunk grants 50 vanilla XP | 2 | 7 | None |
 
 ---
 
 **Homeward Seam** `[NOTABLE]`
-> One anchor point, anywhere in the Vault, and a way back to it. Removes the walk-back tax that otherwise makes exploring cost more than it pays.
+
+> Set one anchor anywhere inside the Vault and teleport back to it from anywhere else inside. Five-minute cooldown, and the cast is cancelled if you take damage. Never crosses into or out of the Vault, and a dimension reset clears the anchor.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1209,7 +1276,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **The Vault Keeps It**
-> The Vault does not eat what you drop in it.
+
+> Items you drop on death inside the Vault never despawn and cannot be destroyed by fire, lava or explosion, and the Tome marks the spot. Carrying them out returns them to normal rules.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1220,7 +1288,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Second Wind**
-> Once per delve, the Vault decides you are not finished.
+
+> Once per Vault trip, damage that would kill you leaves you at half a heart instead. Resets when you leave the Vault.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1229,7 +1298,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Second Wind: Homeward** `[TRADEOFF]`
-> The same save, but it puts you back at the portal instead of leaving you where you nearly died.
+
+> While enabled, a Second Wind save also returns you to the portal you entered by, instead of leaving you where you nearly died.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1240,7 +1310,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Vault's Blessing** `[EXCLUSIVE: Vault's Purity]`
-> The Vault sustains what you bring into it. Potion effects do not tick down at all while you are inside.
+
+> Potion effect durations do not tick down at all while you are inside the Vault. Cannot be held at the same time as Vault's Purity.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1249,7 +1320,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Vault's Purity** `[EXCLUSIVE: Vault's Blessing]`
-> Nothing comes in with you. Potion effects are stripped on entry and cannot be applied inside — and the Vault rewards the discipline directly.
+
+> Potion effects are stripped when you enter the Vault and none can be applied inside. In exchange, while you are unaffected: +20% Resonance and +1 effective Fortune. Cannot be held at the same time as Vault's Blessing.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1260,8 +1332,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Tithe** `[TRADEOFF]`
-> 25% of ore blocks mined are consumed by the Vault (block breaks, no drop). The Resonance value of the consumed ore is multiplied by 1.75 and added to the pool. Only affects ore blocks — Stone Memory bonus drops, nuggets, flint, and other secondary sources are unaffected.
-> In-game tooltip explicitly states: "Does not affect bonus drops from Stone Memory or other secondary sources."
+
+> 25% of the ore blocks you mine are consumed by the Vault — the block breaks and drops nothing — and each consumed block pays 1.75× its Resonance instead. Only ore blocks are taken: Stone Memory drops, nuggets and flint are untouched.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1274,7 +1346,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 > The Vault answering back: bursts, echoes, and what it gives you for finishing what you started. **Anchor unlocks at 70 skill points spent anywhere in the Resonance tree.**
 
 **Vault Echo**
-> When a vein is fully mined, a Resonance burst is awarded.
+
+> Mining a vein to completion pays a burst of 25 Resonance, rising to 35, then 50.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1285,7 +1358,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Echo Chamber** `[NOTABLE]`
-> Vault Echo bursts also grant vanilla XP equal to the Resonance awarded. Finishing a vein becomes worth doing for its own sake rather than something that happens incidentally.
+
+> Vault Echo bursts also grant vanilla XP equal to the Resonance awarded, so a 50 Resonance burst is also 50 XP.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1294,7 +1368,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Twin Veins**
-> When a vein is fully mined to completion, there is a chance a second identical vein spawns adjacent to the mined area with a visual flash effect.
+
+> Completing a vein has a 1% chance to spawn a second identical vein next to it, rising to 5%, then 10%. The new vein is indexed like any other, so it can trigger this again.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1307,7 +1382,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Last Ore**
-> The block that finishes a vein is worth more than the ones before it.
+
+> The final ore block of any vein drops double and pays double Resonance. Stacks with the Vault Echo burst, which is counted separately.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1318,7 +1394,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Clean Cut**
-> Finish a vein without chewing through the rock around it.
+
+> A vein completed without breaking a single non-ore block between its first and last ore pays +50% Resonance across the whole vein.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1329,7 +1406,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Vein Discipline**
-> Finish what you start, over and over, and the Vault starts expecting it of you.
+
+> +2% Resonance for each vein completed in a row, stacking to +30% at 15 veins and persisting across trips. Abandoning a part-mined vein — leaving the Vault or moving more than 48 blocks away with ore still standing — drops the streak by 3 rather than resetting it.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1344,7 +1422,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Chapter's End** `[NOTABLE]`
-> Clear a chunk properly and the Vault shows you what is left of it.
+
+> Completing 5 veins within a single chunk fires a 150 Resonance burst and reveals every vein still standing in that chunk. Counted over all time rather than per trip, so each chunk fires once.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1357,7 +1436,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Deep Harvest** `[NOTABLE]`
-> Ore mined below Y=0 — the deepslate band that only exists in an expanded Vault — drops an additional Resonance orb. The reward for committing to the Vault Expansion keystone.
+
+> Ore mined below Y=0 drops 1 extra Resonance orb. Only an expanded Vault has a band below Y=0 for this to apply in.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1366,7 +1446,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Resonant Draw** `[FORK PARENT: Orb Collection]`
-> Changes how Resonance orbs reach you. **Inert until specialized:** pick Resonance Magnetism or Hoarder's Instinct below and every tier of this node applies through it.
+
+> Changes how Resonance orbs reach you. Does nothing on its own: pick Resonance Magnetism or Hoarder's Instinct on the ring outside, and this node's 3 tiers apply through it.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1377,7 +1458,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Resonance Magnetism** `[FORK OPTION: Orb Collection]`
-> Orbs are drawn to the player from greater distances. Convenience — mine and never think about collection again.
+
+> Through Resonant Draw: orbs are pulled to you from 8 blocks at tier 1, 16 blocks at tier 2, 24 blocks at tier 3.
 
 **Costs 0 skill points.** Requires Resonant Draw tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
@@ -1390,13 +1472,14 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Hoarder's Instinct** `[FORK OPTION: Orb Collection]`
-> Orbs never move toward you — but they never despawn either, and orbs that come to rest near each other merge into a single growing cache. Collecting a merged cache of N orbs pays a bonus. Rewards clearing an area completely, then sweeping it.
+
+> Orbs never move toward you and never despawn; orbs resting within 4 blocks of each other merge into a single cache. Through Resonant Draw tier 2, collecting a cache of N orbs pays ×(1 + 0.1 × N) up to ×3; tier 3 lets caches pull in orbs from other caches within 8 blocks and raises the cap to ×4.
 
 **Costs 0 skill points.** Requires Resonant Draw tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
 | Resonant Draw tier | Effect through this option |
 |---|---|
-| 1 | Orbs are stationary and permanent; nearby orbs merge into caches |
+| 1 | Orbs are stationary and permanent; orbs resting within 4 blocks merge into one cache |
 | 2 | Cache collection pays ×(1 + 0.1 × N), capped at ×3 |
 | 3 | Caches pull in orbs from neighbouring caches within 8 blocks; cap raised to ×4 |
 
@@ -1413,7 +1496,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 > Wide-swing mining. The whole cluster is absent unless FTB Ultimine is loaded. **Anchor unlocks at 25 skill points spent anywhere in the Resonance tree.**
 
 **Ultimine Expansion**
-> Increases the maximum number of blocks FTB Ultimine can break per operation inside the Vault.
+
+> +25% to the maximum number of blocks FTB Ultimine breaks per operation inside the Vault, then +50%, then +100%.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1424,17 +1508,19 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Ultimine Safety**
-> Reduces the Volatile Veins disappearance chance when using FTB Ultimine.
+
+> −1% Volatile Veins disappearance chance during Ultimine operations, then −2%. Against Volatile Veins' 3% base that leaves Ultimine operations at 2%, then 1% — reduced, never zero.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
 | 1 | −1% disappearance chance during Ultimine operations | 1 | 5 | Ultimine Expansion T1 |
-| 2 | −2% disappearance chance | 2 | 9 | Tier 1 |
+| 2 | −2% disappearance chance, floored at 1% | 2 | 9 | Tier 1 |
 
 ---
 
 **Volatile Veins: Ultimine Gambit** `[TRADEOFF]`
-> When using FTB Ultimine with Volatile Veins active, the effective block count for disappearance checks is increased by 1, increasing the risk. In exchange, successful Ultimine operations that don't trigger disappearance award a 20% Resonance bonus.
+
+> While Volatile Veins is active, each Ultimine operation counts 1 extra block toward the disappearance roll. Operations that survive it pay +20% Resonance.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1449,7 +1535,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 > The three cheap keystones that used to sit here — Greedy Seams, Resonant Overload and Brittle Stone — kept their original prices and moved out to Excavation and Metallurgy as `[PACT]` nodes. They were priced to be buyable early and that is what they are for; behind a 100-point gate the option they were built around could not exist. Everything left in Mastery is priced for arriving last.
 
 **Vault Expansion** `[KEYSTONE]`
-> The Vault's floor drops away. Bedrock moves from Y=0 down to Y=−64, opening a 63-block deepslate band that carries the highest ore density in the mod. **Requires a dimension reset to take effect** — the existing Vault, and everything built in it, is regenerated.
+
+> Bedrock moves from Y=0 down to Y=−64, opening a 63-block deepslate band that carries the highest ore density in the mod. Takes effect only on a dimension reset, which regenerates the Vault and everything built in it.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1458,7 +1545,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Full Spectrum** `[KEYSTONE]`
-> The Vault stops favouring anything. The two focus branches you did not choose apply at half effect alongside the one you did — but the Vault's generosity is spread thin, and every ore yields less Resonance.
+
+> The two Ore Focus options you did not choose apply at 50% strength alongside the one you did, and every ore pays −20% Resonance.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1467,7 +1555,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Silent Stone** `[KEYSTONE]`
-> Ore pays no Resonance at all. The pool fills instead from time spent below Y=0, faster than average mining pays.
+
+> Ore pays no Resonance at all. The team pool instead gains 3 Resonance per second while you are below Y=0 inside the Vault, and only while you have broken a block in the last 10 seconds.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1480,7 +1569,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Resonant Symbiosis** `[KEYSTONE]`
-> The Vault listens harder when there is more than one of you in it.
+
+> While 2 or more team members are inside the Vault at once, each of them gains +50% Resonance and +25% ore. Alone inside the Vault, −40% Resonance.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1493,7 +1583,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Bedrock Communion** `[KEYSTONE]`
-> Live at the bottom or do not bother. The deeper you are, the more the Vault gives; anywhere above the deep, the rock fights you.
+
+> +2% Resonance and ore per block below Y=0, reaching +126% at Y=−63. Between Y=32 and Y=245 ore pays no Resonance at all and mining speed is halved. At Y=246 and above there is no penalty, so surface builds and machine floors are untouched.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1512,7 +1603,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 #### BRANCH: Disturbed Zone Enhancement
 
 **Zone Frequency**
-> Increases mob spawn frequency within Disturbed Zones.
+
+> +25% mob spawn frequency inside Disturbed Zones, then +50%, +80%, +120%.
 
 | Tier | Effect | Cost | Level Req (Animus) | Prereq |
 |---|---|---|---|---|
@@ -1524,7 +1616,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Zone Pack Size**
-> Increases the number of mobs per spawn attempt in Disturbed Zones.
+
+> +1 mob per spawn attempt in Disturbed Zones, then +2, then +3.
 
 | Tier | Effect | Cost | Level Req (Animus) | Prereq |
 |---|---|---|---|---|
@@ -1535,7 +1628,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Zone Radius**
-> Increases the radius of each Disturbed Zone block's spawn area.
+
+> Each Disturbed Zone block spawns mobs within 32 blocks instead of the default 16, raised to 48, then 64.
 
 | Tier | Effect | Cost | Level Req (Animus) | Prereq |
 |---|---|---|---|---|
@@ -1546,7 +1640,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Mob Diversity**
-> Unlocks specific mob categories that can spawn in Disturbed Zones beyond basic vanilla mobs.
+
+> Adds undead to Disturbed Zone spawns (zombies, skeletons, wither skeletons), then arthropods (spiders, cave spiders, silverfish), then illagers (vindicators, evokers, pillagers), then witches and endermen.
 
 | Tier | Effect | Cost | Level Req (Animus) | Prereq |
 |---|---|---|---|---|
@@ -1560,7 +1655,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 #### BRANCH: Mob Rewards
 
 **Reaper's Claim**
-> Mobs killed in Disturbed Zones drop more XP.
+
+> +50% XP from mobs killed in Disturbed Zones, then +100%, then +150%.
 
 | Tier | Effect | Cost | Level Req (Animus) | Prereq |
 |---|---|---|---|---|
@@ -1571,7 +1667,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Corrupted Veins**
-> Mobs killed in Disturbed Zones have a chance to drop raw ore instead of standard loot.
+
+> 5% of mobs killed in Disturbed Zones drop a random common raw ore in place of their normal loot, rising to 10% including uncommon ores, then 15% including rare ores.
 
 | Tier | Effect | Cost | Level Req (Animus) | Prereq |
 |---|---|---|---|---|
@@ -1582,7 +1679,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Plunderer's Share**
-> Increases standard item drop quantity from mobs in Disturbed Zones.
+
+> +25% item drop quantity from mobs killed in Disturbed Zones, then +50%, then +80%.
 
 | Tier | Effect | Cost | Level Req (Animus) | Prereq |
 |---|---|---|---|---|
@@ -1593,7 +1691,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Animus Amplifier**
-> Increases Animus dropped per mob kill.
+
+> +25% Animus per mob kill, then +50%, then +80%.
 
 | Tier | Effect | Cost | Level Req (Animus) | Prereq |
 |---|---|---|---|---|
@@ -1604,7 +1703,8 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 ---
 
 **Soul Harvest** *(Animus Tree Keystone)*
-> Mobs occasionally drop a Soul Harvest item on death — a separate currency usable in a future Vault Shop (to be designed). Placeholder node; shop system is a future feature.
+
+> 5% of mobs killed drop a Soul Harvest item. It is the currency for a Vault Shop that does not exist yet, so this node buys nothing today.
 
 | Tier | Effect | Cost | Level Req (Animus) | Prereq |
 |---|---|---|---|---|

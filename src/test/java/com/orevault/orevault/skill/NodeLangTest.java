@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -62,6 +63,72 @@ class NodeLangTest {
             }
         }
         assertTrue(missing.isEmpty(), "no lang name for: " + missing);
+    }
+
+    /**
+     * A description says what the node does, in numbers a player can act on (#148).
+     *
+     * <p>The words banned here are the ones that were standing in for a number that
+     * had never been chosen: "moderate geode frequency", "occasionally drops flint",
+     * "sparse ancient debris", "1-3% (balance TBD)". Each read as a description and
+     * was really an open design question, and a player could not tell the difference.
+     * They are banned rather than merely discouraged because the failure is silent —
+     * the tooltip renders, it just does not answer anything.</p>
+     *
+     * <p>Qualifying a real number is fine and not what this catches: "about +7% at
+     * 100,000 blocks" and "roughly one per 24" both pass, because the number is
+     * there to be qualified.</p>
+     */
+    @Test
+    void noDescriptionStandsInForANumberItNeverChose() {
+        List<String> hedges = List.of(
+                "moderate", "brief", "occasionally", "several", "sparse", "small chance",
+                "a small amount", "rare chance", "high frequency", "tbd", "somewhat",
+                "various", "a portion of", "strong shift", "a burst of vanilla xp");
+        List<String> offenders = new ArrayList<>();
+        for (NodeDef def : NodeDefs.all()) {
+            String text = description(def.id()).toLowerCase(Locale.ROOT);
+            for (String hedge : hedges) {
+                if (text.contains(hedge)) {
+                    offenders.add(def.id() + " says \"" + hedge + "\"");
+                }
+            }
+        }
+        assertTrue(offenders.isEmpty(),
+                "description(s) describing an effect in adjectives instead of numbers: " + offenders);
+    }
+
+    /**
+     * A one-line flourish is not a description.
+     *
+     * <p>"The mirror image." was the whole of what Resonant Overload told a player,
+     * and it is 17 characters. The floor is crude on purpose — it cannot judge whether
+     * a description is any good, only that something was written where a sentence about
+     * the effect belongs.</p>
+     */
+    @Test
+    void noDescriptionIsAFlourishInsteadOfAnEffect() {
+        List<String> tooShort = new ArrayList<>();
+        for (NodeDef def : NodeDefs.all()) {
+            String text = description(def.id());
+            if (text.length() < 40) {
+                tooShort.add(def.id() + " (" + text.length() + " chars)");
+            }
+        }
+        assertTrue(tooShort.isEmpty(), "description(s) too short to state an effect: " + tooShort);
+    }
+
+    /** The description text for a node, read straight out of the lang file. */
+    private static String description(String nodeId) {
+        String key = "\"node.orevault." + nodeId + ".desc\": \"";
+        int start = lang.indexOf(key);
+        assertTrue(start >= 0, "no description for " + nodeId);
+        start += key.length();
+        int end = start;
+        while (lang.charAt(end) != '"' || lang.charAt(end - 1) == '\\') {
+            end++;
+        }
+        return lang.substring(start, end);
     }
 
     /**

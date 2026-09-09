@@ -14,6 +14,73 @@ Newest first.
 
 ---
 
+## 2026-09-09 — Descriptions state the effect, and the nodes that could not be described got defined
+
+**Feedback (playtest of the hub renderer).**
+
+- "I don't want to see things like 'The mirror image.' or 'Take the material now and pay for it in
+  progress.' These are statements for explaining to me. I don't want that in the descriptions. I just
+  want the descriptions to explain what the buffs do."
+- "Nothing can be generic — the user needs to be able to read the description and know exactly what
+  they're getting. Putting the numeric values in the description would help."
+- "Things that cannot be allowed are things like in Stratified's description where it says 'Rare ore
+  always sits at a known depth.' What is that depth? How does the user know? This cannot be allowed,
+  it must be specified."
+- "If there are any generic descriptions that come because the nodes aren't clearly defined then we
+  need to clearly define the nodes so the descriptions can be clear."
+
+**Where the bad descriptions came from.** Every node in §6.1 has a blockquote under its name and a
+table beside it. The blockquote was flavour — written to sell the node to a reader of the design
+doc — and the table held the effect. The lang file was filled from the blockquote. So the Tome was
+showing players the pitch and keeping the numbers in a document they will never open. "The mirror
+image" is a perfectly good sentence in a design document, sitting directly above a table that says
+`+100% Resonance from ore, −50% ore drops`, and a catastrophic one in a tooltip on its own.
+
+**Decisions.**
+
+| Decision | Reasoning |
+|---|---|
+| The blockquote under each node **is** the description, and it states the effect with its numbers | Two texts, one of which is player-facing, is how they drifted. Now there is one, written once and copied into `en_us.json` from the same source, so the spec cannot say one thing while the tooltip says another. |
+| Rename history and design rationale move out of the description into the notes below the table | "Renamed from Efficient Miner" is worth keeping and is not a description of a buff. Three nodes carried that kind of parenthetical inside the sentence the player reads. |
+| Multi-tier nodes list every tier's value in the description | A player deciding whether to spend the next point is comparing tier 3 against tier 4, and a description of tier 1 does not help them. Vein Expansion now reads "+15% size, then +30%, +50%, +75%, +100%" rather than "increases the size of ore veins". |
+| Twelve nodes whose spec tables were adjectives got real numbers, and those numbers are constants in `NodeCosts` | This is the substantive half of the change. "Moderate geode frequency", "occasionally drops flint", "sparse ancient debris", "a burst of vanilla XP", "brief Regeneration I", "1–3% (balance TBD)" — each of these was an open design question wearing the costume of a specification, and none could be described honestly because nobody had decided. Putting them in `NodeCosts` means the tooltip, the spec table and whatever implements them quote one number. |
+| Stratified names its band depths: rare at Y≤60, uncommon Y=61–150, common Y=151–245 | This was the example in the feedback and it was the sharpest case: the node's entire value proposition is that you know where to dig, and it did not say where. Fixed rather than proportional boundaries so the answer is the same sentence in both dimension variants — expanding the Vault deepens the rare band instead of moving every line. |
+| `NodeLangTest` fails the build on a description that hedges instead of counting, or that is too short to state an effect | The banned words are the ones that stood in for a number that had never been chosen. Qualifying a real number still passes: "about +7% at 100,000 blocks" is fine, "moderate" is not. Verified by putting "The mirror image." and "a moderate frequency" back and watching both tests fail. |
+| The Tome wraps a description at 220px instead of drawing it as one line | Descriptions went from a phrase to a paragraph, and a tooltip line is not wrapped for you. Unwrapped, the longest of them is a strip of text wider than the screen. |
+
+**One number moved because pinning it exposed a balance bug.** Volatile Veins was first set at
+2%, which read fine on its own. Ultimine Safety subtracts a flat 1% then 2%, so a 2% base meant
+3 skill points took the tradeoff to exactly zero risk while keeping its +25% vein size — a downside
+that another node switches off is not a downside. At 3% the floor is 1%, Ultimine Safety is still
+clearly worth buying, and the pact stays a pact. The old "1–3% (balance TBD)" hid this: with the
+range unresolved, nobody could notice that one end of it broke a different node.
+
+**Rejected.**
+
+- **Keeping the flavour line and adding the numbers after it.** Tried it on a few nodes and every one
+  read as a tooltip apologising before getting to the point. The flavour is not load-bearing; the
+  numbers are.
+- **A test that every description contains a digit.** It sounds like the rule the feedback asked for
+  and it is not: "Fall damage inside the Vault is halved, then removed entirely" is completely
+  specific and has no digit in it, and so are Vein Fortune, Stone Curse and half a dozen others. The
+  allowlist needed to make that test pass would have been long enough to hide a real regression in.
+- **Leaving the twelve underspecified nodes alone and describing them vaguely but honestly.** This
+  was the tempting option, because picking numbers is a design decision and the feedback was about
+  wording. But a description that cannot be written is the symptom, not the problem — the node was
+  never specified, and it would have been implemented by whoever got there first picking a number
+  anyway, with no record of it.
+
+**Numbers pinned here for the first time, and therefore the ones most worth arguing with:** Stone
+Memory's flint 10% / nugget 2% / burst 0.5%, Miner's Constitution's 5-second Regeneration, Deep
+Veins' 1.5× at tier 1, Stone Reduction converting stone that touches a vein rather than filler
+anywhere, Geode Clusters at one per 12 then one per 6 chunks against the overworld's ~24, Ancient
+Traces at one per 4 then one per 2, Volatile Veins' disappearance chance settling at 3%, Wanderer's
+Cache's 20% book, Pathfinder's Claim's 50 XP, Hoarder's Instinct's 4-block merge radius, and
+Stratified's two band lines. None is playtested. They are pinned so they can be argued with, which
+is more than the adjectives allowed.
+
+---
+
 ## 2026-09-07 — Descriptions, prerequisite chains, and zoom
 
 **Feedback (playtest of the hub renderer).**

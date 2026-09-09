@@ -34,6 +34,7 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
@@ -381,7 +382,7 @@ public final class ResonanceTreeTab implements TomeTab {
         drawZoomReadout(graphics, font, area);
         if (hovered != null) {
             graphics.setComponentTooltipForNextFrame(font,
-                    tooltip(hovered, tiers, active, teamLevel, points, spent), mouseX, mouseY);
+                    tooltip(font, hovered, tiers, active, teamLevel, points, spent), mouseX, mouseY);
         }
     }
 
@@ -877,6 +878,25 @@ public final class ResonanceTreeTab implements TomeTab {
         return lines;
     }
 
+    /**
+     * Width a wrapped description is allowed to reach, in pixels (#148).
+     *
+     * <p>Descriptions now state the effect and its numbers rather than a one-line
+     * flourish, and the longest runs past 300 characters. A tooltip line is not
+     * wrapped for us, so unwrapped that is a single strip of text wider than the
+     * screen. 220px is roughly 55 characters of the default font — near a prose
+     * measure, and narrow enough that the tooltip stays beside the node it
+     * describes rather than covering the tree.</p>
+     */
+    private static final int DESCRIPTION_WRAP_WIDTH = 220;
+
+    /** Split one description across as many tooltip lines as it needs. */
+    private static void wrap(Font font, Component text, List<Component> into) {
+        for (FormattedText line : font.splitIgnoringLanguage(text, DESCRIPTION_WRAP_WIDTH)) {
+            into.add(Component.literal(line.getString()).withStyle(ChatFormatting.GRAY));
+        }
+    }
+
     private Component requirementLine(String nodeId, int minTier, Map<String, Integer> tiers) {
         boolean met = tiers.getOrDefault(nodeId, 0) >= minTier;
         NodeDef other = NodeDefs.get(nodeId);
@@ -886,14 +906,13 @@ public final class ResonanceTreeTab implements TomeTab {
                 .withStyle(met ? ChatFormatting.GREEN : ChatFormatting.RED);
     }
 
-    private List<Component> tooltip(NodeDef def, Map<String, Integer> tiers, Set<String> active,
+    private List<Component> tooltip(Font font, NodeDef def, Map<String, Integer> tiers, Set<String> active,
                                     int teamLevel, int points, int spent) {
         List<Component> lines = new ArrayList<>();
         lines.add(displayName(def).copy().withStyle(ChatFormatting.WHITE));
         lines.add(Component.translatable("screen.orevault.tome.class." + def.nodeClass().name().toLowerCase())
                 .withStyle(ChatFormatting.DARK_AQUA));
-        lines.add(Component.translatable("node.orevault." + def.id() + ".desc")
-                .withStyle(ChatFormatting.GRAY));
+        wrap(font, Component.translatable("node.orevault." + def.id() + ".desc"), lines);
 
         int tier = tiers.getOrDefault(def.id(), 0);
         lines.add(Component.translatable("screen.orevault.tome.node.owned", tier, def.maxTier())
