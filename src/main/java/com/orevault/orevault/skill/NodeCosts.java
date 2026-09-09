@@ -235,7 +235,7 @@ public final class NodeCosts {
     public static final int BRITTLE_STONE_COLLATERAL_BLOCKS = 1;
 
     // =====================================================================
-    // Effect magnitudes the node descriptions quote (§6.1, #148)
+    // Effect magnitudes the node descriptions quote (§6.1, #136)
     // =====================================================================
     //
     // These were all prose before: "occasionally drops flint", "moderate geode

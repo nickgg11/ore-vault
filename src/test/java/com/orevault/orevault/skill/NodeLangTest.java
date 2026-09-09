@@ -13,7 +13,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 /**
- * Every node has a name and a description in {@code en_us.json} (#147).
+ * Every node has a name and a description in {@code en_us.json} (#137).
  *
  * <p>Half the tree did not. Names survived it because the Tome falls back to
  * {@link NodeDef#name()}, but a description has nothing to fall back to, so a
@@ -66,7 +66,7 @@ class NodeLangTest {
     }
 
     /**
-     * A description says what the node does, in numbers a player can act on (#148).
+     * A description says what the node does, in numbers a player can act on (#136).
      *
      * <p>The words banned here are the ones that were standing in for a number that
      * had never been chosen: "moderate geode frequency", "occasionally drops flint",

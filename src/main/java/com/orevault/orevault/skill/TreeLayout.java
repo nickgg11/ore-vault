@@ -15,7 +15,7 @@ import java.util.function.ToIntFunction;
 import com.orevault.orevault.skill.NodeDef.Prereq;
 
 /**
- * Places the Resonance tree for the Tome to draw (§6.1, §8, #136, #147).
+ * Places the Resonance tree for the Tome to draw (§6.1, §8, #136, #137).
  *
  * <h2>Hubs, rings and sectors</h2>
  *

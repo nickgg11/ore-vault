@@ -39,7 +39,7 @@ import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /**
- * Tab 1 of the Tome: the Resonance skill tree, drawn as hubs (§8, #136, #147).
+ * Tab 1 of the Tome: the Resonance skill tree, drawn as hubs (§8, #136, #137).
  *
  * <h2>Nothing here decides anything</h2>
  *
@@ -879,7 +879,7 @@ public final class ResonanceTreeTab implements TomeTab {
     }
 
     /**
-     * Width a wrapped description is allowed to reach, in pixels (#148).
+     * Width a wrapped description is allowed to reach, in pixels (#136).
      *
      * <p>Descriptions now state the effect and its numbers rather than a one-line
      * flourish, and the longest runs past 300 characters. A tooltip line is not

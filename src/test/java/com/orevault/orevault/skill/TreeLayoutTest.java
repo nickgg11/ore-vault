@@ -22,7 +22,7 @@ import com.orevault.orevault.skill.TreeLayout.Point;
 import org.junit.jupiter.api.Test;
 
 /**
- * Pure-logic tests for the Tome's hub placement (#136, #147).
+ * Pure-logic tests for the Tome's hub placement (#136, #137).
  *
  * <p>The tree is a run of hubs, each with its cluster radiating around it (§8).
  * Almost everything that makes that legible is geometry rather than drawing, and
@@ -55,7 +55,7 @@ class TreeLayoutTest {
      *
      * <p>Mirrors {@code ResonanceTreeTab#widestLine} with the lang file's real
      * formats folded in — {@code "%s/%s  %s pt  Lv %s"} for a tier line — because
-     * the point of #147's third finding is that the box has to fit the line it
+     * the point of #136's third finding is that the box has to fit the line it
      * draws, not the name it is called.</p>
      */
     private static final ToIntFunction<NodeDef> CONTENT = def -> {
