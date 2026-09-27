@@ -57,6 +57,7 @@ public final class VaultLayerConfig {
     private final int firstAirY; // bottom Y of the first air layer, -1 if none
     private final int stoneBandBottom; // inclusive bottom of the first stone layer, -1 if none
     private final int stoneBandTop; // exclusive top of the first stone layer, -1 if none
+    private final List<OreBand> oreBands; // every layer ore may replace into, bottom-up
 
     public VaultLayerConfig(int minY, int height, List<Layer> layers) {
         int total = layers.stream().mapToInt(Layer::thickness).sum();
@@ -71,6 +72,7 @@ public final class VaultLayerConfig {
         int air = -1;
         int stoneBottom = -1;
         int stoneTop = -1;
+        List<OreBand> bands = new ArrayList<>();
         for (Layer layer : layers) {
             if (layer.block() == Blocks.STONE && stoneBottom < 0) {
                 stoneBottom = y;
@@ -79,11 +81,56 @@ public final class VaultLayerConfig {
             if (layer.block() == Blocks.AIR && air < 0) {
                 air = y;
             }
+            double density = densityFor(layer.block());
+            if (density > 0) {
+                bands.add(new OreBand(layer.block().defaultBlockState(), y, y + layer.thickness(), density));
+            }
             y += layer.thickness();
         }
         this.firstAirY = air;
         this.stoneBandBottom = stoneBottom;
         this.stoneBandTop = stoneTop;
+        this.oreBands = List.copyOf(bands);
+    }
+
+    /**
+     * A layer ore may generate into, and how much of it becomes ore (§3.1).
+     *
+     * <p>Every band is mineralized, not only the first stone layer that {@link #stoneBandBottom()}
+     * describes. Without this the expanded type's 63-block deepslate band generates nothing, which
+     * is what it did until #152 — and §6.1 sells that band as the richest part of the mod.</p>
+     *
+     * @param filler the block ore replaces here, so the generator never overwrites something it
+     *               placed itself or a layer boundary it mis-measured
+     * @param top    exclusive
+     */
+    public record OreBand(BlockState filler, int bottom, int top, double density) {
+
+        /** Blocks in one chunk's column of this band. */
+        public int volumePerChunk() {
+            return 16 * 16 * (top - bottom);
+        }
+    }
+
+    /**
+     * The §3.1 ore density for a filler block, or 0 for a layer ore never replaces.
+     *
+     * <p>Keyed on the block rather than on the layer's position because the stack is data-driven: a
+     * pack can reorder or repeat layers, and "the second one" is not a rule that survives that.</p>
+     */
+    private static double densityFor(Block block) {
+        if (block == Blocks.STONE) {
+            return OreDistribution.STONE_DENSITY;
+        }
+        if (block == Blocks.DEEPSLATE) {
+            return OreDistribution.DEEPSLATE_DENSITY;
+        }
+        return 0.0;
+    }
+
+    /** Every layer ore may generate into, bottom-up. Empty for a stack with no stone or deepslate. */
+    public List<OreBand> oreBands() {
+        return oreBands;
     }
 
     /**

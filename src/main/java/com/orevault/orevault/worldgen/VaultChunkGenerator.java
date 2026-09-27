@@ -10,6 +10,9 @@ import java.util.function.Supplier;
 import com.mojang.serialization.MapCodec;
 import com.orevault.orevault.OreVault;
 import com.orevault.orevault.data.OreVaultTeamData;
+import com.orevault.orevault.ore.OreClassifier;
+import com.orevault.orevault.ore.OreClassifier.Rarity;
+import com.orevault.orevault.ore.VaultOreTable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -22,7 +25,6 @@ import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.biome.FixedBiomeSource;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
@@ -42,8 +44,8 @@ import net.minecraft.world.level.levelgen.blending.Blender;
  * <p>The generator is created per team by {@code VaultDimensions} and reads a
  * main-thread-maintained {@link SkillSnapshot} at generation time so node
  * purchases affect newly generated chunks without a restart (§11). Node-driven
- * placement math is a documented hook — {@code [44]}/{@code [45]} implement it;
- * until then a single hardcoded coal vein is placed per chunk.</p>
+ * placement math is a documented hook — #45 and #46 implement it on top of the
+ * baseline distribution in {@link OreDistribution}.</p>
  *
  * <p>The 40% stone floor (§3.1) is enforced by capping the ore budget at 60%
  * of the chunk's stone volume; no skill state can ever push stone below 40%.</p>
@@ -52,9 +54,14 @@ public final class VaultChunkGenerator extends ChunkGenerator {
 
     /** Hard 40% stone floor: ores may never exceed 60% of a chunk's stone volume (§3.1). */
     public static final double MAX_ORE_FRACTION = 0.60;
-    /** Placeholder vein parameters until node-driven placement lands in [44]/[45]. */
-    private static final int PLACEHOLDER_VEINS = 2;
-    private static final int PLACEHOLDER_VEIN_SIZE = 4;
+    /**
+     * Offsets rolled per block a vein wants, before it gives up on that vein.
+     *
+     * <p>Offsets land in a 5x5x5 cube around the vein's origin, so most rolls succeed and the
+     * multiplier only covers collisions and the edges of the chunk. It exists so a vein whose
+     * origin sits against a chunk wall costs a bounded number of rolls rather than looping.</p>
+     */
+    private static final int VEIN_ATTEMPTS_PER_BLOCK = 4;
 
     private final UUID teamId;
     private final int minY;
@@ -215,58 +222,107 @@ public final class VaultChunkGenerator extends ChunkGenerator {
     // ----- ore placement -----
 
     /**
-     * Places ores for the chunk. Reads the team's skill state at generation
-     * time; node modifiers are a TODO hook for [44]/[45], so until then only a
-     * small hardcoded coal vein is placed inside the config's stone band. The
-     * ore budget enforces the 40% stone-content floor regardless of any future
-     * node math.
+     * Places the chunk's ore (§3.1).
+     *
+     * <p>Every number is in {@link OreDistribution}, where it can be tested; every ore comes from
+     * {@link OreClassifier}'s server-start scan of {@code #c:ores}, so a pack's modded ore generates
+     * with no per-mod work here and the thing that decides what an ore is worth is the thing that
+     * decides how often it appears. This file owns placement and nothing else.</p>
+     *
+     * <p>Node modifiers are still a hook: #45 and #46 add vein-count, size and rarity changes on top
+     * of this baseline. The 40% stone floor is enforced inside {@code oreBudget} rather than here,
+     * so no future node can raise a density past it.</p>
+     *
+     * <p>Reads the {@link SkillSnapshot} and {@link OreClassifier}'s published table, both immutable
+     * and both safe from the generation executor. Nothing here touches {@code OreVaultTeamData}.</p>
      */
     private void placeOres(ChunkAccess chunk) {
         SkillSnapshot snapshot = skills.get();
         if (loggedSkillState.compareAndSet(false, true) && !snapshot.isEmpty()) {
             OreVault.LOGGER.debug(
-                    "Vault chunk gen: team {} has {} skill points invested; node modifiers not implemented yet ([44]/[45])",
+                    "Vault chunk gen: team {} has {} skill points invested; node modifiers not implemented yet (#45/#46)",
                     teamId, snapshot.totalSkillPointsInvested()
             );
         }
 
-        if (!layers.hasStoneBand()) {
-            return; // nothing to mineralize without a stone layer
+        VaultOreTable ores = OreClassifier.oreTable();
+        List<VaultLayerConfig.OreBand> bands = layers.oreBands();
+        if (ores.isEmpty() || bands.isEmpty()) {
+            // No classified ore (before the first scan) or no mineralizable layer. Generating
+            // nothing is the right answer to both; guessing at an ore set is not.
+            return;
         }
-        int stoneBandBottom = layers.stoneBandBottom();
-        int stoneBandTop = layers.stoneBandTop();
-        int stoneHeight = stoneBandTop - stoneBandBottom;
-        int oreBudget = (int) (16 * 16 * stoneHeight * MAX_ORE_FRACTION); // 40% stone floor (§3.1)
-        ChunkPos chunkPos = chunk.getPos();
-        RandomSource random = RandomSource.create(seedFor(chunkPos));
-        BlockState coalOre = Blocks.COAL_ORE.defaultBlockState();
 
+        // Depth preferences are expressed against the whole mineralizable column, so an ore sits at
+        // the same relative height whether or not this dimension type has a deepslate band.
+        int columnBottom = bands.get(0).bottom();
+        int columnTop = bands.get(bands.size() - 1).top();
+        RandomSource random = RandomSource.create(seedFor(chunk.getPos()));
+
+        for (VaultLayerConfig.OreBand band : bands) {
+            placeBand(chunk, band, ores, random, columnBottom, columnTop);
+        }
+    }
+
+    /** Fills one band up to its ore budget, a vein at a time. */
+    private void placeBand(
+            ChunkAccess chunk, VaultLayerConfig.OreBand band, VaultOreTable ores,
+            RandomSource random, int columnBottom, int columnTop
+    ) {
+        int budget = OreDistribution.oreBudget(band.volumePerChunk(), band.density());
         int placed = 0;
-        for (int vein = 0; vein < PLACEHOLDER_VEINS && placed < oreBudget; vein++) {
-            int cx = random.nextInt(16);
-            int cy = stoneBandBottom + random.nextInt(stoneHeight);
-            int cz = random.nextInt(16);
-            for (int i = 0; i < PLACEHOLDER_VEIN_SIZE && placed < oreBudget; i++) {
-                int x = cx + random.nextInt(5) - 2;
-                int y = cy + random.nextInt(5) - 2;
-                int z = cz + random.nextInt(5) - 2;
-                if (x < 0 || x > 15 || z < 0 || z > 15 || y < stoneBandBottom || y >= stoneBandTop) {
-                    continue;
-                }
-                BlockPos localPos = new BlockPos(x, y, z);
-                if (chunk.getBlockState(localPos).is(Blocks.STONE)) {
-                    chunk.setBlockState(localPos, coalOre);
-                    placed++;
-                }
+        // One vein can place nothing at all if every offset it rolls lands outside the chunk, so the
+        // loop is bounded by attempts rather than by progress. A band whose budget is unreachable
+        // costs a bounded number of rolls instead of spinning.
+        for (int attempt = 0; placed < budget && attempt < budget; attempt++) {
+            Rarity rarity = OreDistribution.rollRarity(random.nextDouble());
+            List<VaultOreTable.Entry> candidates = ores.ofOrFallback(rarity);
+            if (candidates.isEmpty()) {
+                return;
+            }
+            VaultOreTable.Entry ore = candidates.get(random.nextInt(candidates.size()));
+            int size = Math.min(
+                    OreDistribution.veinSize(rarity, random.nextDouble()), budget - placed);
+            int preferred = OreDistribution.preferredY(ore.normalizedDepth(), columnBottom, columnTop);
+            int centreY = OreDistribution.clampToBand(preferred, band.bottom(), band.top());
+            placed += placeVein(chunk, ore.state(), band, random, centreY, size);
+        }
+    }
+
+    /**
+     * Places one vein of up to {@code size} blocks around a random column of the chunk.
+     *
+     * <p>Only replaces the band's own filler, so a vein never overwrites one already placed and
+     * never leaks into the dirt or the bedrock if a height lands on a boundary.</p>
+     *
+     * @return how many blocks it actually placed
+     */
+    private int placeVein(
+            ChunkAccess chunk, BlockState ore, VaultLayerConfig.OreBand band,
+            RandomSource random, int centreY, int size
+    ) {
+        int centreX = random.nextInt(16);
+        int centreZ = random.nextInt(16);
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        int placed = 0;
+        for (int i = 0; i < size * VEIN_ATTEMPTS_PER_BLOCK && placed < size; i++) {
+            int x = centreX + random.nextInt(5) - 2;
+            int y = centreY + random.nextInt(5) - 2;
+            int z = centreZ + random.nextInt(5) - 2;
+            if (x < 0 || x > 15 || z < 0 || z > 15 || y < band.bottom() || y >= band.top()) {
+                continue;
+            }
+            pos.set(x, y, z);
+            if (chunk.getBlockState(pos).is(band.filler().getBlock())) {
+                chunk.setBlockState(pos, ore);
+                placed++;
             }
         }
+        return placed;
     }
 
     /** Deterministic per-chunk seed (independent of the world seed). */
     private long seedFor(ChunkPos pos) {
-        long seed = teamId.hashCode();
-        seed = seed * 31 + pos.x();
-        seed = seed * 31 + pos.z();
-        return seed;
+        return OreDistribution.chunkSeed(teamId, pos.x(), pos.z());
     }
 }
