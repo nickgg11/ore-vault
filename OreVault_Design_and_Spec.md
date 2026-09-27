@@ -123,8 +123,23 @@ Shared attributes for both types:
 - Expanded stack (`ore_vault_expanded`, Y=−64…319): bedrock Y=−64, deepslate Y=−63…−1, then identical to the base stack from Y=0 upward
 - Entry point: a **fixed anchor per team** at the Vault origin (X=0, Z=0), standing on the grass surface. Vault arrival never mirrors or otherwise derives from Overworld coordinates — every trip in lands on the same block, and the return portal stands there permanently (§3.2)
 - No aquifers, no caves by default (open to adding cave generation as a future node)
-- Ore generation handled entirely by the custom chunk generator (ores replace stone inside the configured stone band), not static placed features
+- Ore generation handled entirely by the custom chunk generator (ores replace the filler inside each mineralizable band), not static placed features
 - A hard floor of 40% stone content is enforced regardless of skill tree state — the Vault will never be more than 60% ore by volume
+
+**Baseline ore distribution (#152).** What a team with zero skill points spent sees. Node effects (#45, #46) modify these numbers; they do not replace them.
+
+| | Value | Why |
+|---|---|---|
+| Stone band density | **3%** of the band | Roughly six times the vanilla overworld. Stone still dominates and a good vein is still an event; the skill tree is what makes a Vault rich, working toward the 40% floor above. |
+| Deepslate band density | **6%** | §6.1 sells the expanded Vault's deepslate as the richest band in the mod, and Vault Expansion costs a keystone to reach. |
+| Rarity mix | **70% common, 25% uncommon, 5% rare**, by block count | Not an independent choice — §4.3's level curve is derived from exactly these shares. The generator and the curve read one constant. |
+| Vein size | 6–12 common, 4–8 uncommon, 2–5 rare | Rarer ore in smaller veins, vanilla's own shape. |
+
+**Which ores** comes from the §4.2 rarity classification, not from a list in the generator: everything in `#c:ores` is placeable, so a kitchen-sink pack's modded ore generates with no per-mod work and the thing that decides what an ore is *worth* is the thing that decides how often it appears.
+
+**Where each ore sits** is its overworld height, normalized. The classifier already reads each ore's real placement range to decide its rarity, so the same data answers where it belongs — diamond generates low in a Vault because diamond generates low, and a modded ore lands at a sensible depth without anyone writing it down. An ore whose preferred height falls outside a band is clamped into it rather than skipped, which is what keeps deep ore present in the base dimension type, whose stone band starts at Y=1 and which has no deepslate at all.
+
+Generation is seeded from the team id and the chunk coordinates, never the world seed: Vault chunks generate lazily over months and a Vault is regenerated on reset (§7), so a chunk has to come out the same whenever it is first visited.
 
 > **Implementation gotcha — mid-session dimension creation.** After putting the new `ServerLevel` into `server.forgeGetWorldMap()`, you **must** call `server.markWorldsDirty()`. `MinecraftServer` ticks levels from a cached array (`getWorldArray()`) that is only rebuilt when that marker changes; without the call, a dimension created after the first server tick is never ticked at all. Symptom: block-breaking stalls after one `BreakSpeed` event and `BREAK_BLOCK` never fires, entities never tick, and relogging "fixes" it. See issues #82 / #89.
 
@@ -308,6 +323,8 @@ A five-person team progresses 40% faster than a solo player, not 500% faster. Th
 3. Points awarded per level: `pointsPerLevel = ceil(totalTreeCost / LEVEL_CAP)`. Reaching level 30 therefore grants at least enough points to buy the whole tree. Adding or removing nodes automatically adjusts the award, not the cap.
 4. From config, read `target_play_hours` (default: 100) and `curve_divisor` (default: 1.0) from the `[resonance]` block in §10. Both are read once at server start; changing either requires a restart, because moving a threshold mid-session would move it under teams that had already passed it.
 5. Calculate average Resonance per hour for a **solo** player: `resonancePerHour = averageOresPerHour * weightedAverageResonancePerOre`. `averageOresPerHour` is a **constant in code**, not config — it measures how fast a player mines rather than expressing a preference, so an admin has no way to know the right value and a wrong one silently distorts the whole curve. The knob a server owner wants is `curve_divisor` in the next step.
+
+   Both inputs are **derived from the §3.1 baseline distribution, not chosen independently**. A player tunnelling with an enchanted pickaxe sustains roughly 7,200 blocks an hour once travel and inventory handling are counted against continuous breaking; at the 3% stone-band density that is **220 ore an hour**. `weightedAverageResonancePerOre` reads the same 70/25/5 rarity shares the generator places. If either the density or the mix changes, this step changes with it — otherwise the curve is priced for a Vault that does not exist, and nothing in play says so.
 6. Total Resonance needed: `totalResonance = resonancePerHour * targetPlayHoursResonance / curve_divisor`. Because the divisor is applied here, before the distribution in step 7, it scales every level threshold by the same factor: the 100:1 last-to-first ratio and the milestone spacing below are preserved exactly, and every level requirement in §6 keeps its intended pacing. This is the supported way to make Ore Vault a 40-hour mod rather than a 100-hour one, without touching node costs or the level cap.
 7. Distribute `totalResonance` across the 30 levels using an exponential curve where the last level costs `LAST_TO_FIRST_RATIO` (100) times the first:
 ```
@@ -2063,7 +2080,8 @@ Use this to track progress. Update at the end of each development session.
 - [x] Open air layer at the top (69 blocks), solid fill below with grass surface
 - [x] Ore rarity classifier (scans registry at server start)
 - [x] Admin config override for rarity classification
-- [ ] Dynamic ore placement from skill state
+- [x] Baseline ore distribution: density, rarity mix, depth and vein size (#152)
+- [ ] Dynamic ore placement from skill state *(node modifiers on top of the baseline — #45, #46)*
 - [x] 40% stone content floor enforcement
 - [ ] Per-chunk vein index persisted at generation time
 - [ ] Vault Expansion: re-create under the expanded type on reset

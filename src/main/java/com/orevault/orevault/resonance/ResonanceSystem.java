@@ -11,6 +11,7 @@ import com.orevault.orevault.skill.NodeDef.Tree;
 import com.orevault.orevault.skill.NodeDefs;
 import com.orevault.orevault.skill.TeamScaling;
 import com.orevault.orevault.team.TeamHelper;
+import com.orevault.orevault.worldgen.OreDistribution;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -49,26 +50,41 @@ public final class ResonanceSystem {
      * server owner actually wants is {@code curve_divisor}, which scales the
      * grind without touching the shape.</p>
      *
-     * <p>Derived from a sustained rate of roughly ten ore blocks a minute — an
-     * enchanted pickaxe in a dimension generated at up to
-     * {@code VaultChunkGenerator.MAX_ORE_FRACTION} ore, with tunnelling and
-     * travel included rather than assuming continuous breaking. It is the one
-     * number here that wants correcting against a real playtest; until vein
-     * placement lands ([44]/[45], #45) there is nothing better to derive it
-     * from.</p>
+     * <p>Derived from the baseline density rather than guessed at. A player
+     * tunnelling with an enchanted pickaxe sustains roughly 7,200 blocks an
+     * hour once travel, inventory handling and the odd detour are counted
+     * against continuous breaking. {@link OreDistribution#STONE_DENSITY} of
+     * those are ore, which is about 220.</p>
+     *
+     * <p>It was 600 until the baseline landed (#152), carrying a note that it
+     * was the one number here that wanted correcting once vein placement
+     * existed. It did: 600 assumed an 8% dimension and the shipped baseline is
+     * 3%, so every threshold was set 2.7x too high and §4.3's hundred-hour
+     * progression was quietly a 270-hour one. Thresholds are derived from this
+     * rate, so lowering it lowers them; {@code target_play_hours} stays 100 and
+     * now means 100.</p>
+     *
+     * <p>Still the number most worth checking against a real playtest, and now
+     * the one with a stated derivation to check <em>against</em>. A team that
+     * levels visibly faster or slower than a hundred hours means either this
+     * rate or the density it came from is wrong.</p>
      */
-    private static final int SOLO_ORES_PER_HOUR = 600;
+    private static final int SOLO_ORES_PER_HOUR = 220;
 
     /**
      * Expected Resonance from one ore, weighted by how often each rarity turns
-     * up. Values are the §4.2 base rates (rare takes the midpoint of its 10–15
-     * band); the shares assume a Vault is mostly common ore, which is what the
-     * classifier's count-and-height rule produces for a vanilla ore set.
+     * up. Values are the §4.2 base rates, rare taking the midpoint of its 10–15
+     * band.
+     *
+     * <p>The shares come from {@link OreDistribution} rather than being repeated
+     * here, because that is what the generator actually places. Two copies of
+     * this mix means the curve is eventually priced for a Vault that does not
+     * exist, and nothing in play would say so.</p>
      */
     private static final double WEIGHTED_RESONANCE_PER_ORE =
-            0.70 * 2.0      // common — iron, copper, coal
-            + 0.25 * 5.0    // uncommon — gold, lapis, redstone
-            + 0.05 * 12.5;  // rare — diamond, emerald
+            OreDistribution.COMMON_SHARE * 2.0      // common — iron, copper, coal
+            + OreDistribution.UNCOMMON_SHARE * 5.0  // uncommon — gold, lapis, redstone
+            + OreDistribution.RARE_SHARE * 12.5;    // rare — diamond, emerald
 
     /** Solo Resonance per hour, feeding §4.3 step 5. */
     static final double SOLO_RESONANCE_PER_HOUR = SOLO_ORES_PER_HOUR * WEIGHTED_RESONANCE_PER_ORE;

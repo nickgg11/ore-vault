@@ -14,6 +14,42 @@ Newest first.
 
 ---
 
+## 2026-09-27 — The Vault's baseline ore density, and the curve it drags with it
+
+**Where this came from.** A question during a session: does the mining dimension actually have normal
+ore distribution yet, or is it still all stone? It was still all stone. The generator shipped with a
+placeholder in #15 — two veins of up to four coal per chunk, 0.013% by volume against vanilla's ~0.5%
+— and every open generation ticket was a *node effect* modifying a baseline nobody had written.
+
+**Decisions.**
+
+| Decision | Reasoning |
+|---|---|
+| Baseline is **3% of the stone band**, about six times vanilla | Chosen over the ~8% the level curve already implied. Stone still dominates and finding a good vein is still an event; the tree does the work of making a Vault rich rather than the baseline handing it over on the first trip. |
+| The deepslate band is **double** the stone band at 6% | §6.1 already sells the expanded Vault's deepslate as the richest band in the mod, and Vault Expansion costs a keystone to reach. Equal density would make that keystone pay in headroom only. |
+| `SOLO_ORES_PER_HOUR` drops **600 → 220** in the same PR | The constant's own comment said it was the one number that wanted correcting once vein placement landed. It did. 600 assumed an 8% dimension; at 3% every threshold was priced 2.7x too high and §4.3's hundred-hour progression was quietly a 270-hour one. Thresholds derive from the rate, so `target_play_hours` stays 100 and now means 100. |
+| The rarity mix is **one constant read by both** the generator and the curve | 70/25/5 was already baked into `WEIGHTED_RESONANCE_PER_ORE`. Two copies means the curve is eventually priced for a Vault that does not exist, and nothing in play would say so. |
+| Ore **depth is derived from each ore's real overworld range**, normalized | The classifier already reads placement data to decide rarity, so the same data answers where an ore belongs. Diamond generates low because diamond generates low. A hand-written band table would have to be maintained per mod and would be wrong for every pack it had not heard of. |
+| Density is a **constant, not config** | Same argument as `MAX_ORE_FRACTION` and `SOLO_ORES_PER_HOUR`: an admin has no way to know the right value and a wrong one silently distorts the curve. `curve_divisor` is the supported knob. The 2026-09-03 entry below records what four config options with no reader looked like; a fifth before anyone asked would repeat it. |
+
+**Rejected.**
+
+- **~8% baseline**, the figure the existing curve implied. It would have made the curve correct by
+  construction and needed no re-tune, which is the whole argument for it. Turned down because one ore
+  in twelve makes the unspent Vault already feel finished, and a tree that only takes it from
+  plentiful to more plentiful has nothing to sell.
+- **~15%**, an obvious treasure room from the first tunnel. Same objection, louder.
+- Leaving `SOLO_ORES_PER_HOUR` at 600 and calling the curve a separate problem. It is not a separate
+  problem: the curve is *derived* from the density, and shipping a mismatch means the first playtest
+  measures the wrong thing.
+
+**Still open.** 220 ore an hour is a derivation, not a measurement — it assumes 7,200 blocks broken
+an hour, which is the number a real playtest should check first. A team that levels visibly faster or
+slower than a hundred hours means either that rate or the 3% it came from is wrong. Node modifiers
+(#45, #46) still sit on top of this baseline and are unimplemented.
+
+---
+
 ## 2026-09-03 — Skill tree redesigned around clusters
 
 **Feedback (playtest of the #36 grid renderer).**

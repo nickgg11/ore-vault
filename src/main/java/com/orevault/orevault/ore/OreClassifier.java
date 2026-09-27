@@ -1,5 +1,6 @@
 package com.orevault.orevault.ore;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
+import com.orevault.orevault.worldgen.OreDistribution;
 
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
@@ -57,12 +59,32 @@ public final class OreClassifier {
 
     private static final Map<Identifier, Rarity> CLASSIFICATION = new ConcurrentHashMap<>();
 
+    /**
+     * What the chunk generator places, published once per scan.
+     *
+     * <p>Volatile because generation reads it off the main thread; the instance behind it is
+     * immutable, so a reader either sees the previous scan's table or this one, never a half-built
+     * map (§11, CLAUDE.md item 1).</p>
+     */
+    private static volatile VaultOreTable oreTable = VaultOreTable.EMPTY;
+
     private OreClassifier() {
     }
 
     /** Clears the session classification (used on shutdown / reload). */
     public static void clear() {
         CLASSIFICATION.clear();
+        oreTable = VaultOreTable.EMPTY;
+    }
+
+    /**
+     * The ores this session may generate, grouped by rarity.
+     *
+     * <p>Safe to call from the chunk-generation executor. Returns {@link VaultOreTable#EMPTY}
+     * before the first server-start scan, which generates no ore rather than guessing at one.</p>
+     */
+    public static VaultOreTable oreTable() {
+        return oreTable;
     }
 
     /**
@@ -126,6 +148,7 @@ public final class OreClassifier {
 
         // Pass 2: classify every ore in the tag, then apply overrides last.
         Map<Identifier, Rarity> result = new HashMap<>();
+        List<VaultOreTable.Entry> placeable = new ArrayList<>();
         for (Holder<Block> holder : oreBlocks) {
             Block block = holder.value();
             Identifier id = BuiltInRegistries.BLOCK.getKey(block);
@@ -134,12 +157,25 @@ public final class OreClassifier {
             }
             Metrics metrics = metricsByBlock.get(block);
             Rarity automatic = metrics == null ? Rarity.UNCOMMON : classify(metrics.veinCount, metrics.minY, metrics.maxY);
-            result.put(id, applyOverride(automatic, id.toString(), overrides));
+            Rarity rarity = applyOverride(automatic, id.toString(), overrides);
+            result.put(id, rarity);
+            // The same metrics that decided the rarity decide the depth (§3.1). An ore with no
+            // placement data at all — a mod's ore placed by code rather than a placed feature —
+            // takes the middle of the column, which is what "we do not know" should look like.
+            double depth = metrics == null
+                    ? 0.5
+                    : OreDistribution.normalizedDepth(metrics.minY, metrics.maxY);
+            placeable.add(new VaultOreTable.Entry(id, block.defaultBlockState(), rarity, depth));
         }
 
         CLASSIFICATION.clear();
         CLASSIFICATION.putAll(result);
-        LOGGER.info("Ore rarity classification rebuilt: {} ore blocks, {} override(s) applied", result.size(), overrides.size());
+        oreTable = new VaultOreTable(placeable);
+        LOGGER.info(
+                "Ore rarity classification rebuilt: {} ore blocks, {} override(s) applied; {} placeable ({} common, {} uncommon, {} rare)",
+                result.size(), overrides.size(), oreTable.size(),
+                oreTable.of(Rarity.COMMON).size(), oreTable.of(Rarity.UNCOMMON).size(),
+                oreTable.of(Rarity.RARE).size());
     }
 
     /** Session rarity of a block state; defaults to {@link Rarity#UNCOMMON}. */
