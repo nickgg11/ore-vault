@@ -159,11 +159,16 @@ public final class DropPipeline {
             return; // not a Vault break
         }
 
+        // Stats first: the §5.1 counters are what the award's own node bonuses read, and
+        // "blocks broken this trip" should include the block being paid for (#149).
+        VaultStatRecorder.record(context);
+
         Outcome outcome = run(context, event.getDrops());
         if (outcome.consumed()) {
             event.getDrops().clear();
         }
         OreDropHandler.awardResonance(context, outcome);
+        NodeRewards.onBreak(context);
     }
 
     /** Runs every stage in order, applying the accumulated totals. */

@@ -1,8 +1,11 @@
 package com.orevault.orevault.event;
 
+import com.orevault.orevault.data.PlayerStats;
 import com.orevault.orevault.entity.ResonanceOrbEntity;
 import com.orevault.orevault.ore.OreClassifier;
+import com.orevault.orevault.session.VaultSessions;
 
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -51,6 +54,18 @@ public final class OreDropHandler {
         double value = baseResonance(context.rarity());
         if (outcome.consumedByTithe()) {
             value *= TITHE_MULTIPLIER;
+        }
+
+        // Node bonuses last, and as one factor: §11's composition rule lives in
+        // ResonanceBonuses, not here, so a new node never has to be trusted to apply
+        // itself in the right order. Tithe stays outside it — §4.2 states it as a
+        // multiplier on the block's own value rather than as a percentage bonus.
+        ServerPlayer player = context.player();
+        if (player != null) {
+            PlayerStats stats = VaultSessions.statsFor(player);
+            if (stats != null) {
+                value *= ResonancePipeline.run(context, stats, VaultSessions.trip(player)).multiplier();
+            }
         }
 
         int awarded = (int) Math.round(value);
