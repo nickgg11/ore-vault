@@ -1958,6 +1958,31 @@ Nine nodes modify what an ore break drops, and the order they apply in changes t
 
 Consume, Fortune and Quantity **contribute** to an outcome the pipeline applies once, rather than editing the drop list themselves. That is what makes two guarantees structural instead of conventional: Quantity multipliers compose multiplicatively because they are multiplied together, and the loot table is re-rolled exactly once no matter how many nodes raise Fortune. Transform and Bonus do edit the list, because replacing and appending compose in the obvious way and there is nothing to accumulate.
 
+### Resonance and Mining-Speed Composition
+
+The drop pipeline settles ordering for item drops. Two other quantities have the same problem, and the same answer: **percentage bonuses sum, multiplicative modifiers multiply, and the sum is applied first.**
+
+| Quantity | Accumulator | Contributors |
+|---|---|---|
+| Resonance from one ore break | `ResonanceBonuses` | Deep Habit, Calloused Hands, Kindred Rock, Vein Discipline, Molten Seam, the vein-completion group |
+| Mining speed on one block | `MiningSpeedModifiers` | Long Delve (+10%/stack), Kindred Rock (+20% attuned), Bedrock Communion (halve) |
+
+Summing is what keeps a node's stated number meaning what it says wherever it sits in the tree: +25% is a quarter of the base rate whether it is the first bonus or the seventh. Multiplying a dozen small percentage nodes together compounds far past a curve calibrated for 100 hours, and no node's tooltip could then state its own effect honestly.
+
+Applying a multiplicative penalty last is what keeps it a real cost — halving the base speed before the bonuses would let enough stacked bonuses cancel Bedrock Communion out entirely.
+
+Tithe's 1.75× and the §4.2 team divisor stay outside the accumulator. Both are stated as multipliers on a value rather than as percentage bonuses, and both apply once per break rather than per node.
+
+### Vault Session State
+
+Three nodes count something per Vault visit — Deep Habit (blocks this trip), Long Delve (unbroken minutes this trip), Apprentice's Ledger (the trip's first 100 ore). One per-player trip record holds all of it, created on entering a Vault dimension and discarded on leaving.
+
+The record is **in memory only, not `SavedData`**: a relog is a new trip. That is the simpler rule and the one that cannot be farmed by logging out to bank a Delve stack.
+
+Leaving is watched through the dimension change rather than through the portal code, because a player also leaves by dying, by `/execute in`, and by logging out — and only the portal path goes through `VaultTeleport`. Login is watched too: a player who logged out inside a Vault reconnects straight into one with no dimension change to observe.
+
+The §5.1 counters (`oresMined`, `stoneBroken`, `totalBlocksBroken`, `deepestY`, `timeInVaultTicks`) are written from the same place, off the single `BlockDropsEvent` listener the drop pipeline already owns, so "which Vault, whose team, ore or machine" is derived once. §3.4 applies: nothing a machine broke moves a player's record.
+
 ### Resonance Orb Entity
 
 Resonance and Animus orbs share a `VaultOrbEntity` base that pays a team pool rather than player XP. It is **modelled on `ExperienceOrb` rather than extending it**: the two behaviours that matter here are exactly the two vanilla hard-codes wrongly for a team-owned orb — `playerTouch` grants the toucher experience, and the follow logic chases the nearest player of any allegiance. Subclassing would have left both one missed override away from paying out to whoever walked past.
@@ -2133,8 +2158,8 @@ Use this to track progress. Update at the end of each development session.
   - [ ] Deep Veins (T1-T2)
   - [ ] Stone Reduction (T1-T2)
   - [ ] **[FORK: Vein Shape]** `vein_shaping` parent + Abundance / Vein Singularity / Stratified as free options
-  - [ ] Deep Habit *(breakpoint, new)*
-  - [ ] Long Delve (T1-T2) *(breakpoint, new — needs the 60-second AFK guard)*
+  - [x] Deep Habit *(breakpoint, new)*
+  - [x] Long Delve (T1-T2) *(breakpoint, new — needs the 60-second AFK guard)*
   - [ ] Volatile Veins *(tradeoff, with pity system)*
   - [ ] Molten Seam *(tradeoff, new — netherrack shell is a hard requirement, not decoration)*
   - [ ] Greedy Seams *(pact, exclusive: Resonant Overload)*
@@ -2144,8 +2169,8 @@ Use this to track progress. Update at the end of each development session.
   - [ ] Geode Clusters (T1-T2)
   - [ ] Ancient Traces (T1-T2) — below Y=0 only, exempt from all multipliers
   - [ ] Ancient Knowledge (T1-T3)
-  - [ ] Stonecutter's Patience (T1-T2) *(breakpoint, new — needs the `orevault:vault_stone` tag)*
-  - [ ] Calloused Hands (T1-T3) *(breakpoint, new — logarithmic, capped at +40%)*
+  - [x] Stonecutter's Patience (T1-T2) *(breakpoint, new — needs the `orevault:vault_stone` tag)*
+  - [x] Calloused Hands (T1-T3) *(breakpoint, new — logarithmic, capped at +40%)*
   - [ ] Vein Sight *(notable, new — build this before the Deep Lore completion group)*
   - [ ] Stonecaller *(notable)*
   - [ ] Prospector's Eye *(notable)*
@@ -2154,8 +2179,8 @@ Use this to track progress. Update at the end of each development session.
   - [ ] Vein Fortune (T1-T3) *(renamed from Ore Sense)*
   - [ ] **[FORK: Yield]** `ore_working` parent (T1-T3, T4-T6 Mekanism+Doubling only) + Ore Doubling / Smelter's Intuition as free options
   - [ ] Runic Attunement (T1-T3) — Attuned ore → Resonance Crystals
-  - [ ] Kindred Rock (T1-T2) *(breakpoint, new — per player, reads `oresMined`)*
-  - [ ] Highwater Mark (T1-T2) *(breakpoint, new — tool and armour repair)*
+  - [x] Kindred Rock (T1-T2) *(breakpoint, new — per player, reads `oresMined`)*
+  - [x] Highwater Mark (T1-T2) *(breakpoint, new — tool and armour repair)*
   - [ ] Brittle Stone *(pact)*
   - [ ] Vault Fever *(tradeoff — cost is −25% Resonance, no longer hunger)*
 - **Claim** (anchor: 55 points)

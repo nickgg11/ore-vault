@@ -37,7 +37,9 @@ public final class PlayerStats {
     private final Map<String, Integer> oresMined = new HashMap<>();
     private int stoneBroken;
     private int totalBlocksBroken;
-    private int deepestY; // 0 = no block broken yet
+    private int deepestY; // meaningful only while hasDepthRecord
+    /** Whether {@link #deepestY} is a real record. Zero is a legal record and also the default. */
+    private boolean hasDepthRecord;
     private int chunksExplored;
     private long timeInVaultTicks;
 
@@ -296,6 +298,7 @@ public final class PlayerStats {
         tag.putInt("stone_broken", stoneBroken);
         tag.putInt("total_blocks_broken", totalBlocksBroken);
         tag.putInt("deepest_y", deepestY);
+        tag.putBoolean("has_depth_record", hasDepthRecord);
         tag.putInt("chunks_explored", chunksExplored);
         tag.putLong("time_in_vault_ticks", timeInVaultTicks);
         tag.putLong("resonance_lifetime", resonanceLifetime);
@@ -328,6 +331,9 @@ public final class PlayerStats {
         stats.stoneBroken = tag.getIntOr("stone_broken", 0);
         stats.totalBlocksBroken = tag.getIntOr("total_blocks_broken", 0);
         stats.deepestY = tag.getIntOr("deepest_y", 0);
+        // Added after v1 and defaulted from the field it guards, so a tag written before it existed
+        // reads exactly as it used to: a stored record of 0 meant "none", and still does.
+        stats.hasDepthRecord = tag.getBooleanOr("has_depth_record", stats.deepestY != 0);
         stats.chunksExplored = tag.getIntOr("chunks_explored", 0);
         stats.timeInVaultTicks = tag.getLongOr("time_in_vault_ticks", 0L);
         stats.resonanceLifetime = tag.getLongOr("resonance_lifetime", 0L);
@@ -386,9 +392,18 @@ public final class PlayerStats {
         }
     }
 
+    /**
+     * Lowers the lifetime depth record, which never rises (§5.1).
+     *
+     * <p>The flag is why this is not simply {@code y < deepestY}. Zero is also the stored field's
+     * "nothing broken yet" value, so a player whose record was set at exactly Y=0 read as having no
+     * record at all and the next break at any height replaced it — silently making Highwater Mark's
+     * repair worse and bringing Shallow Grace back from the dead.</p>
+     */
     private void updateDeepestY(int y) {
-        if (deepestY == 0 || y < deepestY) {
+        if (!hasDepthRecord || y < deepestY) {
             deepestY = y;
+            hasDepthRecord = true;
         }
     }
 }

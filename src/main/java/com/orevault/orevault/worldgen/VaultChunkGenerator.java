@@ -1,7 +1,7 @@
 package com.orevault.orevault.worldgen;
 
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -81,18 +81,42 @@ public final class VaultChunkGenerator extends ChunkGenerator {
      * Immutable, thread-safe snapshot of the team's skill state, maintained on
      * the main thread by {@code VaultDimensions} and read at chunk generation
      * time (which runs on a background executor).
+     *
+     * <p>Tiers, not a set of ids. Nearly every §6.1 node has more than one tier and its effect
+     * differs at each, so a boolean "is it bought" answers the wrong question — the one caller that
+     * asked it that way ({@code VaultBreakContext#hasResonanceNode}) could only ever have
+     * implemented a tier-1 node correctly.</p>
      */
-    public record SkillSnapshot(Set<String> resonanceNodes, Set<String> animusNodes, int totalSkillPointsInvested) {
+    public record SkillSnapshot(
+            Map<String, Integer> resonanceTiers,
+            Map<String, Integer> animusTiers,
+            int totalSkillPointsInvested) {
 
-        public static final SkillSnapshot EMPTY = new SkillSnapshot(Set.of(), Set.of(), 0);
+        public static final SkillSnapshot EMPTY = new SkillSnapshot(Map.of(), Map.of(), 0);
 
-        /** Builds a snapshot from the team's SavedData (main thread only). */
+        /**
+         * Builds a snapshot from the team's SavedData (main thread only).
+         *
+         * <p>{@code Map.copyOf} rather than the tree's own map: the snapshot is read from the
+         * generation executor, and handing that thread a view of a live, main-thread-mutated map is
+         * the exact race the snapshot exists to prevent.</p>
+         */
         public static SkillSnapshot of(OreVaultTeamData data) {
             return new SkillSnapshot(
-                    data.resonanceTree().getUnlockedTiers().keySet(),
-                    data.animusTree().getUnlockedTiers().keySet(),
+                    Map.copyOf(data.resonanceTree().getUnlockedTiers()),
+                    Map.copyOf(data.animusTree().getUnlockedTiers()),
                     data.resonanceTree().skillPointsInvested() + data.animusTree().skillPointsInvested()
             );
+        }
+
+        /** Unlocked tier of a Resonance node, 0 when it is not bought. */
+        public int resonanceTier(String nodeId) {
+            return resonanceTiers.getOrDefault(nodeId, 0);
+        }
+
+        /** Unlocked tier of an Animus node, 0 when it is not bought. */
+        public int animusTier(String nodeId) {
+            return animusTiers.getOrDefault(nodeId, 0);
         }
 
         public boolean isEmpty() {

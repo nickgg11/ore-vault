@@ -12,6 +12,8 @@ import com.orevault.orevault.event.PortalEvents;
 import com.orevault.orevault.network.ModNetwork;
 import com.orevault.orevault.item.ModItems;
 import com.orevault.orevault.resonance.ResonanceSystem;
+import com.orevault.orevault.session.VaultSessions;
+import com.orevault.orevault.skill.effect.CounterBreakpointNodes;
 import com.orevault.orevault.worldgen.VaultDimensions;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -41,6 +43,16 @@ public class OreVault {
         // The single BlockDropsEvent listener (#92): runs the node stages in order,
         // then pays the break's Resonance (#26). No other class listens for drops.
         NeoForge.EVENT_BUS.register(DropPipeline.class);
+
+        // Who is inside a Vault and what they have done since they walked in (#149):
+        // the per-trip record Deep Habit and Long Delve read, and the §5.1 time stat.
+        NeoForge.EVENT_BUS.register(VaultSessions.class);
+
+        // The six §6.1 breakpoint nodes (#140). The class listens for break speed and
+        // the player tick on the game bus; its drop-side and Resonance-side handlers
+        // register into their pipelines instead of listening for anything.
+        NeoForge.EVENT_BUS.register(CounterBreakpointNodes.class);
+        CounterBreakpointNodes.registerEffects();
 
         // Playtest instrumentation: /orevault diag and /orevault testore, plus the
         // Resonance pickup readout. Both gated on [debug] in config (#120).

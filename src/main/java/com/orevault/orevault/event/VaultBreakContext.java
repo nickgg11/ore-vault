@@ -84,8 +84,18 @@ public record VaultBreakContext(
         return rarity != null;
     }
 
-    /** True when the owning team has invested in the named Resonance node. */
+    /**
+     * Unlocked tier of a Resonance node for the owning team, 0 when it is not bought.
+     *
+     * <p>A tier rather than a boolean, because nearly every §6.1 node's effect differs per tier and
+     * a node handler that can only ask "is it bought" can only implement tier 1.</p>
+     */
+    public int resonanceTier(String nodeId) {
+        return skills.resonanceTier(nodeId);
+    }
+
+    /** True when the owning team has invested in the named Resonance node at all. */
     public boolean hasResonanceNode(String nodeId) {
-        return skills.resonanceNodes().contains(nodeId);
+        return resonanceTier(nodeId) > 0;
     }
 }
