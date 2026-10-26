@@ -217,14 +217,14 @@ spread evenly through the stone band's height." Cost 1, level requirement 0.
 - **Spec text.** Delete "while team level < 15" and the cutoff sentence; reword §6's `[GROWTH]`
   definition to "a flat reward that matters less as throughput rises; never switches off".
 
-**Open: chunks that already exist.** The first point arrives at level 1, about minute 9, and by then view
+**Chunks that already exist (decided).** The first point arrives at level 1, about minute 9, and by then view
 distance 10 has generated 441 chunks around the arrival point, more rock than a player mines in thousands
 of hours. A node that applies only to "newly explored chunks" therefore misses everything near spawn. The
 Balancer proposes placing guide veins into buried stone when an older chunk loads (main thread, never into
 a block touching air, seeded from team id and chunk, with a per-chunk marker). That is new persisted chunk
 state and main-thread world edits, which the Architect has not reviewed; the alternative is to say "chunks
 first generated after purchase" in the description. **This affects every generation node, not only Guide
-Vein** (Vein Expansion, Proliferation, Deep Veins), so it goes to its own design question before T9.
+Vein** (Vein Expansion, Proliferation, Deep Veins), so it went to Nick. **He decided on 2026-10-26: generated chunks are never changed; only the reset regenerates them.** The retrofit was not adopted.
 
 ## 5. How the generator should hold it (Architect)
 
@@ -304,7 +304,7 @@ to measure a real vanilla world (2026-10-26), since the Vault is solid rock.
   `#c:ores` members with no overworld feature need a fallback; Guide Vein's band comes from
   `VaultLayerConfig`, not literals. API points are from memory, to confirm in the sources jar.
 - **Playtester: request changes,** all answered in sections 4 and 6: players dig straight down (Guide
-  Vein spread through the band), spawn chunks exist before the first point (open question above), a
+  Vein spread through the band), spawn chunks exist before the first point (Nick: never changed, reset only), a
   9-block vein cannot be traced to the node (now 51-block veins and a Survey count), the playtest list did
   not fit one session (split, rig added, "same seed" corrected).
 - **Architect** flagged the rarity rule (answered in section 3).

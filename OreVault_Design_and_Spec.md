@@ -141,7 +141,7 @@ Shared attributes for both types:
 
 **Where each ore sits** is its overworld height, normalized. The classifier already reads each ore's real placement range to decide its rarity, so the same data answers where it belongs — diamond generates low in a Vault because diamond generates low, and a modded ore lands at a sensible depth without anyone writing it down. An ore whose preferred height falls outside a band is clamped into it rather than skipped, which is what keeps deep ore present in the base dimension type, whose stone band starts at Y=1 and which has no deepslate at all.
 
-Generation is seeded from the team id and the chunk coordinates, never the world seed: Vault chunks generate lazily over months and a Vault is regenerated on reset (§7), so a chunk has to come out the same whenever it is first visited.
+Generation is seeded from the team id and the chunk coordinates, never the world seed: Vault chunks generate lazily over months and a Vault is regenerated on reset (§7), so a chunk has to come out the same whenever it is first visited. **A generated chunk is never changed by a later purchase**, for any generation node; only the dimension reset (§7) regenerates it (Nick, 2026-10-26).
 
 > **Implementation gotcha — mid-session dimension creation.** After putting the new `ServerLevel` into `server.forgeGetWorldMap()`, you **must** call `server.markWorldsDirty()`. `MinecraftServer` ticks levels from a cached array (`getWorldArray()`) that is only rebuilt when that marker changes; without the call, a dimension created after the first server tick is never ticked at all. Symptom: block-breaking stalls after one `BreakSpeed` event and `BREAK_BLOCK` never fires, entities never tick, and relogging "fixes" it. See issues #82 / #89.
 
@@ -684,7 +684,7 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 |---|---|---|---|---|
 | 1 (only tier) | 12 extra copper or iron veins of configured size 24 (about 51 blocks) per newly generated chunk, spread through the stone band | 1 | 0 | None |
 
-> Exists so an unlucky first hour does not read as a broken mod. A guide vein is three to four times the size of a baseline common vein, so a player can tell one apart. At the 3% baseline it adds about 32% to a chunk's ore and about 18% to its Resonance; with Vein Expansion and Vein Proliferation at tier 5 it adds about 7%. A flat count, so it matters less as the team grows, and it never switches off. The Survey panel shows guide-vein ore mined this trip. Whether guide veins are also placed into chunks generated before purchase is an open question (`docs/research/vanilla-ore-generation.md` section 4).
+> Exists so an unlucky first hour does not read as a broken mod. A guide vein is three to four times the size of a baseline common vein, so a player can tell one apart. At the 3% baseline it adds about 32% to a chunk's ore and about 18% to its Resonance; with Vein Expansion and Vein Proliferation at tier 5 it adds about 7%. A flat count, so it matters less as the team grows, and it never switches off. The Survey panel shows guide-vein ore mined this trip. Chunks generated before purchase are not changed; they get guide veins only after a dimension reset (Nick, 2026-10-26; §3.1).
 
 ---
 
