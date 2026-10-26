@@ -67,12 +67,50 @@ full answers, and the work each one starts, are in `docs/TEAM_REQUIREMENTS.md` u
 | Portal corners optional; one Vault Frame per craft; no nether-style travel logic | |
 | No GitHub Actions build check; the existing automated Claude review stays | Builds run on Nick's PC. |
 | The Animus row of the Tome's header is hidden until Animus exists, behind one switch that is easy to turn back on | |
+| Rare ore pays 12.5 Resonance, one constant read by the orb, the curve and §4.2 (S40); the 12 used in places before is retired | Every derived figure already used 12.5 (the curve, the research doc, the S11 bands); two values had let the orb and the curve disagree. |
 | Prospector's Eye requires Vein Sight. Silent Stone pays 0.30 Resonance a second per member below Y=0, after team scaling. Mekanism support is by tags only | As recommended. |
+| Silent Stone pays per active member, team-scaled like ore, and is raised by the team's bought Resonance bonuses. Active is inside the Vault, below Y=0, with a block broken in the last 10 seconds; each such member earns 0.30 a second × (1 + their counted bonuses), and the pool takes the sum / team size × (1 + 0.1 × (team size − 1)). Bonuses count when they can be read at any second (Deep Habit, Calloused Hands, Vein Discipline, Frontier Bonus, Vault's Purity, Resonant Overload, Resonant Symbiosis, Bedrock Communion); those tied to an ore break or a vein do not. No penalty applies. This replaces the flat 0.30 per member after scaling | Nick: it must not feel bad for a team of five losing ore Resonance, nor for a solo player. A flat rate threw away everything a level-24 team had bought, roughly doubling ore Resonance by then. Per active member with the §4.2 scaling keeps it about 1.4× bare ore at every team size (0.30 solo, 0.42 for five). With the counted bonuses it is about 1.2× an ore build with the same nodes, typical or maximum, so no cap is needed; it cannot pass 1.4× because it takes a subset of the bonuses. Penalties stay off so Greedy Seams remains the pure upside §6.1 intends. All derived, unplaytested; T14 measures the deepslate band. |
 | Players inside a Vault when a reset finishes go to the Vault's spawn point, where the portal arrives; a reset that cannot unload a live Vault sends everyone out and regenerates at the next restart | A saved position may be underground in rock that no longer exists after the reset. |
 
 **Still open.** Nick read the Resonance-gain display as a second segment inside the Resonance bar
 showing the extra gain, like an XP bonus bar; the proposal was a text line above the hotbar. Which
 one is being built is confirmed with him before T5.
+
+---
+
+## 2026-10-26 — How the team works: builds on Nick's PC, ten roles, name clashes accepted
+
+**Where this came from.** Nick, setting up the restarted repo on 2026-10-26. These change how work is
+done rather than what the mod does, and are recorded in `CLAUDE.md`.
+
+**Decisions.**
+
+| Decision | Reasoning |
+|---|---|
+| All builds, tests, `runClient`, `runServer` and gametests run on Nick's PC, through a Remote Control session. A cloud session reads and edits the repo but does not build it, and no result is reported unless it came from his machine | JDK 25, the Gradle caches and the dependencies are already there, and it is where he playtests the same build. |
+| Three roles added to the original seven: architect, playtester and ui-ux | Approved by Nick. The designer now owns art only; screen structure and the tree's layout rules move to ui-ux. |
+| Roles for modpack compatibility and performance are deferred to later in development | Nothing exists yet for them to check. |
+| Name clashes with other mods in FTB packs (a Resonance mod and an Animus mod exist) are accepted for now | Nick may rename near the end, which would also touch flavour text. |
+
+**Rejected.** Allowlisting Maven and Mojang hosts so cloud sessions could build, and a headless client
+under Xvfb, both withdrawn once builds moved to Nick's PC.
+
+---
+
+## 2026-10-25 — The restart: the code is gone, the 2026-09 decisions stand
+
+**Where this came from.** The repo was restarted on 2026-10-25 and the previous implementation removed.
+What it taught is in `docs/LESSONS_LEARNED.md`, and `git log` before the restart still holds its code and
+commit messages.
+
+**Decision.** Every decision recorded below this entry still stands, though the code that carried it out
+is gone: the cluster tree and its hub layout, forks, pacts and growth nodes, the 3% baseline and the curve
+derived from it, the description rules, vanilla XP from ore. A rebuilt feature follows the entry that
+decided it, not the removed code. Where a 2026-10-26 entry above changes one of them, the newer entry wins.
+
+**What changed with it.** Nothing in the spec's §13 checklist is ticked any more, §12's phases became
+tasks T1 to T14, and saves from the old build are not supported (the 2026-10-26 entry above). Issue and
+ticket numbers in older entries (`#N`, `[N]`) are pre-restart.
 
 ---
 
@@ -289,48 +327,6 @@ node outgrows it, which is the right place to have that argument.
 
 ---
 
-## 2026-09-03 — Skill tree redesigned around clusters
-
-**Feedback (playtest of the #36 grid renderer).**
-
-- The grid stacked unrelated nodes. Gravel Purge sat directly under Common Ore Boost while both were
-  available from the start, so vertical position read as a prerequisite chain that did not exist.
-- Prerequisite lines terminated at node *centres*, so they crossed the boxes and their text.
-- Node boxes were a fixed width; longer names were truncated.
-- The top bar of the Tome was accepted as-is.
-- The GUI was confirmed consistent across all three GUI scales.
-- The three rarity Ore Boosts were "3 nodes instead of one node with 3 choices".
-- Nothing on screen distinguished a fork or a keystone from an ordinary node.
-
-**Decisions.**
-
-| Decision | Reasoning |
-|---|---|
-| Tree becomes a vertical run of named **clusters**, each headed by a non-purchasable **anchor** | Vertical position now means one thing: how deep into the craft you are. The reference is Diablo 4's skill paths — a spine you follow downward with clusters fanning off it. |
-| Anchors gate on **skill points spent in the tree**, not team level | Chosen over team level and over "both". A team that ground to level 25 without committing to anything has not earned the deep clusters; a team that has spent 100 points has, whatever their level says. It is also independent of Resonance curve tuning. |
-| Cluster names are mining-and-knowledge flavoured and read as a ladder | Prospecting → Excavation → Assay → Metallurgy → Deep Lore → Mastery, plus Broad Cut for Ultimine. Find it, dig it, identify it, process it, listen to it, master it. |
-| All keystones move to the **Mastery** cluster at the bottom | Requested directly. Consequence: the early-purchase keystones are now mispriced (see open decisions). |
-| Forks become **one paid parent plus free options** | The old three-Ore-Boost chain stacked, so everyone bought all three in the same order and nothing was ever decided. The parent costs points and is inert until specialized; the option costs 0 and decides what the parent's tiers do. |
-| Fork **tiering is preserved**, moved onto the parent | Explicitly asked for. Per-tier effect values moved verbatim; the number of paid steps and the number of decisions are unchanged. What changed is that you buy the tiers once instead of once per rival branch. |
-| An option must cover **every tier its parent has** | A parent tier with nothing behind it is a paid step that does nothing. Hoarder's Instinct had exactly that gap on conversion (2 tiers under a 3-tier parent) and gained a third tier to close it. |
-| Fork options are **freely swappable outside the Vault, locked inside** | Same rule and same reason as tradeoffs: inside, a player would re-specialize per vein and take every upside of a choice they never committed to. |
-| Vein Singularity **loses its `[KEYSTONE]` tag** | It was tagged both `[FORK]` and `[KEYSTONE]`. A free option cannot be a keystone, and keystones now live only in Mastery. Its jackpot flavour is unchanged. |
-| Node art wants **craggly stained paper** frames, one per node class | Readability wins over texture — the paper is a frame and a wash, not a busy fill behind text. The Tome's top bar is already right and does not change. Tracked on #69. |
-
-**Rejected or superseded.**
-
-- The `TreeLayout` grid (branch → column, prerequisite depth → row). Correct as code and wrong as a
-  design: deriving position from data is right, but branch and depth were the wrong two axes.
-- Ore Attunement's standalone "+10% vein count for all rarities". A fork parent now does nothing
-  until specialized, so the parent cannot carry its own bonus.
-- Gating anchors on team level, and on level-and-points together.
-
-**Resolved by the 2026-09-07 entry below.** The three open items — repricing the keystones against
-the Mastery gate, replacing the early-game slots they vacated, and new node mechanics — were taken to
-#137 and answered there.
-
----
-
 ## 2026-09-07 — Pacts, growth nodes, and the Claim split
 
 **Where this came from.** #137 was opened with three proposals and answered inline, choice by choice.
@@ -376,6 +372,48 @@ maths, not the behaviour.
 
 ---
 
+## 2026-09-03 — Skill tree redesigned around clusters
+
+**Feedback (playtest of the #36 grid renderer).**
+
+- The grid stacked unrelated nodes. Gravel Purge sat directly under Common Ore Boost while both were
+  available from the start, so vertical position read as a prerequisite chain that did not exist.
+- Prerequisite lines terminated at node *centres*, so they crossed the boxes and their text.
+- Node boxes were a fixed width; longer names were truncated.
+- The top bar of the Tome was accepted as-is.
+- The GUI was confirmed consistent across all three GUI scales.
+- The three rarity Ore Boosts were "3 nodes instead of one node with 3 choices".
+- Nothing on screen distinguished a fork or a keystone from an ordinary node.
+
+**Decisions.**
+
+| Decision | Reasoning |
+|---|---|
+| Tree becomes a vertical run of named **clusters**, each headed by a non-purchasable **anchor** | Vertical position now means one thing: how deep into the craft you are. The reference is Diablo 4's skill paths — a spine you follow downward with clusters fanning off it. |
+| Anchors gate on **skill points spent in the tree**, not team level | Chosen over team level and over "both". A team that ground to level 25 without committing to anything has not earned the deep clusters; a team that has spent 100 points has, whatever their level says. It is also independent of Resonance curve tuning. |
+| Cluster names are mining-and-knowledge flavoured and read as a ladder | Prospecting → Excavation → Assay → Metallurgy → Deep Lore → Mastery, plus Broad Cut for Ultimine. Find it, dig it, identify it, process it, listen to it, master it. |
+| All keystones move to the **Mastery** cluster at the bottom | Requested directly. Consequence: the early-purchase keystones are now mispriced (see open decisions). |
+| Forks become **one paid parent plus free options** | The old three-Ore-Boost chain stacked, so everyone bought all three in the same order and nothing was ever decided. The parent costs points and is inert until specialized; the option costs 0 and decides what the parent's tiers do. |
+| Fork **tiering is preserved**, moved onto the parent | Explicitly asked for. Per-tier effect values moved verbatim; the number of paid steps and the number of decisions are unchanged. What changed is that you buy the tiers once instead of once per rival branch. |
+| An option must cover **every tier its parent has** | A parent tier with nothing behind it is a paid step that does nothing. Hoarder's Instinct had exactly that gap on conversion (2 tiers under a 3-tier parent) and gained a third tier to close it. |
+| Fork options are **freely swappable outside the Vault, locked inside** | Same rule and same reason as tradeoffs: inside, a player would re-specialize per vein and take every upside of a choice they never committed to. |
+| Vein Singularity **loses its `[KEYSTONE]` tag** | It was tagged both `[FORK]` and `[KEYSTONE]`. A free option cannot be a keystone, and keystones now live only in Mastery. Its jackpot flavour is unchanged. |
+| Node art wants **craggly stained paper** frames, one per node class | Readability wins over texture — the paper is a frame and a wash, not a busy fill behind text. The Tome's top bar is already right and does not change. Tracked on #69. |
+
+**Rejected or superseded.**
+
+- The `TreeLayout` grid (branch → column, prerequisite depth → row). Correct as code and wrong as a
+  design: deriving position from data is right, but branch and depth were the wrong two axes.
+- Ore Attunement's standalone "+10% vein count for all rarities". A fork parent now does nothing
+  until specialized, so the parent cannot carry its own bonus.
+- Gating anchors on team level, and on level-and-points together.
+
+**Resolved by the 2026-09-07 "Pacts" entry above.** The three open items — repricing the keystones against
+the Mastery gate, replacing the early-game slots they vacated, and new node mechanics — were taken to
+#137 and answered there.
+
+---
+
 ## 2026-09-03 — Config values that silently did nothing
 
 **Feedback.** Enabling debug commands from the mods menu appeared to need a world reload.
@@ -403,7 +441,7 @@ not tab-complete, which is indistinguishable from a setting that did not take.
 punished for using my mining dimension."
 
 **Decision.** Vanilla XP from ore is never suppressed inside the Vault. Resonance is additive to it,
-not a replacement. Written into §4.2 so a future node cannot quietly remove it.
+not a replacement. Written into §3.4 so a future node cannot quietly remove it.
 
 Verified at the time that no suppression existed — `popExperience` appears nowhere in the tree. The
 rule exists to stop it being added, not to fix something.
