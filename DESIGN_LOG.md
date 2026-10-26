@@ -50,7 +50,7 @@ The design summary he approved is the "Skill tree: PoE tree design" doc. The spe
 | **The item may be replaced, keeping its enchantments and name**; Hephaestus tools and energy tools are left out | Nick said the item may change if enchantments and name stay, and that Hephaestus tools should not be upgraded (or be a toggle), since part bonuses could be lost. |
 | **Gem Seam drops real Apotheosis gems**, more often and more of them from rarer ore, Apotheosis choosing gem and purity by world tier (Nick, round 3) | Nick preferred gems to rarity materials and asked for a tie to the world tier. |
 | **Seam Courier replaces Magnetic Seam** (Nick, round 3) | Nick was unsure a magnet node is useful with so many mods adding magnetism. Seam Courier sends ore to a linked container instead; it does not compete with the Sophisticated Backpacks magnet, which Nick pointed out puts items straight into the backpack. |
-| **Tool wear goes through one mixin**, the mod's first | NeoForge has no event when an item loses durability, and seven nodes need one. `docs/adr/0008-tool-wear-mixin.md`. |
+| **Tool wear goes through one mixin**, the mod's first | NeoForge has no event when an item loses durability, and eight nodes need one. `docs/adr/0008-tool-wear-mixin.md`. |
 
 **Rejected.**
 

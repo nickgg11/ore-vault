@@ -5,8 +5,8 @@ question 4). Spec: §6.1 Travel stats and Flavour notables, §11 Tool Wear Hook.
 
 ## Context
 
-Seven nodes change how much durability an item loses: Tool care and the Tool charge fallback (travel
-stats), Kit Care (travel, outside the Vault), Tempered, Unyielding Edge, Glass Edge and Galvanic Seam.
+Eight nodes change how much durability an item loses: Tool care and the Tool charge fallback (travel
+stats), Kit Care (travel, outside the Vault), Hammer and Paxel Affinity (+10% Tool care), Tempered, Unyielding Edge, Glass Edge and Galvanic Seam.
 They are team-owned nodes, so whatever applies them must read the team's tree for the player holding the
 item.
 

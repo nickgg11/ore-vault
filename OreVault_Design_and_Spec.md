@@ -340,7 +340,7 @@ A five-person team progresses 40% faster than a solo player, not 500% faster. Th
 1. The level cap is a constant: `LEVEL_CAP = 30` for both trees.
 2. Points awarded per level are a constant: `POINTS_PER_LEVEL = 5`, so a team has 150 points at level 30. Every node costs 1 point (§6), so 150 points buy 150 nodes. The server sends the value to clients with the team's progress.
 
-   **Pinned, not derived (Nick, 2026-10-26).** The tree holds about 193 nodes in a vanilla pack and about 207 in FTB Evolution 2 (§6.1 Totals). A team therefore owns about 78% of a vanilla tree at level 30, and 72% of the pack's, which is about 85% and 82% of the nodes that are not travel. Deriving the award as `ceil(0.7 × loadedNodeCount / 30)` gives 5 today but turns into 6 at 215 loaded nodes, eight more than the pack's tree, and at 6 a level a team owns nearly every node that is not travel by level 30, so routes stop mattering. With 5 pinned, adding content lowers the share owned, which is visible and can be argued about; a rounding flip is neither. Every level up to 30 buys something. The tiered tree this replaces could be bought whole by level 26, leaving levels 27 to 30, about 47 hours, with nothing to buy.
+   **Pinned, not derived (Nick, 2026-10-26).** The tree holds 193 to 199 nodes in a vanilla pack and 207 to 213 in FTB Evolution 2 (§6.1 Totals). A team therefore owns 75% to 78% of a vanilla tree at level 30, and 70% to 72% of the pack's, which is about 85% and 82% of the nodes that are not travel. Deriving the award as `ceil(0.7 × loadedNodeCount / 30)` gives 5 today but turns into 6 at 215 loaded nodes, two to eight more than the pack's tree (fewer than Ore Working's three Mekanism-tag nodes), and at 6 a level a team owns nearly every node that is not travel by level 30, so routes stop mattering. With 5 pinned, adding content lowers the share owned, which is visible and can be argued about; a rounding flip is neither. Every level up to 30 buys something. The tiered tree this replaces could be bought whole by level 26, leaving levels 27 to 30, about 47 hours, with nothing to buy.
 3. From config, read `target_play_hours` (default: 100) and `curve_divisor` (default: 1.0) from the `[resonance]` block in §10. Both are read once at server start; changing either requires a restart, because moving a threshold mid-session would move it under teams that had already passed it.
 4. Calculate average Resonance per hour for a **solo** player: `resonancePerHour = averageOresPerHour * weightedAverageResonancePerOre`. `averageOresPerHour` is a **constant in code**, not config — it measures how fast a player mines rather than expressing a preference, so an admin has no way to know the right value and a wrong one silently distorts the whole curve. The knob a server owner wants is `curve_divisor` in the next step.
 
@@ -408,7 +408,7 @@ Moving a route already costs its length: rerouting a 10-node path is 30 levels. 
 
 **Refunds happen outside the Vault only**, the same rule as tradeoffs and fork options (§6), so a node cannot be dropped for one vein and bought back for the next. Every online team member is told who refunded what.
 
-**Free undo window.** A node bought within the last `TODO(balancer: undo-window)` can be refunded for no XP, so a misclick costs nothing. The window is session state, held in memory like the §11 Vault session state, not saved.
+**Free undo window.** A node bought within the last 60 seconds can be refunded for no XP, so a misclick costs nothing. The window is session state, held in memory like the §11 Vault session state, not saved. Sixty seconds is long enough to see a misclick and too short to use: refunds happen only outside the Vault, so buying a keystone, mining with it and refunding it free would buy under a minute of mining.
 
 **Free respec after a reset.** For 10 minutes after a dimension reset (§3.5) every refund costs no XP. The end of this window is saved as `freeRefundUntil` (§11).
 
@@ -519,9 +519,9 @@ Every count below is derived, not measured, and the hours rest on the unmeasured
 | New keystones | 3 | 4 |
 | Real nodes | 135 | 149 |
 | Travel nodes | 58 to 64 | 58 to 64 |
-| Tree | about 193 | about 207 |
+| Tree | 193 to 199 | 207 to 213 |
 | Points at level 30 | 150 | 150 |
-| Share of the tree owned at level 30 | about 78% | about 72% |
+| Share of the tree owned at level 30 | 75% to 78% | 70% to 72% |
 | Share of real nodes owned at level 30 | about 85% | about 82% |
 
 Ore Working's three Mekanism-tag nodes add 3 where the `c:clumps/`, `c:shards/` and `c:crystals/` tags are filled (§9). The real-node shares are estimates; the Balancer's model was last run before the second round of flavour nodes. A value-first team leaves a few far ends unbought at level 30, and which far end a team skips is the build choice the tree is meant to create.
@@ -1582,7 +1582,7 @@ Rules for all twelve:
 - Attribute stats are transient modifiers, recomputed from the team's owned nodes on login, respawn, dimension change, team change, buy and refund. Vault-only attributes are added on entering a Vault level and removed on leaving it; outside-only ones the other way round. Max health applies everywhere so that leaving the Vault never takes hearts away (Nick, 2026-10-26).
 - Mining speed and Resonance gain are **not attributes**. They are contributors to the §11 accumulators, summed with the other percentage bonuses, so Bedrock Communion's halving and the pact penalties still apply after them.
 - The per-block stats (vanilla XP, Tool care, Tool charge) act only on a hand break (§3.4). A block broken in an FTB Ultimine chain is a hand break, and each block of the chain counts on its own (§9).
-- Tool care and the Charge fallback roll once per point of durability, independently and after Unbreaking. With all six Tool care and all eight Charge nodes on a tool with no energy storage, 70% of points are skipped.
+- Tool care, the Charge fallback and Hammer and Paxel Affinity's +10% add into one chance, rolled once per point of durability after Unbreaking. With all six Tool care and all eight Charge nodes on a tool with no energy storage, 70% of points are skipped, 80% on a hammer or paxel with the Affinity. Tempered rolls on its own after that: with Tempered III, 14% of the points that pass Unbreaking still cost durability.
 - 400 FE a block at 7,200 blocks an hour is about 40 FE a tick, all of it into the one held tool, which cannot pass it on. It is a tool's running cost, never a power source for machines (§3.4). The per-block costs of Mining Gadgets and of Just Dire Things abilities are unmeasured; a playtest reads a tool's charge before and after ten minutes of mining.
 - Left out on purpose: ore yield, vein size or density, flat Resonance per ore, orb pickup radius and hunger, because each undercuts an existing node or the curve's baseline; mob XP, because with mob farms it would cheapen refunds, the 30-level keystone refund included; and other mods' attributes (Ultimine vein size, Paraglider stamina, `ftbevolutioncompanion:*`), because a travel node on a path cannot be hidden when its mod is missing. Those go on leaf notables.
 
@@ -1841,11 +1841,11 @@ The Tome shows a running total per stat (§8).
 > - Candidates: `#minecraft:pickaxes` plus `#orevault:ascension/include`, minus `#orevault:ascension/exclude` (by default optional `#c:ore_hammers`). Paxels form a separate ladder keyed by `#orevault:ascension/paxels` (by default optional `#c:tools/paxel` and `#cucumber:paxels`); a pickaxe never turns into a paxel or back. Mystical Agriculture's essence pickaxes are in `#minecraft:pickaxes` and join with no extra work.
 > - Excluded: items whose stats live on the stack. That is any item whose default stack has an energy handler (Just Dire Things, Mining Gadgets, Ender IO, Oritech), any item whose speed is computed per stack, and Hephaestus tools, found by namespace `hephaestus_tools` or the `hephaestus_tools:construction` component looked up by id. A swap would lose their charge, upgrades or parts (Nick: Hephaestus tools are not upgraded). There is no toggle.
 > - Stats, read from the default stack: durability `getMaxDamage()` (an unbreakable item counts as infinite), speed `getDestroySpeed` against stone, never the `Tool` component's default speed, which is 1.0 for every pickaxe; harvest level as the set of probe blocks in `orevault:ascension/harvest_probes` the item can harvest.
-> - Item B is above item A when B's durability and speed are both at least A's, B harvests everything A does, and durability or speed grows by at least the minimum step `TODO(balancer: ascension-min-step)`. A's next rung is the B above it with the lowest durability, then the lowest speed, then the same namespace as A, then `minecraft`, then id order, so the ladder climbs through every durability step and favours durability over speed. Equal items are siblings, never rungs, so the ladder cannot loop.
+> - Item B is above item A when B's durability and speed are both at least A's, B harvests everything A does, and durability or speed grows by at least the minimum step, 5% (`ASCENSION_MIN_STEP = 0.05`, a constant): the smallest change a player notices, it keeps near-duplicates such as 2,031 against 2,032 durability from becoming rungs, and every step Nick named (2,000 to 2,500 durability, +25%) passes. A's next rung is the B above it with the lowest durability, then the lowest speed, then the same namespace as A, then `minecraft`, then id order, so the ladder climbs through every durability step and favours durability over speed. Equal items are siblings, never rungs, so the ladder cannot loop.
 > - Gold is off the ladder: its 32 durability is below wood's, so nothing climbs into it, and a gold pick climbs only if a modded pick has at least its speed. Its tooltip says so.
 > - A NeoForge data map on items, `orevault:tool_ascension` (`{ "next": <item>, "ores": <int, optional> }`), overrides a computed step. An override that makes a loop is dropped and logged.
 >
-> **Ores per rung** depend on the rung being reached: `N = durability × sqrt(speed / 4)`, where 4 is stone's speed. Durability enters linearly and speed under a square root, so durability counts for more. A rung with infinite durability takes its count from the data map: `TODO(balancer: ascension-unbreakable-rung)`. Vanilla figures, to be checked against the decompiled 26.1 `ToolMaterial`:
+> **Ores per rung** depend on the rung being reached: `N = durability × sqrt(speed / 4)`, rounded to the nearest ore, where 4 is stone's speed. Durability enters linearly and speed under a square root, so durability counts for more. A rung with infinite durability takes its count from the data map; with no entry, `N` uses twice the highest finite durability among the candidates, so an unbreakable pick is always the dearest rung on its ladder, because it removes durability as a cost for good. Vanilla figures, to be checked against the decompiled 26.1 `ToolMaterial`:
 >
 > | Rung | Durability / speed | Ores to reach | Hours at 220 ore an hour |
 > |---|---|---|---|
@@ -1854,9 +1854,9 @@ The Tome shows a running total per stat (§8).
 > | Copper | 190 / 5 | 212 | 1.0 |
 > | Iron | 250 / 6 | 306 | 1.4 |
 > | Diamond | 1,561 / 8 | 2,208 | 10.0 |
-> | Netherite | 2,031 / 9 | 3,046 | 13.8 |
+> | Netherite | 2,031 / 9 | 3,047 | 13.9 |
 >
-> Wood to netherite is 5,903 ores, 27 hours of mining; iron to netherite, what a team holds at level 18, is 24 hours. A modded 2,500-durability pick at speed 9 or 10 costs 3,750 or 3,953 ores. Each member's tool climbs separately.
+> Wood to netherite is 5,904 ores, 27 hours of mining; iron to netherite, what a team holds at level 18, is 24 hours. A modded 2,500-durability pick at speed 9 or 10 costs 3,750 or 3,953 ores. Each member's tool climbs separately.
 >
 > **Counting.** The `orevault:vault_tool` data component (`version`, `lifetimeOres`, `oresSinceRung`, each optional with default 0) is saved with the item, so its names are fixed and every change gets a codec migration (`CLAUDE.md` rule 6). It counts a classified ore broken by hand in a Vault, in the final stage of the §11 drop listener, on `player.getMainHandItem()`, never on the event's tool, which is a copy taken before damage. Each ore of an FTB Ultimine chain counts on its own (§9).
 >
@@ -1929,10 +1929,11 @@ The Tome shows a running total per stat (§8).
 > | Resonant Symbiosis (+50%) | Yes | Two or more team members inside the Vault |
 > | Bedrock Communion (+2% per block below Y=0) | Yes | The member's Y; an active member is always below Y=0 |
 > | Volatile Veins: Ultimine Gambit | No | Tied to a surviving Ultimine operation |
+> | Travel Resonance gain (+5% a node, to +20%) | Yes | Unconditional, like Resonant Overload |
 >
 > **No penalty applies to the rate**, including Resonant Symbiosis's −40% alone. The penalties in §11 are priced against ore Resonance, and Silent Stone has already taken all of it; charging them again would double the cost, and it would undo the stated intent that Silent Stone makes Greedy Seams a pure upside. Greedy Seams, Vault Fever and Full Spectrum therefore cost a Silent Stone team nothing in progression; what they still trade is materials and speed, which is the side of the game this keystone frees. Resonant Overload stays a choice against Greedy Seams: +100% rate for half the ore. With no penalty the floor at zero (§11, Nick's N6) can never be reached; it is stated so the code applies it anyway.
 >
-> **Derived, unplaytested.** Curve figures are the §4.3 solo derivation in the stone band, 220 ore an hour at 3.485 Resonance, 0.213 a second; a team of five all mining earns 0.298. Levels 25 to 30 cost about 47,600 Resonance, 62 hours at 0.213. "Ore, same nodes" counts the same bonuses plus the ore-only ones a build has by then (Kindred Rock +15%, Last Ore about +13% spread over a vein; in the maximum case Clean Cut +50% on every vein), and leaves out the bursts. The typical level-24 build has Deep Habit +25%, Calloused Hands tier 2 at about 200,000 blocks +15%, Vein Discipline +20%, Vault's Purity +20% and Frontier Bonus +20% averaged over half the time, so +100%, and +150% for five with Resonant Symbiosis; no Resonant Overload and no Bedrock Communion, which needs level 26. The maximum adds Resonant Overload, Bedrock Communion at Y=−63 and every counted bonus at its cap: +381% solo, +431% for five.
+> **Derived, unplaytested.** Curve figures are the §4.3 solo derivation in the stone band, 220 ore an hour at 3.485 Resonance, 0.213 a second; a team of five all mining earns 0.298. Levels 25 to 30 cost about 47,600 Resonance, 62 hours at 0.213. "Ore, same nodes" counts the same bonuses plus the ore-only ones a build has by then (Kindred Rock +15%, Last Ore about +13% spread over a vein; in the maximum case Clean Cut +50% on every vein), and leaves out the bursts. The typical level-24 build has Deep Habit +25%, Calloused Hands tier 2 at about 200,000 blocks +15%, Vein Discipline +20%, Vault's Purity +20% and Frontier Bonus +20% averaged over half the time, so +100%, and +150% for five with Resonant Symbiosis; no Resonant Overload and no Bedrock Communion, which needs level 26. The maximum adds Resonant Overload, Bedrock Communion at Y=−63 and every counted bonus at its cap: +381% solo, +431% for five. These figures leave out travel Resonance gain, which counts (above): it adds the same points to both columns, +10% for a typical level-24 team holding half of it and +20% at most, so the typical solo rate becomes 0.63 a second against 0.51 for ore and every ratio in the table moves by under 0.05.
 >
 > | Build | Silent Stone, solo | Ore, same nodes, solo | Silent Stone, five active | Ore, same nodes, five | Levels 25–30 (solo SS / solo ore) |
 > |---|---|---|---|---|---|
@@ -2001,6 +2002,8 @@ The Tome shows a running total per stat (§8).
 | 1 (single node) | +50% mining speed (`MiningSpeedModifiers` bonus sum); in the Vault, each durability loss on the held tool is multiplied by 3 before Unbreaking, which then rolls per point | 20 |
 
 > It turns the durability nodes from comfort into a build.
+>
+> Known interaction (unplaytested): with an Efficiency VII netherite pick from Echoing Edge, Glass Edge brings stone-band ore to speed 88.5 against the 90 that breaks it in one tick, so one more +10% makes ore instant. Allowed; see Echoing Edge.
 
 ---
 
@@ -2018,25 +2021,56 @@ The Tome shows a running total per stat (§8).
 
 **Echoing Edge** `[KEYSTONE]`
 
-> Each ore you mine by hand in the Vault has a chance to raise an enchantment by one level, past its usual maximum. Being reworked by the Balancer (round 3); the numbers below are not set.
+> Each ore you mine by hand in the Vault can echo: at 1 in 1,000 at first, and rarer as an item fills, an enchantment on your tool or other gear rises one level, up to 2 past its maximum, or the item gains a new enchantment at level I. Half the echoes go to the tool in your hand, half to your armour, offhand or first hotbar weapon. Echoed items can't be used in an anvil, grindstone or smithing table.
 
 | Tier (nodes owned) | Effect | Ring |
 |---|---|---|
-| 1 (single node) | Per hand-mined Vault ore, a chance `TODO(balancer: echoing-edge-round3)` to raise one eligible enchantment by one level, up to a cap `TODO(balancer: echoing-edge-round3)` | 22 `TODO(balancer: echoing-edge-round3)` |
+| 1 (single node) | Each hand-mined Vault ore rolls once: half the rolls target the held tool, half one other eligible item at random. Chance on the target `1 / (1,000 × (1 + 3f))`, `f` the share of its headroom already used. An echo raises an enchantment by one level, up to `getMaxLevel() + 2`, or 1 echo in 4 adds a compatible enchantment at level I. An echoed item is locked out of the anvil, grindstone and smithing table | 22 |
 
-> **Decided (Nick, 2026-10-26):**
+> **Decided (Nick, 2026-10-26):** the roll is per ore, and every ore of an FTB Ultimine chain rolls on its own, since a chain is not one mining instance (§9); each echo is announced to the team in chat with a sound; the cap follows Apotheosis's higher maxima, and levels above the maximum work as vanilla computes them (Efficiency VII on netherite mines stone instantly); an echo may add an enchantment and may reach tools, weapons and armour, not only the held pickaxe; and Echoing Edge and Ascending Edge are **not exclusive**: owning one does not pause the other, and both take long enough not to throw a team too far forward. The rule below is the Balancer's round 3; Nick suggested the headroom slowdown as a "maybe", and the rule implements it.
 >
-> - The roll is per ore, not per block. Every ore of an FTB Ultimine chain rolls on its own; a chain is not one mining instance (§9).
-> - Each echo is announced to the team in chat with a sound.
-> - The cap follows Apotheosis's higher maxima, not only vanilla's: Apothic Enchanting raises an enchantment's registry `max_level`, and the rule reads that, with no `isLoaded` branch. Levels are clamped at 255.
-> - Above vanilla's maximum the levels work as vanilla computes them (Efficiency VII on netherite mines stone instantly).
-> - An echo may add an enchantment the item can hold but does not yet have, and may reach tools, weapons and armour, not only the held pickaxe.
-> - Echoing Edge and Ascending Edge are **not exclusive**, and owning one does not pause the other. Both must take long enough not to throw a team too far forward. An echoed tool that ascends keeps its echoed levels (above).
-> - Its downside: an echoed item cannot be changed in an anvil, no new enchantments and no anvil repair (Nick, 2026-10-26, round 2). Mending, Highwater Mark, Tool care and Unyielding Edge keep it alive.
+> **The roll.** Each ore a player breaks by hand in a Vault (§3.4) rolls once, in the Deliver stage of the §11 listener, on the live stacks, never the event's tool copy. An Ultimine chain of 7 ores is 7 rolls. No roll for a machine break, a fake player or a block outside `#c:ores`. No Resonance is paid.
 >
-> **Set by the Balancer's round 3, `TODO(balancer: echoing-edge-round3)`:** the chance per ore and how it falls with each echo on an item; the cap above `max_level`, and whether an item that can hold more enchantment levels needs less per echo (Nick's suggestion); which items an echo can reach and how one is chosen; the odds of adding a new enchantment rather than raising one; whether the lock also covers the grindstone and smithing table; and the ring.
+> **Eligible items**, the player's own at the moment of the break: the main-hand item that broke the ore (the tool); the four worn armour pieces and the offhand item; and one hotbar item, the leftmost one other than the tool in `#orevault:echo_hotbar` (default `#minecraft:enchantable/weapon`, `/bow`, `/crossbow`, `/trident`, `/mace`). Not the whole hotbar or inventory: a stack of spare picks would not raise the rate, which is fixed, but would spread echoes onto items nobody uses. An item is eligible only while its headroom `R` (below) is above 0.
 >
-> Eligible enchantments exclude `#minecraft:curse`, any enchantment whose maximum level is 1 (Silk Touch, Mending, Infinity, Channeling) and the pack tag `orevault:echoing_edge_excluded`. With none eligible the roll does nothing and the tooltip says so. The chance and cap logic is a pure function with unit tests, kept out of the event handler.
+> **Target first, then the roll.** Half of all rolls go to the tool. The other half pick one of the other eligible items at random, equal odds. If the tool is full, or there is no other eligible item, that half is lost, not passed on. The total echo rate therefore never rises: taking armour off does not speed the pick, and a full pick does not speed the armour.
+>
+> **The chance falls with the share of headroom used.** For the chosen item:
+>
+> ```
+> cap(e) = min(255, e.value().getMaxLevel() + 2)       // read at runtime, never a vanilla constant
+> R      = sum over its enchantments of (cap − level)  // skipping curses, max-level-1 enchantments and #orevault:echoing_edge_excluded
+>          + 1 for each enchantment that could be added (below)
+> n      = echoes this item already has                // item component orevault:echoes
+> f      = n / (n + R)
+> chance = 1 / (1,000 × (1 + 3f))
+> ```
+>
+> The chance starts at 1 in 1,000 on every item and never falls below 1 in 4,000. Each echo slows the next by 3,000 / (n + R) ores, so an item that can hold more enchantment levels takes less per echo, as Nick asked. Expected rolls on one item to reach `k` echoes: `1,000 × (k + 1.5 k (k − 1) / (n + R))`.
+>
+> **What an echo does.** If the item can take a new enchantment, 1 echo in 4 adds one; otherwise, and on the other 3 in 4, it raises a random enchantment below its cap by one level, equal odds per entry. A new enchantment must pass `Enchantment.isSupportedItem(stack)` and `Enchantment.areCompatible` with every enchantment already on the item, is not a curse or excluded, and is drawn by registry weight as the enchanting table draws. It is added **at level I**; later echoes can raise it, which also raises `R`, so the item slows less. Treasure enchantments (Mending, Soul Speed) can be added: it is one level, and Nick likes being overpowered. Enchantments whose maximum is 1 (Silk Touch, Mending, Infinity, Channeling) can be added but are never raised. With nothing to raise or add, the item is full and its tooltip says so.
+>
+> **Apothic Enchanting.** The cap reads `getMaxLevel()` at runtime with no `isLoaded` branch, so Apothic's raised maxima give "Apothic's maximum + 2". To verify in the Apothic Enchanting 2.1.0 jar before building: whether its raised maxima are the enchantment's `max_level` (a data override or a mixin on `getMaxLevel`). If they live in its own config instead, `getMaxLevel` returns vanilla's value and the cap is short; the fallback is an Ore Vault data map `orevault:echo_max_level` (enchantment to level), shipped as conditional data holding Apothic's values, and read in place of `getMaxLevel` where it has an entry.
+>
+> **Downside: an echoed item cannot be used in an anvil, grindstone or smithing table** (Nick, 2026-10-26, round 2, extended in round 3 to the grindstone and smithing table). No new enchantments by book, no anvil repair, no netherite upgrade, no socketing at a smithing table. It bites because the target is random: an echo can land on diamond armour before its netherite upgrade, or on gear that still needed an Apotheosis socket, and that item is then finished as it stands. A team completes its kit before level 22 or accepts what the echoes freeze. Mending, Highwater Mark, Tool care and Unyielding Edge keep an echoed item alive. Rejected as the downside: extra durability per block (Highwater Mark and Mending make it free), a Resonance tax (the curve stays derived from ore only), an XP cost per echo (free once a mob farm runs), and pausing Ascending Edge (Nick).
+>
+> **With Ascending Edge.** Both roll per ore and neither pays Resonance. An ascending pick keeps its component patch (above), so its `orevault:echoes` count and its raised levels climb with it; the new item does not change any cap, which is per enchantment, not per material.
+>
+> **Derived, unplaytested.** Echoes depend on ores mined, not on ore rate, since the roll is per ore. Hours are at 220 / 500 / 1,000 ore an hour. Typical level-22 pick: Efficiency V, Unbreaking III, Fortune III, Mending, headroom 6.
+>
+> | On one item | Ores | Hours at 220 / 500 / 1,000 |
+> |---|---|---|
+> | First echo anywhere in the kit | 1,000 | 4.5 / 2 / 1 |
+> | Pick, 1st echo (half the rolls) | 2,000 | 9 / 4 / 2 |
+> | Pick, 3rd | 9,000 | 41 / 18 / 9 |
+> | Pick, 6th: full at Efficiency VII, Unbreaking V, Fortune V | 27,000 | 123 / 54 / 27 |
+> | One armour piece, 1st echo (a tenth of the rolls, with five other items) | 10,000 | 45 / 20 / 10 |
+>
+> From level 22 to 30 a solo player mines about 16,000 ores and expects about 4 echoes on the pick and 1 on each armour piece and the sword, 11 in all; a member of a team of five about 3 on the pick and 8 in all, 42 for the team. A typical solo level-30 pick is about Efficiency VI, Fortune IV, Unbreaking IV. Neither keystone slingshots: with Ascending Edge the two together give about one step, a rung or an echo, every 8 to 10 hours of mining after level 22.
+>
+> **Known interaction: Glass Edge and Efficiency VII make ore instant.** A netherite pick at Efficiency VII mines at speed 59. Stone-band ore and deepslate stone need 90 to break in one tick. Glass Edge's +50% gives 88.5, so any one more +10% (a travel node, Long Delve, Ore Imprint) makes them instant; six travel mining-speed nodes alone give 94 without Glass Edge, and Apothic's higher Efficiency caps make it easier. Recommendation: allow it. It needs two echoes on Efficiency, which a typical solo pick does not have by level 30 (above), Nick likes being overpowered, and echoes are per ore, so a faster miner does not echo more per level. It does raise ore an hour above the curve's 220, which shortens the late levels like any speed node (§4.3). The late-game playtest measures ore an hour with an Efficiency VII pick and Glass Edge, then the hour of the first echo.
+>
+> **Pure functions with unit tests**, kept out of the event handler: `echoChance(n, r)` pinning 1 in 1,000 at n 0, 1 in 3,500 at n 5 r 1, and never below 1 in 4,000; `chooseTarget(toolEligible, others, rnd)` pinning the half-and-half split and the lost half; `chooseEffect(raisable, addable, rnd)` pinning 1 in 4 new. Item tooltip: "Echoes: 3 of 9. Next: 1 in 2,000."
 
 ---
 
@@ -2339,7 +2373,7 @@ The flavour notables of §6.1 reach other mods in Nick's pack without a compile-
 | Mod | How Ore Vault reaches it | Nodes |
 |---|---|---|
 | Apotheosis | Conditional loot tables (`neoforge:conditions`, mod loaded) holding Apotheosis's own gem entry | Gem Seam |
-| Apothic Enchanting | Its data raises enchantments' registry `max_level`, which Echoing Edge reads | Echoing Edge |
+| Apothic Enchanting | Echoing Edge's cap reads `getMaxLevel()`, which should return Apothic's raised maxima; if the 2.1.0 jar keeps them in its own config instead, the `orevault:echo_max_level` data map ships them as conditional data | Echoing Edge |
 | Paraglider | Attribute `paraglider:stamina_efficiency`, by id | Wayfarer's Lungs |
 | GeOre | Optional entries in `orevault:budding/<metal>` block tags | Budding Seam |
 | Hephaestus Tools | A trait shipped as conditional data; Hephaestus tools are excluded from Ascending Edge by namespace and component id | Resonant Trait, Ascending Edge |
@@ -2580,7 +2614,7 @@ A penalty is a penalty however it is written: Greedy Seams' "−50% Resonance" m
 
 Not in either accumulator, and still to be placed by the Balancer: the flat payments (Stone Memory's 0.5 on deepslate and its T5 burst, Vault Echo, Chapter's End), which are not per-break percentages and for which it is not yet stated whether the bonuses apply (Deep Harvest's extra orb takes none); Hoarder's Instinct's cache multiplier, paid on collection; Brittle Stone's instant break, which replaces mining speed rather than modifying it; and Vault Fever's Haste II, a potion effect.
 
-**Silent Stone's rate** is placed: it reads the bonuses in this table that can be evaluated for a member at any second (Deep Habit, Calloused Hands, Vein Discipline, Frontier Bonus at the member's chunk, Vault's Purity, Resonant Overload, Resonant Symbiosis with company, Bedrock Communion at the member's Y), sums them the same way, and takes no penalty; the per-member results then go through the §4.2 team scaling. The other bonuses are tied to an ore break or a vein event and do not apply. The full rule and its numbers are with the node in §6.1.
+**Silent Stone's rate** is placed: it reads the bonuses in this table that can be evaluated for a member at any second (Deep Habit, Calloused Hands, Vein Discipline, Frontier Bonus at the member's chunk, Vault's Purity, Resonant Overload, Resonant Symbiosis with company, Bedrock Communion at the member's Y, travel Resonance gain), sums them the same way, and takes no penalty; the per-member results then go through the §4.2 team scaling. The other bonuses are tied to an ore break or a vein event and do not apply. The full rule and its numbers are with the node in §6.1.
 
 Summing is what keeps a node's stated number meaning what it says wherever it sits in the tree: +25% is a quarter of the base rate whether it is the first bonus or the seventh. Multiplying a dozen small percentage nodes together compounds far past a curve calibrated for 100 hours, and no node's tooltip could then state its own effect honestly.
 
@@ -2614,10 +2648,10 @@ Constants that are not layout live in one class beside it: `LEVEL_CAP = 30`, `PO
 
 ### Tool Wear Hook
 
-NeoForge posts no event when an item loses durability, and seven nodes need one: Tool care and the Charge fallback, Kit Care, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam. Ore Vault therefore has one Mixin into the NeoForge-patched `ItemStack#hurtAndBreak(int, ServerLevel, LivingEntity, Consumer<Item>)`, which calls one pure `WearRules` class (`docs/adr/0008-tool-wear-mixin.md`).
+NeoForge posts no event when an item loses durability, and eight nodes need one: Tool care and the Charge fallback, Kit Care, Hammer and Paxel Affinity, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam. Ore Vault therefore has one Mixin into the NeoForge-patched `ItemStack#hurtAndBreak(int, ServerLevel, LivingEntity, Consumer<Item>)`, which calls one pure `WearRules` class (`docs/adr/0008-tool-wear-mixin.md`).
 
 - At the head of the method, the amount is multiplied (Glass Edge ×3; Galvanic Seam ×2 on a tool with no energy storage), before the item's own `damageItem` and before vanilla Unbreaking, so Unbreaking still rolls per point.
-- After vanilla's durability processing returns its amount, each remaining point rolls Tool care, the Charge fallback, Kit Care and Tempered independently; then Unyielding Edge clamps so the damage never reaches the maximum.
+- After vanilla's durability processing returns its amount, each remaining point rolls once against the summed chance of Tool care, the Charge fallback and Hammer and Paxel Affinity (Kit Care outside the Vault), then once for Tempered (§6.1 Travel stats); then Unyielding Edge clamps so the damage never reaches the maximum.
 - The mixin checks, in order, that the entity is a hand-break player (§3.4) and that the node's scope matches: in a Vault for the Vault nodes and the main-hand item, outside a Vault for Kit Care and any held or worn item. It reads the team's nodes from the main-thread team snapshot and holds no other logic.
 
 The signature and local indices are read from the decompiled 26.1 sources on Nick's PC and pinned by a gametest that breaks a block with each node owned.
@@ -2864,7 +2898,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
   - [ ] Long Arm *(new)*
   - [ ] Glass Edge *(new, tool wear hook)*
   - [ ] Galvanic Seam *(new, requires an item with energy storage)*
-  - [ ] Echoing Edge *(new; numbers wait on the Balancer's round 3)*
+  - [ ] Echoing Edge *(new)*
 
 ### Deferred to the post-1.0 Animus epic
 - [ ] Animus orb entity, pool, level track, skill point award
