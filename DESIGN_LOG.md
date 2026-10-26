@@ -14,6 +14,87 @@ Newest first.
 
 ---
 
+## 2026-10-26 — The Resonance tree becomes a Path of Exile tree
+
+**Where this came from.** Nick compared a clickable prototype of two free-tree ideas with the Diablo 4
+style tree of hubs (a named cluster per hub, an anchor at its centre gated on points spent, hubs down a
+spine). He chose a Path of Exile passive tree in three rounds of answers on 2026-10-26, recorded verbatim
+in the skill tree thread (`nick-decisions-2026-10-26.md`), with the Balancer's economy, travel and flavour
+reports, the Architect's ruling on tool upgrades, and the Developer's, UI/UX's and Playtester's reviews.
+The design summary he approved is the "Skill tree: PoE tree design" doc. The spec was rewritten to match
+(§4.3, §4.4, §6, §6.1, §8, §9, §11); the tool-wear decision is `docs/adr/0001-tool-wear-mixin.md`.
+
+**Decisions.**
+
+| Decision | Reasoning |
+|---|---|
+| **A full PoE tree**, with fork choices kept as "choose one side" (Nick) | Nick: "Yeah lets go full PoE tree, I'll still want the choice nodes working where you can choose one side." |
+| **One point a node; distance from the start is what controls power**, not price (Nick) | Nick: "go to 1 point a node and then figure out how to fill out the tree to use distance as the control vector for power rather than required points." Each tier of a tiered skill became one node with its effect values unchanged. |
+| **Adjacency is the only prerequisite.** A node is buyable when one neighbour is owned; a wheel can be walked through | Nick, on "every prerequisite is required": "if a wheel can be pathed through then only one line is needed". The few old prerequisites that carried meaning (Homeward off Second Wind, Echo Chamber off Vault Echo, Prospector's Eye off Vein Sight, the Gambit off Volatile Veins, Vault Smith off Vault-Forged) became leaves off the node they need. |
+| **Anchors and cluster names dropped**, and with them the points-spent gates (Nick) | Nick: "I think we can drop anchors and names." |
+| **The no-cross-cluster rule (Nk) retired** (Nick) | Nick: "yeah." With no clusters the rule has nothing to apply to. |
+| **A level gate by distance rings**: every node carries an authored ring, its old level requirement, and needs team level of at least that; the layout puts it no nearer than that ring (Nick, Q1) | Without one a team could walk straight out and buy Vault Expansion at level 4 and Bedrock Communion at level 6, against 18 and 26, and a hundred-hour run would hold every keystone in its first 90 minutes. It is a level requirement, not a prerequisite, and it is drawn as faint rings rather than as a lock on every node. |
+| **Distance factor 1.0**: a node's minimum distance equals its old level requirement (Nick) | At felt sizes the travel stats hold 58 to 64 nodes; factor 1.5 needed about 170 travel nodes, which only fit the same caps as 2% to 3% slivers nobody would notice. Targeted timings do not move, because the ring is still the old level. |
+| **A skill's tier is the number of its nodes owned**, laid out as repeated nodes along paths with the same icon | With adjacency alone a team can reach a far Vein Expansion node without the near one, so "tier 3" cannot mean the third box. Tier is derived, never stored. |
+| **Wheels as notable clusters of several skills** (Nick, Q2) | One skill's tiers sit too far apart in distance to fit one wheel (Vein Expansion's rings are 0, 2, 4, 7 and 10), so a wheel holds tiers of several skills at about the same ring around one notable, and a skill runs outward along an arm across wheels. |
+| **About 200 nodes at 5 points a level** (Nick, Q3), **a team owning about 70% of the tree at level 30** (Q4), and **5 a level pinned** rather than derived (round 3) | Every level up to 30 buys something; the tiered tree could be bought whole by level 26, leaving about 47 hours with nothing to buy. The derived formula would flip to 6 at 215 nodes, at which a team owns nearly every real node and routes stop mattering. |
+| **Ten travel stats sized to be felt one node at a time**, with running totals in the Tome | Nick asked for about ten stats relevant to mining and the pack, move speed and tool power included. The Playtester's rule was that each node must be noticed (+10% mining speed, one heart), not a sliver. |
+| **Max health, armour, move speed and safe fall apply everywhere** (Nick, Q5) | Inside a lit, mob-free Vault they are hardly felt, and Vault-only health is taken away at the exit. Nick also asked for nodes that make other work easier; Mason's Reach and Kit Care took travel slots from armour, health and safe fall, and Landscaper's Swing, Harvester's Lot, Delver's Lungs and Blast-Wise were added as notables. |
+| **Nodes that need a mod are hidden without it**, on dead-end leaves (Nick) | Hiding a dead end changes no other node's distance or level. Nick confirmed this for nodes that need an energy-tool mod. |
+| **Icons for every node, names and numbers in hover tooltips**; no Retro Diffusion unless absolutely necessary (Nick) | Nick: "Let's just do icons for all the nodes and then make tooltips that appear when hovered." |
+| **A shared team pin and travel (path) highlighting** (Nick) | Nick: "I really like the idea of a shared pin and the travel highlighting." Search, shift-click path buying and the three locked states came from UI/UX with them. |
+| **Refunds**: connectivity rule, 3 XP levels a node, 12 for a pact, 30 for a keystone, a free undo window, outside the Vault only, the team told | Settled by the team in the design doc. A flat 3 levels would let a team refund a keystone for one trip and buy it back. |
+| **Echoing Edge rolls per ore, and every ore of a vein-mining chain rolls on its own** (Nick) | Nick asked that vein mining is not treated as one mining instance. The Architect read Ultimine 26.1's source: it breaks each block as the player, so each fires its own events. |
+| **Echoing Edge reworked** (round 3, numbers with the Balancer): the cap follows Apotheosis's higher maxima, the slowdown is gentler with more headroom, an echo may add enchantments and reach other tools, weapons and armour, and it is **not** exclusive with Ascending Edge | Nick: "I don't think I want the ascending and echo to be exclusive, they should both just take long enough to not slingshot the player too far forward." He had already asked for it to be less rare than 1 in 10,000, so echoes are seen to happen. |
+| **Ascending Edge is a long ladder built from every pickaxe's stats**, ores per rung growing with the target, kept at ring 18 (Nick, round 3) | Nick asked for the ladder to run through "pretty much all pickaxe types", modded ones included, each step at least as fast and durable, durability favoured. Ores per rung are durability × √(speed ÷ 4): wood to netherite is about 27 hours. |
+| **The item may be replaced, keeping its enchantments and name**; Hephaestus tools and energy tools are left out | Nick said the item may change if enchantments and name stay, and that Hephaestus tools should not be upgraded (or be a toggle), since part bonuses could be lost. |
+| **Gem Seam drops real Apotheosis gems**, more often and more of them from rarer ore, Apotheosis choosing gem and purity by world tier (Nick, round 3) | Nick preferred gems to rarity materials and asked for a tie to the world tier. |
+| **Seam Courier replaces Magnetic Seam** (Nick, round 3) | Nick was unsure a magnet node is useful with so many mods adding magnetism. Seam Courier sends ore to a linked container instead; it does not compete with the Sophisticated Backpacks magnet, which Nick pointed out puts items straight into the backpack. |
+| **Tool wear goes through one mixin**, the mod's first | NeoForge has no event when an item loses durability, and seven nodes need one. `docs/adr/0001-tool-wear-mixin.md`. |
+
+**Rejected.**
+
+- **Hubs and anchors**, the Diablo 4 tree. Replaced by Nick's choice of a PoE tree; anchors gated on
+  points spent, which a one-point-a-node tree with distance as the control does not need.
+- **Restructuring the hub tree so no prerequisite crossed a cluster (Nk).** It was decided earlier on
+  2026-10-26 and retired the same day, because the PoE tree has no clusters.
+- **Keeping tier costs** (a node costing 1 to 15 points). Nick chose one point a node; distance carries
+  what price used to.
+- **Distance factor 1.5 with about 170 small travel nodes.** The stat budget cannot fill 170 felt nodes;
+  filling them inside the caps makes 2% steps nobody notices, and tripling the caps breaks the curve
+  (mining speed +180%).
+- **6 or 7 points a level.** 7 a level was the first economy (a 305-node tree); in the smaller tree, 6 a
+  level owns 98% of the real nodes by level 30, so routes stop mattering, the problem the tiered tree had
+  at level 26. Fewer than about 60% owned would leave whole far ends unbought, the watering down Nick
+  turned down.
+- **No level gate at all.** Distance would then decide only what a team gives up, never when the strongest
+  nodes arrive.
+- **Each fork option as its own paid branch.** It would make a fork cost three times its depth and reverse
+  2026-09-03.
+- **Magnetic Seam.** Magnets in the pack already do it (Nick).
+- **Generating Hephaestus tools as Ascending Edge rungs.** It needs a `compileOnly` dependency on
+  Hephaestus to call its 200-line stat formula for every part combination, rungs that are stack templates
+  rather than items, and a pick that climbed into a Hephaestus tool would stop there, since those are
+  excluded. Re-implementing the formula would drift from theirs silently. Nick did not answer this
+  question directly; his earlier note said skip or toggle, and the recommendation to skip stands until
+  he asks again. No toggle either: with it on, the swap would lose the parts.
+- **Echoing Edge pausing Ascending Edge**, proposed as its downside once the anvil lock proved close to
+  free. Nick did not want the two exclusive.
+- **Echoing Edge at a flat 1 in 1,000.** A typical pick would be full after about 6,000 ores, under a
+  working day for a late-game miner with Ultimine, after which the keystone does nothing on it.
+- **Travel stats for ore yield, vein size or density, flat Resonance, orb radius, hunger, mob XP or other
+  mods' attributes.** Each undercuts an existing node or the curve's baseline, mob XP would cheapen
+  refunds through mob farms, and a travel node on a path cannot be hidden when its mod is missing.
+- **Refunds by leaf only.** Loops in the tree let an inner node go safely; the rule is that everything
+  owned stays connected.
+
+**Still open.** Echoing Edge's numbers wait on the Balancer's round 3. The free undo window's length, the
+minimum step between Ascending Edge rungs, the ore count for an unbreakable rung and whether the shared
+pin is saved are marked `TODO` in the spec. Nothing here is playtested; every hour rests on the
+unmeasured 220 ore an hour, and the layout needs Nick's yes on a rendered preview before renderer code.
+
+---
+
 ## 2026-10-26 — The baseline measured against vanilla, and Guide Vein made visible
 
 **Where this came from.** Nick's answer N4 asked for research into how vanilla places ore before the
@@ -63,7 +144,7 @@ full answers, and the work each one starts, are in `docs/TEAM_REQUIREMENTS.md` u
 | Resonance penalties multiply after the bonuses are summed, floored at zero | So the downside of a pact is always felt. |
 | "About 100 hours" means a team buying nodes as it goes; the curve stretches after T14's measurements, the nodes keep their strength | Nobody likes nodes being watered down. |
 | A disbanded team's data is archived, not deleted: the Vault world, the tree, the stats, everything kept for the team | |
-| **No cross-cluster prerequisites.** A node that requires a node in another cluster moves so both are in the same cluster | New rule from Nick, raised on the question of how cross-cluster links should be drawn. 24 prerequisites crossed clusters on 2026-10-26. |
+| **No cross-cluster prerequisites.** A node that requires a node in another cluster moves so both are in the same cluster | New rule from Nick, raised on the question of how cross-cluster links should be drawn. 24 prerequisites crossed clusters on 2026-10-26. Retired the same day: see "The Resonance tree becomes a Path of Exile tree" above. |
 | Portal corners optional; one Vault Frame per craft; no nether-style travel logic | |
 | No GitHub Actions build check; the existing automated Claude review stays | Builds run on Nick's PC. |
 | The Animus row of the Tome's header is hidden until Animus exists, behind one switch that is easy to turn back on | |
