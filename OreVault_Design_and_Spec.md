@@ -130,10 +130,12 @@ Shared attributes for both types:
 
 | | Value | Why |
 |---|---|---|
-| Stone band density | **3%** of the band | Roughly six times the vanilla overworld. Stone still dominates and a good vein is still an event; the skill tree is what makes a Vault rich, working toward the 40% floor above. |
-| Deepslate band density | **6%** | §6.1 sells the expanded Vault's deepslate as the richest band in the mod, and Vault Expansion costs a keystone to reach. |
-| Rarity mix | **70% common, 25% uncommon, 5% rare**, by block count | Not an independent choice — §4.3's level curve is derived from exactly these shares. The generator and the curve read one constant. |
-| Vein size | 6–12 common, 4–8 uncommon, 2–5 rare | Rarer ore in smaller veins, vanilla's own shape. |
+| Stone band density | **3%** of the band, by placed blocks | About 1.6 to 1.9 times vanilla's Y0..63 band and 2.3 times its Y-64..63 average, measured in solid rock (`docs/research/vanilla-ore-generation.md`). Stone still dominates and a good vein is still an event; the skill tree is what makes a Vault rich, working toward the 40% floor above. Kept at 3% by Nick on 2026-10-26 over a proposed 4%. |
+| Deepslate band density | **6%** | About seven times vanilla's deepslate (0.83%). §6.1 sells the expanded Vault's deepslate as the richest band in the mod, and Vault Expansion costs a keystone to reach. |
+| Rarity mix, by placed blocks | Stone band **68% common, 25% uncommon, 7% rare**; deepslate **60/30/10** | The stone mix is vanilla's own below Y=64. Deepslate leans rare but less than vanilla's 21/58/21, which would make that band pay 2.6 times the stone band's Resonance an hour. §4.3's level curve is derived from these shares: the generator and the curve read one source. |
+| Veins per chunk | Stone band about **141 common, 82 uncommon, 33 rare**; deepslate about **65, 52, 25** | Derived from the density, mix and vein sizes, allowing for overlap between veins (about 1.5% of blocks). Placed by count, never filled toward a target. |
+| Vein size, as vanilla's configured `size` | Common **9–12** (mean 9.2 blocks, never empty), uncommon **7–9** (5.8 blocks), rare **5–7** (4.05 blocks, 3% empty) | `size` is not a block count: vanilla's shape places 6.8 blocks at size 9. These match vanilla's means below Y=64 (8.1, 5.7, diamond 3.9); rare uses 5–7 rather than diamond's 4, which is empty a quarter of the time. |
+| Gravel and clay | Gravel **9 blobs** of configured size 33 (about 112 blocks) per chunk in the stone band and **2** in deepslate, about 1.6%; clay **3** and **1**, about 0.5% | Gravel at vanilla's rate. Underground clay in vanilla is lush-caves-only, at a rate that would flood the Vault, so its amount is a choice. Both are placed after ore, replace stone only, and count as stone for the 40% floor. Gravel Purge removes them. |
 
 **Which ores** comes from the §4.2 rarity classification, not from a list in the generator: everything in `#c:ores` is placeable, so a kitchen-sink pack's modded ore generates with no per-mod work and the thing that decides what an ore is *worth* is the thing that decides how often it appears.
 
@@ -293,7 +295,7 @@ Resonance orbs are spawned as floating entities when an ore block is broken insi
 | Stone (with Stone Memory node) | 0.5 (fractional, accumulates) |
 | Vault Echo burst | 25–40 |
 
-**Rarity classification** happens at every server start by scanning all registered ore blocks. Classification uses the block's world-gen placement data — specifically the vein count and height range from registered PlacedFeatures. Low count + low Y range = Rare. High count + wide Y range = Common. Everything else = Uncommon. The admin can override specific ore classifications in config.
+**Rarity classification** happens at every server start by scanning all registered ore blocks. Classification uses the block's world-gen placement data — specifically the vein count and height range from registered PlacedFeatures. An ore with at least 100 expected blocks per chunk (over every overworld feature placing it, Y-64..319) is Common; otherwise it is Rare when its mean vein places under 4.5 blocks, and Uncommon when not. On vanilla this gives coal, iron and copper Common; gold, redstone and lapis Uncommon; diamond and emerald Rare. The earlier count-and-range rule made emerald Common (100 attempts a chunk, under half a block each). The admin can override specific ore classifications in config.
 
 **Tithe node modifier:** If Tithe is active, 25% of ore blocks mined are consumed (the block breaks but drops nothing) and the Resonance that would have come from that ore is multiplied by 1.75 and added to the pool. Stone Memory bonus drops and other secondary drops are not affected by Tithe.
 
@@ -324,7 +326,7 @@ A five-person team progresses 40% faster than a solo player, not 500% faster. Th
 4. From config, read `target_play_hours` (default: 100) and `curve_divisor` (default: 1.0) from the `[resonance]` block in §10. Both are read once at server start; changing either requires a restart, because moving a threshold mid-session would move it under teams that had already passed it.
 5. Calculate average Resonance per hour for a **solo** player: `resonancePerHour = averageOresPerHour * weightedAverageResonancePerOre`. `averageOresPerHour` is a **constant in code**, not config — it measures how fast a player mines rather than expressing a preference, so an admin has no way to know the right value and a wrong one silently distorts the whole curve. The knob a server owner wants is `curve_divisor` in the next step.
 
-   Both inputs are **derived from the §3.1 baseline distribution, not chosen independently**. A player tunnelling with an enchanted pickaxe sustains roughly 7,200 blocks an hour once travel and inventory handling are counted against continuous breaking; at the 3% stone-band density that is **220 ore an hour**. `weightedAverageResonancePerOre` reads the same 70/25/5 rarity shares the generator places. If either the density or the mix changes, this step changes with it — otherwise the curve is priced for a Vault that does not exist, and nothing in play says so.
+   Both inputs are **derived from the §3.1 baseline distribution, not chosen independently**. A player tunnelling with an enchanted pickaxe sustains roughly 7,200 blocks an hour once travel and inventory handling are counted against continuous breaking; at the 3% stone-band density that is **220 ore an hour**. `weightedAverageResonancePerOre` reads the same 68/25/7 rarity shares the generator places, counted as placed blocks. If either the density or the mix changes, this step changes with it — otherwise the curve is priced for a Vault that does not exist, and nothing in play says so.
 6. Total Resonance needed: `totalResonance = resonancePerHour * targetPlayHoursResonance / curve_divisor`. Because the divisor is applied here, before the distribution in step 7, it scales every level threshold by the same factor: the 100:1 last-to-first ratio and the milestone spacing below are preserved exactly, and every level requirement in §6 keeps its intended pacing. This is the supported way to make Ore Vault a 40-hour mod rather than a 100-hour one, without touching node costs or the level cap.
 7. Distribute `totalResonance` across the 30 levels using an exponential curve where the last level costs `LAST_TO_FIRST_RATIO` (100) times the first:
 ```
@@ -676,13 +678,13 @@ and the Tome draws each class distinctly (§8). An unmarked node is a small node
 
 **Guide Vein** `[GROWTH]`
 
-> One copper or iron vein is guaranteed in every newly explored chunk while the team is below level 15. Chunks generated before then keep theirs afterwards.
+> Twelve large copper or iron veins, about 50 blocks each, generate in every Vault chunk first generated after purchase, spread evenly through the stone band's height.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 (only tier) | One guaranteed copper or iron vein generates per newly explored chunk while team level < 15 | 1 | 0 | None |
+| 1 (only tier) | 12 extra copper or iron veins of configured size 24 (about 51 blocks) per newly generated chunk, spread through the stone band | 1 | 0 | None |
 
-> Exists so an unlucky first hour does not read as a broken mod. Applies at generation, so chunks generated before the cutoff keep their guide vein afterwards.
+> Exists so an unlucky first hour does not read as a broken mod. A guide vein is three to four times the size of a baseline common vein, so a player can tell one apart. At the 3% baseline it adds about 32% to a chunk's ore and about 18% to its Resonance; with Vein Expansion and Vein Proliferation at tier 5 it adds about 7%. A flat count, so it matters less as the team grows, and it never switches off. The Survey panel shows guide-vein ore mined this trip. Whether guide veins are also placed into chunks generated before purchase is an open question (`docs/research/vanilla-ore-generation.md` section 4).
 
 ---
 
@@ -2046,10 +2048,7 @@ public class OreVaultTeamData extends SavedData {
 
 ### Ore Rarity Classification
 
-Run at every server start (not cached to disk). Scan `ForgeRegistries.BLOCKS` for all registered `OreBlock` and `DeepslateOreBlock` instances. For each, look up its registered `PlacedFeature` entries and extract vein count and height range. Apply thresholds:
-- count ≤ 4 AND max height ≤ Y=32 → Rare
-- count ≥ 15 AND height range ≥ 128 blocks → Common
-- Everything else → Uncommon
+Run at every server start (not cached to disk). Scan `ForgeRegistries.BLOCKS` for all registered `OreBlock` and `DeepslateOreBlock` instances. For each, look up its registered `PlacedFeature` entries and extract vein count and height range. Apply the §4.2 rule on expected blocks per chunk and mean blocks per vein (`docs/research/vanilla-ore-generation.md` section 5 covers sampling height providers, expected counts, biome-only features and stone/deepslate pairs).
 
 Apply admin config overrides after classification. Store classification in memory for the session.
 

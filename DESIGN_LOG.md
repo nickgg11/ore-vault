@@ -14,6 +14,34 @@ Newest first.
 
 ---
 
+## 2026-10-26 — The baseline measured against vanilla, and Guide Vein made visible
+
+**Where this came from.** Nick's answer N4 asked for research into how vanilla places ore before the
+baseline was trusted. `docs/research/vanilla-ore-generation.md` measured vanilla 26.1.2 from its own
+placement files and a port of `OreFeature` checked against the decompiled source, in solid rock, which
+Nick chose because the Vault is solid rock.
+
+**Decisions.**
+
+| Decision | Reasoning |
+|---|---|
+| **3% stone, 6% deepslate, kept** (Nick) | The Balancer proposed 4%, since 3% is only about 2.3x vanilla's 1.3%, not the "six times" the 2026-09-27 entry claimed against an unmeasured 0.5%. Nick kept 3%. The feel argument from 2026-09-27 stands without the wrong ratio. |
+| Mix **68/25/7** in stone, **60/30/10** in deepslate, by placed blocks | 68/25/7 is vanilla's own mix below Y=64. Vanilla's deepslate mix (21/58/21) would make that band pay 2.6x the stone band an hour; 60/30/10 pays 1.7x. |
+| Vein sizes in vanilla's configured `size`, not blocks | Size 9 places 6.8 blocks. The old "2–5 rare" in blocks would have meant size 4, empty a quarter of the time. |
+| Gravel at vanilla's rate (1.6%), clay at 0.5% | Nick's N4 put gravel and clay in the Vault; vanilla gives a gravel rate and no usable clay rate. |
+| Rarity by expected blocks per chunk and blocks per vein | The count-and-range rule made emerald Common. The old classifier also dropped every trapezoid height, so most vanilla ores fell to Uncommon at mid-depth. |
+| Guide Vein: twelve 51-block copper or iron veins a chunk, through the whole stone band | One 9-block vein was +0.5% of a chunk's ore and looked like any other vein (Playtester). Players dig straight down, so a fixed slice near the surface was dropped. |
+
+**Rejected.** 4% stone (Nick). Guide Vein as sixteen ordinary veins in the top 32 layers, because players
+leave that slice in minutes and the veins could not be told apart. Raising deepslate to 8% to keep the 2x
+ratio, because rarity already pays the keystone.
+
+**Still open.** Generation nodes change only chunks generated after purchase, and view distance has
+generated hundreds of chunks around the arrival point before the first point is earned. Whether nodes
+retrofit older chunks is its own design question before T9.
+
+---
+
 ## 2026-10-26 — Nick's answers to the restart's open decisions
 
 **Where this came from.** After the restart the ten roles settled 47 disputes from the documents and
