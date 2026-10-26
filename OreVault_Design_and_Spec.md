@@ -3,9 +3,9 @@
 > **Version:** 1.2 — Restart revision. The implementation was removed on 2026-10-25 and is being rebuilt; this document carries the design forward  
 > **Target:** Minecraft 26.1, NeoForge  
 > **Hard Dependencies:** FTB Teams  
-> **Soft Dependencies:** FTB Ultimine, Mekanism, generic ore-dust mods  
+> **Soft Dependencies:** FTB Ultimine, Mekanism, generic ore-dust mods; several pack mods by tags and data only (§9)  
 > **Book Item:** Tome of the Deep Seam  
-> **Last Updated:** 2026-10-26 — corrections after the restart, and Nick's answers of 2026-10-26  
+> **Last Updated:** 2026-10-26 — corrections after the restart, Nick's answers of 2026-10-26, and the Path of Exile style Resonance tree  
 
 ---
 
@@ -46,7 +46,7 @@ A secondary system — Disturbed Zones — lets teams opt into mob farming withi
 ### Design Philosophy
 
 - **Safe paradise by default.** The Vault is a mob-free, fully-lit mining environment. Danger is opt-in via Disturbed Zones and tradeoff nodes.
-- **Long-term progression.** The skill tree is designed for 80–120 hours of team play to fully complete. Early nodes provide immediate utility; late nodes are meaningful milestones.
+- **Long-term progression.** The skill tree is designed for 80–120 hours of team play to reach level 30, by which a team owns about 70% of it (§4.3). Early nodes provide immediate utility; late nodes are meaningful milestones.
 - **Modpack-aware but not modpack-dependent.** The mod detects and integrates with FTB Ultimine and Mekanism at runtime. If they are absent the mod functions identically without them. No hard references to soft dependencies anywhere in code.
 - **Team-first.** All progression is shared via FTB Teams. Solo players are supported as a team of one. The mod requires FTB Teams and will not load without it.
 - **Config-light.** Most values are derived dynamically from the defined skill tree. Admins only configure things with server performance implications.
@@ -76,7 +76,7 @@ A secondary system — Disturbed Zones — lets teams opt into mob farming withi
 
 **FTB Ultimine (soft dependency)**
 - Detected at runtime via `ModList.get().isLoaded("ftbultimine")`.
-- If absent: Ultimine-specific skill nodes do not appear in the UI at all. No greyed-out state, no tooltip, simply not rendered.
+- If absent: Ultimine-specific skill nodes do not appear in the UI at all. No greyed-out state, no tooltip, simply not rendered. They sit on a dead-end spur, so hiding them changes no other node's distance (§6).
 - If present: Ultimine nodes appear in the Resonance tree and the Ultimine integration hooks are active.
 
 **Mekanism (soft dependency)**
@@ -232,7 +232,7 @@ The Vault Igniter replaces Flint & Steel as the portal activation item. Four tie
 
 Personal entry points are stored per-player in persistent data. Without a Tier 4 igniter the reset button does not appear in the UI, and Vault Anchors cannot be crafted at all.
 
-> **Resonance Crystals.** Not craftable from raw materials — the *only* source is Attuned ore, which drops from the Runic Attunement node (§6.1, Metallurgy). Recipe: **4 Attuned raw ore (any type) + 1 Amethyst Shard → 1 Resonance Crystal** (shapeless). This deliberately gates the igniter ladder behind a skill investment rather than a free recipe, and gives Runic Attunement a concrete purpose — it is the supply line for igniter upgrades and Vault Anchors. Total cost of a Tier 4 igniter is 28 Crystals = 112 Attuned ore, which at Runic Attunement Tier 3 (20% attune chance) is roughly 560 ore mined: a genuine but reachable investment.
+> **Resonance Crystals.** Not craftable from raw materials — the *only* source is Attuned ore, which drops from the Runic Attunement skill (§6.1). Recipe: **4 Attuned raw ore (any type) + 1 Amethyst Shard → 1 Resonance Crystal** (shapeless). This deliberately gates the igniter ladder behind a skill investment rather than a free recipe, and gives Runic Attunement a concrete purpose — it is the supply line for igniter upgrades and Vault Anchors. Total cost of a Tier 4 igniter is 28 Crystals = 112 Attuned ore, which at Runic Attunement Tier 3 (20% attune chance) is roughly 560 ore mined: a genuine but reachable investment.
 
 ---
 
@@ -253,7 +253,7 @@ The mod registers chunk loading tickets through NeoForge's `TicketController`, r
 
 **Cross-Dimension Behaviour**
 
-**What machine-broken means.** A block break counts as a player's only when the breaker is a `ServerPlayer` that is not a `FakePlayer`. Every other break is machine-broken: a machine, a fake player, or a break with no breaker at all.
+**What machine-broken means.** A block break is a hand break only when the breaker is a `ServerPlayer` whose `isFakePlayer()` is false and who is the player the server's player list holds for that UUID. The second check catches a mod's fake player that extends `ServerPlayer` without overriding `isFakePlayer()`. Every other break is machine-broken: a machine, a fake player, or a break with no breaker at all. One field computed once per break carries the answer, and Resonance, the per-block travel stats, Tempered, Ascending Edge and Echoing Edge all read it. A block broken in an FTB Ultimine chain is a hand break (§9).
 
 Blocks broken by machines in a ticket-loaded Vault chunk **never award Resonance**, in any quantity, under any node. This is a deliberate hard rule, not a balance value to tune: the level curve (§4.3) is calibrated against a player mining by hand, and a quarry in a 60%-ore dimension exceeds that by orders of magnitude. Allowing even a fraction would collapse a 100-hour progression into an evening on any tech pack.
 
@@ -333,26 +333,27 @@ A five-person team progresses 40% faster than a solo player, not 500% faster. Th
 
 ### 4.3 Level Thresholds and Skill Points
 
-**Levels and skill points are decoupled.** Earlier drafts set the level cap equal to the tree's total skill-point cost, awarding one point per level. With a 225-point Resonance tree that meant a 225-level track, and since the highest level requirement anywhere in §6 is 30, every gate in the entire mod opened inside the first hour of a 100-hour curve. The level requirements in §6 were authored for a ~30-level track; the track now matches them.
+**Levels and skill points are decoupled.** The level cap is 30 and the rings in §6 run from 0 to 30 (keystones at 18 to 26; Ore Working's last Mekanism-tag nodes at 25 and 30), so the level track paces when nodes open, and the points decide how much of the tree a team can hold.
 
-**Dynamic calculation (performed in code at startup, not configured manually):**
+**Calculation (performed in code at startup, not configured manually):**
 
-1. At startup, sum the skill point cost of every node at every tier in the tree. Call this `totalTreeCost`.
-2. The level cap is a constant: `LEVEL_CAP = 30` for both trees.
-3. Points awarded per level: `pointsPerLevel = ceil(totalTreeCost / LEVEL_CAP)`. Reaching level 30 therefore grants at least enough points to buy the whole tree. Adding or removing nodes automatically adjusts the award, not the cap.
-4. From config, read `target_play_hours` (default: 100) and `curve_divisor` (default: 1.0) from the `[resonance]` block in §10. Both are read once at server start; changing either requires a restart, because moving a threshold mid-session would move it under teams that had already passed it.
-5. Calculate average Resonance per hour for a **solo** player: `resonancePerHour = averageOresPerHour * weightedAverageResonancePerOre`. `averageOresPerHour` is a **constant in code**, not config — it measures how fast a player mines rather than expressing a preference, so an admin has no way to know the right value and a wrong one silently distorts the whole curve. The knob a server owner wants is `curve_divisor` in the next step.
+1. The level cap is a constant: `LEVEL_CAP = 30` for both trees.
+2. Points awarded per level are a constant: `POINTS_PER_LEVEL = 5`, so a team has 150 points at level 30. Every node costs 1 point (§6), so 150 points buy 150 nodes. The server sends the value to clients with the team's progress.
+
+   **Pinned, not derived (Nick, 2026-10-26).** The tree holds 193 to 199 nodes in a vanilla pack and 207 to 213 in FTB Evolution 2 (§6.1 Totals). A team therefore owns 75% to 78% of a vanilla tree at level 30, and 70% to 72% of the pack's, which is about 85% and 82% of the nodes that are not travel. Deriving the award as `ceil(0.7 × loadedNodeCount / 30)` gives 5 today but turns into 6 at 215 loaded nodes, two to eight more than the pack's tree (fewer than Ore Working's three Mekanism-tag nodes), and at 6 a level a team owns nearly every node that is not travel by level 30, so routes stop mattering. With 5 pinned, adding content lowers the share owned, which is visible and can be argued about; a rounding flip is neither. Every level up to 30 buys something. The tiered tree this replaces could be bought whole by level 26, leaving levels 27 to 30, about 47 hours, with nothing to buy.
+3. From config, read `target_play_hours` (default: 100) and `curve_divisor` (default: 1.0) from the `[resonance]` block in §10. Both are read once at server start; changing either requires a restart, because moving a threshold mid-session would move it under teams that had already passed it.
+4. Calculate average Resonance per hour for a **solo** player: `resonancePerHour = averageOresPerHour * weightedAverageResonancePerOre`. `averageOresPerHour` is a **constant in code**, not config — it measures how fast a player mines rather than expressing a preference, so an admin has no way to know the right value and a wrong one silently distorts the whole curve. The knob a server owner wants is `curve_divisor` in the next step.
 
    Both inputs are **derived from the §3.1 baseline distribution, not chosen independently**. A player tunnelling with an enchanted pickaxe sustains roughly 7,200 blocks an hour once travel and inventory handling are counted against continuous breaking; at the 3% stone-band density that is **220 ore an hour**. `weightedAverageResonancePerOre` reads the same 68/25/7 rarity shares the generator places, counted as placed blocks. If either the density or the mix changes, this step changes with it — otherwise the curve is priced for a Vault that does not exist, and nothing in play says so.
-6. Total Resonance needed: `totalResonance = resonancePerHour * targetPlayHoursResonance / curve_divisor`. Because the divisor is applied here, before the distribution in step 7, it scales every level threshold by the same factor: the 100:1 last-to-first ratio and the milestone spacing below are preserved exactly, and every level requirement in §6 keeps its intended pacing. This is the supported way to make Ore Vault a 40-hour mod rather than a 100-hour one, without touching node costs or the level cap.
-7. Distribute `totalResonance` across the 30 levels using an exponential curve where the last level costs `LAST_TO_FIRST_RATIO` (100) times the first:
+5. Total Resonance needed: `totalResonance = resonancePerHour * targetPlayHoursResonance / curve_divisor`. Because the divisor is applied here, before the distribution in step 6, it scales every level threshold by the same factor: the 100:1 last-to-first ratio and the milestone spacing below are preserved exactly, and every ring in §6 keeps its intended pacing. This is the supported way to make Ore Vault a 40-hour mod rather than a 100-hour one, without touching the tree or the level cap.
+6. Distribute `totalResonance` across the 30 levels using an exponential curve where the last level costs `LAST_TO_FIRST_RATIO` (100) times the first:
 ```
 levelCost(n) = baseCost * (growthFactor ^ n)
 growthFactor = LAST_TO_FIRST_RATIO ^ (1 / (LEVEL_CAP - 1))
 ```
 `baseCost` is derived so the sum across all levels equals `totalResonance`, with the final level absorbing rounding drift.
 
-8. This array of level costs is computed once at server start and stored.
+7. This array of level costs is computed once at server start and stored.
 
 **Resulting pacing** (100-hour target, 30 levels, ratio 100):
 
@@ -360,12 +361,13 @@ growthFactor = LAST_TO_FIRST_RATIO ^ (1 / (LEVEL_CAP - 1))
 |---|---|---|
 | First nodes purchasable | 1–2 | < 1 |
 | Mid-tree branches open | 8–10 | 3–5 |
-| Vault Expansion keystone | 18 | ~15 |
-| Tree fully purchasable | 30 | 100 |
+| Vault Expansion keystone, for a team heading straight for it | 18 | ~15 |
+| Vault Expansion keystone, for a team that does not aim for it | about 29 | about 85 |
+| About 70% of the tree owned (150 points) | 30 | 100 |
 
 **What "100 hours" means.** A team that buys nodes as it earns the points (Nick, 2026-10-26). The curve above is derived for a miner who buys nothing, and every node that raises ore or Resonance shortens it. When T14's measurements show by how much, the curve is stretched to fit and the nodes keep their strength.
 
-**Pacing check.** The 7,200 blocks an hour in step 5 is a derivation until a timed session measures it. Before any node effect merges, one player mines for 30 minutes in freshly generated chunks with zero points spent and nothing bought, using a tool the Balancer names. Each figure must land within ±20% of its derived value:
+**Pacing check.** The 7,200 blocks an hour in step 4 is a derivation until a timed session measures it. Before any node effect merges, one player mines for 30 minutes in freshly generated chunks with zero points spent and nothing bought, using a tool the Balancer names. Each figure must land within ±20% of its derived value:
 
 | Measure | Band |
 |---|---|
@@ -380,29 +382,41 @@ Ore per hour outside its band means the curve is re-derived before any node effe
 
 ### 4.4 Spending Skill Points
 
-Skill points are spent in the Resonance tree tab of the Tome of the Deep Seam. Clicking an available node spends one skill point (or more for premium nodes — see node definitions) and unlocks that node immediately. Effects take place immediately. For nodes that affect chunk generation, newly generated chunks will reflect the node's effect; already-generated chunks are unchanged.
+Skill points are spent in the Resonance tree tab of the Tome of the Deep Seam (§8). **Every node costs 1 point** (Nick, 2026-10-26). A node can be bought when all of these hold:
 
-**Refund:** Node-by-node refund is available at a cost of Minecraft XP:
+- it touches the start or a node the team owns (§6 adjacency);
+- the team's level is at least the node's ring (§6);
+- the team has an unspent point;
+- no exclusive partner of it is owned (§6);
+- it is not hidden (§6, mod-gated nodes).
+
+The effect applies at once. A node that changes chunk generation applies to chunks generated afterwards; chunks already generated are unchanged (§3.1). Shift-clicking buys a whole highlighted path in one confirmed step (§8), and the server checks each node of the path in order by the same rules. Every online team member is told what was bought and by whom.
+
+Unspent points are `5 × level − owned visible nodes`, derived and never stored (§11). If a later version of the tree leaves that number below zero, buying is blocked until it is positive again; nothing is refunded automatically.
+
+**Refund.** A node can be refunded when every other owned node stays connected to the start without it. The check is a breadth-first search from the start over owned nodes, not a leaf-only rule: where paths form a loop, a node inside the loop can go as long as the loop still joins up. There are no cascades. A refund that would cut nodes off is refused, and the Tome names the nodes it would strand. When a node cannot be refunded, the Tome always says why.
+
+Refunds cost Minecraft XP levels:
 
 ```
-refundCost = REFUND_XP_PER_POINT * tierSkillPointCost      // REFUND_XP_PER_POINT = 3
+REFUND_XP_PER_NODE     = 3     // any node, travel included
+REFUND_XP_PACT         = 12
+REFUND_XP_KEYSTONE     = 30
 ```
 
-A 1-point node costs 3 XP levels to refund; the 10-point Vault Expansion keystone costs 30. A full 354-point respec is 1,062 levels — a serious commitment, but achievable, and always proportional to what is actually being undone.
+Moving a route already costs its length: rerouting a 10-node path is 30 levels. Pacts and keystones cost more because a flat 3 levels would let a team dodge their downside: refund Bedrock Communion before a trip through the stone band, where its penalty applies, and buy it again after, and a keystone becomes a toggle. At 30 levels that trick costs what the 10-point keystone of the tiered tree cost to refund.
 
-The previous formula (`investedPoints / totalTreeCost * 50`) priced every node identically regardless of what it cost, which made a single early mistake nearly free and a late-game respec effectively impossible (~3,250 levels). Because several nodes are exclusive pairs and one-way forks (§6.1), permanent-feeling refunds would have turned every fork into a trap.
+**Refunds happen outside the Vault only**, the same rule as tradeoffs and fork options (§6), so a node cannot be dropped for one vein and bought back for the next. Every online team member is told who refunded what.
 
-**Fork options are free both ways.** A `[FORK OPTION]` costs 0 skill points to pick, so it costs 0 XP
-to unpick — a free choice that is expensive to reverse is a trap, and the fork is meant to be a
-decision you can revisit as the build changes. Refunding a fork *parent* is priced normally and
-clears the chosen option along with it.
+**Free undo window.** A node bought within the last 60 seconds can be refunded for no XP, so a misclick costs nothing. The window is session state, held in memory like the §11 Vault session state, not saved. Sixty seconds is long enough to see a misclick and too short to use: refunds happen only outside the Vault, so buying a keystone, mining with it and refunding it free would buy under a minute of mining.
 
-**Anchors are never refunded.** They are not bought, hold no points, and unlock from points spent. An
-anchor can therefore re-lock: refund enough of the tree and a cluster closes behind you. Nodes already
-purchased inside a closed cluster keep working — the gate governs buying, not keeping — but nothing
-further in it can be bought until the spend is back above the threshold.
+**Free respec after a reset.** For 10 minutes after a dimension reset (§3.5) every refund costs no XP. The end of this window is saved as `freeRefundUntil` (§11).
 
-**Free respec window:** refunds cost nothing for 10 minutes after a dimension reset (§3.5).
+**Fork options are free both ways.** A fork option is a petal, not a node (§6): it costs nothing to pick and nothing to unpick, and swapping is allowed only outside the Vault. A free choice that is expensive to reverse is a trap, and the fork is a decision a team can revisit between trips. When the team refunds its last node of a fork parent, the choice is cleared with it. A choice that some owned nodes depend on cannot be swapped away until those nodes are refunded: Ore Working's nodes 4 to 6 work only with Ore Doubling, so a team holding any of them refunds them (at the normal price) before it can choose Smelter's Intuition.
+
+**Exclusive pairs.** To swap Greedy Seams for Resonant Overload, refund the leaf (12 levels, a pact) and buy the other (1 point). Both hang off the same junction (§6), so no other node is lost.
+
+The XP price replaced a formula that priced every refund the same whatever it undid (`investedPoints / totalTreeCost * 50`), which made an early mistake nearly free and a late respec nearly impossible. Several nodes are exclusive pairs and forks (§6.1), and permanent-feeling refunds would turn each of them into a trap.
 
 ---
 
@@ -438,37 +452,49 @@ The two level tracks (Resonance level and Animus level) are completely independe
 
 Identical to Resonance: `pointsPerLevel` points per level (§5.2), spent in the Mob tree tab. Refund costs scale with total points invested in the Mob tree specifically, not the combined total.
 
+The Animus tree below is still written in the tiered form the Resonance tree had before 2026-10-26 (costs, level requirements, prerequisites). It is redesigned to the §6 rules when the Animus epic is scheduled; until then its costs and `ceil(totalAnimusTreeCost / 30)` describe intent, not the model to build.
+
 ---
 
 ## 6. Skill Trees — Complete Node Definitions
 
 ### Notation
 
-- **Cost:** Skill points required to purchase this tier
-- **Level req:** Minimum team Resonance or Animus level required to purchase this tier (cap: 30 — see §4.3)
-- **Prereq:** Nodes that must be unlocked before this tier is available
-- All costs and level requirements are defined as constants in a single `NodeCosts.java` file for easy adjustment
+The Resonance tree is a Path of Exile style passive tree (Nick, 2026-10-26; `DESIGN_LOG.md` 2026-10-26). It replaces the tree of named clusters behind points-spent anchors that this section described before. The rules:
 
-**Node classes and marks.** In deliberate imitation of the Path of Exile passive tree and the Diablo 4 skill paths, every node has exactly one **class** and any number of **marks**. The eight classes are small, anchor, notable, keystone, pact, growth, fork parent and fork option; class decides how the node is drawn (§8). The three marks are tradeoff, exclusive and Ultimine only; a mark adds a rule to a node of any class.
+- **One point a node.** Every node costs exactly 1 skill point. A node is one step on the tree; there are no multi-point tiers.
+- **Start.** The tree has one start node at its centre. The team owns it from the beginning; it has no effect and is never refunded.
+- **Adjacency.** A node can be bought when an edge joins it to the start or to a node the team owns. One owned neighbour is enough, so a team can walk through a wheel without finishing it. There are no other prerequisites.
+- **Distance (`d`).** A node's distance is the fewest nodes on a path from the start to it, counting the node itself, so it is the fewest points that can buy it. It is computed by breadth-first search when the layout loads. Distance is the control for power: the stronger a node, the further out it sits.
+- **Ring.** Every node carries an authored ring, which is its level floor: a node needs team level of at least its ring. For a node that existed before the PoE tree, its ring is the level requirement that tier had (Nick, 2026-10-26: distance factor 1.0). The layout places every node at `d >= max(1, ring)` and draws it in its ring's band; a test fails the build otherwise. The code reads the authored ring, never the distance, so moving a node in the layout cannot silently move its level. A team buying as it goes rarely meets the floor; a team walking straight out to a keystone does (Vault Expansion is ring 18, Bedrock Communion ring 26).
+- **Skill and tier.** Nodes that share a skill id are copies of one skill: Vein Expansion is five nodes. **A skill's tier is the number of its nodes the team owns**, wherever they lie on the tree, and its effect table in §6.1 is keyed by that count. Tier is derived from the owned node ids and never stored. Copies are placed in ring order: no copy sits nearer the start than a copy with a lower ring. Every copy of a skill has the same icon.
+- **Wheel.** A group of six rim nodes around a notable at the centre. The notable is reached only from the rim node opposite the wheel's entry, and the wheel's exits leave from its two shoulders, so a path can pass through a wheel without buying its notable. A rim holds tier nodes of several skills at about the same ring, plus one or two travel nodes; one skill's tiers run outward along one arm across successive wheels, since a skill's rings are too far apart to share one wheel. A notable is always a single node. The area around the start is a group of nodes rather than a wheel, with at least four growth nodes next to the start so level 1 has obvious picks.
+- **Fork.** A fork parent is an ordinary skill whose nodes do nothing until an option is chosen (§6.1 Forks). Its options are petals: drawn beside the parent's lowest-ring node, the fork's `petalAnchor` in the layout, and joined to nothing. A petal has no edges, is never on a path and costs no points, so choosing an option can never open or block a route.
+- **Exclusive pair.** Two single nodes that hang as leaves off one junction node, at the same ring. Owning one locks the other. The travel nodes leading to them lie before the junction, so locking a leaf never strands anything.
+- **Mod-gated nodes.** A node whose effect needs a mod, or a tag only a mod fills, sits on a dead-end leaf or spur. When the mod is absent it is hidden: not drawn, not counted, not buyable, never shown as locked. Because nothing lies beyond it, hiding it never changes another node's distance or what can be reached. A node hidden because its mod or tag is missing that a team already owns stays in its save, dormant: it has no effect and does not count as spent, and it works again if the mod returns. A node hidden by a fork choice is different: it still counts as spent, and the choice cannot be swapped away while the team owns it (§4.4), so a swap can never turn spent points into free ones.
+- **Saved state.** The team's tree is saved as `{dataVersion, owned[], forkChoice{}, freeRefundUntil, pinnedNode, pinnedBy, boughtBy{}}`: the owned node ids, the chosen option per fork, the end of the free respec window after a reset (§4.4), the team's shared pin (a nullable node id and the UUID of the member who set it; absent means no pin) and, per owned node, the UUID of the member who last bought it (absent means empty). On load a pin whose node is gone or hidden is dropped. Nothing derived is saved: tiers, points spent and unspent, and distances all follow from `owned` and the layout. On load, an id the layout no longer has is dropped, which returns its point, and an owned node no longer connected to the start after a layout change is pruned for free. Tradeoff toggles are per player and live on `PlayerStats` (§11).
+- **Layout data.** The tree's shape is authored data, not code: a JSON resource in the mod jar, not a datapack, so a server and its clients always read the same file. It lists every node (id, skill, class, marks, ring, the mod or tag it requires, exclusive group, drawing position) and every edge, plus each fork's `petalAnchor`. Positions are for drawing only; the rules read edges and rings. The server sends the layout's hash at login so a client with a different layout is caught. It syncs ownership and the hidden nodes as two bitsets in layout order, plus the fork choices and the pin, and resends all of them, with the Ascending Edge ladder, on `OnDatapackSyncEvent` (each join and each `/reload`). Tests over the file pin the rules above: every node's distance at least its ring, the copies of a skill in ring order, every mod-gated node on a dead end, exclusive leaves off one junction, petals with no edges, no edge through another node.
+
+**Node classes and marks.** Every node has exactly one **class** and any number of **marks**. The classes are small, travel, notable, keystone, pact, growth and fork parent; fork options are petals, not nodes. Class decides how the node is drawn (§8). The marks are tradeoff, exclusive and requires; a mark adds a rule to a node of any class.
 
 | Class | Meaning |
 |---|---|
-| *(no tag)* | **Small node.** A tiered percentage bonus with no downside. These are the filler you path through — individually modest, collectively the bulk of the tree. |
-| **[ANCHOR]** | The head of a cluster. **Not purchasable and free.** Unlocks once enough skill points have been spent in the tree, and gates everything in its cluster. |
-| **[NOTABLE]** | A single-tier node granting a *distinct mechanic* rather than a bigger number. Always pure upside. |
-| **[KEYSTONE]** | Build-defining, expensive, and **always carries a real downside**. A keystone should change how you mine, not just how fast. All keystones live in the Mastery cluster at the bottom of the tree. |
-| **[PACT]** | A bargain struck early. Build-defining and always carrying a real downside, exactly like a keystone, but bought from an ordinary cluster instead of from behind the 160-point Mastery gate. Pacts exist because three of the tree's sharpest choices are only interesting while they are cheap: Greedy Seams undercutting Ore Doubling is a decision at 4 points and nothing at all at 160. Keystones stay bottom-only; pacts are how an early node gets to be dangerous. |
+| *(no tag)* | **Small node.** One tier of a skill: its node adds one to the skill's count. Pure upside. These are the bulk of the tree's real nodes. |
+| **[TRAVEL]** | **Travel node.** One step of a travel stat (§6.1 Travel stats), sized so each node is felt on its own. Travel nodes sit on the paths between real nodes. |
+| **[NOTABLE]** | A single node granting a *distinct mechanic* rather than a bigger number, usually at the centre of a wheel. Always pure upside. |
+| **[KEYSTONE]** | Build-defining and **always carries a real downside**. A keystone should change how you mine, not just how fast. Keystones sit at rings 18 to 26, at the far ends of the tree. |
+| **[PACT]** | Build-defining and carrying a real downside, like a keystone, but at a low ring (6 or 13). Pacts exist because some of the tree's sharpest choices are only interesting while they are cheap: Greedy Seams undercutting Ore Doubling is a decision at level 6 and nothing at level 26. |
 | **[GROWTH]** | Strong immediately; **its reward stops mattering as the team grows**, because the bonus is a flat number or a hard level cutoff. A growth node never switches off (Nick, 2026-10-26). The point stays spent. That is the price of an easier start, and refunding it once it stops mattering would make all five free picks. The Tome greys the node and labels it **Outgrown** once its condition can no longer be met; no chat message announces it. |
-| **[FORK PARENT: name]** | A tiered node that costs points and **does nothing until specialized**. Its tiers act through whichever option is chosen. |
-| **[FORK OPTION: name]** | **Costs 0 points.** Requires its parent at tier 1 and decides what the parent's tiers do. One option at a time; siblings lock until refunded, refunding is free, and swapping is allowed **only while outside the Vault.** |
+| **[FORK PARENT: name]** | A skill whose nodes **do nothing until an option is chosen**. Its tier, the count of its nodes owned, acts through whichever option is chosen. |
+| **[FORK OPTION: name]** | A petal, not a node. **Costs nothing**, can be picked once the team owns a node of its parent, and decides what the parent's tiers do. One option at a time; swapping is free and allowed **only while outside the Vault.** |
 
 | Mark | Meaning |
 |---|---|
-| **[TRADEOFF]** | Toggleable on and off at no cost, **but only while outside the Vault.** |
-| **[EXCLUSIVE: other]** | Cannot be held at the same time as the named node. Unlike a fork, both sides are paid for. |
-| **[ULTIMINE ONLY]** | Only appears if FTB Ultimine is loaded. Hidden entirely otherwise, never shown as locked. |
+| **[TRADEOFF]** | Toggleable on and off at no cost, per player, **but only while outside the Vault.** |
+| **[EXCLUSIVE: other]** | Cannot be held at the same time as the named node. Both sides are paid for, and both are leaves off one junction. |
+| **[REQUIRES: mod or tag]** | Shown only when the named mod is loaded or the named tag has entries. Hidden entirely otherwise, never shown as locked, and always on a dead-end leaf or spur. |
 
-> **Why tradeoffs and fork options can only be changed outside the Vault.** Previously they could be flipped at any moment, which meant no commitment: a player would enable Tithe while mining ore and disable it before touching stone, taking every upside and paying no cost. Requiring the toggle to happen outside makes a tradeoff a loadout you commit to before you delve, which is the whole point of the mechanic, while keeping the freedom to change strategy between trips.
+> **Why tradeoffs, fork options and refunds can only be changed outside the Vault.** Previously they could be flipped at any moment, which meant no commitment: a player would enable Tithe while mining ore and disable it before touching stone, taking every upside and paying no cost. Requiring the change to happen outside makes a build a loadout you commit to before you delve, which is the whole point, while keeping the freedom to change strategy between trips.
 
 ---
 
@@ -476,84 +502,43 @@ Identical to Resonance: `pointsPerLevel` points per level (§5.2), spent in the 
 
 #### Shape of the tree
 
-The tree is a **run of clusters**, not a grid of branches. Each cluster is a named stage of the
-miner's craft, and each one is built around an **anchor**: a node you cannot buy, which unlocks once
-you have spent enough skill points anywhere in the tree. The anchor sits at the middle of its
-cluster and the cluster's nodes **radiate outward from it**, on rings. The anchors themselves run
-down a single vertical spine, in the order below.
+A start node at the centre, nodes joined by edges, and stronger nodes further out. Power is placed by distance, not by price: every node costs one point, and the level a node needs is its ring, which is also the nearest it may sit to the start. Tiered skills from the earlier tree became one node per tier with the effect values unchanged; their rings are the old level requirements. Between them run travel nodes, each a felt step of one of twelve travel stats. Flavour notables and keystones, some of them for mods in Nick's pack, sit on leaves and at the far ends.
 
-Distance from the anchor means one thing: how many prerequisites deep inside that cluster the node
-is. Nodes with nothing to wait for sit on the first ring around the anchor; a node that requires one
-of those sits on the second, and so on. The grid this replaces put unrelated nodes directly above
-one another — Gravel Purge sat under Common Ore Boost while both were available from the start — so
-the layout implied a prerequisite chain that did not exist.
+Old prerequisites are gone, with a few that carried meaning kept as placement: the dependent node sits on a leaf whose only neighbour is the node it depends on, so adjacency reproduces the rule. These are Second Wind: Homeward off Second Wind, Echo Chamber off the furthest Vault Echo node, Prospector's Eye off Vein Sight (Nick, 2026-10-26), and Vault Smith off Vault-Forged. Vein Sight lies before Vault Echo on every path from the start, so finishing a vein is something a team can plan before the nodes that pay for it (`DESIGN_LOG.md` 2026-09-07, Pacts, growth nodes, and the Claim split). Every other old prerequisite is dropped; distance covers it.
 
-| Cluster | Anchor unlocks at | What it is |
+**The authored layout lives in a data file** (§6 Layout data), owned by UI/UX, and is not drawn in this document. No renderer code is written until a preview of that file, rendered with `tools/tree-preview` at GUI scales 2, 3 and 4, has Nick's yes (`CLAUDE.md`: anything visual needs his yes on a rendered preview). The two-band preview of 2026-10-26 used one faint ring per level and came out about 2,400 tree pixels across for the whole tree.
+
+#### Totals
+
+Every count below is derived, not measured, and the hours rest on the unmeasured 220 ore an hour (§4.3).
+
+| | Vanilla pack | FTB Evolution 2 |
 |---|---|---|
-| **Prospecting** | 0 points | Reading the rock. Open from the first point. |
-| **Excavation** | 15 points | Moving rock in bulk, and choosing what shape it comes in. |
-| **Assay** | 39 points | Telling one ore from another; what the stone remembers. |
-| **Metallurgy** | 71 points | Getting more out of each ore than the ore contains. |
-| **Claim** | 89 points | The ground is yours. Holding it, reaching into it, being kept by it. |
-| **Deep Lore** | 110 points | The Vault answering back, and what it gives you for finishing what you started. |
-| **Broad Cut** | 39 points | Wide-swing mining. Absent entirely without FTB Ultimine. |
-| **Mastery** | 160 points | Keystones only, at the bottom of the tree. |
+| Skill tier nodes | 118 | 124 (6 for FTB Ultimine) |
+| Flavour notables | 14 | 21 |
+| New keystones | 3 | 4 |
+| Real nodes | 135 | 149 |
+| Travel nodes | 58 to 64 | 58 to 64 |
+| Tree | 193 to 199 | 207 to 213 |
+| Points at level 30 | 150 | 150 |
+| Share of the tree owned at level 30 | 75% to 78% | 70% to 72% |
+| Share of real nodes owned at level 30 | about 85% | about 82% |
 
-**Claim is the half of Deep Lore that was about infrastructure rather than echoes.** Chunk tickets,
-automation, navigation and the Vault's death-side interventions were sitting alongside burst
-mechanics under one anchor, which made Deep Lore mean two things and pushed the utility a team wants
-early behind the same gate as Vault Echo's payoff. Split out one step earlier (89 points against Deep Lore's 110), the ladder reads: find
-it, dig it, identify it, work it, hold it, listen to it, master it.
-
-**Anchors are not purchasable and cost nothing.** They gate, they name the stage, and they are what
-the eye follows down the tree. The gate is *points spent in this tree*, not team level: a team that
-has ground to level 25 without committing to anything has not earned Mastery, and a team that has
-spent 160 points has, whatever their level says. Level requirements still apply per node, as before.
-
-Gate values are stated in points and are pinned to a fraction of the tree's total cost rather than to
-absolute numbers, because that total moves whenever nodes are added: 0% / 4% / 11% / 11% / 20% / 25% /
-31% / 45% for Prospecting, Excavation, Assay, Broad Cut, Metallurgy, Claim, Deep Lore and Mastery. Each
-gate is that fraction of `totalTreeCost` (§4.3), **rounded up**. `totalTreeCost` counts every node in the
-registry, including the Ultimine-only and Mekanism-only content, and is 354, which gives the points in
-the table above. With neither soft dependency loaded, 304 points can be bought, so Mastery opens at 160
-of 304.
-
-The point values are derived in code from `totalTreeCost`, never written down as constants, so the two
-cannot drift, and a test pins the derived numbers (T8a). If a change to the tree moves the total, the
-gates in this section and in §13 are restated in the same PR.
+Ore Working's three Mekanism-tag nodes add 3 where the `c:clumps/`, `c:shards/` and `c:crystals/` tags are filled (§9). The real-node shares are estimates; the Balancer's model was last run before the second round of flavour nodes. A value-first team leaves a few far ends unbought at level 30, and which far end a team skips is the build choice the tree is meant to create.
 
 #### Forks
 
-A fork is now **one paid node plus free specializations**, not a row of rival nodes:
+A fork is **one skill plus free petals**:
 
-- The **fork parent** is an ordinary tiered node. It costs points and has **no effect at all** until
-  specialized. Buying it is committing to the mechanic; it is not yet committing to a flavour of it.
-- Each **fork option** costs **0 points**, requires the parent at tier 1, and decides what the
-  parent's tiers actually do. Exactly one option may be active; the siblings lock until refunded.
-- Refunding a fork option is **free** — it cost nothing, so unpicking it costs nothing. Refunding the
-  parent follows the normal §4.4 XP price and clears the option with it.
+- The **fork parent** is an ordinary skill, one node per tier. Its nodes have **no effect at all** until an option is chosen, and the Tome washes every one of them as inert until then (§8). Buying it commits to the mechanic, not yet to a flavour of it.
+- Each **fork option** is a petal beside the parent's lowest-ring node: it costs nothing, has no edges and decides what the parent's tiers do. Exactly one option may be active.
+- Unpicking an option is **free**. Refunding the parent's nodes follows the normal §4.4 price; when the last one goes, the choice is cleared.
 
-**Tiering is not lost — it moved.** Every fork that was tiered is still tiered to exactly the same
-depth; the tiers now sit on the parent and the option says what each one does. Common Focus was
-T1/T2/T3 at +25/50/80%, and it still is: Ore Attunement is a three-tier node and Common Focus is a
-table keyed by which of those three tiers you have bought. The number of decisions is unchanged, the
-number of paid steps is unchanged, and the per-tier effects are the original values moved verbatim.
-What changed is that you buy the tiers once instead of once per rival branch.
+**An option must cover every tier its parent has.** A parent tier with nothing behind it in the chosen option is a paid step that does nothing — Hoarder's Instinct had exactly that gap when the forks were converted and gained a third tier to close it. The only sanctioned exception is a tier range the option itself gates, like Ore Working's Mekanism-tag nodes, which are hidden rather than empty.
 
-**An option must cover every tier its parent has.** A parent tier with nothing behind it in the
-chosen option is a paid step that does nothing — Hoarder's Instinct had exactly that gap when the
-forks were converted and gained a third tier to close it. The only sanctioned exception is a tier
-range the option itself gates, like Ore Working's Mekanism tiers, which are hidden rather than empty.
+**Swapping an option is free, but only outside the Vault.** Same rule as tradeoffs (§6 notation), for the same reason: inside, a player would re-specialize per vein — Rare Focus for the deepslate layer, Common Focus on the way back up — and take every upside of a choice they never actually made. The restriction is on *changing* an option, not on holding one; nothing about a build stops working when you enter.
 
-**Swapping an option is free, but only outside the Vault.** Same rule as tradeoffs (§6 notation), for
-the same reason: inside, a player would re-specialize per vein — Rare Focus for the deepslate layer,
-Common Focus on the way back up — and take every upside of a choice they never actually made. Outside,
-the fork is a loadout you commit to before you delve and can rethink between trips. The restriction is
-on *changing* an option, not on holding one; nothing about your build stops working when you enter.
-
-This replaces three sequential Ore Boost nodes with one Ore Attunement node and three choices, which
-is what the fork was always supposed to be: the old chain stacked, so everyone bought all three in
-the same order and nothing was ever decided.
+Making each option its own paid branch was rejected on 2026-09-03 ("buy the tiers once instead of once per rival branch") and again with the PoE tree: it would make one fork cost three times its depth.
 
 #### Reserved node ids
 
@@ -572,28 +557,23 @@ across tree changes after release is a stretch goal, not a requirement.
 
 #### Reading a node
 
-Every node in this section carries its class and marks in its tag line — the classes `[ANCHOR]`,
-`[NOTABLE]`, `[KEYSTONE]`, `[PACT]`, `[GROWTH]`, `[FORK PARENT: name]` and `[FORK OPTION: name]`, and
-the marks `[TRADEOFF]`, `[EXCLUSIVE: other]` and `[ULTIMINE ONLY]` — and the Tome draws each class
-distinctly (§8). A node with no class tag is a small node.
+Every entry below carries its class and marks in its tag line, as listed in §6 notation, and the Tome draws each class distinctly (§8). An entry with no class tag is a skill of small nodes. A skill's table has one row per node: the **Tier** column is the count of the skill's nodes owned that the row's effect needs, and the **Ring** column is that node's ring, its level floor and the nearest it may sit to the start (§6). A single-node entry has one row.
 
-#### CLUSTER: Prospecting
+The nodes are listed in this order: the skills carried over from the tiered tree, with their pacts, tradeoffs, forks and growth nodes; then the travel stats; then the flavour notables; then the keystones. The order is for reading. It is not the layout, and nothing in the tree is grouped or gated by it.
 
-> Reading the rock, and surviving long enough to keep reading it. Nothing here requires a decision. Open from the first skill point.
-
-> Prospecting is deliberately the widest cluster: it is the only one open from zero, and it holds all five `[GROWTH]` nodes, which retire out of relevance as the team advances. Its visual weight drops as you progress even though its node count does not.
+#### Skills
 
 **Vein Expansion**
 
 > Ore veins in newly explored chunks are larger: +15% size, then +30%, +50%, +75%, +100%.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +15% vein size | 1 | 0 | None |
-| 2 | +30% vein size | 1 | 2 | Tier 1 |
-| 3 | +50% vein size | 2 | 4 | Tier 2 |
-| 4 | +75% vein size | 2 | 7 | Tier 3 |
-| 5 | +100% vein size | 3 | 10 | Tier 4 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | +15% vein size | 0 |
+| 2 | +30% vein size | 2 |
+| 3 | +50% vein size | 4 |
+| 4 | +75% vein size | 7 |
+| 5 | +100% vein size | 10 |
 
 ---
 
@@ -601,13 +581,13 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Stone and deepslate mined in the Vault drop XP: +1 per block, rising to +2, +3, +4, +5. Tier 2 also gives stone a 10% chance to drop flint, tier 3 makes deepslate pay 0.5 Resonance, tier 4 gives stone a 2% chance to drop a raw common ore nugget, and tier 5 gives it a 0.5% chance to fire a 50 Resonance burst.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Stone drops 1 XP when mined | 1 | 0 | None |
-| 2 | +2 XP; 10% of stone broken drops flint | 1 | 3 | Tier 1 |
-| 3 | +3 XP; deepslate pays 0.5 Resonance per block | 2 | 6 | Tier 2 |
-| 4 | +4 XP; 2% of stone broken drops a raw common ore nugget | 2 | 10 | Tier 3 |
-| 5 | +5 XP; 0.5% of stone broken fires a 50 Resonance burst (Vault Echo T3) | 3 | 14 | Tier 4 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Stone drops 1 XP when mined | 0 |
+| 2 | +2 XP; 10% of stone broken drops flint | 3 |
+| 3 | +3 XP; deepslate pays 0.5 Resonance per block | 6 |
+| 4 | +4 XP; 2% of stone broken drops a raw common ore nugget | 10 |
+| 5 | +5 XP; 0.5% of stone broken fires a 50 Resonance burst (Vault Echo T3) | 14 |
 
 ---
 
@@ -615,9 +595,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > The gravel and clay the Vault generates (§3.1) no longer generate in newly explored Vault chunks.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | No gravel or clay generates | 1 | 1 | None |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | No gravel or clay generates | 1 |
 
 ---
 
@@ -625,16 +605,15 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Hunger drains −20% slower inside the Vault, then −45%, −65%, −85%, then not at all. Tier 2 also adds +20% saturation from food, tier 3 grants Regeneration I for 5 seconds when you eat, tier 4 stops starvation damage and adds +2 max hearts, and tier 5 adds +4 max hearts. The extra hearts apply only inside the Vault.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | −20% hunger drain | 1 | 0 | None |
-| 2 | −45% hunger drain; food restores 20% more saturation inside the Vault | 1 | 3 | Tier 1 |
-| 3 | −65% hunger drain; eating grants Regeneration I for 5 seconds | 2 | 6 | Tier 2 |
-| 4 | −85% hunger drain; no starvation damage; **+2 max hearts inside the Vault** | 2 | 10 | Tier 3 |
-| 5 | Hunger and saturation frozen completely; eating still grants the Regeneration I from Tier 3; **+4 max hearts inside the Vault** | 3 | 15 | Tier 4 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | −20% hunger drain | 0 |
+| 2 | −45% hunger drain; food restores 20% more saturation inside the Vault | 3 |
+| 3 | −65% hunger drain; eating grants Regeneration I for 5 seconds | 6 |
+| 4 | −85% hunger drain; no starvation damage; **+2 max hearts inside the Vault** | 10 |
+| 5 | Hunger and saturation frozen completely; eating still grants the Regeneration I from Tier 3; **+4 max hearts inside the Vault** | 15 |
 
-> Renamed from "Efficient Miner". The tree no longer has a Hunger branch — hunger is one
-> line inside the Prospecting survival group, not a category of its own.
+> Renamed from "Efficient Miner". Hunger is one skill, not a branch of its own.
 >
 > The bonus hearts are an attribute modifier applied on entering the Vault and removed on leaving, so they never follow a player into the overworld. Current health is clamped, not scaled, on removal.
 
@@ -644,10 +623,10 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Fall damage taken inside the Vault is halved, then removed entirely.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Fall damage taken inside the Vault is halved | 1 | 2 | None |
-| 2 | No fall damage inside the Vault | 2 | 6 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Fall damage taken inside the Vault is halved | 2 |
+| 2 | No fall damage inside the Vault | 6 |
 
 ---
 
@@ -655,12 +634,12 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Below Y=32 inside the Vault you cannot drown. Tier 2 adds immunity to fire and lava damage below Y=32.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Immune to drowning below Y=32 inside the Vault | 2 | 12 | Miner's Constitution T3 |
-| 2 | Also immune to lava and fire damage below Y=32 inside the Vault | 4 | 18 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Immune to drowning below Y=32 inside the Vault | 12 |
+| 2 | Also immune to lava and fire damage below Y=32 inside the Vault | 18 |
 
-> Tier 2 is the counterweight to **Molten Seam**: a team that turns lava generation on has a way to stop it being a death sentence, but has to pay 6 points across two tiers for it.
+> Tier 2 is the counterweight to **Molten Seam**: a team that turns lava generation on has a way to stop it being a death sentence, but has to walk out to rings 12 and 18 for it.
 
 ---
 
@@ -668,9 +647,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > +(30 − team level)% ore drops: +28% at team level 2, +10% at level 20, nothing at level 30. Outgrown at the level cap.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | `(30 − teamLevel)%` bonus ore drops, floor 0 | 1 | 0 | None |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | `(30 − teamLevel)%` bonus ore drops, floor 0 | 0 |
 
 > Enormous at level 2, exactly zero at level 30. Cannot be a late-game problem because the ceiling is the level cap itself.
 
@@ -680,9 +659,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > The first 100 ore blocks of each Vault trip pay double Resonance. The 101st onward pay normally.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | The first 100 ore blocks of each Vault trip pay double Resonance | 1 | 0 | None |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | The first 100 ore blocks of each Vault trip pay double Resonance | 0 |
 
 > A flat cap against rising throughput: transformative when a trip yields 150 ore, a rounding error when it yields 3,000.
 
@@ -692,9 +671,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > +50% Resonance from all ore while every team member currently inside the Vault has an all-time deepest Y above 100. Members outside the Vault are not counted. A member who has been below Y=100 once stops the bonus whenever they are inside.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | +50% Resonance from all ore while every team member inside the Vault has an all-time deepest recorded Y above 100; members outside are ignored | 1 | 0 | None |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | +50% Resonance from all ore while every team member inside the Vault has an all-time deepest recorded Y above 100; members outside are ignored | 0 |
 
 > Reads `deepestY` from `PlayerStats` for each member inside the Vault. It is a lifetime record and never decreases, so a member's first real delve ends the bonus for any trip they are on, and no refund or reset brings it back. That is the point. Counting only the members inside follows Nick's answer of 2026-10-26.
 
@@ -704,9 +683,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Twelve large copper or iron veins, about 50 blocks each, generate in every Vault chunk first generated after purchase, spread evenly through the stone band's height.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | 12 extra copper or iron veins of configured size 24 (about 51 blocks) per newly generated chunk, spread through the stone band | 1 | 0 | None |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | 12 extra copper or iron veins of configured size 24 (about 51 blocks) per newly generated chunk, spread through the stone band | 0 |
 
 > Exists so an unlucky first hour does not read as a broken mod. A guide vein is three to four times the size of a baseline common vein, so a player can tell one apart. At the 3% baseline it adds about 32% to a chunk's ore and about 18% to its Resonance; with Vein Expansion and Vein Proliferation at tier 5 it adds about 7%. A flat count, so it matters less as the team grows, and it never switches off. The Survey panel shows guide-vein ore mined this trip. Chunks generated before purchase are not changed; they get guide veins only after a dimension reset (Nick, 2026-10-26; §3.1).
 
@@ -716,29 +695,25 @@ distinctly (§8). A node with no class tag is a small node.
 
 > 5% of stone blocks you break in the Vault drop a raw common ore, while the team is below level 12. Machine-broken stone never rolls it.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | 5% of stone blocks broken in the Vault drop a raw common ore while team level < 12 | 1 | 1 | None |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | 5% of stone blocks broken in the Vault drop a raw common ore while team level < 12 | 1 |
 
 > Makes the earliest and least productive mining pay something. Subject to the §3.4 rule: machine-broken stone never rolls this.
 
 ---
 
-#### CLUSTER: Excavation
-
-> Moving rock in bulk, and deciding what shape it comes in. **Anchor unlocks at 15 skill points spent anywhere in the Resonance tree.**
-
 **Vein Proliferation**
 
 > More ore veins per newly explored chunk: +20% count, then +40%, +65%, +90%, +120%. Capped so stone never falls below 40% of a chunk.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +20% vein count | 1 | 2 | Vein Expansion T1 |
-| 2 | +40% vein count | 1 | 4 | Tier 1 |
-| 3 | +65% vein count | 2 | 7 | Tier 2 |
-| 4 | +90% vein count | 2 | 10 | Tier 3 |
-| 5 | +120% vein count | 3 | 14 | Tier 4 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | +20% vein count | 2 |
+| 2 | +40% vein count | 4 |
+| 3 | +65% vein count | 7 |
+| 4 | +90% vein count | 10 |
+| 5 | +120% vein count | 14 |
 
 > **Note:** Vein count is capped such that stone content never drops below 40% of generated blocks, regardless of combined Vein Expansion + Vein Proliferation investment.
 
@@ -748,10 +723,10 @@ distinctly (§8). A node with no class tag is a small node.
 
 > The lowest 30 blocks above bedrock generate ore at 1.5× their band's baseline density (§3.1), raised to 2× at tier 2.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | The lowest 30 blocks above bedrock generate at 1.5× their band's baseline density (§3.1) | 2 | 5 | Vein Proliferation T2 |
-| 2 | The same blocks raised to 2× their band's baseline density | 3 | 9 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | The lowest 30 blocks above bedrock generate at 1.5× their band's baseline density (§3.1) | 5 |
+| 2 | The same blocks raised to 2× their band's baseline density | 9 |
 
 ---
 
@@ -759,21 +734,21 @@ distinctly (§8). A node with no class tag is a small node.
 
 > 10% of the stone blocks touching a vein are converted into that vein's ore, raised to 20% at tier 2. Widens the veins already there rather than adding new ones.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | 10% of the stone blocks touching a vein are converted into that vein's ore | 1 | 3 | Gravel Purge |
-| 2 | Raised to 20% of the stone touching a vein | 2 | 7 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | 10% of the stone blocks touching a vein are converted into that vein's ore | 3 |
+| 2 | Raised to 20% of the stone touching a vein | 7 |
 
 ---
 
 **Vein Shaping** `[FORK PARENT: Vein Shape]`
 
-> Sets the shape ore takes in newly generated chunks. Does nothing on its own: pick Abundance, Vein Singularity or Stratified on the ring outside, and each tier applies that option's row for the tier. Applies after Vein Expansion and Vein Proliferation and overrides both, still subject to the 40% stone floor.
+> Sets the shape ore takes in newly generated chunks. Does nothing on its own: pick Abundance, Vein Singularity or Stratified from the petals beside it, and each tier applies that option's row for the tier. Applies after Vein Expansion and Vein Proliferation and overrides both, still subject to the 40% stone floor.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Shaping applies at its listed strength | 2 | 4 | Vein Proliferation T2 |
-| 2 | Shaping applies at its second-tier strength | 3 | 8 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Shaping applies at its listed strength | 4 |
+| 2 | Shaping applies at its second-tier strength | 8 |
 
 ---
 
@@ -781,7 +756,7 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Through Vein Shaping tier 1: +50% vein count and −20% vein size. Tier 2: +100% count and −20% size. Every chunk has ore in it.
 
-**Costs 0 skill points.** Requires Vein Shaping tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+**A petal, not a node.** Costs nothing, has no edges and lies on no path. Can be picked once the team owns a Vein Shaping node. One option at a time; picking one locks its siblings, and swapping or unpicking is free, outside the Vault only (§4.4).
 
 | Vein Shaping tier | Effect through this option |
 |---|---|
@@ -794,7 +769,7 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Through Vein Shaping tier 1: a chunk's baseline ore budget becomes 1, 2 or 3 veins, equally likely, each vein's rarity drawn from the band's mix, with total volume unchanged. Tier 2: 40% of chunks generate no ore, and the rest generate 1 or 2 veins carrying 2.08 times the baseline, a net +25% of ore. The 40% stone floor still applies.
 
-**Costs 0 skill points.** Requires Vein Shaping tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+**A petal, not a node.** Costs nothing, has no edges and lies on no path. Can be picked once the team owns a Vein Shaping node. One option at a time; picking one locks its siblings, and swapping or unpicking is free, outside the Vault only (§4.4).
 
 | Vein Shaping tier | Effect through this option |
 |---|---|
@@ -805,8 +780,8 @@ distinctly (§8). A node with no class tag is a small node.
 >
 > Replaces the earlier "Motherlode" node, which was mechanically identical to Vein Expansion
 > under a different name. It carried a `[KEYSTONE]` tag while forks were paid nodes; as a free
-> option under Vein Shaping it is a shape choice like its two siblings, and keystones now live
-> only in Mastery.
+> option under Vein Shaping it is a shape choice like its two siblings, and keystones live only at
+> the far ends of the tree.
 
 ---
 
@@ -814,7 +789,7 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Ore generates in rarity-sorted horizontal bands instead of scattered blobs: rare ore only at Y=60 and below, uncommon from Y=61 to Y=150, common from Y=151 to Y=245. In an expanded Vault the rare band runs down to Y=−63. Vein Shaping tier 2 makes each band pick one ore type per chunk, weighted by share, which carries 90% of that band's ore, and narrows the blend at each band edge from 16 blocks to 4.
 
-**Costs 0 skill points.** Requires Vein Shaping tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+**A petal, not a node.** Costs nothing, has no edges and lies on no path. Can be picked once the team owns a Vein Shaping node. One option at a time; picking one locks its siblings, and swapping or unpicking is free, outside the Vault only (§4.4).
 
 | Vein Shaping tier | Effect through this option |
 |---|---|
@@ -829,9 +804,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Every 1,000 blocks broken in a single trip adds +5% Resonance for the rest of that trip, up to +25% at 5,000 blocks. Resets to zero when you leave the Vault, and counts only blocks you break yourself.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Every 1,000 blocks broken in a single trip grants +5% Resonance for the rest of that trip, to +25% | 2 | 7 | Vein Proliferation T1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Every 1,000 blocks broken in a single trip grants +5% Resonance for the rest of that trip, to +25% | 7 |
 
 > Resets to zero on leaving the Vault, so it cannot compound across sessions. Counts only player-broken blocks (§3.4).
 
@@ -841,10 +816,10 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Every 20 minutes inside the Vault grants a Delve stack worth +10% mining speed and −25% hunger drain, up to 2 stacks, raised to 4 at tier 2. A stack only accrues while you have broken a block in the last 60 seconds, and all stacks are lost on leaving.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Every 20 minutes inside the Vault grants a Delve stack, to 2, counting only time in which you have broken a block in the last 60 seconds. Each stack: +10% mining speed, −25% hunger drain | 2 | 7 | Deep Habit T1 |
-| 2 | Stack cap raised to 4 | 3 | 12 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Every 20 minutes inside the Vault grants a Delve stack, to 2, counting only time in which you have broken a block in the last 60 seconds. Each stack: +10% mining speed, −25% hunger drain | 7 |
+| 2 | Stack cap raised to 4 | 12 |
 
 > **AFK guard:** a stack only accrues while you have broken a block in the last 60 seconds. Without it this node pays players for standing still, which is the opposite of what it is for. Stacks are lost on leaving the Vault.
 
@@ -854,9 +829,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > +25% vein size, but every ore block you break has a 3% chance to make the rest of that vein vanish into air with no drops. After 3 triggers in a row the next 10 ore breaks are guaranteed safe; that counter resets on logout. With FTB Ultimine the roll happens once per operation rather than once per block.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +25% vein size, 3% disappearance chance per ore block broken | 2 | 6 | Vein Expansion T2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | +25% vein size, 3% disappearance chance per ore block broken | 6 |
 
 ---
 
@@ -864,9 +839,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Each newly explored chunk has a 50% chance of a lava pool of 5 to 20 lava blocks in the Vault's stone band, inside a two-block netherrack shell so you see one before you break into it. Pools are placed before ore, and no ore generates inside a shell. Ore mined within 8 blocks of lava drops already smelted and pays +25% Resonance. Switching this off stops new pools generating but leaves every pool already placed.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | 50% of newly explored chunks get a lava pool of 5 to 20 blocks in the stone band, in a two-block netherrack shell, placed before ore; no ore inside a shell. Ore mined within 8 blocks of lava drops smelted and pays +25% Resonance | 2 | 8 | Deep Veins T1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | 50% of newly explored chunks get a lava pool of 5 to 20 blocks in the stone band, in a two-block netherrack shell, placed before ore; no ore inside a shell. Ore mined within 8 blocks of lava drops smelted and pays +25% Resonance | 8 |
 
 > The pool chance and size are derived and unplaytested; T9 confirms them.
 >
@@ -880,9 +855,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > +100% ore drops and −50% Resonance from ore. Cannot be held at the same time as Resonant Overload.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | +100% ore drops, −50% Resonance from ore | 4 | 6 | Vein Expansion T1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | +100% ore drops, −50% Resonance from ore | 6 |
 
 ---
 
@@ -890,27 +865,23 @@ distinctly (§8). A node with no class tag is a small node.
 
 > +100% Resonance from ore and −50% ore drops. Cannot be held at the same time as Greedy Seams.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | +100% Resonance from ore, −50% ore drops | 4 | 6 | Vein Expansion T1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | +100% Resonance from ore, −50% ore drops | 6 |
 
-> Together these two form the tree's central axis: **materials now** versus **progression now**, and you must pick a side or neither. Greedy Seams at 4 points deliberately undercuts Ore Doubling T3 (a Metallurgy fork option behind an 8-point parent) on raw yield — buying it early is a real option that costs you the pace of the whole tree. That early-buy option is why both are `[PACT]` rather than `[KEYSTONE]`: behind the 160-point Mastery gate it could not exist.
+> Together these two form the tree's central axis: **materials now** versus **progression now**, and you must pick a side or neither. Greedy Seams at ring 6 deliberately undercuts Ore Doubling at tier 3 (a fork option whose third Ore Working node is ring 16) on raw yield — buying it early is a real option that costs you the pace of the whole tree. That early-buy option is why both are `[PACT]` rather than `[KEYSTONE]`: at a keystone's ring it could not exist. Both are leaves off one junction (§6), and each costs 12 XP levels to refund (§4.4).
 
 ---
 
-#### CLUSTER: Assay
-
-> Telling one ore from another, and knowing what the stone remembers. **Anchor unlocks at 39 skill points spent anywhere in the Resonance tree.**
-
 **Ore Attunement** `[FORK PARENT: Ore Focus]`
 
-> Sets which rarity band the Vault favours. Does nothing on its own: pick Common, Uncommon or Rare Focus on the ring outside, and this node's 3 tiers apply through it. One Focus at a time unless Full Spectrum lifts the restriction.
+> Sets which rarity band the Vault favours. Does nothing on its own: pick Common, Uncommon or Rare Focus from the petals beside it, and this node's 3 tiers apply through it. One Focus at a time unless Full Spectrum lifts the restriction.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Focus applies at its listed strength | 1 | 3 | None |
-| 2 | Focus applies at its second-tier strength | 2 | 6 | Tier 1 |
-| 3 | Focus applies at its third-tier strength | 2 | 10 | Tier 2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Focus applies at its listed strength | 3 |
+| 2 | Focus applies at its second-tier strength | 6 |
+| 3 | Focus applies at its third-tier strength | 10 |
 
 ---
 
@@ -918,7 +889,7 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Through Ore Attunement: +25% common ore vein count at tier 1, +50% at tier 2, +80% at tier 3.
 
-**Costs 0 skill points.** Requires Ore Attunement tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+**A petal, not a node.** Costs nothing, has no edges and lies on no path. Can be picked once the team owns an Ore Attunement node. One option at a time; picking one locks its siblings, and swapping or unpicking is free, outside the Vault only (§4.4).
 
 | Ore Attunement tier | Effect through this option |
 |---|---|
@@ -932,7 +903,7 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Through Ore Attunement: +25% uncommon ore vein count at tier 1, +50% at tier 2, +80% at tier 3.
 
-**Costs 0 skill points.** Requires Ore Attunement tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+**A petal, not a node.** Costs nothing, has no edges and lies on no path. Can be picked once the team owns an Ore Attunement node. One option at a time; picking one locks its siblings, and swapping or unpicking is free, outside the Vault only (§4.4).
 
 | Ore Attunement tier | Effect through this option |
 |---|---|
@@ -946,7 +917,7 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Through Ore Attunement: +30% rare ore vein count at tier 1, +60% at tier 2, +100% at tier 3.
 
-**Costs 0 skill points.** Requires Ore Attunement tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+**A petal, not a node.** Costs nothing, has no edges and lies on no path. Can be picked once the team owns an Ore Attunement node. One option at a time; picking one locks its siblings, and swapping or unpicking is free, outside the Vault only (§4.4).
 
 | Ore Attunement tier | Effect through this option |
 |---|---|
@@ -960,10 +931,10 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Amethyst geodes generate in the Vault at one per 12 newly explored chunks, then one per 6. The overworld rate is roughly one per 24.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | One geode per 12 newly explored chunks | 1 | 4 | Stone Reduction T1 |
-| 2 | One geode per 6 newly explored chunks | 2 | 8 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | One geode per 12 newly explored chunks | 4 |
+| 2 | One geode per 6 newly explored chunks | 8 |
 
 ---
 
@@ -971,12 +942,12 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Ancient debris generates below Y=0 at one per 4 newly explored chunks, then one per 2. Needs an expanded Vault to have a band below Y=0 at all. Debris ignores every ore-multiplying node in the tree and always drops exactly one.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | One ancient debris per 4 newly explored chunks, below Y=0 only | 5 | 21 | Rare Focus T2 *or* Full Spectrum, **and** Vault Expansion |
-| 2 | Raised to one per 2 newly explored chunks | 5 | 26 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | One ancient debris per 4 newly explored chunks, below Y=0 only | 21 |
+| 2 | Raised to one per 2 newly explored chunks | 26 |
 
-> **Balance rules — ancient debris is exempt from everything.** It is not affected by Vein Expansion, Vein Proliferation, the Vein Shape fork, Ore Focus, Vein Fortune, Ore Doubling, Smelter's Intuition, Greedy Seams, Twin Veins, Kindred Rock, or Molten Seam's smelted drop. It generates at a fixed rate and drops exactly one. This is deliberate: the node exists so a team never *has* to go back to the Nether, not so the Vault becomes a netherite farm. Requiring Vault Expansion first also means it arrives at roughly the 20-hour mark rather than early.
+> **Balance rules — ancient debris is exempt from everything.** It is not affected by Vein Expansion, Vein Proliferation, the Vein Shape fork, Ore Focus, Vein Fortune, Ore Doubling, Smelter's Intuition, Greedy Seams, Twin Veins, Kindred Rock, or Molten Seam's smelted drop. It generates at a fixed rate and drops exactly one. This is deliberate: the node exists so a team never *has* to go back to the Nether, not so the Vault becomes a netherite farm. Its rings, 21 and 26, put it at roughly the 20-hour mark rather than early, and it pays nothing before Vault Expansion opens a band below Y=0.
 
 ---
 
@@ -984,11 +955,11 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Ore blocks drop +1 bonus XP on top of their normal amount, then +2, then +4.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +1 XP per ore mined | 1 | 2 | Stone Memory T1 |
-| 2 | +2 XP per ore mined | 1 | 5 | Tier 1 |
-| 3 | +4 XP per ore mined | 2 | 9 | Tier 2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | +1 XP per ore mined | 2 |
+| 2 | +2 XP per ore mined | 5 |
+| 3 | +4 XP per ore mined | 9 |
 
 ---
 
@@ -996,10 +967,10 @@ distinctly (§8). A node with no class tag is a small node.
 
 > +1 XP per ore mined for every 10,000 natural stone blocks you have broken in the Vault, capped at +3, raised to +5 at tier 2.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +1 XP per ore for every 10,000 natural stone broken in the Vault, to a maximum of +3 | 2 | 6 | Stone Memory T2 |
-| 2 | Maximum raised to +5 | 3 | 11 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | +1 XP per ore for every 10,000 natural stone broken in the Vault, to a maximum of +3 | 6 |
+| 2 | Maximum raised to +5 | 11 |
 
 > **What counts as stone** is the `#orevault:vault_stone` block tag, which the mod ships containing `#minecraft:base_stone_overworld` (stone, granite, diorite, andesite, tuff, deepslate) and `#c:stones`. Modded stone that follows either convention counts with no per-mod work, and a pack can extend the tag in a datapack for anything that does not. `PlayerStats#stoneBroken` counts against the same tag, so a team's existing total carries forward.
 
@@ -1009,11 +980,11 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Resonance from every ore rises with your lifetime blocks broken, by 0.03 × ln(1 + blocks / 10,000) — about +7% at 100,000 blocks and +12% at 500,000. Tier 2 raises the coefficient to 0.05 and tier 3 to 0.07, giving +17% and +28% at those counts. Hard-capped at +40%.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +Resonance equal to `0.03 × ln(1 + blocks / 10000)`, a fraction of the base: 0.072 is +7.2% | 2 | 6 | Stone Memory T2 |
-| 2 | Coefficient raised to `0.05` | 3 | 12 | Tier 1 |
-| 3 | Coefficient raised to `0.07` | 4 | 18 | Tier 2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | +Resonance equal to `0.03 × ln(1 + blocks / 10000)`, a fraction of the base: 0.072 is +7.2% | 6 |
+| 2 | Coefficient raised to `0.05` | 12 |
+| 3 | Coefficient raised to `0.07` | 18 |
 
 > Reads `PlayerStats#totalBlocksBroken`, which is lifetime and never resets. Hard-capped at +40%, which tier 3 reaches at (e^(0.4/0.07) − 1) × 10,000, about 3.0 million blocks, and therefore never in practice — the cap exists so no future coefficient change can produce an unbounded multiplier.
 >
@@ -1031,13 +1002,13 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Breaking the first block of a vein outlines the rest of that vein through solid stone for 30 seconds.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | On breaking a vein's first block, the remainder of that vein is outlined for 30 seconds | 2 | 5 | None |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | On breaking a vein's first block, the remainder of that vein is outlined for 30 seconds | 5 |
 
 > Distinct from **Prospector's Eye**, which outlines *other* veins nearby. This one outlines the one you are standing in.
 >
-> This node is load-bearing for the whole Deep Lore completion group. Without it, finishing a vein is something that happens to you and Vault Echo, Vein Discipline, Last Ore, Clean Cut and Chapter's End all pay out for luck. With it, completion becomes a thing you choose to do. It sits in Assay rather than with the nodes it enables so that it arrives first.
+> This node is load-bearing for the whole vein-completion group. Without it, finishing a vein is something that happens to you and Vault Echo, Vein Discipline, Last Ore, Clean Cut and Chapter's End all pay out for luck. With it, completion becomes a thing you choose to do. It lies before Vault Echo on every path from the start so that it arrives first (§6.1 Shape of the tree), and Prospector's Eye hangs off it as a leaf.
 
 ---
 
@@ -1045,9 +1016,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Stone you break in the Vault has a 3% chance to drop the ore type of the nearest vein within 8 blocks. Nothing happens if no vein is in range, so it pays in fresh rock and not in stripped-out areas.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | Stone has a 3% chance to drop the ore type of the nearest vein within 8 blocks | 3 | 12 | Stone Memory T4 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Stone has a 3% chance to drop the ore type of the nearest vein within 8 blocks | 12 |
 
 > Uses the vein index (§11) for the nearest-vein lookup — no flood fill, no scan. If no indexed vein is within range the roll is skipped, so this is worthless in stripped-out areas and best in fresh chunks, which is the intended pull.
 
@@ -1057,9 +1028,11 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Breaking the first block of a vein outlines every other vein within 16 blocks through solid stone for 5 seconds.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | On first block of a vein: nearby veins outlined for 5 seconds, 16-block radius | 3 | 8 | Vein Fortune T1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | On first block of a vein: nearby veins outlined for 5 seconds, 16-block radius | 8 |
+
+> A leaf whose only neighbour is Vein Sight, so it needs Vein Sight (Nick, 2026-10-26).
 
 ---
 
@@ -1067,25 +1040,21 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Stone Memory XP is tripled, but stone drops no items at all inside the Vault — no cobblestone, no flint, no nuggets.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | 3× Stone Memory XP, stone drops nothing | 2 | 4 | Stone Memory T2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | 3× Stone Memory XP, stone drops nothing | 4 |
 
 ---
-
-#### CLUSTER: Metallurgy
-
-> Getting more out of each ore than the ore contains. **Anchor unlocks at 71 skill points spent anywhere in the Resonance tree.**
 
 **Vein Fortune**
 
 > Ore mined in the Vault is treated as having Fortune I, then Fortune II, then Fortune III. Adds to the tool's own Fortune rather than replacing it.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Fortune I equivalent | 2 | 5 | Vein Proliferation T1 |
-| 2 | Fortune II equivalent | 3 | 9 | Tier 1 |
-| 3 | Fortune III equivalent | 4 | 13 | Tier 2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Fortune I equivalent | 5 |
+| 2 | Fortune II equivalent | 9 |
+| 3 | Fortune III equivalent | 13 |
 
 > Renamed from "Ore Sense", which described a sensing mechanic it never had — that name now
 > belongs to Prospector's Eye above.
@@ -1094,21 +1063,23 @@ distinctly (§8). A node with no class tag is a small node.
 
 **Ore Working** `[FORK PARENT: Yield]`
 
-> Squeezes more out of each ore block. Does nothing on its own: pick Ore Doubling or Smelter's Intuition on the ring outside, and this node's tiers apply through it. Tiers 4 to 6 exist only with Ore Doubling chosen and Mekanism loaded. Vein Fortune is separate and applies on top of either option.
+> Squeezes more out of each ore block. Does nothing on its own: pick Ore Doubling or Smelter's Intuition from the petals beside it, and this node's tiers apply through it. Nodes 4 to 6 exist only with Ore Doubling chosen and the Mekanism-style tags filled (§9). Vein Fortune is separate and applies on top of either option.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Working applies at its listed strength | 2 | 8 | Vein Fortune T1 |
-| 2 | Working applies at its second-tier strength | 2 | 12 | Tier 1 |
-| 3 | Working applies at its third-tier strength | 3 | 16 | Tier 2 |
-| 4 | *(Ore Doubling + Mekanism only)* | 7 | 20 | Tier 3 |
-| 5 | *(Ore Doubling + Mekanism only)* | 10 | 25 | Tier 4 |
-| 6 | *(Ore Doubling + Mekanism only)* | 15 | 30 | Tier 5 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Working applies at its listed strength | 8 |
+| 2 | Working applies at its second-tier strength | 12 |
+| 3 | Working applies at its third-tier strength | 16 |
+| 4 | *(Ore Doubling + Mekanism only)* | 20 |
+| 5 | *(Ore Doubling + Mekanism only)* | 25 |
+| 6 | *(Ore Doubling + Mekanism only)* | 30 |
 
-> Tiers 4–6 exist only when Ore Doubling is the chosen option **and** Mekanism is loaded; they are
-> hidden otherwise, not shown as locked. Smelter's Intuition tops out at tier 3, so a team on that
-> option sees a three-tier node. Costs above are the ones the Mekanism tiers previously carried on
-> Ore Doubling itself, moved here with the rest of the paid tiers.
+> Nodes 4–6 sit on a dead-end spur past the third Ore Working node. They are shown only when Ore
+> Doubling is the chosen option **and** the `c:clumps/`, `c:shards/` and `c:crystals/` item tags have
+> entries (§9); otherwise they are hidden, not shown as locked. While the team owns any of them, Ore
+> Doubling cannot be swapped away; those nodes are refunded first (§4.4). Hidden because the tags
+> emptied, an owned one is dormant (§6).
+> Smelter's Intuition tops out at tier 3, so a team on that option sees three Ore Working nodes.
 
 ---
 
@@ -1116,7 +1087,7 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Through Ore Working: +25% average ore yield at tier 1, +50% at tier 2, a guaranteed 2× at tier 3. With Mekanism loaded, tier 4 drops clumps (3×), tier 5 shards (4×) and tier 6 crystals (5×). Without Mekanism it falls back to mod ore dust, then to extra raw ore.
 
-**Costs 0 skill points.** Requires Ore Working tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+**A petal, not a node.** Costs nothing, has no edges and lies on no path. Can be picked once the team owns an Ore Working node. One option at a time; picking one locks its siblings, and swapping or unpicking is free, outside the Vault only (§4.4).
 
 | Ore Working tier | Effect through this option |
 |---|---|
@@ -1124,8 +1095,8 @@ distinctly (§8). A node with no class tag is a small node.
 | 2 | +50% average ore yield |
 | 3 | Guaranteed 2× ore yield |
 
-> **Mekanism tiers.** Ore Working extends to tiers 4–6 only while this option is chosen and Mekanism
-> is loaded:
+> **Mekanism-tag tiers.** Ore Working's nodes 4–6 exist only while this option is chosen and the
+> Mekanism-style tags are filled (§9):
 
 | Ore Working tier | Effect through this option |
 |---|---|
@@ -1139,7 +1110,7 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Through Ore Working: ore has a 15% chance to drop already smelted instead of raw at tier 1, 40% at tier 2, 75% at tier 3. No extra material — it skips the furnace.
 
-**Costs 0 skill points.** Requires Ore Working tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+**A petal, not a node.** Costs nothing, has no edges and lies on no path. Can be picked once the team owns an Ore Working node. One option at a time; picking one locks its siblings, and swapping or unpicking is free, outside the Vault only (§4.4).
 
 | Ore Working tier | Effect through this option |
 |---|---|
@@ -1153,11 +1124,11 @@ distinctly (§8). A node with no class tag is a small node.
 
 > 5% of ore drops come out Attuned, rising to 12%, then 20%. Four Attuned raw ore of any type plus one amethyst shard craft a Resonance Crystal, which every Vault Igniter upgrade and every Vault Anchor needs.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | 5% chance ore drops are Attuned | 3 | 10 | Any Yield fork T1 |
-| 2 | 12% chance | 3 | 14 | Tier 1 |
-| 3 | 20% chance | 4 | 17 | Tier 2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | 5% chance ore drops are Attuned | 10 |
+| 2 | 12% chance | 14 |
+| 3 | 20% chance | 17 |
 
 > Attuned ore is an ordinary raw-ore stack carrying a data component. It smelts, stacks, and processes exactly like the unattuned version, so nothing breaks if a player feeds it into a machine — they simply lose the crystal. Recipe: 4 Attuned raw ore (any type) + 1 Amethyst Shard → 1 Resonance Crystal. *(The previous version of this node granted "bonus effects when processed by magic-based ore processing mods", naming no mod and defining no mechanism — 10 skill points that did nothing.)*
 
@@ -1167,10 +1138,10 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Mining 1,000 blocks of any single ore type permanently grants you +15% Resonance from that type. A type that has earned the bonus is kindred to you, and tier 2 makes kindred types break 20% faster. Tracked per player and per ore type, with no limit on how many types can become kindred.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Mining 1,000 of any single ore type permanently grants +15% Resonance from that type, for that player | 3 | 10 | Vein Fortune T1 |
-| 2 | Kindred types (those that have earned the +15%) also break 20% faster | 3 | 15 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Mining 1,000 of any single ore type permanently grants +15% Resonance from that type, for that player | 10 |
+| 2 | Kindred types (those that have earned the +15%) also break 20% faster | 15 |
 
 > Reads the existing `PlayerStats#oresMined` map, keyed by block id, so it works with any modded ore in a kitchen-sink pack with no per-mod configuration and no ore list to maintain. Ancient debris is exempt (see Ancient Traces).
 >
@@ -1182,10 +1153,10 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Each ore you mine repairs the held tool by 1 durability, plus 1 more for every full 16 blocks your all-time deepest Y sits below Y=64: floor((64 − deepestY) / 16), clamped to 0 to 8, so up to 9 per ore. With no deepest Y recorded the extra is 0. Tier 2 sends the same repair to damaged armour when the held tool needs none. Costs no XP and stacks with Mending.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Each ore mined repairs the held tool by 1 durability, plus floor((64 − deepestY) / 16), clamped to 0 to 8 and 0 with no deepest Y recorded — up to 9 per ore | 2 | 9 | Stone Memory T3 |
-| 2 | When the held tool needs no repair, the same amount is applied to worn armour, split across damaged pieces | 3 | 14 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Each ore mined repairs the held tool by 1 durability, plus floor((64 − deepestY) / 16), clamped to 0 to 8 and 0 with no deepest Y recorded — up to 9 per ore | 9 |
+| 2 | When the held tool needs no repair, the same amount is applied to worn armour, split across damaged pieces | 14 |
 
 > The rounding is derived and unplaytested; T9 confirms it.
 >
@@ -1199,9 +1170,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Every block in the Vault breaks instantly. In exchange each ore block has a 10% chance to shatter with no drops, and every ore you break destroys 1 random face-adjacent ore block of the same vein, if there is one. The destroyed block drops nothing and pays nothing, but counts toward completing the vein.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | All blocks in the Vault break instantly; each ore block has a 10% chance to shatter with no drops, and each ore break destroys one random face-adjacent ore block of the same vein, if any, which drops and pays nothing but counts toward completion | 5 | 13 | Vein Fortune T2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | All blocks in the Vault break instantly; each ore block has a 10% chance to shatter with no drops, and each ore break destroys one random face-adjacent ore block of the same vein, if any, which drops and pays nothing but counts toward completion | 13 |
 
 > Which block is destroyed is derived and unplaytested; T9 confirms it.
 >
@@ -1213,29 +1184,23 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Haste II for as long as you are inside the Vault, and −25% Resonance from every ore.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Haste II inside the Vault, −25% Resonance from ore | 2 | 7 | Miner's Constitution T2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Haste II inside the Vault, −25% Resonance from ore | 7 |
 
 > The cost used to be +50% hunger drain, which Miner's Constitution Tier 5 (hunger frozen entirely) cancelled outright — the two together gave permanent free Haste II. Pricing Fever in Resonance instead makes the two nodes independent, and leaves Miner's Constitution as a clean quality-of-life ladder with no hidden interaction.
 
 ---
 
-#### CLUSTER: Claim
-
-> The ground is yours now. Holding it, reaching into it from outside, and being kept by it when things go wrong. **Anchor unlocks at 89 skill points spent anywhere in the Resonance tree.**
-
-> This cluster is the half of the old Deep Lore that was about infrastructure rather than echoes. Splitting it out puts chunk tickets, automation and navigation before the burst mechanics rather than alongside them, which is the order a team actually wants them in, and leaves Deep Lore to mean one thing.
-
 **Vault Presence**
 
 > The team's Vault can keep 4 more chunks loaded at once, then 8 more (12 total), then 16 more (28 total). Server config caps the total, at 32 by default.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +4 simultaneous loaded chunks | 2 | 5 | None |
-| 2 | +8 simultaneous loaded chunks (12 total) | 2 | 9 | Tier 1 |
-| 3 | +16 simultaneous loaded chunks (28 total) | 3 | 14 | Tier 2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | +4 simultaneous loaded chunks | 5 |
+| 2 | +8 simultaneous loaded chunks (12 total) | 9 |
+| 3 | +16 simultaneous loaded chunks (28 total) | 14 |
 
 > Admin config can set a hard ceiling on maximum loaded chunks regardless of node level. Default ceiling: 32.
 
@@ -1245,10 +1210,10 @@ distinctly (§8). A node with no class tag is a small node.
 
 > +25% ore yield from blocks broken by machines in the Vault, raised to +50%. Machine-broken blocks still award no Resonance, but they do count toward vein completion and statistics.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +25% ore yield from machine-broken blocks in the Vault; machine breaks count toward vein completion and statistics | 2 | 8 | Vault Presence T1 |
-| 2 | +50% ore yield from machine-broken blocks | 3 | 12 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | +25% ore yield from machine-broken blocks in the Vault; machine breaks count toward vein completion and statistics | 8 |
+| 2 | +50% ore yield from machine-broken blocks | 12 |
 
 > **Implementation:** hook `BlockDropsEvent`, whose `getBreaker()` is a `@Nullable Entity` ("or null if unknown") and whose drop list is mutable. This covers machines that route through `Block.dropResources` / `Level.destroyBlock`, which is the large majority. Mods that build drops themselves and insert straight into their own inventory will not fire it; that gap is accepted.
 
@@ -1258,10 +1223,10 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Chunks you pass through stay loaded for 30 seconds after you leave them, raised to 2 minutes. These count against the Vault Presence limit like any other, oldest evicted first.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Chunks you pass through remain loaded for 30 seconds after you leave | 2 | 12 | Automated Extraction T1 |
-| 2 | Raised to 2 minutes | 3 | 16 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Chunks you pass through remain loaded for 30 seconds after you leave | 12 |
+| 2 | Raised to 2 minutes | 16 |
 
 > Trailing tickets count against the Vault Presence ceiling and the config ceiling like any other, oldest evicted first. This node makes the ceiling matter rather than raising it.
 
@@ -1271,11 +1236,11 @@ distinctly (§8). A node with no class tag is a small node.
 
 > The Tome gains a compass pointing toward denser rock, at chunk granularity. Tier 2 turns it into a map that draws explored chunks and leaves unexplored ones blank; tier 3 shades the drawn chunks by ore density.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Chunk-level ore density compass in the Tome UI | 2 | 6 | Vault Presence T1 |
-| 2 | The compass becomes a map: explored chunks are drawn, unexplored ones are blank | 2 | 11 | Tier 1 |
-| 3 | Drawn chunks are shaded by ore density | 3 | 15 | Tier 2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Chunk-level ore density compass in the Tome UI | 6 |
+| 2 | The compass becomes a map: explored chunks are drawn, unexplored ones are blank | 11 |
+| 3 | Drawn chunks are shaded by ore density | 15 |
 
 > Tiers 2 and 3 absorb what was going to be a separate Cartographer's Instinct node. Two chunk-density readouts competing in the same Tome is one too many, so the map is this node's later tiers instead of a rival to it.
 
@@ -1285,10 +1250,10 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Every 50 newly explored Vault chunks drops a supply cache of food and torches that also restores 25% of maximum durability to the most-damaged tool in the opener's hotbar. Tier 2 doubles the contents, raises the repair to 50%, and adds a 20% chance of an enchanted book.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Every 50 newly explored Vault chunks drops a supply cache: food and torches, and opening it restores 25% of maximum durability to the most-damaged tool in the opener's hotbar | 2 | 6 | None |
-| 2 | Cache contents doubled, the repair raised to 50%, with a 20% chance of an enchanted book | 3 | 12 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Every 50 newly explored Vault chunks drops a supply cache: food and torches, and opening it restores 25% of maximum durability to the most-damaged tool in the opener's hotbar | 6 |
+| 2 | Cache contents doubled, the repair raised to 50%, with a 20% chance of an enchanted book | 12 |
 
 > The repair amounts are derived and unplaytested; T9 confirms them.
 >
@@ -1300,9 +1265,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Ore mined in a chunk generated within the last 10 minutes pays +40% Resonance.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Ore mined in a chunk generated within the last 10 minutes pays +40% Resonance | 2 | 8 | None |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Ore mined in a chunk generated within the last 10 minutes pays +40% Resonance | 8 |
 
 > Deliberately rewards moving on rather than strip-mining one spot to exhaustion, which is the behaviour every other node in the tree encourages.
 
@@ -1312,9 +1277,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > The first vein you mine in each newly generated chunk grants 50 vanilla XP.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | The first vein mined in each newly generated chunk grants 50 vanilla XP | 2 | 7 | None |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | The first vein mined in each newly generated chunk grants 50 vanilla XP | 7 |
 
 ---
 
@@ -1322,9 +1287,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Set one anchor anywhere inside the Vault and teleport back to it from anywhere else inside. The cast takes 3 seconds and is cancelled if you take damage; the five-minute cooldown starts only after a cast succeeds. Never crosses into or out of the Vault, and a dimension reset clears the anchor.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | Set one anchor point inside the Vault; teleport to it from anywhere else inside the Vault with a 3-second (60-tick) cast, cancelled if you take damage while casting. Five-minute cooldown, starting after a successful cast | 3 | 10 | Vault Presence T1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Set one anchor point inside the Vault; teleport to it from anywhere else inside the Vault with a 3-second (60-tick) cast, cancelled if you take damage while casting. Five-minute cooldown, starting after a successful cast | 10 |
 
 > The 3-second cast is derived and unplaytested; T9 confirms it.
 >
@@ -1336,9 +1301,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Items you drop on death inside the Vault never despawn and cannot be destroyed by fire, lava or explosion, and the Tome marks the spot. Carrying them out returns them to normal rules.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | Items dropped on death inside the Vault never despawn and cannot be destroyed by fire, lava or explosion; the Tome marks the spot | 3 | 10 | None |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Items dropped on death inside the Vault never despawn and cannot be destroyed by fire, lava or explosion; the Tome marks the spot | 10 |
 
 > Removes the worst case of a death without removing the setback — you still have to walk back for your things. Items are exempted from despawn only inside the Vault; carrying them out returns them to normal rules.
 
@@ -1348,9 +1313,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Once per Vault trip, damage that would kill you leaves you at half a heart instead. Resets when you leave the Vault.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | Once per Vault trip, damage that would kill you leaves you at half a heart instead. Resets on leaving the Vault | 4 | 14 | Miner's Constitution T3 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Once per Vault trip, damage that would kill you leaves you at half a heart instead. Resets on leaving the Vault | 14 |
 
 ---
 
@@ -1358,11 +1323,11 @@ distinctly (§8). A node with no class tag is a small node.
 
 > While enabled, a Second Wind save also returns you to the portal you entered by, instead of leaving you where you nearly died.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | While enabled, a Second Wind save also returns you to your entry portal | 8 | 20 | Second Wind |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | While enabled, a Second Wind save also returns you to your entry portal | 20 |
 
-> A separate node rather than a second tier of Second Wind precisely so it can be toggled: the tradeoff machinery already stores on/off state per player (§6.1 notation), and being yanked out of a deep shaft is not always what a player wants. Twice the cost of the node it extends, as it turns a survival save into a free escape.
+> A separate node rather than a second tier of Second Wind precisely so it can be toggled: the tradeoff machinery already stores on/off state per player (§6.1 notation), and being yanked out of a deep shaft is not always what a player wants. Its ring, 20, is six levels past Second Wind's, as it turns a survival save into a free escape. It is a leaf whose only neighbour is a Second Wind node.
 
 ---
 
@@ -1370,9 +1335,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Potion effect durations do not tick down at all while you are inside the Vault. Cannot be held at the same time as Vault's Purity.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Potion effect durations are frozen inside the Vault | 3 | 8 | None |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Potion effect durations are frozen inside the Vault | 8 |
 
 ---
 
@@ -1380,11 +1345,11 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Potion effects are stripped when you enter the Vault and none can be applied inside. In exchange, while you are unaffected: +20% Resonance and +1 effective Fortune. Cannot be held at the same time as Vault's Blessing.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | No potion effects can exist inside the Vault; while unaffected: **+20% Resonance and +1 effective Fortune** | 3 | 8 | None |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | No potion effects can exist inside the Vault; while unaffected: **+20% Resonance and +1 effective Fortune** | 8 |
 
-> Purity previously granted nothing at all in exchange for stripping effects — 2 skill points of pure downside that only ever mattered against witches, which do not spawn in a Vault. As a pair these now describe two real builds: stack potions and keep them forever, or forgo them entirely for flat power that never runs out.
+> Purity previously granted nothing at all in exchange for stripping effects — a node of pure downside that only ever mattered against witches, which do not spawn in a Vault. As a pair these now describe two real builds: stack potions and keep them forever, or forgo them entirely for flat power that never runs out.
 
 ---
 
@@ -1392,25 +1357,23 @@ distinctly (§8). A node with no class tag is a small node.
 
 > 25% of the ore blocks you mine are consumed by the Vault — the block breaks and drops nothing — and each consumed block pays 1.75× its Resonance instead. Only ore blocks are taken: Stone Memory drops, nuggets and flint are untouched.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | 25% ore consumed, 1.75× Resonance on consumed ores | 2 | 5 | None |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | 25% ore consumed, 1.75× Resonance on consumed ores | 5 |
 
 ---
-
-#### CLUSTER: Deep Lore
-
-> The Vault answering back: bursts, echoes, and what it gives you for finishing what you started. **Anchor unlocks at 110 skill points spent anywhere in the Resonance tree.**
 
 **Vault Echo**
 
 > Mining a vein to completion pays a burst of 25 Resonance, rising to 35, then 50.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +25 Resonance burst on vein completion | 1 | 3 | Vein Expansion T2 |
-| 2 | +35 Resonance burst | 1 | 6 | Tier 1 |
-| 3 | +50 Resonance burst | 2 | 9 | Tier 2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | +25 Resonance burst on vein completion | 3 |
+| 2 | +35 Resonance burst | 6 |
+| 3 | +50 Resonance burst | 9 |
+
+> Every path from the start reaches Vein Sight (ring 5) before the first Vault Echo node, even though Vault Echo's first ring is 3 (§6.1 Shape of the tree).
 
 ---
 
@@ -1418,9 +1381,11 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Vault Echo bursts also grant vanilla XP equal to the Resonance awarded, so a 50 Resonance burst is also 50 XP.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | Vault Echo bursts additionally grant XP 1:1 with the Resonance awarded | 3 | 11 | Vault Echo T3 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Vault Echo bursts additionally grant XP 1:1 with the Resonance awarded | 11 |
+
+> A leaf off the furthest Vault Echo node, so it is reached through Vault Echo.
 
 ---
 
@@ -1428,11 +1393,11 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Completing a vein has a 1% chance to spawn a copy of it, rising to 5%, then 10%. The copy has the same shape and sits 2 to 4 blocks clear of the original's bounding box in a random horizontal direction, inside the same chunk, replacing only stone and deepslate. If no direction fits, no copy is made. The new vein is indexed like any other, so it can trigger this again.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | 1% chance on vein completion | 2 | 6 | Vein Expansion T3 |
-| 2 | 5% chance on vein completion | 2 | 10 | Tier 1 |
-| 3 | 10% chance on vein completion | 3 | 14 | Tier 2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | 1% chance on vein completion | 6 |
+| 2 | 5% chance on vein completion | 10 |
+| 3 | 10% chance on vein completion | 14 |
 
 > The placement rule is derived and unplaytested; T9 confirms it.
 >
@@ -1444,9 +1409,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > The final ore block of any vein drops double and pays double Resonance. Stacks with the Vault Echo burst, which is counted separately.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | The final ore block of any vein drops double and pays double Resonance | 3 | 10 | Vault Echo T1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | The final ore block of any vein drops double and pays double Resonance | 10 |
 
 > Makes finishing feel different from mining, which is the whole reason the completion group exists. Stacks multiplicatively with the Vault Echo burst, which is separate.
 
@@ -1456,9 +1421,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > A vein completed without breaking a single non-ore block between its first and last ore pays +50% Resonance across the whole vein.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | A vein completed without breaking any non-ore block between its first and last ore pays +50% Resonance across the whole vein | 3 | 13 | Vault Echo T2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | A vein completed without breaking any non-ore block between its first and last ore pays +50% Resonance across the whole vein | 13 |
 
 > Rewards precision, and is the one node in the tree that Ultimine makes harder rather than easier. It pairs naturally with **Vein Sight**, which is what makes a clean cut plannable at all.
 
@@ -1468,9 +1433,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > +2% Resonance for each vein completed in a row, stacking to +30% at 15 veins and persisting across trips. Abandoning a part-mined vein — leaving the Vault or moving more than 48 blocks away with ore still standing — drops the streak by 3 rather than resetting it.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | +2% Resonance per completed vein, stacking to +30% at 15 veins. Persists across trips | 3 | 12 | Vault Echo T2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | +2% Resonance per completed vein, stacking to +30% at 15 veins. Persists across trips | 12 |
 
 > **Abandoning** is defined as: you have broken at least one block of a vein, and then either leave the Vault or move more than 48 blocks from it, with ore still standing. Abandoning drops the streak by 3, not to zero.
 >
@@ -1484,9 +1449,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Completing 5 veins within a single chunk fires a 150 Resonance burst and reveals every vein still standing in that chunk. Counted over all time rather than per trip, so each chunk fires once.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | Completing 5 veins within a single chunk fires a Resonance burst worth 3× Vault Echo T3 and reveals every remaining vein in that chunk | 4 | 16 | Twin Veins T2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Completing 5 veins within a single chunk fires a Resonance burst worth 3× Vault Echo T3 and reveals every remaining vein in that chunk | 16 |
 
 > Named to avoid reusing "Motherlode", which is a reserved node id. Counts veins completed in the chunk over all time, not per trip, so it fires once per chunk.
 >
@@ -1498,9 +1463,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Ore mined below Y=0 drops 1 extra Resonance orb worth half the ore's base Resonance (1, 2.5 or 6.25 by rarity), with no bonuses applied. Only an expanded Vault has a band below Y=0 for this to apply in.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | Ore below Y=0 drops one extra Resonance orb worth half the ore's base Resonance (1 / 2.5 / 6.25), no bonuses applied | 4 | 20 | Deep Veins T2, Vault Expansion |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Ore below Y=0 drops one extra Resonance orb worth half the ore's base Resonance (1 / 2.5 / 6.25), no bonuses applied | 20 |
 
 > The orb's value is derived and unplaytested; T9 confirms it.
 
@@ -1508,13 +1473,13 @@ distinctly (§8). A node with no class tag is a small node.
 
 **Resonant Draw** `[FORK PARENT: Orb Collection]`
 
-> Changes how Resonance orbs reach you. Does nothing on its own: pick Resonance Magnetism or Hoarder's Instinct on the ring outside, and this node's 3 tiers apply through it.
+> Changes how Resonance orbs reach you. Does nothing on its own: pick Resonance Magnetism or Hoarder's Instinct from the petals beside it, and this node's 3 tiers apply through it.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | Draw applies at its listed strength | 1 | 5 | None |
-| 2 | Draw applies at its second-tier strength | 1 | 9 | Tier 1 |
-| 3 | Draw applies at its third-tier strength | 2 | 13 | Tier 2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | Draw applies at its listed strength | 5 |
+| 2 | Draw applies at its second-tier strength | 9 |
+| 3 | Draw applies at its third-tier strength | 13 |
 
 ---
 
@@ -1522,7 +1487,7 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Through Resonant Draw: orbs are pulled to you from 8 blocks at tier 1, 16 blocks at tier 2, 24 blocks at tier 3.
 
-**Costs 0 skill points.** Requires Resonant Draw tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+**A petal, not a node.** Costs nothing, has no edges and lies on no path. Can be picked once the team owns a Resonant Draw node. One option at a time; picking one locks its siblings, and swapping or unpicking is free, outside the Vault only (§4.4).
 
 | Resonant Draw tier | Effect through this option |
 |---|---|
@@ -1536,7 +1501,7 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Orbs never move toward you and never despawn; orbs resting within 4 blocks of each other merge into a single cache. An orb is resting once it has been on the ground for 20 ticks moving less than 0.01 blocks a tick; merges are checked every 20 ticks. Through Resonant Draw tier 2, collecting a cache of N orbs (N counts orbs, not Resonance) pays ×(1 + 0.1 × N) up to ×3; tier 3 lets caches pull in orbs from other caches within 8 blocks and raises the cap to ×4.
 
-**Costs 0 skill points.** Requires Resonant Draw tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
+**A petal, not a node.** Costs nothing, has no edges and lies on no path. Can be picked once the team owns a Resonant Draw node. One option at a time; picking one locks its siblings, and swapping or unpicking is free, outside the Vault only (§4.4).
 
 | Resonant Draw tier | Effect through this option |
 |---|---|
@@ -1550,62 +1515,372 @@ distinctly (§8). A node with no class tag is a small node.
 
 ---
 
-> **Deferred to the Animus epic.** The **Disturbed Zone Unlock** node previously sat at the root of this tree. Disturbed Zones and the whole Animus system have moved to a separate post-1.0 epic, and this node moves with them — it will re-enter the Resonance tree as a Core-branch node when that epic is scheduled.
+> **Deferred to the Animus epic.** The **Disturbed Zone Unlock** node previously sat at the root of this tree. Disturbed Zones and the whole Animus system have moved to a separate post-1.0 epic, and this node moves with them — it will re-enter the Resonance tree as a node when that epic is scheduled.
 
 ---
 
-#### CLUSTER: Broad Cut `[ULTIMINE ONLY]`
+The next three skills need FTB Ultimine. They sit on a dead-end spur with Steady Chain (§6.1 Flavour notables) and are hidden without Ultimine.
 
-> Wide-swing mining. The whole cluster is absent unless FTB Ultimine is loaded. **Anchor unlocks at 39 skill points spent anywhere in the Resonance tree.**
-
-**Ultimine Expansion**
+**Ultimine Expansion** `[REQUIRES: FTB Ultimine]`
 
 > +25% to the maximum number of blocks FTB Ultimine breaks per operation inside the Vault, then +50%, then +100%.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | +25% max block break count | 1 | 3 | None |
-| 2 | +50% max block break count | 2 | 7 | Tier 1 |
-| 3 | +100% max block break count | 3 | 12 | Tier 2 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | +25% max block break count | 3 |
+| 2 | +50% max block break count | 7 |
+| 3 | +100% max block break count | 12 |
 
 ---
 
-**Ultimine Safety**
+**Ultimine Safety** `[REQUIRES: FTB Ultimine]`
 
 > −1% Volatile Veins disappearance chance during Ultimine operations, then −2%. Against Volatile Veins' 3% base that leaves Ultimine operations at 2%, then 1% — reduced, never zero.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | −1% disappearance chance during Ultimine operations | 1 | 5 | Ultimine Expansion T1 |
-| 2 | −2% disappearance chance, floored at 1% | 2 | 9 | Tier 1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | −1% disappearance chance during Ultimine operations | 5 |
+| 2 | −2% disappearance chance, floored at 1% | 9 |
 
 ---
 
-**Volatile Veins: Ultimine Gambit** `[TRADEOFF]`
+**Volatile Veins: Ultimine Gambit** `[TRADEOFF]` `[REQUIRES: FTB Ultimine]`
 
 > While Volatile Veins is active, each Ultimine operation rolls Volatile Veins' 3% twice instead of once, so 5.91% of operations vanish. Operations that survive pay +20% Resonance.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 | The 3% disappearance roll is made twice per Ultimine operation (5.91% vanish); surviving operations pay +20% Resonance | 2 | 9 | Volatile Veins, Ultimine Expansion T1 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | The 3% disappearance roll is made twice per Ultimine operation (5.91% vanish); surviving operations pay +20% Resonance | 9 |
 
 > The double roll is derived and unplaytested; T9 confirms it.
+>
+> On the hidden Ultimine dead-end spur with Ultimine Expansion, Ultimine Safety and Steady Chain, like every other mod-gated node. It acts only while the player has Volatile Veins switched on.
 
 ---
 
-#### CLUSTER: Mastery
+#### Travel stats
 
-> Keystones only. Each one changes how you mine and each one costs you something. **Anchor unlocks at 160 skill points spent anywhere in the Resonance tree.**
+> Travel nodes are the steps between real nodes. Each grants one step of one of the twelve stats below, sized so a player feels a single node on its own (+10% mining speed, one heart, one block of reach), and each stat has a cap for the whole tree. A stat's node count is its cap divided by its step. All twelve work with no pack mods installed. Ten were chosen for mining and the mods in Nick's pack; the last two make work outside the Vault easier (Nick, 2026-10-26).
 
-> The three cheap keystones that used to sit here — Greedy Seams, Resonant Overload and Brittle Stone — kept their original prices and moved out to Excavation and Metallurgy as `[PACT]` nodes. They were priced to be buyable early and that is what they are for; behind a 160-point gate the option they were built around could not exist. Everything left in Mastery is priced for arriving last.
+| Stat | Per node | Nodes | Whole-tree cap | Applies | Hook |
+|---|---|---|---|---|---|
+| Mining speed | +10% | 6 | +60% | Vault | `MiningSpeedModifiers` bonus sum (§11) |
+| Resonance gain | +5% | 4 | +20% | Vault | `ResonanceBonuses` bonus sum (§11) |
+| Vanilla XP from ore | +10% | 3 | +30% | Vault | Added to the ore's dropped experience in the Bonus stage (§11); the vanilla amount is never reduced (§3.4) |
+| Move speed | +5% | 6 to 8 | +40% at 8 | Everywhere | `minecraft:movement_speed`, add multiplied base |
+| Block reach | +1 block | 3 | +3 | Vault | `minecraft:block_interaction_range`, add |
+| Max health | +2 (one heart) | 8 | +16 | Everywhere | `minecraft:max_health`, add |
+| Tool care | +5% chance a point of durability a hand-broken block costs the held tool is skipped | 6 | 30% from Tool care; the summed care chance tops out at 80% (rule below) | Vault | Tool wear hook (§11, `docs/adr/0008-tool-wear-mixin.md`) |
+| Tool charge | 50 FE a block into the tool breaking it; +5% Tool care instead when that tool holds no energy | 6 to 8 | 400 FE a block at 8 | Vault | `Capabilities.Energy.ITEM` on the breaking tool, `insert` |
+| Safe fall | +2 blocks | 4 | +8 | Everywhere | `minecraft:safe_fall_distance`, add |
+| Armour | +1 | 6 to 8 | +8 at 8 | Everywhere | `minecraft:armor`, add |
+| Mason's Reach | +1 block reach | 2 | +2 | Outside the Vault | `minecraft:block_interaction_range`, add; removed on entering a Vault, so the Vault cap of +3 holds |
+| Kit Care | +5% chance that a point of durability lost by a held item or worn armour, from any cause, is skipped | 4 | 20% | Outside the Vault | Tool wear hook, as Tool care |
+
+The tree holds 58 to 64 travel nodes. The ranged counts take what the final layout needs; no stat goes past its cap, and if the layout needs more travel, UI/UX shortens paths instead.
+
+Rules for all twelve:
+
+- Attribute stats are transient modifiers, recomputed from the team's owned nodes on login, respawn, dimension change, team change, buy and refund. Max health is the exception: a transient modifier is not there when health loads at login, so health is clamped to 20 and the extra hearts are lost. It uses a saved (non-transient) modifier with a fixed id, replaced on the same triggers. Vault-only attributes are added on entering a Vault level and removed on leaving it; outside-only ones the other way round. Max health applies everywhere so that leaving the Vault never takes hearts away (Nick, 2026-10-26).
+- Mining speed and Resonance gain are **not attributes**. They are contributors to the §11 accumulators, summed with the other percentage bonuses, so Bedrock Communion's halving and the pact penalties still apply after them.
+- The per-block stats (vanilla XP, Tool care, Tool charge) act only on a hand break (§3.4). A block broken in an FTB Ultimine chain is a hand break, and each block of the chain counts on its own (§9).
+- Tool care, the Charge fallback and Hammer and Paxel Affinity's +10% add into one chance, rolled once per point of durability after Unbreaking; they are not separate rolls. Tool care alone stops at 30% and the Charge fallback alone at 40%, so with all six Tool care and all eight Charge nodes on a tool with no energy storage the summed chance is 70%, and 80% on a hammer or paxel with the Affinity. That 80% is the most any combination reaches. Tempered rolls on its own after that: with Tempered III, 14% of the points that pass Unbreaking still cost durability.
+- 400 FE a block at 7,200 blocks an hour is about 40 FE a tick, all of it into the one held tool, which cannot pass it on. It is a tool's running cost, never a power source for machines (§3.4). The per-block costs of Mining Gadgets and of Just Dire Things abilities are unmeasured; a playtest reads a tool's charge before and after ten minutes of mining.
+- Left out on purpose: ore yield, vein size or density, flat Resonance per ore, orb pickup radius and hunger, because each undercuts an existing node or the curve's baseline; mob XP, because with mob farms it would cheapen refunds, the 30-level keystone refund included; and other mods' attributes (Ultimine vein size, Paraglider stamina, `ftbevolutioncompanion:*`), because a travel node on a path cannot be hidden when its mod is missing. Those go on leaf notables.
+
+The Tome shows a running total per stat (§8).
+
+#### Flavour notables
+
+> Notables added on 2026-10-26: tool upgrades, mod hooks, and nodes that make work outside the Vault easier. All are pure upside except where a toggle is noted. A node that needs a mod or a mod's tag is a dead-end leaf marked `[REQUIRES: …]` and hidden without it. Ring is the level floor (§6). "Hand break" means a block broken by a real player (§3.4); an FTB Ultimine chain is a hand break per block (§9).
+
+**Spelunker's Stride** `[NOTABLE]`
+
+> Inside the Vault, step height +0.5, so you walk up full blocks.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | `minecraft:step_height` +0.5 inside the Vault | 3 |
+
+---
+
+**Landscaper's Swing** `[NOTABLE]`
+
+> Outside the Vault, +25% break speed on blocks in `mineable/axe`, `mineable/shovel` and `mineable/hoe`. Pickaxe blocks are left out, so it never becomes mining speed.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | +25% break speed outside the Vault on axe, shovel and hoe blocks; `PlayerEvent.BreakSpeed` with a dimension check | 4 |
+
+---
+
+**Seam Courier** `[NOTABLE]`
+
+> Link one container by sneak-using it with the Tome. Ore drops from blocks you break by hand in the Vault go straight into that container while its chunk is loaded and it has room. Anything else drops as normal.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Drops from hand-broken ore in the Vault (`#c:ores` sources, after the whole drop pipeline) go into the player's linked container (`courierLink` on `PlayerStats`, §11) if `level.isLoaded(pos)` and it has room; overflow, stone and gravel drop as normal | 6 |
+
+> Replaces Magnetic Seam, which pulled drops into the inventory: Simple Magnets and the Sophisticated Backpacks magnet already do that in Nick's pack. What a magnet does not solve is the full inventory and the walk home. Hooked in the last stage of the one `BlockDropsEvent` listener (§11) through the block item-handler capability (its 26.1 name is checked in the decompiled sources; the transfer API changed). It checks `level.isLoaded(pos)` and never places a chunk ticket, so it cannot load chunks. A delivered drop never spawns an item entity, so it does not compete with a magnet, including the Sophisticated Backpacks magnet that puts items straight into a backpack (Nick, 2026-10-26). No yield change, nothing from automation.
+
+---
+
+**Kiln Touch** `[NOTABLE]` `[TRADEOFF]`
+
+> While enabled, non-ore drops that smelt into a block come out smelted: cobblestone to stone, sand to glass, clay to terracotta. Ore is excluded; that is Smelter's Intuition.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Non-ore drops in the Vault with a smelting recipe that yields a block drop the result instead; Transform stage (§11) | 6 |
+
+> A toggle, because sometimes you want cobblestone.
+
+---
+
+**Wayfarer's Lungs** `[NOTABLE]` `[REQUIRES: Paraglider]`
+
+> +30% glider stamina efficiency.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | `paraglider:stamina_efficiency` +30%, by attribute id | 6 |
+
+---
+
+**Vault-Forged** `[NOTABLE]`
+
+> Combine a tool with 1 Resonance Crystal in an anvil for +50% maximum durability, once per tool.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Anvil: tool + 1 Resonance Crystal = +50% max durability, once per tool, recorded on the item | 8 |
+
+> `AnvilUpdateEvent` and `DataComponents.MAX_DAMAGE`. The upgrade is stored as `forged` in the item's `orevault:vault_tool` component (Ascending Edge, below) and re-applied to the new base item after an Ascending Edge swap, which removes the old item's `MAX_DAMAGE`.
+
+---
+
+**Resonant Dynamo** `[NOTABLE]` `[REQUIRES: an item with energy storage]`
+
+> Each ore you mine by hand in the Vault sends 400 FE, split evenly, into the energy items you carry: main inventory, armour and offhand, when they match `orevault:dynamo_targets`.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | 400 FE per hand-mined Vault ore, split evenly across carried items in `orevault:dynamo_targets` that have energy storage | 8 |
+
+> Default tag: `#c:tools`, armour and optional `justdirethings:pocket_generator`. Energy goes through `Capabilities.Energy.ITEM`. Only the main inventory, armour and offhand are read; accessory slots added by other mods are not, since reading them needs that mod's API (`CLAUDE.md` rule 5). Hidden when no registered item has energy storage, checked once at server start. 220 ore an hour is 88,000 FE an hour, about 1 FE a tick: it keeps a jetpack and a pocket generator topped up and is never a power source (§3.4).
+
+---
+
+**Hammer and Paxel Affinity** `[NOTABLE]` `[REQUIRES: a filled hammer or paxel tag]`
+
+> +25% mining speed and +10% to the care chance while holding a hammer, paxel or mining tool.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | +25% mining speed (`MiningSpeedModifiers`) and +10% added to the summed care chance (§6.1 Travel stats), on hand breaks in the Vault, while the held item is in `c:ore_hammers`, `c:tools/paxel`, `c:tools/mining_tool` or `cucumber:paxels` | 8 |
+
+> Tags only, no mod named. Hidden when all four tags are empty.
+
+---
+
+**Harvester's Lot** `[NOTABLE]`
+
+> Mature crops you break by hand outside the Vault have a 25% chance to drop one extra crop item.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | 25% chance of +1 crop item from mature crops in `#orevault:harvest_bonus` broken by hand outside the Vault | 8 |
+
+> Default tag: `#minecraft:crops`. Mystical Agriculture crops are left out by default, since their essence is that mod's progression; a pack adds crops by tag. Hooked in the one `BlockDropsEvent` listener, in an outside-the-Vault stage.
+
+---
+
+**Tempered** `[NOTABLE]`
+
+> Each tool counts the ores it mines in the Vault, shown in its tooltip. At 500, 2,000 and 5,000 it gains Tempered I, II and III: 10%, 20% and 30% fewer durability hits.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Per-tool count of hand-mined Vault ores; at 500 / 2,000 / 5,000, each point of durability a hand-broken Vault block costs is skipped with chance 10% / 20% / 30%, rolled separately from the summed care chance | 10 |
+
+> About 2, 9 and 23 hours of solo mining. The count is `lifetimeOres` in the `orevault:vault_tool` item component it shares with Ascending Edge (below), so an ascended tool keeps its Tempered level. The roll is in the tool wear hook (§11).
+
+---
+
+**Bookseam** `[NOTABLE]`
+
+> 1 in 2,500 ores mined by hand in the Vault drops an enchanted book with one random enchantment that can go on a pickaxe, at a random level from 1 to its maximum.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | 1 in 2,500 hand-mined Vault ores drops a book with one random enchantment from `#minecraft:enchantable/mining`, level 1 to its maximum; Bonus stage (§11) | 10 |
+
+> About one book every 11 hours solo. Apothic Enchanting's mining enchantments join through the tag when they are in it.
+
+---
+
+**Steady Chain** `[NOTABLE]` `[REQUIRES: FTB Ultimine]`
+
+> FTB Ultimine's cooldown and its hunger cost are halved.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | `ftbultimine:cooldown_modifier` −50% and `ftbultimine:exhaustion_modifier` −50% | 10 |
+
+> On the Ultimine spur with Ultimine Expansion, Ultimine Safety and the Gambit.
+
+---
+
+**Delver's Lungs** `[NOTABLE]`
+
+> Everywhere: air lasts four times as long underwater, and you move through water as with Depth Strider I.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | `minecraft:oxygen_bonus` +3 and `minecraft:water_movement_efficiency` +0.33, everywhere | 10 |
+
+---
+
+**Vault Smith** `[NOTABLE]`
+
+> Anvil work on a Vault-Forged tool never raises its repair cost, so it never becomes "Too Expensive".
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | `AnvilUpdateEvent`: no repair-cost increase on a tool carrying the Vault-Forged marker | 12 |
+
+> A leaf whose only neighbour is Vault-Forged.
+
+---
+
+**Ore Imprint** `[NOTABLE]`
+
+> Combine a tool with one metal storage block in an anvil to imprint that metal on it. When the tool mines that metal's ore in the Vault: +1 Fortune and +25% mining speed.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Anvil: tool + one `c:storage_blocks/<metal>` block imprints `<metal>`; one imprint per tool, stored as `imprint` in the `orevault:vault_tool` component; a new one replaces it. On `c:ores/<metal>` in the Vault: +1 Fortune (Fortune stage, §11) and +25% mining speed | 12 |
+
+> Per tool, with no limit on tools and no slot in the tree, so it is not the rejected Attunement slots (`DESIGN_LOG.md`).
+
+---
+
+**Gem Seam** `[NOTABLE]` `[REQUIRES: an Apotheosis gem loot table]`
+
+> Ore you mine by hand in the Vault can drop Apotheosis gems: rarer ore drops them more often and more of them, and Apotheosis picks the gem and its purity from your world tier.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | On a hit, runs `orevault:gameplay/gem_seam/<rarity>` with the player as looting entity and the luck below; chance per ore by its §4.2 rarity | 12 |
+
+| Ore rarity | Chance per ore | Gems per hit | Loot luck |
+|---|---|---|---|
+| Common | 1 in 2,000 | 1 | +0 |
+| Uncommon | 1 in 600 | 1 | +1 |
+| Rare | 1 in 150 | 2 | +2 |
+
+> About 0.37 gems an hour on the stone band's 68/25/7 mix, 37 in a solo run; 0.47 an hour on deepslate's 60/30/10. The three loot tables ship as conditional data (`neoforge:conditions`, mod loaded `apotheosis`) holding Apotheosis's own random-gem entry, so Apotheosis chooses the gem and purity by world tier, as for its mob drops. Ore Vault names no gem, purity or tier: no compile dependency, no class reference, no reflection. If Apotheosis has a world-tier loot condition, per-tier frequency goes in the same JSON as extra pools. Hidden when none of the three tables has a pool after datapacks load. Gems skip the Fortune stage and every yield multiplier; one roll per ore. To verify in the Apotheosis 9.1.0 jar before building: the gem entry's type id, whether it reads loot luck for purity, and whether a tier condition exists. Playtest: compare 37 a run with an hour of Apotheosis mob kills at the same tier; if the Vault out-earns the mob path, halve the common chance.
+
+---
+
+**Unyielding Edge** `[NOTABLE]`
+
+> In the Vault, a tool at 1 durability stops taking damage instead of breaking, and mines at half speed until repaired.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | In the Vault, durability lost to a hand-broken block never takes the held tool below 1; at 1 durability its mining speed is ×0.5, a penalty applied last (§11) | 14 |
+
+> The clamp is in the tool wear hook (§11), after every other roll. FTB Ultimine's `PREVENT_TOOL_BREAK` setting stops chains near the end of durability before the clamp matters; a gametest covers the two together.
+
+---
+
+**Resonant Trait** `[NOTABLE]` `[REQUIRES: Hephaestus Tools]`
+
+> Ships a "resonant" trait for Hephaestus tools: +15% mining speed in the Vault per trait level, up to level 2.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | A Hephaestus trait shipped as conditional data (`neoforge:mod_loaded`): +15% Vault mining speed per level, to 2 | 14 |
+
+> Hephaestus traits are JSON loaded with `neoforge:conditions` support, so this is datapack-only. The trait schema must be read before the ticket opens.
+
+---
+
+**Blast-Wise** `[NOTABLE]`
+
+> Everywhere: 30% less explosion damage and half the explosion knockback.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Explosion damage −30% (`LivingIncomingDamageEvent` on `#minecraft:is_explosion`) and `minecraft:explosion_knockback_resistance` +0.5, everywhere | 14 |
+
+---
+
+**Budding Seam** `[NOTABLE]` `[REQUIRES: GeOre]`
+
+> 1 in 500 metal ores you mine by hand in the Vault leaves GeOre's budding block for that metal in place of air.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | 1 in 500 hand-mined metal ores is replaced by the block in `orevault:budding/<metal>` instead of air | 15 |
+
+> The block tags ship with optional GeOre entries. A player's break changes the block, not world generation, so generated chunks are still never changed by a purchase (§3.1).
+
+---
+
+**Ascending Edge** `[NOTABLE]`
+
+> A pickaxe that mines enough ore in the Vault turns into the next pickaxe up the ladder, keeping its enchantments, its name and everything else stored on it. The ladder runs through every pickaxe in the pack, modded ones included, and each step needs more ore than the last.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | When a tool's ores since its last step reach the next rung's count, it becomes the next rung's item | 18 |
+
+> **The ladder** (Nick, 2026-10-26: "make the upgrade tree really long as it moves through pretty much all pickaxe types"). Built on the server from each candidate item's default stack when tags load, at startup and on `/reload`, and sent to clients for tooltips; clients never compute it.
+>
+> - Candidates: `#minecraft:pickaxes` plus `#orevault:ascension/include`, minus `#orevault:ascension/exclude` (by default optional `#c:ore_hammers`). Paxels form a separate ladder keyed by `#orevault:ascension/paxels` (by default optional `#c:tools/paxel` and `#cucumber:paxels`); a pickaxe never turns into a paxel or back. Mystical Agriculture's essence pickaxes are in `#minecraft:pickaxes` and join with no extra work.
+> - Excluded: items whose stats live on the stack. That is any item whose default stack has an energy handler (Just Dire Things, Mining Gadgets, Ender IO, Oritech), any item whose speed is computed per stack, and Hephaestus tools, found by namespace `hephaestus_tools` or the `hephaestus_tools:construction` component looked up by id. A swap would lose their charge, upgrades or parts (Nick: Hephaestus tools are not upgraded). There is no toggle.
+> - Stats, read from the default stack: durability `getMaxDamage()` (an unbreakable item counts as infinite), speed `getDestroySpeed` against stone, never the `Tool` component's default speed, which is 1.0 for every pickaxe; harvest level as the set of probe blocks in `orevault:ascension/harvest_probes` the item can harvest.
+> - Item B is above item A when B's durability and speed are both at least A's, B harvests everything A does, and durability or speed grows by at least the minimum step, 5% (`ASCENSION_MIN_STEP = 0.05`, a constant): the smallest change a player notices, it keeps near-duplicates such as 2,031 against 2,032 durability from becoming rungs, and every step Nick named (2,000 to 2,500 durability, +25%) passes. A's next rung is the B above it with the lowest durability, then the lowest speed, then the same namespace as A, then `minecraft`, then id order, so the ladder climbs through every durability step and favours durability over speed. Equal items are siblings, never rungs, so the ladder cannot loop.
+> - Gold is off the ladder: its 32 durability is below wood's, so nothing climbs into it, and a gold pick climbs only if a modded pick has at least its speed. Its tooltip says so.
+> - A NeoForge data map on items, `orevault:tool_ascension` (`{ "next": <item>, "ores": <int, optional> }`), overrides a computed step. An override that makes a loop is dropped and logged.
+>
+> **Ores per rung** depend on the rung being reached: `N = durability × sqrt(speed / 4)`, rounded to the nearest ore, where 4 is stone's speed. Durability enters linearly and speed under a square root, so durability counts for more. A rung with infinite durability takes its count from the data map; with no entry, `N` uses twice the highest finite durability among the candidates, so an unbreakable pick is always the dearest rung on its ladder, because it removes durability as a cost for good. Vanilla figures, to be checked against the decompiled 26.1 `ToolMaterial`:
+>
+> | Rung | Durability / speed | Ores to reach | Hours at 220 ore an hour |
+> |---|---|---|---|
+> | Wood | 59 / 2 | start only | |
+> | Stone | 131 / 4 | 131 | 0.6 |
+> | Copper | 190 / 5 | 212 | 1.0 |
+> | Iron | 250 / 6 | 306 | 1.4 |
+> | Diamond | 1,561 / 8 | 2,208 | 10.0 |
+> | Netherite | 2,031 / 9 | 3,047 | 13.9 |
+>
+> Wood to netherite is 5,904 ores, 27 hours of mining; iron to netherite, what a team holds at level 18, is 24 hours. A modded 2,500-durability pick at speed 9 or 10 costs 3,750 or 3,953 ores. Each member's tool climbs separately.
+>
+> **Known risk (Balancer): ores per rung do not scale with the size of the step.** `N` depends only on the rung being reached, so a 6% step from a 2,031-durability pick to a 2,150 one costs about 3,200 ores, more than the whole climb from diamond to netherite. A pack with many pickaxes a few percent apart above diamond gives a long ladder of dear rungs, and the climb past diamond can take several times the 24 hours above. The ladder is computed once per tag reload and written to the server log at start-up, rung, stats and ores to reach; the first modded playtest checks it against the pack and, if the top of the ladder is too slow, the fix is a data map override or making `N` scale with the step, a Balancer change.
+>
+> **Counting.** The `orevault:vault_tool` data component is saved with the item and synced to clients for tooltips: `version`, `lifetimeOres`, `oresSinceRung` (default 0), `forged` (Vault-Forged applied, default false), `imprint` (Ore Imprint's metal, default none) and `echoes` (Echoing Edge's echo count per enchantment, default empty). Its names are fixed and every change gets a codec migration (`CLAUDE.md` rule 6). It counts a classified ore broken by hand in a Vault, in the final stage of the §11 drop listener, on `player.getMainHandItem()`, never on the event's tool, which is a copy taken before damage. Each ore of an FTB Ultimine chain counts on its own (§9).
+>
+> **The swap** is queued and applied in `PlayerTickEvent.Post`, only if the main hand still holds the same stack, so a chain finishes on one tool. The new stack copies the old stack's component patch (enchantments, including any raised past the maximum by Echoing Edge, name, lore, repair cost, trims, other mods' components), removes the old item's patched `MAX_DAMAGE`, `TOOL` and `ATTRIBUTE_MODIFIERS`, re-applies Vault-Forged if it was there, and carries damage over as the same fraction of maximum durability. `oresSinceRung` resets to 0 and `lifetimeOres` is kept. The old item's own behaviour is lost (for example Mystical Agriculture's augment slots); that is why per-stack tools are excluded.
+>
+> Ring 18 stays: before then a team crafts its own picks in minutes, so the node's value is diamond to netherite and the modded rungs above. Ascending Edge and Echoing Edge are not exclusive; both are paced so neither throws a team far ahead (Nick, 2026-10-26).
+
+---
+
+#### Keystones
+
+> Each one changes how you mine and each one costs you something. They sit at rings 18 to 26, at the far ends of the tree. A keystone costs 30 XP levels to refund (§4.4), so its downside cannot be dodged by refunding it for one trip. The first five are carried over from the tiered tree; the last four are new (2026-10-26).
 
 **Vault Expansion** `[KEYSTONE]`
 
 > Bedrock moves from Y=0 down to Y=−64, opening a 63-block deepslate band that carries the highest ore density in the mod. Takes effect only on a dimension reset, which regenerates the Vault and everything built in it.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | Vault re-created under `ore_vault_expanded` on next reset; deepslate band below Y=0 unlocked | 10 | 18 | Ore Attunement T3, Vein Expansion T5, Miner's Constitution T4 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Vault re-created under `ore_vault_expanded` on next reset; deepslate band below Y=0 unlocked | 18 |
 
 ---
 
@@ -1613,9 +1888,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > The two Ore Focus options you did not choose apply at 50% strength alongside the one you did, and every ore pays −20% Resonance.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | Unchosen Ore Focus options apply at 50% effect alongside the chosen one; **−20% Resonance from all ore** | 8 | 22 | Ore Attunement T3 |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Unchosen Ore Focus options apply at 50% effect alongside the chosen one; **−20% Resonance from all ore** | 22 |
 
 ---
 
@@ -1623,11 +1898,11 @@ distinctly (§8). A node with no class tag is a small node.
 
 > Ore pays no Resonance at all. Instead each active team member earns 0.30 Resonance a second, raised by the team's Resonance bonuses that apply to that member, and the pool takes the members' sum through the same §4.2 team scaling as ore. Active means inside the Vault, below Y=0, and having broken a block by hand in the last 10 seconds.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | Ore awards no Resonance. Each active member (inside the Vault, below Y=0, broke a block in the last 10 seconds) earns 0.30 Resonance a second × (1 + that member's counted Resonance bonuses); the pool gains the sum, divided by team size, × (1 + 0.1 × (team size − 1)) | 8 | 24 | Vault Expansion |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Ore awards no Resonance. Each active member (inside the Vault, below Y=0, broke a block in the last 10 seconds) earns 0.30 Resonance a second × (1 + that member's counted Resonance bonuses); the pool gains the sum, divided by team size, × (1 + 0.1 × (team size − 1)) | 24 |
 
-> Divorces progression from extraction. You can chase materials as hard as you like without slowing the tree, or delve slowly and still advance. Ore-multiplying nodes stop contributing to progression, which is a large sacrifice for anyone deep in Metallurgy, and it makes Greedy Seams a pure upside rather than a pact — a combination that is allowed and is meant to be found. The Resonance nodes the team has bought keep most of their value, because the state-based ones raise the rate (Nick, 2026-10-26).
+> Divorces progression from extraction. You can chase materials as hard as you like without slowing the tree, or delve slowly and still advance. Ore-multiplying nodes stop contributing to progression, which is a large sacrifice for a team invested in the yield nodes, and it makes Greedy Seams a pure upside rather than a pact — a combination that is allowed and is meant to be found. The Resonance nodes the team has bought keep most of their value, because the state-based ones raise the rate (Nick, 2026-10-26).
 >
 > **The rate.** Evaluated once a second on the server:
 >
@@ -1658,10 +1933,11 @@ distinctly (§8). A node with no class tag is a small node.
 > | Resonant Symbiosis (+50%) | Yes | Two or more team members inside the Vault |
 > | Bedrock Communion (+2% per block below Y=0) | Yes | The member's Y; an active member is always below Y=0 |
 > | Volatile Veins: Ultimine Gambit | No | Tied to a surviving Ultimine operation |
+> | Travel Resonance gain (+5% a node, to +20%) | Yes | Unconditional, like Resonant Overload |
 >
 > **No penalty applies to the rate**, including Resonant Symbiosis's −40% alone. The penalties in §11 are priced against ore Resonance, and Silent Stone has already taken all of it; charging them again would double the cost, and it would undo the stated intent that Silent Stone makes Greedy Seams a pure upside. Greedy Seams, Vault Fever and Full Spectrum therefore cost a Silent Stone team nothing in progression; what they still trade is materials and speed, which is the side of the game this keystone frees. Resonant Overload stays a choice against Greedy Seams: +100% rate for half the ore. With no penalty the floor at zero (§11, Nick's N6) can never be reached; it is stated so the code applies it anyway.
 >
-> **Derived, unplaytested.** Curve figures are the §4.3 solo derivation in the stone band, 220 ore an hour at 3.485 Resonance, 0.213 a second; a team of five all mining earns 0.298. Levels 25 to 30 cost about 47,600 Resonance, 62 hours at 0.213. "Ore, same nodes" counts the same bonuses plus the ore-only ones a build has by then (Kindred Rock +15%, Last Ore about +13% spread over a vein; in the maximum case Clean Cut +50% on every vein), and leaves out the bursts. The typical level-24 build has Deep Habit +25%, Calloused Hands tier 2 at about 200,000 blocks +15%, Vein Discipline +20%, Vault's Purity +20% and Frontier Bonus +20% averaged over half the time, so +100%, and +150% for five with Resonant Symbiosis; no Resonant Overload and no Bedrock Communion, which needs level 26. The maximum adds Resonant Overload, Bedrock Communion at Y=−63 and every counted bonus at its cap: +381% solo, +431% for five.
+> **Derived, unplaytested.** Curve figures are the §4.3 solo derivation in the stone band, 220 ore an hour at 3.485 Resonance, 0.213 a second; a team of five all mining earns 0.298. Levels 25 to 30 cost about 47,600 Resonance, 62 hours at 0.213. "Ore, same nodes" counts the same bonuses plus the ore-only ones a build has by then (Kindred Rock +15%, Last Ore about +13% spread over a vein; in the maximum case Clean Cut +50% on every vein), and leaves out the bursts. The typical level-24 build has Deep Habit +25%, Calloused Hands tier 2 at about 200,000 blocks +15%, Vein Discipline +20%, Vault's Purity +20% and Frontier Bonus +20% averaged over half the time, so +100%, and +150% for five with Resonant Symbiosis; no Resonant Overload and no Bedrock Communion, which needs level 26. The maximum adds Resonant Overload, Bedrock Communion at Y=−63 and every counted bonus at its cap: +381% solo, +431% for five. These figures leave out travel Resonance gain, which counts (above): it adds the same points to both columns, +10% for a typical level-24 team holding half of it and +20% at most, so the typical solo rate becomes 0.63 a second against 0.51 for ore and every ratio in the table moves by under 0.05.
 >
 > | Build | Silent Stone, solo | Ore, same nodes, solo | Silent Stone, five active | Ore, same nodes, five | Levels 25–30 (solo SS / solo ore) |
 > |---|---|---|---|---|---|
@@ -1683,9 +1959,9 @@ distinctly (§8). A node with no class tag is a small node.
 
 > While 2 or more team members are inside the Vault at once, each of them gains +50% Resonance and +25% ore. Alone inside the Vault, −40% Resonance.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | While two or more team members are inside the Vault at once, each of them gains +50% Resonance and +25% ore. Alone inside the Vault, −40% Resonance | 8 | 20 | None |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | While two or more team members are inside the Vault at once, each of them gains +50% Resonance and +25% ore. Alone inside the Vault, −40% Resonance | 20 |
 
 > This is a team mod whose tree otherwise has nothing to say about teams. It makes co-op a build rather than a convenience, and the solo penalty is steep enough to be a genuine choice rather than a free bonus for groups. Solo players are a team of one (§2), so for them it is a trap they can see coming — which is exactly what a keystone is.
 >
@@ -1697,15 +1973,108 @@ distinctly (§8). A node with no class tag is a small node.
 
 > +2% Resonance and ore per block below Y=0, reaching +126% at Y=−63. Between Y=32 and Y=245 ore pays no Resonance at all and mining speed is halved. At Y=246 and above there is no penalty, so surface builds and machine floors are untouched.
 
-| Tier | Effect | Cost | Level Req | Prereq |
-|---|---|---|---|---|
-| 1 (only tier) | +2% Resonance and ore per block below Y=0, reaching +126% at expanded bedrock. Between Y=32 and Y=245: no Resonance from ore, and mining speed halved. At Y=246 and above: no penalty | 10 | 26 | Vault Expansion, Deep Harvest |
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | +2% Resonance and ore per block below Y=0, reaching +126% at expanded bedrock. Between Y=32 and Y=245: no Resonance from ore, and mining speed halved. At Y=246 and above: no penalty | 26 |
 
 > **The Y=246 exemption is the whole reason this node is playable.** Y=246 is the base of the dirt band (§3.1: dirt Y=246–249, grass Y=250, open air Y=251–319), so every surface build, machine room and automation floor sits above the line and is untouched. Without it the keystone would tax the one part of the Vault players build in.
 >
 > The penalty is a mining-speed reduction, not damage. Damage over time in a dimension you spend hours in is an irritation rather than a cost, and it would stack lethally with lava from Molten Seam.
 >
 > +126% is the ceiling and it is a fixed one: the expanded Vault floors at Y=−63 with bedrock at −64, so there is no depth left to scale into. Stating the cap is better than leaving the formula open-ended and discovering it in a spreadsheet.
+
+---
+
+**Long Arm** `[KEYSTONE]`
+
+> Block reach +3 more in the Vault, +6 with all travel reach. In exchange mining speed is ×0.75.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | `minecraft:block_interaction_range` +3 in the Vault; mining speed ×0.75, a penalty applied last with Bedrock Communion's halving (§11) | 18 |
+
+> Strip a whole face without stepping, but slower per block. This is the reach cap's own trade-off, offered rather than forbidden.
+
+---
+
+**Glass Edge** `[KEYSTONE]`
+
+> +50% mining speed. In exchange every block you break in the Vault costs 3 durability.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | +50% mining speed (`MiningSpeedModifiers` bonus sum); in the Vault, the durability a hand-broken block costs the held tool is multiplied by 3 before Unbreaking, which then rolls per point; other durability loss (combat, a flint and steel) is unchanged | 20 |
+
+> It turns the durability nodes from comfort into a build.
+>
+> Known interaction (unplaytested): with an Efficiency VII netherite pick from Echoing Edge, Glass Edge brings stone-band ore to speed 88.5 against the 90 that breaks it in one tick, so one more +10% makes ore instant. Allowed; see Echoing Edge.
+
+---
+
+**Galvanic Seam** `[KEYSTONE]` `[REQUIRES: an item with energy storage]`
+
+> Tool charge nodes give triple, 150 FE a node, and Resonant Dynamo is doubled. In exchange tools with no energy storage take 2 durability per block in the Vault.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Tool charge ×3 (150 FE a block per node); Resonant Dynamo ×2 (800 FE an ore); in the Vault, a tool with no energy storage has the durability a hand-broken block costs it multiplied by 2 before Unbreaking | 20 |
+
+> A tech team mines with energy tools only. Hidden when no registered item has energy storage, checked once at server start.
+
+---
+
+**Echoing Edge** `[KEYSTONE]`
+
+> Each ore you mine by hand in the Vault can echo: at 1 in 1,000 at first, and rarer as an item fills, an enchantment on your tool or other gear rises one level, up to 2 past its maximum, or the item gains a new enchantment at level I. Half the echoes go to the tool in your hand, half to your armour, offhand or first hotbar weapon. Echoed items can't be used in an anvil, grindstone or smithing table.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 (single node) | Each hand-mined Vault ore rolls once: half the rolls target the held tool, half one other eligible item at random. Chance on the target `1 / (1,000 × (1 + 3f))`, `f` the share of its headroom already used. An echo raises an enchantment by one level, up to `getMaxLevel() + 2`, or 1 echo in 4 adds a compatible enchantment at level I. An echoed item is locked out of the anvil, grindstone and smithing table | 22 |
+
+> **Decided (Nick, 2026-10-26):** the roll is per ore, and every ore of an FTB Ultimine chain rolls on its own, since a chain is not one mining instance (§9); each echo is announced to the team in chat with a sound; the cap follows Apotheosis's higher maxima, and levels above the maximum work as vanilla computes them (Efficiency VII on netherite mines stone instantly); an echo may add an enchantment and may reach tools, weapons and armour, not only the held pickaxe; and Echoing Edge and Ascending Edge are **not exclusive**: owning one does not pause the other, and both take long enough not to throw a team too far forward. The rule below is the Balancer's round 3; Nick suggested the headroom slowdown as a "maybe", and the rule implements it.
+>
+> **The roll.** Each ore a player breaks by hand in a Vault (§3.4) rolls once, in the Deliver stage of the §11 listener, on the live stacks, never the event's tool copy. An Ultimine chain of 7 ores is 7 rolls. No roll for a machine break, a fake player or a block outside `#c:ores`. No Resonance is paid.
+>
+> **Eligible items**, the player's own at the moment of the break: the main-hand item that broke the ore (the tool); the four worn armour pieces and the offhand item; and one hotbar item, the leftmost one other than the tool in `#orevault:echo_hotbar` (default `#minecraft:enchantable/weapon`, `/bow`, `/crossbow`, `/trident`, `/mace`). Not the whole hotbar or inventory: a stack of spare picks would not raise the rate, which is fixed, but would spread echoes onto items nobody uses. An item is eligible only while its headroom `R` (below) is above 0.
+>
+> **Target first, then the roll.** Half of all rolls go to the tool. The other half pick one of the other eligible items at random, equal odds. If the tool is full, or there is no other eligible item, that half is lost, not passed on. The total echo rate therefore never rises: taking armour off does not speed the pick, and a full pick does not speed the armour.
+>
+> **The chance falls with the share of headroom used.** For the chosen item:
+>
+> ```
+> cap(e) = min(255, e.value().getMaxLevel() + 2)       // read at runtime, never a vanilla constant
+> R      = sum over its enchantments of (cap − level)  // skipping curses, max-level-1 enchantments and #orevault:echoing_edge_excluded
+>          + 1 for each enchantment that could be added (below)
+> n      = echoes this item already has                // sum of orevault:vault_tool echoes
+> f      = n / (n + R)
+> chance = 1 / (1,000 × (1 + 3f))
+> ```
+>
+> The chance starts at 1 in 1,000 on every item and never falls below 1 in 4,000. Each echo slows the next by 3,000 / (n + R) ores, so an item that can hold more enchantment levels takes less per echo, as Nick asked. Expected rolls on one item to reach `k` echoes: `1,000 × (k + 1.5 k (k − 1) / (n + R))`.
+>
+> **What an echo does.** If the item can take a new enchantment, 1 echo in 4 adds one; otherwise, and on the other 3 in 4, it raises a random enchantment below its cap by one level, equal odds per entry. A new enchantment must pass `Enchantment.isSupportedItem(stack)` and `Enchantment.areCompatible` with every enchantment already on the item, is not a curse or excluded, and is drawn by registry weight as the enchanting table draws. It is added **at level I**; later echoes can raise it, which also raises `R`, so the item slows less. Treasure enchantments (Mending, Soul Speed) can be added: it is one level, and Nick likes being overpowered. Enchantments whose maximum is 1 (Silk Touch, Mending, Infinity, Channeling) can be added but are never raised. With nothing to raise or add, the item is full and its tooltip says so.
+>
+> **Apothic Enchanting.** The cap reads `getMaxLevel()` at runtime with no `isLoaded` branch, so Apothic's raised maxima give "Apothic's maximum + 2". To verify in the Apothic Enchanting 2.1.0 jar before building: whether its raised maxima are the enchantment's `max_level` (a data override or a mixin on `getMaxLevel`). If they live in its own config instead, `getMaxLevel` returns vanilla's value and the cap is short; the fallback is an Ore Vault data map `orevault:echo_max_level` (enchantment to level), shipped as conditional data holding Apothic's values, and read in place of `getMaxLevel` where it has an entry.
+>
+> **Downside: an echoed item cannot be used in an anvil, grindstone or smithing table** (Nick, 2026-10-26, round 2, extended in round 3 to the grindstone and smithing table). No new enchantments by book, no anvil repair, no netherite upgrade, no socketing at a smithing table. It bites because the target is random: an echo can land on diamond armour before its netherite upgrade, or on gear that still needed an Apotheosis socket, and that item is then finished as it stands. A team completes its kit before level 22 or accepts what the echoes freeze. Mending, Highwater Mark, Tool care and Unyielding Edge keep an echoed item alive. Rejected as the downside: extra durability per block (Highwater Mark and Mending make it free), a Resonance tax (the curve stays derived from ore only), an XP cost per echo (free once a mob farm runs), and pausing Ascending Edge (Nick).
+>
+> **With Ascending Edge.** Both roll per ore and neither pays Resonance. An ascending pick keeps its component patch (above), so its `orevault:vault_tool` echo counts and its raised levels climb with it; the new item does not change any cap, which is per enchantment, not per material.
+>
+> **Derived, unplaytested.** Echoes depend on ores mined, not on ore rate, since the roll is per ore. Hours are at 220 / 500 / 1,000 ore an hour. Typical level-22 pick: Efficiency V, Unbreaking III, Fortune III, Mending, headroom 6.
+>
+> | On one item | Ores | Hours at 220 / 500 / 1,000 |
+> |---|---|---|
+> | First echo anywhere in the kit | 1,000 | 4.5 / 2 / 1 |
+> | Pick, 1st echo (half the rolls) | 2,000 | 9 / 4 / 2 |
+> | Pick, 3rd | 9,000 | 41 / 18 / 9 |
+> | Pick, 6th: full at Efficiency VII, Unbreaking V, Fortune V | 27,000 | 123 / 54 / 27 |
+> | One armour piece, 1st echo (a tenth of the rolls, with five other items) | 10,000 | 45 / 20 / 10 |
+>
+> From level 22 to 30 a solo player mines about 16,000 ores and expects about 4 echoes on the pick and 1 on each armour piece and the sword, 11 in all; a member of a team of five about 3 on the pick and 8 in all, 42 for the team. A typical solo level-30 pick is about Efficiency VI, Fortune IV, Unbreaking IV. Neither keystone slingshots: with Ascending Edge the two together give about one step, a rung or an echo, every 8 to 10 hours of mining after level 22.
+>
+> **Known interaction: Glass Edge and Efficiency VII make ore instant.** A netherite pick at Efficiency VII mines at speed 59. Stone-band ore and deepslate stone need 90 to break in one tick. Glass Edge's +50% gives 88.5, so any one more +10% (a travel node, Long Delve, Ore Imprint) makes them instant; six travel mining-speed nodes alone give 94 without Glass Edge, and Apothic's higher Efficiency caps make it easier. Recommendation: allow it. It needs two echoes on Efficiency, which a typical solo pick does not have by level 30 (above), Nick likes being overpowered, and echoes are per ore, so a faster miner does not echo more per level. It does raise ore an hour above the curve's 220, which shortens the late levels like any speed node (§4.3). The late-game playtest measures ore an hour with an Efficiency VII pick and Glass Edge, then the hour of the first echo.
+>
+> **Pure functions with unit tests**, kept out of the event handler: `echoChance(n, r)` pinning 1 in 1,000 at n 0, 1 in 3,500 at n 5 r 1, and never below 1 in 4,000; `chooseTarget(toolEligible, others, rnd)` pinning the half-and-half split and the lost half; `chooseEffect(raisable, addable, rnd)` pinning 1 in 4 new. Item tooltip: "Echoes: 3 of 9. Next: 1 in 2,000."
 
 ---
 
@@ -1854,80 +2223,50 @@ Animus orbs drop from mobs killed in Disturbed Zones, behaving identically to XP
 
 ### Tab 1: Resonance Tree
 
-**Layout.** The reference is Diablo 4's skill tree: hubs you follow down a spine, each one with its
-own skills radiating around it. Each cluster is drawn as a **hub** — its anchor at the centre, and
-the cluster's nodes on **rings** around it, so a node's distance from its anchor is its prerequisite
-depth inside that cluster and nothing else. A node on the first ring is joined to the anchor by a
-**spoke**, because the anchor's gate really is the only thing holding it. Fork options sit together
-on the ring just outside their parent. Hub centres run down one vertical **spine**, in the §6.1
-cluster order, joined by a line.
+**Layout.** The Path of Exile passive tree: the start at the centre, nodes joined by straight edges, stronger nodes further out (§6). Everything is drawn from the authored layout file, positions included, and the renderer holds no placement code. Faint level rings, one per level, mark where each level opens ("Level 12 opens here"), so the level gate reads as geography rather than as a lock on every node. Wheels, petals and exclusive junctions are drawn as §6 describes them. Edges run border to border and never cross another node; a layout test checks it. The layout is approved by Nick on a rendered preview before renderer code is written (§6.1).
 
-Nothing is placed straight above or below a hub. A wedge either side of vertical is kept empty at
-every radius, giving each cluster a **corridor** the spine runs through and any edge leaving the
-cluster can use. What is left is two sectors, and the cluster's nodes fan into them, left and right.
+**Nodes are icons** (Nick, 2026-10-26). Every node, travel included, is an icon with no text on the page; its name and numbers are in a tooltip on hover. Icons are 18, 26 and 36 pixels for small and travel nodes, notables, and keystones. Every copy of a skill uses the same icon, and each travel stat has its own. Icons are drawn at one texel per GUI unit (`CLAUDE.md` Textures). Retro Diffusion is not used for them unless it is absolutely necessary (Nick).
 
-Position must never imply a relationship that does not exist. Two nodes are drawn one outside the
-other only when one requires the other.
+**The page is opaque and zooms.** The tree is drawn on its own solid page, not over the world, so thin edges stay readable. The mouse wheel scales it between a fifth and one and a half times full size, anchored on the pointer, with a readout of the zoom.
 
-**Edges.** Prerequisite lines connect **border to border**, stopping at the edge of each node box —
-never routed to the box centre, which draws the line across the node and over its text. A line only
-ever travels along a node's own ray out from its hub, around an arc inside the empty gap between two
-rings, or up and down a corridor, so it cannot cross a node box.
+**Search.** A search box in the tree tab's strip, focused with Ctrl+F, matches node names and effect text and highlights the matching nodes.
 
-**Node boxes size to their content.** A box is as wide as the **widest line it will ever draw**,
-within a minimum and a maximum. That is not the same as the widest name: the second line carries the
-tier, the cost and the level requirement, and a specialised fork parent's second line carries the
-display name of the option it is set to. Nothing is truncated at a fixed width, and a box does not
-change size when it is bought.
+**Hover.** Hovering a node highlights the cheapest path to it from what the team owns, the one with fewest unowned nodes, and every other copy of the same skill. The tooltip states the path's point cost and the highest ring on it.
 
-**The page is opaque.** The tree is drawn on its own solid page rather than over the world behind
-the screen. Prerequisite lines are one pixel wide, and against a translucent backdrop they read
-against whatever the player happened to be standing in front of.
+**Shift-click** buys the highlighted path, with one confirmation that names the number of points. The server checks each node of the path in order (§4.4); a path that crosses a ring above the team's level, or costs more than the unspent points, is refused before anything is bought.
 
-**The page zooms.** The tree is larger than any screen, so the mouse wheel scales it between a fifth
-and one and a half times full size, anchored on the pointer so what is under the cursor stays under
-it. Zoomed far out, node text is dropped rather than drawn illegibly small, and lines are thickened
-so they stay one pixel on screen — the shape of the tree is the thing being looked at, and it is
-made of lines. A readout says how far out the view is, because a zoom nobody knows about is not a
-zoom.
+**Shared pin.** Any member can pin one node for the team. Every member sees the pin, its path highlighted and "Pinned by <name>"; pinning another node moves it. The pin is saved with the team as `pinnedNode` and `pinnedBy` (§6, §11; Architect, 2026-10-26); a pin whose node is gone or hidden is dropped on load.
 
-**Hovering a node lights its whole chain of prerequisites**, back to the cluster's anchor: the boxes
-gain a halo and the edges between them are redrawn on top in the same colour. On an outer ring the
-node that unlocks another is rings and an arc away, and tracing that by eye was the problem this
-solves. The tooltip says the same thing in words — every prerequisite named, with the tier needed,
-the cluster it is in, and green or red for whether it is met — and a locked node's reason names the
-node or the number standing in the way rather than saying that one exists.
+**Travel totals panel.** A panel lists every travel stat the tree shows, as "Mining speed +30% (3 of 6 owned)". A travel node's tooltip gives the effect and the team total: "+10% mining speed. Team total +30%, +40% with this".
 
-**Per node:** name, current tier / max tier, next tier's skill-point cost and level requirement, and
-a short description on hover. **Every node has a description**; a node without one shows the player a
-raw translation key, which is a visible defect rather than a missing nicety.
+**Tooltip.** Name; class and marks; the effect. For a skill: "Vein Expansion 2 of 5 owned: +30% now, +50% with the next". For a fork parent: the chosen option, or that it does nothing until one is chosen. The ring, and whether the team has reached it. When the node cannot be bought or refunded, the reason, naming the node, level or partner in the way (§4.4). Who last bought it. Tooltips wrap with `font.splitIgnoringLanguage`, within the width and line limits UI/UX set. **Every node has a description**; a node without one shows the player a raw translation key, which is a visible defect.
 
-**Lang keys.** A node's name is `node.orevault.<id>` and its description `node.orevault.<id>.desc`, where
-`<id>` is the node id from §6.1.
+**Lang keys.** A skill's name is `node.orevault.<skill id>` and its description `node.orevault.<skill id>.desc`; every copy of a skill shares them. A notable, keystone or travel stat uses its own id the same way.
+
+**States.** Owned; buyable now; and three locked states, each drawn differently:
+
+| Locked state | When | Drawn as |
+|---|---|---|
+| Out of reach | No edge joins it to an owned node or the start | Dimmed, no badge |
+| Level | It touches an owned node, but its ring is above the team's level | Lock badge with the opening level; only reachable nodes carry a badge |
+| Excluded | Its exclusive partner is owned | Exclusive lock mark, naming the partner |
 
 **Class is visible without hovering:**
 
 | Class | Treatment |
 |---|---|
-| Small | Plain box |
-| Anchor | At the centre of its cluster, framed twice over, no cost shown; displays its points-spent gate and whether it is met |
-| Notable | Larger box, distinct frame |
-| Keystone | Largest, ornamented, unmistakable — grouped in Mastery at the bottom |
-| Pact | Keystone ornamentation in a different, colder frame, so it reads as dangerous without reading as a keystone. A pact in Excavation must not look like a keystone that has escaped Mastery |
-| Growth | Plain box while live. Once its condition can no longer be met, greyed out and labelled **Outgrown**, with its effect shown struck through — the point is spent and the player should be able to see why |
-| Fork parent | Marked as a fork; shows which option is active, or that it is **inert** while none is |
-| Fork option | Small, on the ring just outside the parent and beside its siblings, marked free; siblings shown locked once one is picked |
-| Tradeoff | Toggle element on the node |
-| Exclusive | Lock mark when its partner is held |
+| Small | Plain icon frame |
+| Travel | Smaller, plainer frame, so paths read as paths |
+| Notable | Larger icon, distinct frame |
+| Keystone | Largest, ornamented, unmistakable |
+| Pact | Keystone ornamentation in a different, colder frame, so it reads as dangerous without reading as a keystone |
+| Growth | Plain frame while live. Once its condition can no longer be met, greyed out and labelled **Outgrown** in its tooltip, with its effect struck through — the point is spent and the player should see why |
+| Fork parent | Every node of an unspecialised parent is washed as inert, the state most likely to be reported as a bug; once an option is chosen, each parent node shows that option's badge |
+| Fork option | A petal beside the parent's lowest-ring node, joined to nothing; siblings shown locked once one is picked |
+| Tradeoff | Toggle element on the node; disabled inside the Vault with "Leave the Vault to change this" |
+| Mod-gated | Not drawn at all when its mod or tag is absent |
 
-- Locked nodes are dimmed, with a tooltip naming the specific requirement that is missing
-- A fork parent with no option chosen is flagged as doing nothing — this is the state most likely to
-  be mistaken for a bug
-- Ultimine nodes hidden entirely if FTB Ultimine not loaded; the Broad Cut cluster disappears whole
-- Team's current Resonance level and skill point count shown in the top bar
-- Team's Resonance pool progress toward next level shown as a bar
-- The top bar's Animus row is hidden until the Animus system is built, behind one switch that turns it
-  back on
+**Team.** Every online member is told when a node is bought or refunded and by whom (§4.4), and when the team levels up. The top bar shows the team's Resonance level, unspent points and progress to the next level as a bar. The top bar's Animus row is hidden until the Animus system is built, behind one switch that turns it back on.
 
 ### Tab 2: Animus Tree
 
@@ -2012,8 +2351,9 @@ kindred from the count.
 
 - Detection: `ModList.get().isLoaded("ftbultimine")`
 - Ultimine is a `compileOnly` dependency. Every Ultimine type is referenced only from the `integration.ultimine` package, which is entered only after that check returns true, so nothing loads an Ultimine class when Ultimine is absent. Its 26.1 API is typed registration events, so it cannot be reached without importing its types; the boundary is the package, not the import
-- If not loaded: the Broad Cut cluster is not rendered in the UI, and no Ultimine hooks are registered
-- If loaded: register through Ultimine's events to apply the Volatile Veins roll once per operation and Ultimine Expansion's max block count modifier
+- If not loaded: the Ultimine nodes (Ultimine Expansion, Ultimine Safety, the Gambit, Steady Chain) are hidden, and no Ultimine hooks are registered
+- If loaded: register through Ultimine's events to apply the Volatile Veins roll once per operation and Ultimine Expansion's max block count modifier; Steady Chain sets `ftbultimine:cooldown_modifier` and `ftbultimine:exhaustion_modifier`
+- **Each block of a chain is its own break.** Ultimine 26.1 cancels the original `BreakBlockEvent` and breaks every block of the shape, the clicked one included, through `player.gameMode.destroyBlock(pos)` as the real player, so `BreakBlockEvent` and `BlockDropsEvent` fire once per block with the player as breaker. Ore Vault ignores the cancelled event (`receiveCanceled` false). Resonance, the per-block travel stats, Tempered, Ascending Edge and Echoing Edge therefore count each ore of a chain separately with no Ultimine code (Architect, 2026-10-26, from Ultimine's source). Ultimine refuses fake players, so a chain is always a hand break. A mod that registers an Ultimine break handler bypassing `destroyBlock` produces no events and so no payout
 
 ### Mekanism (Soft Dependency)
 
@@ -2030,6 +2370,32 @@ kindred from the count.
 - If no dust tag exists, drop raw ore
 - No specific mod is referenced; this works with any mod that registers proper `c:` dust tags
 
+### Other mods (tags, data and capabilities only)
+
+The flavour notables of §6.1 reach other mods in Nick's pack without a compile-time reference, reflection or class reference. Each such node is `[REQUIRES: …]`, on a dead-end leaf and hidden when its condition fails.
+
+| Mod | How Ore Vault reaches it | Nodes |
+|---|---|---|
+| Apotheosis | Conditional loot tables (`neoforge:conditions`, mod loaded) holding Apotheosis's own gem entry | Gem Seam |
+| Apothic Enchanting | Echoing Edge's cap reads `getMaxLevel()`, which should return Apothic's raised maxima; if the 2.1.0 jar keeps them in its own config instead, the `orevault:echo_max_level` data map ships them as conditional data | Echoing Edge |
+| Paraglider | Attribute `paraglider:stamina_efficiency`, by id | Wayfarer's Lungs |
+| GeOre | Optional entries in `orevault:budding/<metal>` block tags | Budding Seam |
+| Hephaestus Tools | A trait shipped as conditional data; Hephaestus tools are excluded from Ascending Edge by namespace and component id | Resonant Trait, Ascending Edge |
+| Mystical Agriculture, Cucumber | `#minecraft:pickaxes`, `cucumber:paxels` | Ascending Edge, Hammer and Paxel Affinity |
+| Energy tools (Just Dire Things, Mining Gadgets, Ender IO, Oritech) | NeoForge `Capabilities.Energy.ITEM` on the item; no soft dependency | Tool charge, Resonant Dynamo, Galvanic Seam |
+| Hammer and paxel mods | `c:ore_hammers`, `c:tools/paxel`, `c:tools/mining_tool` | Hammer and Paxel Affinity |
+
+Hephaestus tools are not generated as Ascension rungs. Doing so would need a `compileOnly` dependency on Hephaestus to call its tool-building code for every part combination, which `CLAUDE.md` rule 5 does not list, and a pick that climbed into a Hephaestus tool would then stop, since those are excluded (`DESIGN_LOG.md` 2026-10-26).
+
+#### Unverified: check in the jars before building
+
+These names and behaviours come from documentation, other mods' code or memory, not from the 26.1 jars in Nick's pack. Each is read from the jar, or the decompiled sources, before the node that uses it is built, and the result is written here.
+
+- FTB Ultimine's attribute `ftbultimine:cooldown_modifier` (with `ftbultimine:exhaustion_modifier`) exists under that id and is applied per player (Steady Chain).
+- Paraglider's attribute `paraglider:stamina_efficiency` exists under that id and scales stamina use as Wayfarer's Lungs assumes.
+- The shape of `Capabilities.Energy.ITEM` in NeoForge 26.1: the context type it is queried with and the name and signature of the insert method (Tool charge, Resonant Dynamo, Galvanic Seam).
+- Whether Apothic Enchanting 2.1.0's raised maxima show in `Enchantment#getMaxLevel()`, or live in its own config so the `orevault:echo_max_level` fallback is needed (Echoing Edge).
+
 ---
 
 ## 10. Configuration
@@ -2042,7 +2408,7 @@ Each value below is added to the config in the ticket that first reads it, never
 
 ```toml
 [resonance]
-    # Target hours of play to make the full Resonance tree purchasable (level 30).
+    # Target hours of play to reach Resonance level 30.
     # Read once at server start; takes effect on the next world load.
     target_play_hours = 100
 
@@ -2106,11 +2472,11 @@ command stayed invisible and un-completable until a reload. `ConfigReload` liste
 `ModConfigEvent.Reloading` and re-sends the tree to everyone online inside `server.execute(...)`, which re-runs the predicate.
 
 **Values derived automatically (not configurable):**
-- Level thresholds for Resonance and Animus (derived from tree structure, scaled by `curve_divisor`)
+- Level thresholds for Resonance and Animus (derived from the §3.1 baseline, scaled by `curve_divisor`)
 - Level cap (the constant 30, §4.3)
-- Node costs (defined as constants in `NodeCosts.java`)
+- Points per level (the constant 5, §4.3) and every node's ring (authored in the tree layout file, §6)
 - Stone content floor (40%, hardcoded constant)
-- `averageOresPerHour` (constant in `ResonanceSystem`, see §4.3 step 5)
+- `averageOresPerHour` (constant in `ResonanceSystem`, see §4.3 step 4)
 
 ---
 
@@ -2148,14 +2514,19 @@ public class OreVaultTeamData extends SavedData {
     UUID teamId;
     long resonancePool;
     int levelReached;           // highest level ever reached; never decreases
-    Map<NodeId, Integer> unlockedNodes; // NodeId -> tier
+    Set<NodeId> owned;          // owned node ids; a skill's tier is derived from them
+    Map<ForkId, OptionId> forkChoice;
+    long freeRefundUntil;       // end of the free respec window after a reset (§4.4)
+    @Nullable NodeId pinnedNode; // the team's shared pin; absent means none (§8)
+    @Nullable UUID pinnedBy;
+    Map<NodeId, UUID> boughtBy; // who last bought each owned node; absent means empty
     Map<UUID, PlayerStats> playerStats; // player UUID -> stats
 }
 ```
 
-**Nothing derived is stored.** The current level and unspent skill points follow from the pool, the curve and `unlockedNodes`, and the number of chunk tickets from the anchors placed; storing them as well gives two sources that can disagree. `levelReached` is the exception and is stored on purpose: the curve can move under `curve_divisor` (§4.3), and a team must not lose a level, or the points it paid out, when it does. Animus fields arrive with the post-1.0 epic.
+**Nothing derived is stored.** The current level, unspent skill points and every skill's tier follow from the pool, the curve, `owned` and the layout, and the number of chunk tickets from the anchors placed; storing them as well gives two sources that can disagree. `levelReached` is the exception and is stored on purpose: the curve can move under `curve_divisor` (§4.3), and a team must not lose a level, or the points it paid out, when it does. Animus fields arrive with the post-1.0 epic.
 
-**Tradeoff toggles live on `PlayerStats`, not here.** §6.1 specifies them as per-player — one member of a team can run Tithe while another does not — so `activeTradeoffs` is a `Set<NodeId>` field on `PlayerStats`. An earlier version of this sketch put it on the team object, which contradicted §6.1; the implementation follows §6.1 and this sketch has been corrected to match.
+**Tradeoff toggles live on `PlayerStats`, not here.** §6.1 specifies them as per-player — one member of a team can run Tithe while another does not — so `activeTradeoffs` is a `Set<NodeId>` field on `PlayerStats`. Seam Courier's linked container is per player too: `courierLink` on `PlayerStats` (dimension and block position), absent meaning no link. An earlier version of this sketch put it on the team object, which contradicted §6.1; the implementation follows §6.1 and this sketch has been corrected to match.
 
 **`dataVersion` and migration.** Every load reads `dataVersion` first and migrates forward if it is behind `CURRENT_DATA_VERSION`. This costs almost nothing to add now and is the difference between a schema change being a migration and being a wipe. The shape above is still growing through the remaining phases, so assume it will be needed. Data starts at version 1; saves from before the restart are not supported (§6.1 Reserved node ids). Every rename or removal gets a migration, and every added field reads correctly from a tag written without it: an absent field reads as its documented default.
 
@@ -2226,13 +2597,14 @@ Many nodes modify what a block break drops, and the order they apply in changes 
 
 | Stage | Nodes |
 |---|---|
-| 1. Consume | Tithe (block consumed, no drops), Brittle Stone (shatter roll, and the adjacent ore it destroys), Stone Curse (stone drops nothing) |
-| 2. Fortune | Vein Fortune, Vault's Purity's +1 Fortune |
+| 1. Consume | Tithe (block consumed, no drops), Brittle Stone (shatter roll, and the adjacent ore it destroys), Stone Curse (stone drops nothing). This stage clears items only and never calls `setDroppedExperience`: vanilla XP from the block always drops (§3.4) |
+| 2. Fortune | Vein Fortune, Vault's Purity's +1 Fortune, Ore Imprint's +1 Fortune on its metal |
 | 3. Quantity | Ore Doubling, Greedy Seams (+100%), Resonant Overload (−50%), Novice's Luck, Resonant Symbiosis (+25% with company), Bedrock Communion (+2% per block below Y=0), Last Ore (final block doubled), Automated Extraction (machine breaks only) |
-| 4. Transform | Smelter's Intuition, Molten Seam (smelted near lava; the better of its roll and Smelter's Intuition's), Runic Attunement (Attuned marking), dust/Mekanism substitution |
-| 5. Bonus | Items: Stone Memory (flint, nugget), Salvager's Eye, Stonecaller. XP and orbs, from the same listener: Stone Memory XP (tripled by Stone Curse), Ancient Knowledge, Stonecutter's Patience, Pathfinder's Claim, Vault Echo and Echo Chamber, Chapter's End, Stone Memory T5's burst, Deep Harvest |
+| 4. Transform | Smelter's Intuition, Molten Seam (smelted near lava; the better of its roll and Smelter's Intuition's), Runic Attunement (Attuned marking), dust/Mekanism substitution, Kiln Touch (non-ore drops smelted) |
+| 5. Bonus | Items: Stone Memory (flint, nugget), Salvager's Eye, Stonecaller. XP and orbs, from the same listener: Stone Memory XP (tripled by Stone Curse), Ancient Knowledge, Stonecutter's Patience, Pathfinder's Claim, Vault Echo and Echo Chamber, Chapter's End, Stone Memory T5's burst, Deep Harvest, travel vanilla XP from ore. Items, rolled once per ore and skipping stages 2 to 4: Bookseam, Gem Seam |
+| 6. Deliver | Budding Seam replaces the broken metal ore with its budding block; Seam Courier moves the final ore drops into the linked container; the counters for Tempered and Ascending Edge and the Echoing Edge roll run here, on the live main-hand stack |
 
-Ancient debris skips stages 2 to 4 entirely and always drops exactly one (Ancient Traces, §6.1).
+Ancient debris skips stages 2 to 4 entirely and always drops exactly one (Ancient Traces, §6.1). Harvester's Lot runs in the same listener for blocks broken outside the Vault, the only drop change made there.
 
 > **Fortune is the awkward stage.** `BlockDropsEvent` fires *after* `Block#getDrops` has already rolled the loot table, so a Fortune bonus cannot simply be added there. The Fortune stage therefore discards the existing drop list and re-rolls `state.getDrops(...)` with a copy of the tool carrying the appropriate Fortune level. Everything else operates on the list in place.
 >
@@ -2252,12 +2624,12 @@ A penalty is a penalty however it is written: Greedy Seams' "−50% Resonance" m
 
 | Quantity | Accumulator | Bonuses (summed) | Penalties (multiplied after) |
 |---|---|---|---|
-| Resonance from one ore break | `ResonanceBonuses` | Shallow Grace (+50%), Apprentice's Ledger (+100% on a trip's first 100 ore), Deep Habit, Calloused Hands, Kindred Rock, Vein Discipline, Molten Seam (+25%), Frontier Bonus (+40%), Vault's Purity (+20%), Last Ore (+100% on the final block), Clean Cut (+50% across the vein), Resonant Overload (+100%), Resonant Symbiosis (+50% with company), Bedrock Communion (+2% per block below Y=0), Volatile Veins: Ultimine Gambit (+20% on surviving operations) | Greedy Seams (−50%), Vault Fever (−25%), Full Spectrum (−20%), Resonant Symbiosis alone (−40%), Bedrock Communion between Y=32 and Y=245 (×0), Silent Stone (×0) |
-| Mining speed on one block | `MiningSpeedModifiers` | Long Delve (+10%/stack), Kindred Rock (+20% on kindred types) | Bedrock Communion (halve) |
+| Resonance from one ore break | `ResonanceBonuses` | Shallow Grace (+50%), Apprentice's Ledger (+100% on a trip's first 100 ore), Deep Habit, Calloused Hands, Kindred Rock, Vein Discipline, Molten Seam (+25%), Frontier Bonus (+40%), Vault's Purity (+20%), Last Ore (+100% on the final block), Clean Cut (+50% across the vein), Resonant Overload (+100%), Resonant Symbiosis (+50% with company), Bedrock Communion (+2% per block below Y=0), Volatile Veins: Ultimine Gambit (+20% on surviving operations), travel Resonance gain (+5% a node) | Greedy Seams (−50%), Vault Fever (−25%), Full Spectrum (−20%), Resonant Symbiosis alone (−40%), Bedrock Communion between Y=32 and Y=245 (×0), Silent Stone (×0) |
+| Mining speed on one block | `MiningSpeedModifiers` | Long Delve (+10%/stack), Kindred Rock (+20% on kindred types), travel mining speed (+10% a node), Hammer and Paxel Affinity (+25%), Ore Imprint (+25% on its metal), Resonant Trait (+15% a level), Glass Edge (+50%) | Bedrock Communion (halve), Long Arm (×0.75), Unyielding Edge at 1 durability (×0.5) |
 
 Not in either accumulator, and still to be placed by the Balancer: the flat payments (Stone Memory's 0.5 on deepslate and its T5 burst, Vault Echo, Chapter's End), which are not per-break percentages and for which it is not yet stated whether the bonuses apply (Deep Harvest's extra orb takes none); Hoarder's Instinct's cache multiplier, paid on collection; Brittle Stone's instant break, which replaces mining speed rather than modifying it; and Vault Fever's Haste II, a potion effect.
 
-**Silent Stone's rate** is placed: it reads the bonuses in this table that can be evaluated for a member at any second (Deep Habit, Calloused Hands, Vein Discipline, Frontier Bonus at the member's chunk, Vault's Purity, Resonant Overload, Resonant Symbiosis with company, Bedrock Communion at the member's Y), sums them the same way, and takes no penalty; the per-member results then go through the §4.2 team scaling. The other bonuses are tied to an ore break or a vein event and do not apply. The full rule and its numbers are with the node in §6.1.
+**Silent Stone's rate** is placed: it reads the bonuses in this table that can be evaluated for a member at any second (Deep Habit, Calloused Hands, Vein Discipline, Frontier Bonus at the member's chunk, Vault's Purity, Resonant Overload, Resonant Symbiosis with company, Bedrock Communion at the member's Y, travel Resonance gain), sums them the same way, and takes no penalty; the per-member results then go through the §4.2 team scaling. The other bonuses are tied to an ore break or a vein event and do not apply. The full rule and its numbers are with the node in §6.1.
 
 Summing is what keeps a node's stated number meaning what it says wherever it sits in the tree: +25% is a quarter of the base rate whether it is the first bonus or the seventh. Multiplying a dozen small percentage nodes together compounds far past a curve calibrated for 100 hours, and no node's tooltip could then state its own effect honestly.
 
@@ -2283,18 +2655,23 @@ Movement is server-authoritative. Vanilla runs the follow logic on both sides an
 
 One renderer draws both types. It reuses the vanilla orb sprite sheet — an orb should read as an orb and differ by colour — sizing by value on vanilla's own thresholds and taking its tint from the entity: Resonance = blue/cyan, Animus = red/dark red.
 
-### Node Cost Constants
+### Tree Layout Data
 
-All skill point costs and level requirements are defined in `NodeCosts.java` as public static final int constants. Example:
-```java
-public final class NodeCosts {
-    // Prospecting
-    public static final int[] VEIN_EXPANSION_COST      = {1, 1, 2, 2, 3};
-    public static final int[] VEIN_EXPANSION_LEVEL_REQ = {0, 2, 4, 7, 10};
-    // etc.
-}
-```
-Each tier carries its own cost, because tiers are uneven: Vein Expansion's are 1, 1, 2, 2, 3, so a base cost times a tier count would price it at 5 rather than 9. The level threshold calculator reads total tree cost by summing every tier's own cost across every node (§4.3). Changing a constant automatically recalibrates the entire level curve. Per-tier effect values live in one effects-constants source beside `NodeCosts`, read by the effect code, the lang test and the balance tests.
+The Resonance tree's shape is one JSON resource in the mod jar (§6 Layout data), read at startup into an immutable `TreeLayout`. Pure classes over that object compute distances by breadth-first search, check that a node can be bought or refunded (§4.4), find the cheapest path for the Tome's hover and shift-click (§8), and derive each skill's tier from the owned ids. None of them imports Minecraft, so all of it is tested in JUnit. The tests that pin the layout's rules are listed in §6.
+
+Constants that are not layout live in one class beside it: `LEVEL_CAP = 30`, `POINTS_PER_LEVEL = 5` (§4.3) and the refund prices (§4.4). Per-tier effect values live in one effects-constants source, keyed by skill id and count owned, read by the effect code, the lang test and the balance tests.
+
+### Tool Wear Hook
+
+NeoForge posts no event when an item loses durability, and eight nodes need one: Tool care and the Charge fallback, Kit Care, Hammer and Paxel Affinity, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam. Ore Vault therefore has one Mixin into the NeoForge-patched `ItemStack#hurtAndBreak(int, ServerLevel, LivingEntity, Consumer<Item>)`, which calls one pure `WearRules` class (`docs/adr/0008-tool-wear-mixin.md`).
+
+- At the head of the method, the amount is multiplied (Glass Edge ×3; Galvanic Seam ×2 on a tool with no energy storage), before the item's own `damageItem` and before vanilla Unbreaking, so Unbreaking still rolls per point.
+- After vanilla's durability processing returns its amount, each remaining point rolls once against the summed care chance of Tool care, the Charge fallback and Hammer and Paxel Affinity, then once on its own for Tempered (§6.1 Travel stats); then Unyielding Edge clamps so the damage never reaches the maximum. Outside the Vault the only roll is Kit Care's.
+- Which nodes act is decided by a per-player hand-breaking-block flag. The break handler sets it when `BreakBlockEvent` passes for a hand break (§3.4) in a Vault, before `mineBlock` damages the tool, and clears it when that break finishes, and at the latest at the end of the server tick, so a cancelled break cannot leave it set. Tool care, the Charge fallback, Hammer and Paxel Affinity, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam act only while the flag is set and only on the main-hand item, so a sword hit, a flint and steel or a hoe in the Vault takes normal wear.
+- Kit Care does not use the flag. It acts on any durability loss of a held item or worn armour outside a Vault, from any cause, when the entity is a real player (a `ServerPlayer`, not a fake player, the one in the player list).
+- The mixin checks the flag or Kit Care's scope, reads the team's nodes from the main-thread team snapshot and calls `WearRules`. It holds no other logic.
+
+The signature and local indices are read from the decompiled 26.1 sources on Nick's PC and pinned by a gametest that breaks a block with each node owned.
 
 ---
 
@@ -2313,12 +2690,12 @@ The repo was restarted on 2026-10-25 and nothing is built yet. Tasks are T1 to T
 | T2 | Vault Frame and Crude Vault Igniter, registered the 26.1 way and seen in game | |
 | T3 | Dimension path: lazy creation, restore at server start, portal, return position, logout inside a Vault | |
 | T4 | Chunk generator, rarity classifier and the §3.1 baseline, measured | |
-| T8a | Node data model: ids, tiers, costs, level requirements, classes, marks, prerequisites, reserved ids | |
+| T8a | Node data model and tree layout file: node and skill ids, rings, classes, marks, edges, petals, mod conditions, reserved ids, the layout tests of §6 | |
 | T5 | Resonance loop: orb, pool, level curve, point award, pacing check (§4.3) | |
 | T6 | Persistence: versioned team, player and chunk data | |
 | T7 | Network and the Tome shell | |
 | T8 | Tree layout and renderer; first node bought through the Tome | |
-| T9 | Node effects, cluster by cluster | |
+| T9 | Node effects, in §13 order | |
 | T10 | Chunk loading: Vault Anchor, tickets, Vault Presence, Automated Extraction | |
 | T11 | Reset and disband | |
 | T12 | Integrations: FTB Ultimine, Mekanism by tags, dust fallback | |
@@ -2339,7 +2716,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] FTB Teams hard dependency declared and verified
 - [ ] Package structure created (`block`, `item`, `portal`, `worldgen`, `data`, `config`, `client`, `event`) — plus `skill`, `team`, `ore`, `resonance`, `entity`, `tags` and `debug`
 - [ ] `OreVault.java` main mod class
-- [ ] `NodeCosts.java` constants file
+- [ ] Tree layout file and `TreeLayout` (§6, §11), with the constants class beside it
 - [ ] `OreVaultTeamData` SavedData class
 - [ ] `PlayerStats` data class
 - [ ] FTB Teams event hooks (CREATED, DISBANDED) plus the first-join Tome grant (#34). The grant
@@ -2404,40 +2781,38 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Orb floats to nearest team member in radius — 8 blocks base, server-authoritative;
       only members of the owning team attract or collect it
 - [ ] Team Resonance pool accumulation
-- [ ] Level curve: cap 30, `ceil(totalTreeCost / 30)` points per level
+- [ ] Level curve: cap 30, 5 points per level (§4.3)
 - [ ] `[resonance]` config block: `target_play_hours`, `curve_divisor`
 - [ ] Team scaling: `sum / teamSize × (1 + 0.1 × (teamSize − 1))`
-- [ ] Remove `ASSUMED_TEAM_SIZE` from `NodeCosts` and `LevelCurve`
+- [ ] No `ASSUMED_TEAM_SIZE` anywhere (§4.2)
 - [ ] Skill point award on level-up — every level crossed is paid; the notification is an
       overlay message until the network channel lands, then it becomes a real toast
-- [ ] Drop pipeline (5 ordered stages on `BlockDropsEvent`) — the single listener, the stage
+- [ ] Drop pipeline (6 ordered stages on `BlockDropsEvent`) — the single listener, the stage
       contract and the Fortune re-roll; the nine node effects register into it as they land
 - [ ] Vein index: completion detection, Twin Veins registration, player-placed ore excluded
-- [ ] Refund: `3 XP levels × tier cost`, free for 10 min after a reset — window state and
-      `startFreeRespecWindow` are in place; the reset that opens it is owned by the reset ticket
+- [ ] Refund (§4.4): connectivity rule, 3 XP levels a node, 12 a pact, 30 a keystone, outside the
+      Vault only, team told; free undo window; free for 10 min after a reset (`freeRefundUntil`)
 - [ ] `dataVersion` field + migration on `OreVaultTeamData`
 
 ### Skill Tree — Resonance Nodes
-- [ ] Skill tree data structure and prerequisite graph
-- [ ] Unlock validation (level req, prereq, exclusive conflicts, skill points)
-- [ ] Node-by-node refund (new formula)
+- [ ] Tree graph from the layout file: adjacency, distances, tier derived from owned ids
+- [ ] Buy validation (adjacent, ring, points, exclusive partner, not hidden) and shift-click path buy
+- [ ] Node refund by the connectivity rule (§4.4)
+- [ ] Hidden nodes dormant in the save; unknown ids dropped; disconnected nodes pruned free (§6)
 - [ ] Tradeoff toggle per-player persistence — **toggleable only outside the Vault**
 - [ ] Exclusive node pair enforcement
-- [ ] Fork enforcement — parent is inert until an option is chosen; one option at a time; options
-      cost 0 points to pick and 0 XP to unpick (§4.4)
-- [ ] Cluster anchors — eight non-purchasable nodes gating on points spent in the tree (§6.1). An
-      anchor can re-lock when points are refunded below its threshold; already-purchased nodes in a
-      closed cluster keep working
+- [ ] Fork enforcement — parent is inert until an option is chosen; one option at a time; petals
+      cost nothing to pick or unpick, swap outside the Vault only (§4.4)
 - [ ] Reserved node ids (§6.1) never reused; no migration from pre-restart saves
 - [ ] New fork parents: `vein_shaping`, `ore_working`, `resonant_draw`
-- [ ] `[PACT]` and `[GROWTH]` node classes — a `nodeClass` enum on `NodeDef` replacing the
-      `tradeoff` boolean, with the anchor and fork kinds folded into it
+- [ ] Node classes (§6): small, travel, notable, keystone, pact, growth, fork parent; marks tradeoff,
+      exclusive, requires
 
-> Grouped by cluster, matching §6.1, which is authoritative. The old branch groupings are gone — a
-> node's branch no longer affects anything the player sees, and keeping two orderings was how the
-> code and the spec drifted apart in the first place.
+> In §6.1's order, which is authoritative. The groups below are for reading only; nothing in the
+> tree is grouped or gated by them, and keeping two orderings was how the code and the spec drifted
+> apart in the first place.
 
-- **Prospecting** (anchor: 0 points)
+- **Skills**
   - [ ] Vein Expansion (T1-T5)
   - [ ] Stone Memory (T1-T5)
   - [ ] Gravel Purge (T1)
@@ -2449,7 +2824,6 @@ Use this to track progress. Tick a line only when the work has merged and been s
   - [ ] Shallow Grace *(growth, new)*
   - [ ] Guide Vein *(growth, new)*
   - [ ] Salvager's Eye *(growth, new)*
-- **Excavation** (anchor: 15 points)
   - [ ] Vein Proliferation (T1-T5)
   - [ ] Deep Veins (T1-T2)
   - [ ] Stone Reduction (T1-T2)
@@ -2460,18 +2834,16 @@ Use this to track progress. Tick a line only when the work has merged and been s
   - [ ] Molten Seam *(tradeoff, new — netherrack shell is a hard requirement, not decoration)*
   - [ ] Greedy Seams *(pact, exclusive: Resonant Overload)*
   - [ ] Resonant Overload *(pact, exclusive: Greedy Seams)*
-- **Assay** (anchor: 39 points)
   - [ ] **[FORK: Ore Focus]** `ore_attunement` parent + Common / Uncommon / Rare Focus as free options (replaces the three sequential Ore Boosts)
   - [ ] Geode Clusters (T1-T2)
   - [ ] Ancient Traces (T1-T2) — below Y=0 only, exempt from all multipliers
   - [ ] Ancient Knowledge (T1-T3)
   - [ ] Stonecutter's Patience (T1-T2) *(breakpoint, new — needs the `orevault:vault_stone` tag)*
   - [ ] Calloused Hands (T1-T3) *(breakpoint, new — logarithmic, capped at +40%)*
-  - [ ] Vein Sight *(notable, new — build this before the Deep Lore completion group)*
+  - [ ] Vein Sight *(notable, new — before Vault Echo on every path)*
   - [ ] Stonecaller *(notable)*
   - [ ] Prospector's Eye *(notable)*
   - [ ] Stone Curse *(tradeoff)*
-- **Metallurgy** (anchor: 71 points)
   - [ ] Vein Fortune (T1-T3) *(renamed from Ore Sense)*
   - [ ] **[FORK: Yield]** `ore_working` parent (T1-T3, T4-T6 Mekanism+Doubling only) + Ore Doubling / Smelter's Intuition as free options
   - [ ] Runic Attunement (T1-T3) — Attuned ore → Resonance Crystals
@@ -2479,7 +2851,6 @@ Use this to track progress. Tick a line only when the work has merged and been s
   - [ ] Highwater Mark (T1-T2) *(breakpoint, new — tool and armour repair)*
   - [ ] Brittle Stone *(pact)*
   - [ ] Vault Fever *(tradeoff — cost is −25% Resonance, no longer hunger)*
-- **Claim** (anchor: 89 points)
   - [ ] Vault Presence (T1-T3)
   - [ ] Automated Extraction (T1-T2) — yield only, never Resonance
   - [ ] Far Reach (T1-T2) *(new — trailing tickets count against the ceiling)*
@@ -2493,7 +2864,6 @@ Use this to track progress. Tick a line only when the work has merged and been s
   - [ ] Second Wind: Homeward *(tradeoff, new)*
   - [ ] Vault's Blessing / Vault's Purity *(exclusive pair, both reworked)*
   - [ ] Tithe *(tradeoff)*
-- **Deep Lore** (anchor: 110 points)
   - [ ] Vault Echo (T1-T3)
   - [ ] Echo Chamber *(notable)*
   - [ ] Twin Veins (T1-T3)
@@ -2503,16 +2873,49 @@ Use this to track progress. Tick a line only when the work has merged and been s
   - [ ] Chapter's End *(notable, completion, new)*
   - [ ] Deep Harvest *(notable)*
   - [ ] **[FORK: Orb Collection]** `resonant_draw` parent + Resonance Magnetism / Hoarder's Instinct as free options
-- **Broad Cut** (anchor: 39 points, conditional on FTB Ultimine)
-  - [ ] Ultimine Expansion (T1-T3)
-  - [ ] Ultimine Safety (T1-T2)
-  - [ ] Volatile Veins: Ultimine Gambit *(tradeoff)*
-- **Mastery** (anchor: 160 points — keystones only)
+  - [ ] Ultimine Expansion (T1-T3) *(requires FTB Ultimine)*
+  - [ ] Ultimine Safety (T1-T2) *(requires FTB Ultimine)*
+  - [ ] Volatile Veins: Ultimine Gambit *(tradeoff, requires FTB Ultimine)*
+- **Travel stats** (§6.1)
+  - [ ] Attribute stats as transient modifiers, recomputed on login, respawn, dimension change, team
+        change, buy and refund: move speed, Vault reach, max health, safe fall, armour, Mason's Reach
+  - [ ] Mining speed and Resonance gain through the §11 accumulators, not attributes
+  - [ ] Vanilla XP from ore (Bonus stage)
+  - [ ] Tool care, Kit Care (tool wear hook, ADR 0008)
+  - [ ] Tool charge through `Capabilities.Energy.ITEM`, with the Tool care fallback
+  - [ ] Travel totals panel in the Tome (§8)
+- **Flavour notables** (§6.1)
+  - [ ] Spelunker's Stride
+  - [ ] Landscaper's Swing *(outside the Vault)*
+  - [ ] Seam Courier *(replaces Magnetic Seam)*
+  - [ ] Kiln Touch *(tradeoff)*
+  - [ ] Wayfarer's Lungs *(requires Paraglider)*
+  - [ ] Vault-Forged
+  - [ ] Resonant Dynamo *(requires an item with energy storage)*
+  - [ ] Hammer and Paxel Affinity *(requires a filled hammer or paxel tag)*
+  - [ ] Harvester's Lot *(outside the Vault)*
+  - [ ] Tempered *(tool wear hook)*
+  - [ ] Bookseam
+  - [ ] Steady Chain *(requires FTB Ultimine)*
+  - [ ] Delver's Lungs
+  - [ ] Vault Smith *(leaf off Vault-Forged)*
+  - [ ] Ore Imprint
+  - [ ] Gem Seam *(requires an Apotheosis gem loot table)*
+  - [ ] Unyielding Edge *(tool wear hook)*
+  - [ ] Resonant Trait *(requires Hephaestus Tools; trait schema read first)*
+  - [ ] Blast-Wise
+  - [ ] Budding Seam *(requires GeOre)*
+  - [ ] Ascending Edge *(ladder built when tags load; `orevault:vault_tool` component; Hephaestus and energy tools excluded)*
+- **Keystones**
   - [ ] Vault Expansion
   - [ ] Full Spectrum
   - [ ] Silent Stone *(new — 0.30 a second per active member below Y=0 × (1 + the member's counted Resonance bonuses, no penalties), summed and team-scaled as ore (§4.2), a constant)*
   - [ ] Resonant Symbiosis *(new)*
   - [ ] Bedrock Communion *(new — penalty lifts at Y=246, speed not damage)*
+  - [ ] Long Arm *(new)*
+  - [ ] Glass Edge *(new, tool wear hook)*
+  - [ ] Galvanic Seam *(new, requires an item with energy storage)*
+  - [ ] Echoing Edge *(new)*
 
 ### Deferred to the post-1.0 Animus epic
 - [ ] Animus orb entity, pool, level track, skill point award
@@ -2540,17 +2943,14 @@ Use this to track progress. Tick a line only when the work has merged and been s
       (#35) — vanilla `TabNavigationBar`/`TabManager`, all three tabs present and switching, each
       one a placeholder that names what will fill it. `TomeTab` adds the body draw call vanilla's
       `Tab` lacks, since two of the three pages are a node graph rather than a column of widgets
-- [ ] Resonance tree tab — hub renderer (#136, #147). The grid version shipped in #36 and was replaced
-      on playtest: it stacked unrelated nodes, implying prerequisites that did not exist, and its edges
-      ran to node centres so lines crossed the boxes. A band-and-lane layout replaced it and was itself
-      rejected on playtest for reading as a list. The layout is now a hub per cluster — anchor at the
-      centre, nodes on rings around it, hubs down one spine — per §6.1 and §8. Edges terminate at box
-      borders and travel only along a node's own ray, an arc inside a ring gap, or a corridor, so none
-      can cross a box. Boxes size to the widest line they will ever draw, not to the node's name, and
-      the page is opaque so one-pixel edges do not compete with the world behind the screen.
-      Panning, scrolling and click-to-purchase from #36 carry over; the tab opens centred on the first
-      hub. The page is 944 by 6008 pixels, which is the price of a radial cluster — see `DESIGN_LOG.md`
-- [ ] Node locked/unlocked/toggleable visual states — state by colour landed in #36 (gold maxed,
+- [ ] Resonance tree tab — PoE renderer drawn from the layout file (§8), after Nick's yes on a
+      rendered preview. Pre-restart history: a grid renderer (#36), a band-and-lane layout and a hub
+      per cluster (#136, #147) were each built and replaced; see `DESIGN_LOG.md` 2026-09-07 and
+      2026-10-26. Kept from them: edges end at node borders, the page is opaque, zoom anchored on the
+      pointer
+- [ ] Search box (Ctrl+F), hover path and copy highlighting, shift-click path buy, shared pin, travel
+      totals panel, faint level rings (§8)
+- [ ] Node states (§8): owned, buyable, and the three locked states. Pre-restart: state by colour landed in #36 (gold maxed,
       green owned, cyan tradeoff active, white available, grey locked) with the lock reason named in
       the tooltip. #136 added the per-class ring: keystone, pact, growth, notable and fork each get a
       second outline inside the state border, so class stays legible in every purchase state. The
@@ -2558,16 +2958,13 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Fork indicator (#136) — a bought but unspecialized parent reads "Not specialised" on the node
       itself rather than only in its tooltip, since a paid node that is lit up and does nothing is the
       state most likely to be reported as a bug. Siblings show as locked once one option is picked
-- [ ] Anchor nodes (#136) — wide, centred, showing their points-spent gate and whether it is met.
-      Drawn from `Cluster` rather than from `NodeDefs`, and unreachable from the hit test, so no click
-      path can offer to buy one
 - [ ] Exclusive node lock indicator (#36) — a mark on the node whose partner is already owned, plus
       the reason in the tooltip
 - [ ] Keystone visual treatment (distinct from small nodes and notables)
 - [ ] Tradeoff toggle disabled with a reason while inside the Vault *(server refuses it (#104); the
       screen does not yet grey the toggle out ahead of the refusal)*
-- [ ] Ultimine node conditional visibility (#36) — Ultimine nodes are dropped from the node list
-      before layout, so they leave no gap. Read from the client's own mod list until `SoftDeps` ([41])
+- [ ] Mod-gated node visibility — hidden nodes are simply not drawn; they sit on dead ends, so the
+      layout leaves no gap to fill (§6)
 - [ ] Team Resonance level bar and skill point display (#35) — the Tome's header, one row per
       tree: level, unspent points, a progress bar and the pool on hover. Drawn only once a sync
       has arrived; before that it says it is waiting rather than showing zeroes. The server
@@ -2619,9 +3016,10 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Tome node art — the skill-tree nodes want **craggly, stained-paper** frames rather than the
       plain filled boxes they have now: something that reads as a page in an old miner's book. The
       Tome's top bar is already right and should not change. **Readability wins over texture** —
-      node name, tier and cost stay legible at every GUI scale, so the paper is a frame and a wash,
-      not a busy fill behind text. A frame per node class (small / anchor / notable / keystone /
-      pact / fork parent / fork option) is what §8's class treatments need to hang on
+      icons and tooltips stay legible at every GUI scale, so the paper is a frame and a wash,
+      not a busy fill behind text. An icon frame per node class (small / travel / notable / keystone /
+      pact / fork parent / fork option petal) is what §8's class treatments need to hang on, plus one
+      icon per skill and per travel stat (§8)
 - [ ] Translucent portal texture (nether-portal-style see-through, gray theme)
 - [ ] Blockstate JSONs
 - [ ] Model JSONs
