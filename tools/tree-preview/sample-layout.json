@@ -1,0 +1,18 @@
+{
+  "_comment": "Placeholder tree for exercising the preview script. Not the real Resonance tree; positions are filled in by elkjs because no node has x/y.",
+  "nodes": [
+    { "id": "root", "label": "Attunement", "frame": "keystone" },
+    { "id": "veins", "label": "Volatile Veins", "frame": "notable" },
+    { "id": "yield", "label": "Rich Yield", "frame": "minor" },
+    { "id": "reach", "label": "Long Reach", "frame": "minor" },
+    { "id": "echo", "label": "Echoing Strike", "frame": "notable" },
+    { "id": "depth", "label": "Deep Sense", "frame": "minor" }
+  ],
+  "edges": [
+    { "from": "root", "to": "veins" },
+    { "from": "root", "to": "reach" },
+    { "from": "veins", "to": "yield" },
+    { "from": "reach", "to": "echo" },
+    { "from": "echo", "to": "depth" }
+  ]
+}

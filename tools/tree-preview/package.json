@@ -1,0 +1,17 @@
+{
+  "name": "orevault-tree-preview",
+  "private": true,
+  "description": "Renders the skill tree layout JSON to PNGs at Minecraft GUI scales 2, 3 and 4, outside the game.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "preview": "node render.mjs",
+    "setup": "npm install && npx playwright install chromium"
+  },
+  "dependencies": {
+    "elkjs": "0.12.0",
+    "playwright": "1.64.0"
+  }
+}
