@@ -1,89 +1,164 @@
 # Ore Vault
 
-A **NeoForge 26.1 mod for Minecraft 26.1, targeting Java 25.** Per-team mining
-dimensions with boosted ore density, a shared Resonance/Animus skill tree, and
-opt-in mob farming via Disturbed Zones.
+A **NeoForge 26.1 mod for Minecraft 26.1, targeting Java 25.** Per-team mining dimensions with boosted ore
+density, a team-shared Resonance skill tree, and (post-1.0) opt-in mob farming via Disturbed Zones.
 
-This is **not** a Bukkit/Spigot/Paper plugin and **not** Fabric or legacy Forge.
-There is no `plugin.yml`, no `JavaPlugin`, no `@EventHandler`, no scheduler API.
-Suggestions built on those APIs are wrong here.
+This is **not** a Bukkit/Spigot/Paper plugin and **not** Fabric or legacy Forge. There is no `plugin.yml`,
+no `JavaPlugin`, no `@EventHandler`, no scheduler API. Suggestions built on those APIs are wrong here.
 
-`OreVault_Design_and_Spec.md` is the source of truth. Code comments cite it as
-`§3.1`, and cite work items as `[13]` (task) or `#82` (issue). Keep that up: when
-behaviour and spec disagree, the spec wins or the spec gets updated in the same PR.
+**The repo was restarted on 2026-10-25.** The previous implementation was removed. What it taught is in
+`docs/LESSONS_LEARNED.md`, and `git log` before the restart still holds the old code and its commit
+messages, several of which record a misleading symptom and its real cause. Read them before rebuilding the
+same area.
 
-`DESIGN_LOG.md` carries the **why**: dated playtest feedback, what was decided, and
-what was tried and rejected. The spec states the design; the log states how it got
-there. **Read it before proposing a change to the skill tree, the Tome UI or the
-Resonance curve** — several entries record a version that read well on paper and
-failed in play, and the rejected version is usually the one a fresh reading of the
-spec arrives at again. Add an entry when a playtest changes a design decision.
+## Sources of truth, in order
+
+1. `OreVault_Design_and_Spec.md`: what the design is. Cited as `§N`. When behaviour and spec disagree, the
+   spec wins or the spec is updated in the same PR.
+2. `DESIGN_LOG.md`: why it changed and what was tried and rejected. **Read it before proposing a change to
+   the skill tree, the Tome UI or the Resonance curve.** The rejected version is usually the one a fresh
+   reading of the spec arrives at again.
+3. `docs/LESSONS_LEARNED.md`: what went well and badly in the first build, the technical traps, and the
+   designs not to re-propose.
+4. `docs/TEAM_REQUIREMENTS.md`: what each role needs, checks and produces, written by the roles together.
+5. This file: the rules for working in the repo.
+6. `.github/TICKET_WORKFLOW.md`: how tickets and PRs are written and closed.
+
+## The team
+
+Work is done by ten roles, defined in `.claude/agents/`. Each is focused on one discipline and reviews
+the others' work against its own checklist.
+
+| Role | Owns |
+| --- | --- |
+| `manager` | Order of work, tickets, assignments, running reviews, breaking ties, asking Nick |
+| `developer` | Java, Gradle, datapack JSON, resources |
+| `qa` | Builds, test counts, dedicated-server boot, regression list, playtest scripts |
+| `reviewer` | Reading diffs for bugs, rule violations, save-data risk, spec drift |
+| `architect` | Package layout, data model, persistence and versioning, networking, threading; decision records in `docs/adr/` |
+| `designer` | Art: textures, GUI sprites, the Tome's page, node frames and icons |
+| `ui-ux` | Screen structure, the tree's layout rules and layout data, controls, tooltips, legibility |
+| `playtester` | The player's experience: clarity, pacing in play, Nick's playtests and turning his feedback into tickets or design changes |
+| `writer` | Spec, design log, lang text, tickets, PR bodies |
+| `balancer` | Every number, the level curve, node interactions |
+
+### How they work together
+
+The roles are meant to disagree. Quick agreement is a reason to look harder, not a sign of quality.
+
+1. **The Manager opens the work.** A ticket with spec references, why before what, checkable acceptance
+   criteria, one owner role and the reviewers from the matrix below.
+2. **The owner produces.** Code, art, a spec change, a balance table.
+3. **Every reviewer in the matrix reviews independently,** against its own checklist only, and returns a
+   verdict: approve, approve with comments, request changes, or block. A verdict lists what was checked.
+   "Looks good" with nothing checked is sent back.
+4. **The owner answers each objection** with a fix or with evidence (a spec line, a test, a screenshot, a
+   number). Preference is not evidence.
+5. **Two rounds, then the Manager.** Anything still disputed goes to the Manager, who decides from the
+   documents and says which source settled it, or takes it to Nick.
+6. **Only the Manager asks Nick.** One question at a time, with a recommendation. Anything visual needs
+   Nick's yes on a rendered preview before it merges.
+
+Roles for modpack compatibility and performance are deferred to later in development (Nick, 2026-10-26).
+
+### Review matrix
+
+| Work | Owner | Must review |
+| --- | --- | --- |
+| System design before code (T1, T3 to T8) | architect | developer (buildable), reviewer (rules), qa (testable) |
+| Java, build, datapack | developer | reviewer, qa; architect if it touches persistence, sync or threading; balancer if it has numbers; ui-ux if it draws a screen |
+| Textures, GUI art, frames | designer | ui-ux (legible), qa (seen in a client); then Nick |
+| Screens, tree layout, tooltips | ui-ux | designer (art fits), developer (drawable from data), playtester (clear to a new player); then Nick |
+| Numbers, node design | balancer | developer (buildable), writer (stated precisely), playtester (noticeable in play); ui-ux if it moves the tree |
+| Spec, design log, lang | writer | balancer (numbers match), developer (matches the code) |
+| Plan and sequencing | manager | balancer (baseline before modifiers), qa (each step verifiable), architect (foundations first) |
+| Playtest plan and feedback triage | playtester | qa (steps), writer (design log) |
+
+### Build order
+
+Build the playable loop end to end in a real client first, then layer the tree on it: toolchain and an
+empty mod that runs; one block and one item done the 26.1 way and seen in game; the dimension path complete
+and survived a logout inside it; the ore baseline at the real density and mined for ten minutes; Resonance
+and a level curve derived from that density; persisted data versioned; then the Tome, then nodes. The first
+build did the reverse and shipped a Vault with almost no ore in it for a month.
 
 ## Build
 
+**All code runs on Nick's PC, not in the cloud** (Nick, 2026-10-26). Builds, tests, `runClient`,
+`runServer` and gametests run on his machine, where JDK 25, the Gradle caches and the dependencies already
+are, and where he can playtest the same build. A cloud session can read and edit the repo but does not try
+to build it: it hands off to a session on Nick's machine (Remote Control) for anything that compiles or
+runs. Never report a build or test result that was not produced there.
+
+The Gradle build was removed with the old code and is rebuilt as the first ticket. Once it exists:
+
 ```
-./gradlew build          # compile + unit tests
-./gradlew test           # unit tests only
-./gradlew runClient      # dev client
-./gradlew runServer      # dev server
-./gradlew runGameTestServer
+./gradlew build                      # compile + unit tests
+./gradlew test --rerun-tasks         # unit tests, never cached
+./gradlew runClient                  # dev client
+./gradlew runServer                  # dev server
+./gradlew runGameTestServer          # dedicated-server boot; catches client classes on common paths
 ```
 
-`gradle.properties` pins `org.gradle.java.installations.paths` to a **local
-absolute path** (`E:/Github/Ore-Vault_2/.tools/jdk25/...`). That path exists only
-on this machine — any CI or another checkout must supply its own JDK 25 toolchain
-rather than inherit this line.
+Versions used last time (pinned 2026-08-26): `neo_version=26.1.2.95`, `ftb_teams_version=26.1.2.4`,
+`ftb_ultimine_version=26.1.2.5` (`compileOnly`), NeoGradle `net.neoforged.gradle.userdev` 7.1.38, FTB maven
+`https://maven.ftb.dev/releases`. Re-check them when the build is rebuilt, then don't bump them inside a
+feature PR. Do **not** pin `org.gradle.java.installations.paths` to a machine-local path in a committed
+file; that broke every other checkout last time.
 
-Versions are pinned in `gradle.properties` (`neo_version`, `ftb_teams_version`,
-`ftb_ultimine_version`). Don't bump them incidentally inside a feature PR.
+**Before every PR:** `./gradlew build` and `./gradlew test --rerun-tasks` pass, with counts quoted from
+`build/test-results/test/*.xml` (a cached `BUILD SUCCESSFUL` looks identical to a real one);
+`runGameTestServer` boots; anything visual or worldgen was seen in `runClient` or is listed as unverified
+with playtest steps. Never run `./gradlew clean` in a git worktree; it breaks `:neoFormPatch`.
 
-## The five things most likely to be got wrong
+## Technical rules
 
-**1. Threading: chunk generation is off-thread, SavedData is not.**
-`VaultChunkGenerator` runs on a background executor. `SavedData` (`OreVaultTeamData`)
-is main-thread-only. `VaultDimensions` maintains a thread-safe
-`VaultChunkGenerator.SkillSnapshot` map, refreshed on the main thread and handed to
-each generator as a `Supplier`, precisely so the generator never touches SavedData.
-**Any new code that reads team/skill state from inside generation must go through
-the snapshot.** Reaching for `OreVaultTeamData.get(...)` there is a race, not a
-style question.
+**1. Threading: chunk generation is off-thread, SavedData is not.** The chunk generator runs on a background
+executor. Team `SavedData` is main-thread-only. Hand the generator a thread-safe snapshot of team skill
+state, refreshed on the main thread and passed as a `Supplier`. Reading `SavedData` from generation is a
+race, not a style question.
 
-**2. Dimension creation is lazy; restoration is eager.**
-FTB Teams auto-creates a single-member team for *every* player who logs in. Creating
-a dimension per team would mean one `ServerLevel` per account the server has ever
-seen. Only `VaultDimensions#findOrCreate`, on the portal path, creates a new Vault.
-Vaults already on disk are re-registered at server start, before any player connects,
-because a player may have logged out inside one. **Creating dimensions on a
-team-created event is a serious regression** — it has been fixed once already
-(see `#82`, `#89`).
+**2. Dimension creation is lazy; restoration is eager.** FTB Teams auto-creates a one-player team for every
+login, so a Vault per team would mean a `ServerLevel` per account ever seen. Only the portal path creates a
+Vault. Vaults already on disk are re-registered at server start, before anyone connects, because a player
+may have logged out inside one (otherwise they reload at Vault coordinates in the Overworld sky). After
+adding a level at runtime, call `server.markWorldsDirty()`, or the level is never ticked and block breaking
+silently stalls. Save the return position only after the teleport succeeds.
 
-**3. Two event buses, and they are not interchangeable.**
-`NeoForge.EVENT_BUS` takes gameplay events (`FtbEvents`, `PortalEvents`,
-`VaultDimensions`, `VaultDiag`). The `modEventBus` passed to the `@Mod` constructor
-takes registries and lifecycle (`DeferredRegister`, colour handlers, config). Putting
-a listener on the wrong bus fails silently — it just never fires.
+**3. Two event buses.** `NeoForge.EVENT_BUS` takes gameplay events. The `modEventBus` passed to the `@Mod`
+constructor takes registries and lifecycle (`DeferredRegister`, colour handlers, config). A listener on
+the wrong bus never fires and logs nothing.
 
-**4. Side safety.**
-Anything under `client/` is client-only and must stay behind
-`FMLEnvironment.getDist().isClient()`, as `VaultPortalColors` is in `OreVault`'s
-constructor. A common-path reference to a client class crashes a dedicated server at
-class-load, which no unit test here will catch. Server logic uses `ServerLevel` and
-`ServerPlayer`, never bare `Level`/`Player`, when it mutates state.
+**4. Side safety.** Client code lives under `client/` behind a `@Mod(dist = Dist.CLIENT)` entrypoint or
+`FMLEnvironment.getDist().isClient()`. A common-path reference to a client class crashes a dedicated server
+at class load, and no unit test catches it. Server logic that mutates state uses `ServerLevel` and
+`ServerPlayer`.
 
 **5. Dependency boundaries.**
-- **FTB Teams** — hard dependency, compiled and required. **Only `TeamHelper` may
-  import `dev.ftb.mods.ftbteams.*`.** The rest of the mod goes through it.
-- **FTB Ultimine** — `compileOnly`. Compile against its API; never assume presence.
-- **Mekanism** — *no compile-time reference at all.* Integration is tag-based per
-  §9. An `import mekanism.*` anywhere is a bug.
-- Any soft-dependency code path must be gated on `ModList.get().isLoaded(...)` at
-  runtime. There is currently no such call in the tree; new integration code
-  introduces the first ones.
+- **FTB Teams**: hard dependency. Only the team helper class imports `dev.ftb.mods.ftbteams.*`. An unknown
+  team has size 1, never 0. Every player always has a team (§2); never branch on "has no team".
+- **FTB Library**: comes with FTB Teams, so its GUI toolkit costs players nothing (see
+  `docs/research/library-scan.md`).
+- **FTB Ultimine**: `compileOnly`, gated on `ModList.get().isLoaded("ftbultimine")`. Its 26.1 API is
+  registration events.
+- **Mekanism**: no compile-time reference at all. Item tags only, no reflection (§9; Nick, 2026-10-26).
+- **Pufferfish's Skills**: not a dependency. See `docs/research/puffish-skills.md`.
+
+**6. Persistence.** Team data is per-team `SavedData` in the overworld's storage. These are player save
+files. Version the data from the first field (`dataVersion` plus `migrate()`); every rename or removal gets
+a migration, every added field reads correctly from a tag written without it.
+
+**7. Config.** No config value without a reader. A value read once at start is marked `worldRestart()`.
+Ore density and ore-per-hour are constants, not config (§4.3, design log).
+
+**8. Data files.** Tool tags live in `data/minecraft/tags/block/mineable/`, not the mod namespace. Common
+tags use `c:`, not `forge:`. Dimension heights are duplicated in Java on purpose so the layer config fails
+loudly; change both or neither.
+
+**9. Gameplay invariants.** Vanilla XP from ore is never suppressed (§3.4). Machine-broken blocks never pay
+Resonance (§3.4). One `BlockDropsEvent` listener with fixed stages (§11).
 
 ## MC 26.1 API names
-
-The 26.1 renames trip up anything trained on older Minecraft. This codebase is
-already correct — match it, don't "fix" it:
 
 | Use | Not |
 | --- | --- |
@@ -99,194 +174,59 @@ already correct — match it, don't "fix" it:
 | `graphics.text(font, …)` / `centeredText` | `drawString` / `drawCenteredString` |
 | `mouseClicked(MouseButtonEvent, boolean)` | `mouseClicked(double, double, int)` |
 | `mouseDragged(MouseButtonEvent, dx, dy)` | `mouseDragged(double, double, int, double, double)` |
+| `BLOCKS.registerBlock(name, factory, props -> …)` | `new Block(props)` without an id (startup crash) |
 
-The GUI renames are the 1.21.9 render-state rework carried into 26.1: a screen no
-longer draws, it *extracts render state* that the renderer replays. Signatures
-otherwise line up with the old ones. `MouseButtonEvent` is a record of
-`(x, y, buttonInfo)` with a `button()` accessor.
+Also: every item needs an `items/` model definition, a model and a texture, plus creative tab membership,
+or it is invisible or the purple cube. Dimension lighting in 26.1 is set through attributes such as
+`minecraft:visual/ambient_light_color`. Long tooltips do not wrap on their own; use
+`font.splitIgnoringLanguage`.
 
-Decompiled 26.1 sources — the fastest way to settle any of this — are at
-`.gradle/repositories/ng_dummy_ng/net/neoforged/neoforge/<neo_version>/neoforge-<neo_version>-sources.jar`
-(patched Minecraft) and the matching jar under `.gradle-home/caches/modules-2/` (NeoForge's own).
-
-Nullability uses **JSpecify** (`org.jspecify.annotations.Nullable`), not the
-NeoForge or JetBrains annotations.
-
-## Persistence
-
-`OreVaultTeamData` is per-team `SavedData` stored in the **overworld's**
-`SavedDataStorage`, keyed `orevault_team_<uuid>`, serialized via
-`CompoundTag.CODEC.xmap(...)` with hand-written `toNbt`/`fromNbt`. `PlayerStats`
-nests inside it under `player_stats`.
-
-**These are player save files.** Removing or retyping a field silently destroys
-progression in existing worlds. A field addition needs a default that a tag without
-it reads correctly; a rename or removal needs a migration path. Flag any PR that
-changes these shapes without one.
-
-## Teams
-
-Every player always has a team — solo players are a team of one (§2). `TeamHelper`
-falls back to the player's own UUID when the manager has no record yet, so team
-lookups do not return null and code must not branch on "has no team". Dimension keys
-are `orevault:vault_<uuid-without-hyphens>`.
-
-## Access transformers
-
-`src/main/resources/META-INF/accesstransformer.cfg` widens a small number of vanilla
-members. Every entry carries a comment naming the task and why no public API exists.
-Keep that. A new AT entry without justification, or one that could be avoided through
-public API, is worth flagging — each one is a fresh breakage risk on MC updates.
-
-## Datapack JSON ↔ Java constants
-
-`VaultDimensions.Variant` deliberately duplicates the world-height values from
-`data/orevault/dimension_type/*.json` rather than reading them back, so
-`VaultLayerConfig#load` can validate the layer stack and fail loudly at creation
-instead of generating a subtly wrong world. **Changing a height in one place and not
-the other is a bug**, and the duplication is intentional — don't refactor it away.
+Settle any doubt from the decompiled sources (NeoGradle puts patched Minecraft sources under
+`.gradle/repositories/ng_dummy_ng/net/neoforged/neoforge/<neo_version>/`), not from memory. Nullability uses
+JSpecify (`org.jspecify.annotations.Nullable`).
 
 ## Tests
 
-JUnit 5, under `src/test/java`, run by `./gradlew test`. These are **pure-logic tests
-only** — `OreClassifier`, `LevelCurve`, `NodeCosts`/`SkillTree`, `TeamScaling`,
-`VaultPortalShape`. Minecraft classes are not loadable in this source set, so
-anything touching `Level`, registries, or NBT cannot be unit tested here; it belongs
-in a gametest (`neoforge.enabledGameTestNamespaces`) or manual playtest.
-
-Do not ask for unit tests on code that cannot have them. Do expect them on new pure
-logic — especially skill-tree maths and classification rules, where the balance
-regressions have historically landed.
-
-## Java language server
-
-`.claude/skills/jdtls-local/` is a project-scoped plugin wiring Eclipse JDT.LS to the
-vendored `.tools/jdtls` and `.tools/jdk25`, giving real compiler diagnostics on Java
-edits. It registers automatically — no skill invocation needed — and the `LSP` tool
-(`goToDefinition`, `findReferences`, `hover`, `documentSymbol`) works once it's up.
-
-Two constraints:
-
-- **Launch Claude Code from the repo root.** Project-scoped plugins load only from the
-  session's primary working directory. In a git worktree the server still runs but
-  the files aren't on its classpath, so you get syntax errors only — no type checking.
-- Keep `jdtls-lsp@claude-plugins-official` **disabled**. It hardcodes `command: "jdtls"`
-  on `PATH`, which doesn't exist here. If both register, only the first to claim
-  `.java` starts.
-
-`.tools/` and `.gradle-home/` are gitignored, so a fresh clone has no language server
-until they're restored. `jdtls-local` itself is **untracked** — it is not in git, so it
-exists only in the primary checkout on this machine. Worktrees and fresh clones do not
-get it, and its launcher resolves `.tools/` four directories up, which is wrong from
-inside `.claude/worktrees/<name>/`. Both are reasons the "launch from the repo root"
-rule above matters.
-
-## Skills and plugins
-
-Installed on this machine and loaded every session. Pass the bare name to the Skill
-tool; a leading slash means it runs only when the user types it.
-
-| Plugin | What it provides |
-| --- | --- |
-| `superpowers` | 14 process skills, invoked as `superpowers:<name>` |
-| `mattpocock-skills` | 25 engineering and writing skills, `mattpocock-skills:<name>` |
-| `claude-md-management` | the `claude-md-improver` skill, plus `/revise-claude-md` |
-| `remember` | automatic session capture through hooks, plus `/doctor` |
-| `feature-dev` | `/feature-dev` |
-
-`serena` is installed but **disabled on purpose** and should stay that way. It is an
-MCP server for semantic code navigation, which duplicates what `jdtls-local` already
-does for Java, the only language here.
-
-`remember` captures sessions on its own through SessionStart, UserPromptSubmit and
-PostToolUse hooks, writing to `.remember/` at the repo root under its own `.gitignore`.
-It covers a different need from the issue tracker: tickets record what was decided,
-`remember` records what actually happened in a session, including the dead ends. Two
-things it needs to work. Hooks are read once at startup, so a restart is required after
-enabling or updating it. And **auto-compact should be off** (`/config`), because
-compaction discards conversation history before the save pipeline can read it. `/doctor`
-reports whether capture is genuinely live rather than merely configured.
-
-`superpowers` covers brainstorming, systematic-debugging, test-driven-development,
-writing-plans, executing-plans, verification-before-completion, requesting-code-review,
-receiving-code-review, finishing-a-development-branch, using-git-worktrees,
-dispatching-parallel-agents, subagent-driven-development, writing-skills and
-using-superpowers.
-
-From `mattpocock-skills`, these fire on their own when relevant: `diagnosing-bugs`,
-`grilling`, `tdd`, `prototype`, `research`, `domain-modeling`, `codebase-design`,
-`code-review`, `resolving-merge-conflicts`, `wizard`, `writing-for-agents`. These wait
-for you to type them: `/ask-matt`, `/grill-me`, `/grill-with-docs`, `/implement`,
-`/improve-codebase-architecture`, `/to-spec`, `/to-tickets`, `/triage`, `/wayfinder`,
-`/handoff`, `/teach`, `/to-questionnaire`, `/wait-what`.
-
-Project-scoped skills live in `.claude/skills/`. `address-review` pulls the unresolved
-review comments off a PR, fixes them, pushes, and replies on each thread. User-level
-skills in `~/.claude/skills/` are `find-skills`, `humanizer` and `skill-vetter`.
-
-Two overlaps to be deliberate about. **`superpowers:test-driven-development` is the
-only TDD skill to use here.** `mattpocock-skills` ships its own `tdd`, and it is
-suppressed rather than removed, because two of them means two Red-Green-Refactor
-conventions and the evidence recorded in merged PR bodies already follows the
-superpowers format. Separately, `mattpocock-skills:code-review` is a local pass over a
-diff and has nothing to do with either the `/code-review` command or the GitHub
-workflow below.
-
-## Automated PR review
-
-`.github/workflows/claude-code-review.yml` runs `anthropics/claude-code-action@v1` on
-every PR opened, pushed, reopened or marked ready, one review at a time per PR with new
-pushes cancelling the run in flight.
-
-**A green check does not prove a review happened.** The job gates on
-`CLAUDE_CODE_OAUTH_TOKEN` through a step output, because the secrets context cannot be
-used in a job-level `if:`. With no token it skips both the checkout and the action and
-still reports success, which is deliberate — a missing secret shouldn't fail a check on
-every PR — but it means a silent no-op looks identical to a clean review. That secret
-was added on 2026-08-29; every run before then skipped. If you need to know whether a
-review really ran, check that steps 3 and 4 executed rather than trusting the tick.
-
-## Issues and PRs
-
-`.github/TICKET_WORKFLOW.md` is the checklist for writing, updating and closing tickets. Read it
-before closing an issue or opening a PR. The short version, because these are the ones that got
-missed: tick the acceptance criteria you met and comment on the ones you didn't, naming the
-blocker; put `Closes #N` in the PR body for every ticket the PR finishes; use `NOT_PLANNED` when
-a ticket is superseded and name what replaced it; and quote real test counts from
-`build/test-results/test/*.xml` rather than a Gradle `BUILD SUCCESSFUL`, which is identical for a
-cached no-op.
+JUnit 5 under `src/test/java`, pure logic only: Minecraft classes do not load in this source set. Anything
+touching `Level`, registries or NBT belongs in a gametest or a playtest. Keep logic in plain classes so it
+can be tested; do not ask for unit tests on code that cannot have them. Expect them on new pure logic,
+especially skill-tree maths, the level curve and ore classification. Use
+`superpowers:test-driven-development`, not another TDD skill.
 
 ## Textures
 
-Every PNG under `assets/orevault/textures/` is **64×64 where possible and never below 32×32**
-(§13 Polish). Vanilla's 16×16 is not the target — Minecraft renders higher-resolution textures
-fine without a resource pack. The six textures shipped so far are 16×16 and predate the rule
-being enforced; #69 replaces them.
-
-This covers textures the mod ships. It does not cover vanilla sprites the mod borrows: the
-Resonance orb tints `minecraft:textures/entity/experience/experience_orb.png` and ships nothing
-of its own, which is deliberate and not a gap to fill.
+Block and item textures under `assets/orevault/textures/` are **16×16, as vanilla** (Nick, 2026-10-26;
+this replaced a 64×64 rule). The bar is that the 16×16 is used well: the item reads as what it is at slot
+size, not as a blob. GUI art is drawn at one texel per GUI unit so it sits sharp beside the vanilla font.
+Vanilla sprites the mod borrows (the tinted experience orb) are not ours to redraw. The Designer's process and
+the art tools are in `.claude/agents/designer.md` and `docs/research/art-tooling.md`.
 
 ## Conventions
 
-- Commits: `feat:`, `fix:`, `docs:`, `ci:`, with the issue number in the subject —
-  `fix: restore existing Vault dimensions at server start (#89)`.
-- Helper classes are `final` with a private constructor and static methods
-  (`TeamHelper`, `VaultPortalColors`, `ModTags`).
-- Registry holders live in `ModBlocks` / `ModItems` / `ModTags`; items need creative
-  tab membership or they're invisible in creative and JEI.
-- Javadoc on non-trivial classes explains *why*, with a `§` reference. Match that
-  density rather than narrating what the code already says.
-- `debug/VaultDiag.java` is playtest instrumentation, held to a lighter bar than
-  gameplay code.
-- Prose written for humans — issue bodies, PR descriptions, ticket comments, replies
-  in this chat — goes through the `humanizer` skill's rules. No inflated significance,
-  no bolded inline-header lists, no rule-of-three padding, no emoji. Say the specific
-  thing.
-- **Say when a PR is ready to merge, in as many words.** Opening a PR is not the same
-  as being finished with it; follow-up commits often land minutes later, and a merge in
-  between strands them on a dead branch. End the work with an explicit "ready to merge"
-  rather than leaving it to be inferred from the PR existing.
-- The repository has `delete_branch_on_merge` enabled, so a merged branch is removed
-  automatically. Don't push follow-ups to a branch whose PR has already merged; branch
-  again from `main`.
+- Commits: `feat:`, `fix:`, `docs:`, `ci:`, with the issue number: `fix: restore existing Vault dimensions
+  at server start (#89)`.
+- Helper classes are `final` with a private constructor and static methods.
+- Javadoc on non-trivial classes explains *why*, with a `§` reference.
+- Prose for humans (issues, PRs, comments) is plain: no inflated significance, no bolded inline-header
+  lists, no rule-of-three padding, no emoji.
+- **Say "ready to merge" in those words** when a PR is finished, and "don't merge yet" while commits are
+  still coming. Nick merges as soon as a PR appears. Branches are deleted on merge
+  (`delete_branch_on_merge`), so follow-ups go on a new branch from `main`. Avoid stacked PRs; if needed,
+  give the merge order.
+- Design-shaped feedback from a playtest gets a spec PR first, then code. Add a dated `DESIGN_LOG.md`
+  entry whenever a playtest or Nick changes a decision.
+- Name clashes with other mods in FTB packs (a Resonance mod and an Animus mod exist) are accepted for now;
+  Nick may rename near the end, which would also touch flavour text.
+
+## Automated PR review
+
+`.github/workflows/claude-code-review.yml` runs a Claude review on every PR. **A green check does not prove
+a review happened**: with no `CLAUDE_CODE_OAUTH_TOKEN` it skips and still reports success. Check that the
+review steps executed before trusting it. `.claude/skills/address-review` pulls unresolved review comments
+off a PR, fixes them and replies.
+
+## Tooling
+
+`jdtls-local` (Eclipse JDT.LS against a vendored `.tools/jdk25`) gave real Java diagnostics on Nick's
+machine; it is untracked and only works when Claude Code is launched from the repo root. Keep
+`jdtls-lsp@claude-plugins-official` and `serena` disabled. `remember` needs auto-compact off.
