@@ -141,7 +141,7 @@ at class load, and no unit test catches it. Server logic that mutates state uses
   `docs/research/library-scan.md`).
 - **FTB Ultimine**: `compileOnly`, gated on `ModList.get().isLoaded("ftbultimine")`. Its 26.1 API is
   registration events.
-- **Mekanism**: no compile-time reference at all. Tags and reflection only (§9).
+- **Mekanism**: no compile-time reference at all. Item tags only, no reflection (§9; Nick, 2026-10-26).
 - **Pufferfish's Skills**: not a dependency. See `docs/research/puffish-skills.md`.
 
 **6. Persistence.** Team data is per-team `SavedData` in the overworld's storage. These are player save
@@ -195,8 +195,10 @@ especially skill-tree maths, the level curve and ore classification. Use
 
 ## Textures
 
-Every PNG under `assets/orevault/textures/` is **64×64 where possible and never below 32×32** (§13
-Polish). Vanilla sprites the mod borrows (the tinted experience orb) are exempt. The Designer's process and
+Block and item textures under `assets/orevault/textures/` are **16×16, as vanilla** (Nick, 2026-10-26;
+this replaced a 64×64 rule). The bar is that the 16×16 is used well: the item reads as what it is at slot
+size, not as a blob. GUI art is drawn at one texel per GUI unit so it sits sharp beside the vanilla font.
+Vanilla sprites the mod borrows (the tinted experience orb) are not ours to redraw. The Designer's process and
 the art tools are in `.claude/agents/designer.md` and `docs/research/art-tooling.md`.
 
 ## Conventions

@@ -14,6 +14,39 @@ Newest first.
 
 ---
 
+## 2026-10-26 — Nick's answers to the restart's open decisions
+
+**Where this came from.** After the restart the ten roles settled 47 disputes from the documents and
+sent Nick the rest (`docs/OPEN_DECISIONS.md`). He answered in the decisions doc on 2026-10-26. The
+full answers, and the work each one starts, are in `docs/TEAM_REQUIREMENTS.md` under "Nick's answers".
+
+**Decisions.**
+
+| Decision | Reasoning |
+|---|---|
+| Borrow Pufferfish's Skills' ideas; do not depend on it | It does not fit a team-owned tree with tiers, free forks and toggles closely enough to be worth the dependency. |
+| Saves from before the restart are not supported; saved data is versioned from its first field; migrating saves across a later update is a stretch goal | Nick does not want an update to cost progression, but the mod may never be updated after it is finished except to follow a Minecraft version. Versioning is cheap now and is what makes a later migration possible. |
+| **Block and item textures are 16×16, as vanilla.** GUI art is drawn at one texel per GUI unit. This replaces the 2026-09-03 texture entry | 64×64 was unreasonable. The rule is now that the 16×16 is used well, so an item reads as what it is rather than as a blob. |
+| A small Ore Memory tab in 1.0, holding a Survey panel and the reset button (Tier 4 igniter only) | The panel is wanted eventually, so the work is not wasted. |
+| The Vault generates **gravel and clay** by default, and Gravel Purge removes them | Gravel Purge did nothing because the old generator was barebones, not because the node was wrong. |
+| Guide Vein waits on research into how vanilla chunk generation places ore: how much, where, in what veins. That research sets the Vault's baseline, then Guide Vein is retuned so a player can feel it | Reopens the 2026-09-27 baseline, which was picked against a vanilla figure of about 0.5% rather than measured. |
+| Growth nodes never switch off; their reward stops mattering as the team grows. Apprentice's Ledger stays as written. Shallow Grace counts only the team members inside the Vault | Nick never meant growth nodes to turn off. Late in the game, double Resonance on the first 100 ore of a trip is a rounding error. |
+| Resonance penalties multiply after the bonuses are summed, floored at zero | So the downside of a pact is always felt. |
+| "About 100 hours" means a team buying nodes as it goes; the curve stretches after T14's measurements, the nodes keep their strength | Nobody likes nodes being watered down. |
+| A disbanded team's data is archived, not deleted: the Vault world, the tree, the stats, everything kept for the team | |
+| **No cross-cluster prerequisites.** A node that requires a node in another cluster moves so both are in the same cluster | New rule from Nick, raised on the question of how cross-cluster links should be drawn. 24 prerequisites crossed clusters on 2026-10-26. |
+| Portal corners optional; one Vault Frame per craft; no nether-style travel logic | |
+| No GitHub Actions build check; the existing automated Claude review stays | Builds run on Nick's PC. |
+| The Animus row of the Tome's header is hidden until Animus exists, behind one switch that is easy to turn back on | |
+| Prospector's Eye requires Vein Sight. Silent Stone pays 0.30 Resonance a second per member below Y=0, after team scaling. Mekanism support is by tags only | As recommended. |
+| Players inside a Vault when a reset finishes go to the Vault's spawn point, where the portal arrives; a reset that cannot unload a live Vault sends everyone out and regenerates at the next restart | A saved position may be underground in rock that no longer exists after the reset. |
+
+**Still open.** Nick read the Resonance-gain display as a second segment inside the Resonance bar
+showing the extra gain, like an XP bonus bar; the proposal was a text line above the hotbar. Which
+one is being built is confirmed with him before T5.
+
+---
+
 ## 2026-09-27 — The Vault's baseline ore density, and the curve it drags with it
 
 **Where this came from.** A question during a session: does the mining dimension actually have normal
@@ -348,7 +381,9 @@ rule exists to stop it being added, not to fix something.
 
 ---
 
-## 2026-09-03 — Textures
+## 2026-09-03 — Textures (superseded 2026-10-26)
+
+*Replaced by the 2026-10-26 entry: textures are 16×16 for blocks and items.*
 
 **Decision.** Every texture Ore Vault ships is **64×64 where possible and never below 32×32**
 (§13 Polish). Vanilla's 16×16 is not the target; Minecraft renders higher-resolution textures without

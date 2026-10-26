@@ -8,7 +8,7 @@ should use. Claims marked *unverified* come from the project's own README and we
 
 | Need | Use | Runs where | Cost |
 |---|---|---|---|
-| Minecraft textures, checked against the 64×64 rule | **mc-asset** (MCP + CLI) | Anywhere with Node 22 | Free, MIT |
+| Minecraft textures, checked against the 16×16 rule | **mc-asset** (MCP + CLI) | Anywhere with Node 22 | Free, MIT |
 | Hand-finishing pixel art: palettes, dithering, outlines | **Aseprite + pixel-plugin** | Nick's computer | Aseprite licence (about $20, or build from source) |
 | First drafts and reference images | **Retro Diffusion MCP** | Remote, any session | Pay per image, roughly $0.01 to $0.18, free starter credits |
 | Block and item models | **Blockbench MCP plugin** | Nick's computer, inside Blockbench | Free |
@@ -19,7 +19,7 @@ Blender is not on the list for 1.0. See the Blender section for why.
 
 ## Why tools alone will not fix the textures
 
-The old textures were 16×16 when the rule said 64×64, and nothing checked. A generator does not fix that;
+The old textures broke the size rule of the time, and nothing checked. (Since 2026-10-26 the rule is 16×16, as vanilla.) A generator does not fix that;
 a gate does. Whatever tool makes a texture, the Designer agent's process is:
 
 1. Collect references first: the vanilla blocks it will sit next to, and at least two mod textures Nick

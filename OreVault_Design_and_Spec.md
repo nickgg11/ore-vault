@@ -2465,11 +2465,10 @@ Use this to track progress. Update at the end of each development session.
 - [ ] All crafting recipes
 - [ ] `en_us.json` lang file (all block names, item names, node names, tooltips)
 - [ ] Mod icon (`pack.png`)
-- [ ] Block and item textures — **64×64 preferred, 32×32 the hard floor** for every Ore Vault
-      asset ([68]). Vanilla is 16×16; Minecraft renders higher-resolution textures without a
-      resource pack, so this is a choice about how the mod looks rather than a limitation to work
-      around. It applies to anything shipped under `assets/orevault/textures/`. It does **not**
-      apply to vanilla sprites the mod borrows — the Resonance orb tints
+- [ ] Block and item textures — **16×16, as vanilla** (Nick, 2026-10-26, replacing a 64×64 rule).
+      Each texture uses its sixteen pixels to read clearly as what it is at slot size. GUI art is
+      drawn at one texel per GUI unit. It applies to anything shipped under
+      `assets/orevault/textures/`. It does **not** apply to vanilla sprites the mod borrows — the Resonance orb tints
       `minecraft:textures/entity/experience/experience_orb.png` and ships no texture of its own,
       and re-sizing a vanilla sprite is not ours to do
 - [ ] Tome node art — the skill-tree nodes want **craggly, stained-paper** frames rather than the

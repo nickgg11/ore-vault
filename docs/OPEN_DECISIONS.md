@@ -1,5 +1,8 @@
 # Decisions only Nick can make
 
+**Answered by Nick on 2026-10-26.** His answers are in `docs/TEAM_REQUIREMENTS.md` under "Nick's answers"
+(N0 to N8, Na to Nk) and the `DESIGN_LOG.md` entry of the same date. The questions below are kept as asked.
+
 Ordered by how soon each blocks work. Each changes what the player experiences, changes scope, or cannot be
 undone, which is why the documents could not settle it. Everything else the roles disputed is settled in
 `docs/TEAM_REQUIREMENTS.md` under "Settled decisions". Ask one at a time; the smaller questions at the end
