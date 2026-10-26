@@ -956,7 +956,7 @@ shrinks. With the Developer: behaviour changes without the spec edit; I block ra
 ## Balancer
 
 I own every number, the level curve and node interactions. Hours come from the §4.3 curve: 30 levels, ratio
-100, 220 ore an hour times 3.275 Resonance per ore (rare at 12.5) = 720.5 an hour, 72,050 total. Purchase
+100, 220 ore an hour times 3.485 Resonance per ore (68/25/7, rare at 12.5) = about 767 an hour, about 76,700 total. Purchase
 timings come from a model over every §6.1 tier row, gates at S6, 12 points per level.
 
 ### What I need
@@ -970,8 +970,9 @@ timings come from a model over every §6.1 tier row, gates at S6, 12 points per 
 
 ### Per task
 
-T4. Pure tests pin 3% stone, 6% deepslate, 70/25/5, vein sizes 6 to 12, 4 to 8 and 2 to 5, and the floor
-(S13). The mean vein is 7.5 ore, 24.3 Resonance. Tolerances per S12.
+T4. Pure tests pin 3% stone, 6% deepslate, 68/25/7 in stone and 60/30/10 in deepslate, vein sizes as vanilla's
+configured `size` (common 9 to 12, uncommon 7 to 9, rare 5 to 7), and the floor (S13). The mean stone-band
+vein is about 7.4 ore, about 26 Resonance (derived from `docs/research/vanilla-ore-generation.md`). Tolerances per S12.
 
 T5. `LevelCurve` and `TeamScaling` tests: per-level costs, 12 points per level, multipliers 1.0, 1.1, 1.2,
 1.4, unknown size as 1, milestones (level 1 at 0.15 h, level 2 at 0.32 h, level 10 at 3.35 h, level 18 at
@@ -1016,9 +1017,9 @@ Deep Harvest needs Vault Expansion in Mastery, so its real gate is 160 points pl
 - 220 ore an hour is 7,200 blocks an hour times 3%. Density measurement confirms the 3%, not the rate; only
   a timed session measures blocks per hour.
 - Calloused Hands' cap arrives at (e^(0.4/0.07) − 1) × 10,000, about 3.0 million blocks at tier 3.
-- Silent Stone's 3 a second is 15 times solo (0.20 a second); at that rate levels 25 to 30, 62 hours on the
+- Silent Stone's 3 a second is 14.1 times solo (0.213 a second); at that rate levels 25 to 30, 62 hours on the
   curve, take 4.1.
-- Stone Memory T5's 0.5% burst pays about 1,745 Resonance an hour, 2.4 times the curve's rate.
+- Stone Memory T5's 0.5% burst pays about 1,745 Resonance an hour, about 2.3 times the curve's rate.
 - Every value pinned on 2026-09-09 is unplaytested.
 
 ### Stacking that I think breaks something

@@ -66,6 +66,7 @@ full answers, and the work each one starts, are in `docs/TEAM_REQUIREMENTS.md` u
 | Portal corners optional; one Vault Frame per craft; no nether-style travel logic | |
 | No GitHub Actions build check; the existing automated Claude review stays | Builds run on Nick's PC. |
 | The Animus row of the Tome's header is hidden until Animus exists, behind one switch that is easy to turn back on | |
+| Rare ore pays 12.5 Resonance, one constant read by the orb, the curve and §4.2 (S40); the 12 used in places before is retired | Every derived figure already used 12.5 (the curve, the research doc, the S11 bands); two values had let the orb and the curve disagree. |
 | Prospector's Eye requires Vein Sight. Silent Stone pays 0.30 Resonance a second per member below Y=0, after team scaling. Mekanism support is by tags only | As recommended. |
 | Players inside a Vault when a reset finishes go to the Vault's spawn point, where the portal arrives; a reset that cannot unload a live Vault sends everyone out and regenerates at the next restart | A saved position may be underground in rock that no longer exists after the reset. |
 

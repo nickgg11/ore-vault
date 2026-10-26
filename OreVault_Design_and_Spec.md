@@ -80,9 +80,9 @@ A secondary system — Disturbed Zones — lets teams opt into mob farming withi
 - If present: Ultimine nodes appear in the Resonance tree and the Ultimine integration hooks are active.
 
 **Mekanism (soft dependency)**
-- Detected at runtime via `ModList.get().isLoaded("mekanism")`.
-- If absent: Ore Doubling nodes function with raw ore / dust fallback only.
-- If present: Ore Doubling nodes unlock additional tiers using Mekanism processing outputs.
+- Detected by tags, not by mod: the extra tiers appear when the `c:clumps/...`, `c:shards/...` and `c:crystals/...` item tags are non-empty (§9).
+- If those tags are empty: Ore Doubling functions with raw ore / dust fallback only.
+- If they are filled: Ore Doubling unlocks additional tiers using the processing outputs.
 - No compile-time reference to Mekanism and no reflection. All integration goes through `c:` item tags (§9).
 
 ---
@@ -99,7 +99,9 @@ Where `<teamId>` is the UUID of the FTB Team, stripped of hyphens.
 
 **Dimensions are created lazily — on the first portal trip by a member of that team, and never before.** No dimension is created at server start, and none is created when a team is registered. This matters because FTB Teams auto-creates a single-member team for every player who logs in; eager creation would mean one full `ServerLevel` (chunk map, storage, region directory) per player account the server has ever seen, whether or not they use the mod.
 
-The dimension type JSON is static (two variants, below), but the chunk generator is a custom implementation that reads the team's current skill tree state at chunk generation time, allowing node purchases to affect newly generated chunks immediately without a server restart.
+**Restoration is eager.** Vaults already on disk are re-registered at server start, before anyone connects, because a player may have logged out inside one; otherwise they would reload at Vault coordinates in the Overworld sky. Creating and restoring are different paths (§11 Dimension-per-Team Registration).
+
+The dimension type JSON is static (two variants, below), but the chunk generator is a custom implementation that reads a main-thread snapshot of the team's tree (§11) at chunk generation time, allowing node purchases to affect newly generated chunks immediately without a server restart.
 
 **Dimension type variants.** Two types exist; a team's Vault uses the base type until the Vault Expansion keystone is purchased and the dimension is reset, at which point it is re-created under the expanded type. The only difference is how deep the world goes before bedrock:
 
@@ -141,11 +143,13 @@ Shared attributes for both types:
 
 **How the baseline is checked.** Not by filling a test cube with ore. The count comes first from a pure JUnit test over the placement function, then from a read-only `/orevault density [chunks]` debug command on a dedicated server. Each band's density must land within ±5% of its value, relative, over at least 81 chunks, and the rarity shares, counted by placed blocks, within ±2 points of 68/25/7 in the stone band and 60/30/10 in deepslate. The check runs on a vanilla-only pack with Guide Vein off. These figures are decided but not yet playtested: Nick's ten-minute mining session at T4 is the first time anyone mines this baseline.
 
-**Which ores** comes from the §4.2 rarity classification, not from a list in the generator: everything in `#c:ores` is placeable, so a kitchen-sink pack's modded ore generates with no per-mod work and the thing that decides what an ore is *worth* is the thing that decides how often it appears.
+**Which ores** comes from the §4.2 rarity classification, not from a list in the generator: everything in `#c:ores` that has an overworld `PlacedFeature` is placeable, so a kitchen-sink pack's modded ore generates with no per-mod work and the thing that decides what an ore is *worth* is the thing that decides how often it appears.
 
 **Where each ore sits** is its overworld height, normalized. The classifier already reads each ore's real placement range to decide its rarity, so the same data answers where it belongs — diamond generates low in a Vault because diamond generates low, and a modded ore lands at a sensible depth without anyone writing it down. An ore whose preferred height falls outside a band is clamped into it rather than skipped, which is what keeps deep ore present in the base dimension type, whose stone band starts at Y=1 and which has no deepslate at all.
 
 Generation is seeded from the team id and the chunk coordinates, never the world seed: Vault chunks generate lazily over months and a Vault is regenerated on reset (§3.5), so a chunk has to come out the same whenever it is first visited.
+
+An ore in `#c:ores` with no overworld `PlacedFeature` is neither classified nor placed unless a classifier override (§10) names it. Ancient debris is not placed by the baseline at all; Ancient Traces (§6.1) handles it.
 
 > **Implementation gotcha — mid-session dimension creation.** After putting the new `ServerLevel` into `server.forgeGetWorldMap()`, you **must** call `server.markWorldsDirty()`. `MinecraftServer` ticks levels from a cached array (`getWorldArray()`) that is only rebuilt when that marker changes; without the call, a dimension created after the first server tick is never ticked at all. Symptom: block-breaking stalls after one `BreakSpeed` event and `BREAK_BLOCK` never fires, entities never tick, and relogging "fixes" it. See issues #82 / #89.
 
@@ -205,7 +209,7 @@ The return position is saved **only after the teleport succeeds**. Saving it fir
 
 **The Vault side is fixed; only the Overworld side is remembered.** Every trip into a team's Vault lands on the same block — the team anchor at X=0, Z=0 — regardless of where in the Overworld the portal was. Vault arrival never mirrors, offsets, or otherwise derives from Overworld coordinates. There is no nether-style travel logic on either side: no coordinate scaling and no search for a matching portal. Exactly one return portal exists per Vault, built at that anchor on first entry and idempotent thereafter, and it is tier-coloured to match the highest igniter tier that has opened the Vault (upgrading, never downgrading).
 
-Return position is stored in `player.getPersistentData()` under key `orevault_return` as an NBT compound with x/y/z integers. This survives death and dimension changes. The saved spot is walked out along the approach direction past the last portal block, so returning never instantly re-triggers the portal.
+Return position is stored in the player's NeoForge data attachment `orevault:player`, registered with `copyOnDeath`, as `return_pos {dim, x, y, z}`. The same attachment holds `in_vault` and `tome_granted`. It survives death and dimension changes. The saved spot is walked out along the approach direction past the last portal block, so returning never instantly re-triggers the portal.
 
 > **Ore-block-look portals (investigation, #84):** the portal interior is a flat translucent plane (nether-portal style), so a literal ore-block appearance would need a full-cube model or a block-entity renderer — losing the flat translucency. Conclusion: keep the tinted plane; an "ore-look" would be done as a texture swap (ore-vein pattern on the plane), not a block-shaped portal.
 
@@ -235,7 +239,7 @@ Personal entry points are stored per-player in persistent data. Without a Tier 4
 ### 3.4 Chunk Loading
 
 **Chunk tickets**
-The mod registers chunk loading tickets through NeoForge's `TicketController`, registered on the mod event bus, for chunks inside the Vault that contain an active Vault Anchor block. Tickets persist until the anchor is removed or the server restarts.
+The mod registers chunk loading tickets through NeoForge's `TicketController`, registered on the mod event bus, for chunks inside the Vault that contain an active Vault Anchor block. Forced tickets are persisted by NeoForge across restarts and validated on load through the `TicketController`'s loading-validation callback: a ticket is kept only if its Vault Anchor block is still present and the team is under its ceiling. A ticket is removed when its anchor is.
 
 **Vault Anchor Block**
 - Crafted from Vault Frame blocks + Resonance Crystal + a **Tier 4 Sovereign Vault Igniter**, which is *not consumed* — it is returned to the crafting grid as a crafting remainder, the same pattern vanilla uses for buckets and water bottles
@@ -276,7 +280,7 @@ The places they touch deliberately are Echo Chamber (§6.1), which makes Vault E
 **Reset process:**
 1. Voting UI appears for all online team members
 2. Once vote passes, a 10-second countdown is shown to anyone inside the Vault with a warning message
-3. Any players still inside the Vault at countdown end are placed at the Vault's spawn point, where the portal arrives (X=0, Z=0, §3.1), once the reset finishes. Not at their saved return position, which may be inside rock the reset replaced (Nick, 2026-10-26)
+3. Any players still inside the Vault at countdown end are moved out before the level is unloaded, and placed at the Vault's spawn point, where the portal arrives (X=0, Z=0, §3.1), once the new level is registered. Not at their saved return position, which may be inside rock the reset replaced (Nick, 2026-10-26)
 4. All chunk data for the team's Vault dimension is deleted
 5. The dimension is re-registered fresh (same registry key, new generation state). If the team has purchased the **Vault Expansion** keystone, the dimension is re-created under `orevault:ore_vault_expanded` instead of the base type — this is the only moment the dimension type can change (§3.1)
 6. Team skill tree progress, Resonance pool, Animus pool, and all skill point investments are fully preserved
@@ -788,15 +792,17 @@ distinctly (§8). A node with no class tag is a small node.
 
 **Vein Singularity** `[FORK OPTION: Vein Shape]`
 
-> Through Vein Shaping tier 1: all of a chunk's ore is consolidated into 1–3 veins, with total volume unchanged. Tier 2: +25% total volume, and about 40% of chunks generate no ore at all.
+> Through Vein Shaping tier 1: a chunk's baseline ore budget becomes 1, 2 or 3 veins, equally likely, each vein's rarity drawn from the band's mix, with total volume unchanged. Tier 2: 40% of chunks generate no ore, and the rest generate 1 or 2 veins carrying 2.08 times the baseline, a net +25% of ore. The 40% stone floor still applies.
 
 **Costs 0 skill points.** Requires Vein Shaping tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
 | Vein Shaping tier | Effect through this option |
 |---|---|
-| 1 | Chunk ore consolidated into 1–3 veins; total ore volume unchanged |
-| 2 | Consolidation intensifies; +25% total ore volume, ~40% of chunks generate no ore at all |
+| 1 | The chunk's baseline ore budget becomes 1, 2 or 3 veins, equally likely, rarity drawn from the band mix; total volume unchanged |
+| 2 | 40% of chunks generate no ore; the rest generate 1 or 2 veins carrying 2.08× the baseline, a net +25%; the 40% stone floor still applies |
 
+> These numbers are derived and unplaytested; T9 confirms them.
+>
 > Replaces the earlier "Motherlode" node, which was mechanically identical to Vein Expansion
 > under a different name. It carried a `[KEYSTONE]` tag while forks were paid nodes; as a free
 > option under Vein Shaping it is a shape choice like its two siblings, and keystones now live
@@ -806,14 +812,16 @@ distinctly (§8). A node with no class tag is a small node.
 
 **Stratified** `[FORK OPTION: Vein Shape]`
 
-> Ore generates in rarity-sorted horizontal bands instead of scattered blobs: rare ore only at Y=60 and below, uncommon from Y=61 to Y=150, common from Y=151 to Y=245. In an expanded Vault the rare band runs down to Y=−63. Vein Shaping tier 2 makes each band near-single-ore and sharpens the boundaries to within 4 blocks.
+> Ore generates in rarity-sorted horizontal bands instead of scattered blobs: rare ore only at Y=60 and below, uncommon from Y=61 to Y=150, common from Y=151 to Y=245. In an expanded Vault the rare band runs down to Y=−63. Vein Shaping tier 2 makes each band pick one ore type per chunk, weighted by share, which carries 90% of that band's ore, and narrows the blend at each band edge from 16 blocks to 4.
 
 **Costs 0 skill points.** Requires Vein Shaping tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
 | Vein Shaping tier | Effect through this option |
 |---|---|
-| 1 | Rare ore only at Y≤60, uncommon Y=61–150, common Y=151–245; the Tome draws the band edges |
-| 2 | Each band becomes near-single-ore, and the boundaries sharpen to within 4 blocks |
+| 1 | Rare ore only at Y≤60, uncommon Y=61–150, common Y=151–245, edges blending over 16 blocks; the Tome draws the band edges |
+| 2 | Each band picks one ore type per chunk, weighted by share, carrying 90% of the band's ore; edges blend over 4 blocks |
+
+> Tier 2's numbers and the 16-block blend are derived and unplaytested; T9 confirms them.
 
 ---
 
@@ -854,12 +862,14 @@ distinctly (§8). A node with no class tag is a small node.
 
 **Molten Seam** `[TRADEOFF]`
 
-> Lava pools generate in the Vault's stone band, each inside a two-block netherrack shell so you see one before you break into it. Ore mined within 8 blocks of lava drops already smelted and pays +25% Resonance. Switching this off stops new pools generating but leaves every pool already placed.
+> Each newly explored chunk has a 50% chance of a lava pool of 5 to 20 lava blocks in the Vault's stone band, inside a two-block netherrack shell so you see one before you break into it. Pools are placed before ore, and no ore generates inside a shell. Ore mined within 8 blocks of lava drops already smelted and pays +25% Resonance. Switching this off stops new pools generating but leaves every pool already placed.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | Lava pools generate in newly explored chunks, netherrack-shelled. Ore mined within 8 blocks of lava drops smelted and pays +25% Resonance | 2 | 8 | Deep Veins T1 |
+| 1 | 50% of newly explored chunks get a lava pool of 5 to 20 blocks in the stone band, in a two-block netherrack shell, placed before ore; no ore inside a shell. Ore mined within 8 blocks of lava drops smelted and pays +25% Resonance | 2 | 8 | Deep Veins T1 |
 
+> The pool chance and size are derived and unplaytested; T9 confirms them.
+>
 > **This tradeoff is not fully reversible and the tooltip must say so.** It changes generation, so switching it off stops new pools appearing but leaves every pool already generated exactly where it is. The netherrack shell is a hard requirement, not decoration: the whole reason a lava node is acceptable is that you never break the last block into an unseen pool.
 >
 > The smelted drop stacks with **Smelter's Intuition** by taking the better of the two rolls, not by rolling twice.
@@ -1170,13 +1180,15 @@ distinctly (§8). A node with no class tag is a small node.
 
 **Highwater Mark**
 
-> Each ore you mine repairs the held tool by 1 durability, plus 1 more for every 16 blocks your all-time deepest Y sits below Y=64 — up to 9 per ore at expanded bedrock. Tier 2 sends the same repair to damaged armour when the held tool needs none. Costs no XP and stacks with Mending.
+> Each ore you mine repairs the held tool by 1 durability, plus 1 more for every full 16 blocks your all-time deepest Y sits below Y=64: floor((64 − deepestY) / 16), clamped to 0 to 8, so up to 9 per ore. With no deepest Y recorded the extra is 0. Tier 2 sends the same repair to damaged armour when the held tool needs none. Costs no XP and stacks with Mending.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | Each ore mined repairs the held tool by 1 durability, plus 1 more for every 16 blocks your all-time deepest Y sits below Y=64 — up to 9 per ore at expanded bedrock | 2 | 9 | Stone Memory T3 |
+| 1 | Each ore mined repairs the held tool by 1 durability, plus floor((64 − deepestY) / 16), clamped to 0 to 8 and 0 with no deepest Y recorded — up to 9 per ore | 2 | 9 | Stone Memory T3 |
 | 2 | When the held tool needs no repair, the same amount is applied to worn armour, split across damaged pieces | 3 | 14 | Tier 1 |
 
+> The rounding is derived and unplaytested; T9 confirms it.
+>
 > Reads `PlayerStats#deepestY`, which is lifetime and never decreases, so the bonus is earned once by delving and kept forever. Repair is capped at the item's maximum durability, never applies to items that cannot be damaged, and unlike Mending consumes no XP — the two stack.
 >
 > Replaces an earlier version that paid +1% ore per 8 blocks of depth record. That topped out near +8%, which is not worth a node; durability is the thing a miner actually runs out of.
@@ -1185,12 +1197,14 @@ distinctly (§8). A node with no class tag is a small node.
 
 **Brittle Stone** `[PACT]`
 
-> Every block in the Vault breaks instantly. In exchange each ore block has a 10% chance to shatter with no drops, and every ore you break destroys 1 adjacent ore block with no drops.
+> Every block in the Vault breaks instantly. In exchange each ore block has a 10% chance to shatter with no drops, and every ore you break destroys 1 random face-adjacent ore block of the same vein, if there is one. The destroyed block drops nothing and pays nothing, but counts toward completing the vein.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 (only tier) | All blocks in the Vault break instantly; each ore block has a 10% chance to shatter with no drops, and each ore break destroys one adjacent ore block with no drops | 5 | 13 | Vein Fortune T2 |
+| 1 (only tier) | All blocks in the Vault break instantly; each ore block has a 10% chance to shatter with no drops, and each ore break destroys one random face-adjacent ore block of the same vein, if any, which drops and pays nothing but counts toward completion | 5 | 13 | Vein Fortune T2 |
 
+> Which block is destroyed is derived and unplaytested; T9 confirms it.
+>
 > The adjacent-ore collateral is what makes instant breaking a real bargain rather than a straight upgrade: with it, a big vein loses a large fraction of itself to the speed. It also interacts badly with Vein Discipline on purpose — the collateral counts as breaking the vein, so the two together are a build that wants deliberate handling.
 
 ---
@@ -1269,13 +1283,15 @@ distinctly (§8). A node with no class tag is a small node.
 
 **Wanderer's Cache**
 
-> Every 50 newly explored Vault chunks drops a supply cache of food, torches and a tool repair. Tier 2 doubles the contents and adds a 20% chance of an enchanted book.
+> Every 50 newly explored Vault chunks drops a supply cache of food and torches that also restores 25% of maximum durability to the most-damaged tool in the opener's hotbar. Tier 2 doubles the contents, raises the repair to 50%, and adds a 20% chance of an enchanted book.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | Every 50 newly explored Vault chunks drops a supply cache: food, torches, and a tool repair | 2 | 6 | None |
-| 2 | Cache contents doubled, with a 20% chance of an enchanted book | 3 | 12 | Tier 1 |
+| 1 | Every 50 newly explored Vault chunks drops a supply cache: food and torches, and opening it restores 25% of maximum durability to the most-damaged tool in the opener's hotbar | 2 | 6 | None |
+| 2 | Cache contents doubled, the repair raised to 50%, with a 20% chance of an enchanted book | 3 | 12 | Tier 1 |
 
+> The repair amounts are derived and unplaytested; T9 confirms them.
+>
 > Reads `PlayerStats#chunksExplored`, which is already tracked and currently read by nothing. Cache contents come from a loot table (`orevault:chests/wanderers_cache`) so a pack can retune them without touching code.
 
 ---
@@ -1304,12 +1320,14 @@ distinctly (§8). A node with no class tag is a small node.
 
 **Homeward Seam** `[NOTABLE]`
 
-> Set one anchor anywhere inside the Vault and teleport back to it from anywhere else inside. Five-minute cooldown, and the cast is cancelled if you take damage. Never crosses into or out of the Vault, and a dimension reset clears the anchor.
+> Set one anchor anywhere inside the Vault and teleport back to it from anywhere else inside. The cast takes 3 seconds and is cancelled if you take damage; the five-minute cooldown starts only after a cast succeeds. Never crosses into or out of the Vault, and a dimension reset clears the anchor.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 (only tier) | Set one anchor point inside the Vault; teleport to it from anywhere else inside the Vault. Five-minute cooldown, cancelled if you take damage while casting | 3 | 10 | Vault Presence T1 |
+| 1 (only tier) | Set one anchor point inside the Vault; teleport to it from anywhere else inside the Vault with a 3-second (60-tick) cast, cancelled if you take damage while casting. Five-minute cooldown, starting after a successful cast | 3 | 10 | Vault Presence T1 |
 
+> The 3-second cast is derived and unplaytested; T9 confirms it.
+>
 > Only works Vault-to-Vault, never in or out. The anchor is stored per player and is cleared by a dimension reset (§3.5).
 
 ---
@@ -1408,7 +1426,7 @@ distinctly (§8). A node with no class tag is a small node.
 
 **Twin Veins**
 
-> Completing a vein has a 1% chance to spawn a second identical vein next to it, rising to 5%, then 10%. The new vein is indexed like any other, so it can trigger this again.
+> Completing a vein has a 1% chance to spawn a copy of it, rising to 5%, then 10%. The copy has the same shape and sits 2 to 4 blocks clear of the original's bounding box in a random horizontal direction, inside the same chunk, replacing only stone and deepslate. If no direction fits, no copy is made. The new vein is indexed like any other, so it can trigger this again.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
@@ -1416,6 +1434,8 @@ distinctly (§8). A node with no class tag is a small node.
 | 2 | 5% chance on vein completion | 2 | 10 | Tier 1 |
 | 3 | 10% chance on vein completion | 3 | 14 | Tier 2 |
 
+> The placement rule is derived and unplaytested; T9 confirms it.
+>
 > Veins created by Twin Veins are registered into the vein index (§11) exactly as generated veins are, so they themselves can trigger Vault Echo and Twin Veins on completion.
 
 ---
@@ -1476,11 +1496,13 @@ distinctly (§8). A node with no class tag is a small node.
 
 **Deep Harvest** `[NOTABLE]`
 
-> Ore mined below Y=0 drops 1 extra Resonance orb. Only an expanded Vault has a band below Y=0 for this to apply in.
+> Ore mined below Y=0 drops 1 extra Resonance orb worth half the ore's base Resonance (1, 2.5 or 6.25 by rarity), with no bonuses applied. Only an expanded Vault has a band below Y=0 for this to apply in.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 (only tier) | Ore below Y=0 drops one extra Resonance orb | 4 | 20 | Deep Veins T2, Vault Expansion |
+| 1 (only tier) | Ore below Y=0 drops one extra Resonance orb worth half the ore's base Resonance (1 / 2.5 / 6.25), no bonuses applied | 4 | 20 | Deep Veins T2, Vault Expansion |
+
+> The orb's value is derived and unplaytested; T9 confirms it.
 
 ---
 
@@ -1512,7 +1534,7 @@ distinctly (§8). A node with no class tag is a small node.
 
 **Hoarder's Instinct** `[FORK OPTION: Orb Collection]`
 
-> Orbs never move toward you and never despawn; orbs resting within 4 blocks of each other merge into a single cache. Through Resonant Draw tier 2, collecting a cache of N orbs pays ×(1 + 0.1 × N) up to ×3; tier 3 lets caches pull in orbs from other caches within 8 blocks and raises the cap to ×4.
+> Orbs never move toward you and never despawn; orbs resting within 4 blocks of each other merge into a single cache. An orb is resting once it has been on the ground for 20 ticks moving less than 0.01 blocks a tick; merges are checked every 20 ticks. Through Resonant Draw tier 2, collecting a cache of N orbs (N counts orbs, not Resonance) pays ×(1 + 0.1 × N) up to ×3; tier 3 lets caches pull in orbs from other caches within 8 blocks and raises the cap to ×4.
 
 **Costs 0 skill points.** Requires Resonant Draw tier 1. One option at a time; picking this locks its siblings until refunded, and unpicking it is free (§4.4).
 
@@ -1522,6 +1544,8 @@ distinctly (§8). A node with no class tag is a small node.
 | 2 | Cache collection pays ×(1 + 0.1 × N), capped at ×3 |
 | 3 | Caches pull in orbs from neighbouring caches within 8 blocks; cap raised to ×4 |
 
+> The resting rule and the 20-tick check are derived and unplaytested; T9 confirms them.
+>
 > The previous version of this node removed orb attraction and gave a flat 2× on manual pickup, which was strictly worse than Magnetism Tier 1 in ordinary play — an exclusive choice where one side was simply wrong. Merging plus permanence makes it a different way to mine (clear-then-sweep) rather than a worse one.
 
 ---
@@ -1559,11 +1583,13 @@ distinctly (§8). A node with no class tag is a small node.
 
 **Volatile Veins: Ultimine Gambit** `[TRADEOFF]`
 
-> While Volatile Veins is active, each Ultimine operation counts 1 extra block toward the disappearance roll. Operations that survive it pay +20% Resonance.
+> While Volatile Veins is active, each Ultimine operation rolls Volatile Veins' 3% twice instead of once, so 5.91% of operations vanish. Operations that survive pay +20% Resonance.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 | Riskier Ultimine, 20% Resonance bonus on safe operations | 2 | 9 | Volatile Veins, Ultimine Expansion T1 |
+| 1 | The 3% disappearance roll is made twice per Ultimine operation (5.91% vanish); surviving operations pay +20% Resonance | 2 | 9 | Volatile Veins, Ultimine Expansion T1 |
+
+> The double roll is derived and unplaytested; T9 confirms it.
 
 ---
 
@@ -1605,7 +1631,7 @@ distinctly (§8). A node with no class tag is a small node.
 >
 > **AFK guard:** a member's 0.30 accrues only while that member has broken a block in the last 10 seconds.
 >
-> The rate is a constant, not config (Nick, 2026-10-26). Nothing has been observed yet: a solo player's derived rate is 220 ore an hour at 3.485 Resonance each (§4.3), about 0.21 a second, so 0.30 is about 1.4 times it. The 3 a second first written here was about 14 times that rate and would have turned the last five levels, 62 hours on the curve, into about four.
+> The rate is a constant, not config (Nick, 2026-10-26). Nothing has been observed yet: a solo player's derived rate is 220 ore an hour at 3.485 Resonance each (§4.3), about 0.21 a second, so 0.30 is about 1.4 times it. The 3 a second first written here was about 14 times that rate and would have turned levels 25 to 30, 62 hours on the curve, into about four.
 
 ---
 
@@ -1947,9 +1973,9 @@ kindred from the count.
 
 ### Mekanism (Soft Dependency)
 
-- Detection: `ModList.get().isLoaded("mekanism")`
-- If not loaded: Ore Working tiers 4-6 (through Ore Doubling) do not appear in the UI; doubling uses the dust or raw ore fallback
-- If loaded: Ore Working tiers 4-6 appear; each ore's clump, shard and crystal are found through the `c:clumps/<material>`, `c:shards/<material>` and `c:crystals/<material>` item tags
+- Detection: by tags, not by mod. Ore Working tiers 4-6 (through Ore Doubling) appear only when the `c:clumps/...`, `c:shards/...` and `c:crystals/...` item tags are non-empty, whether Mekanism, FTB Materials or another mod fills them
+- If the tags are empty: tiers 4-6 do not appear in the UI; doubling uses the dust or raw ore fallback
+- If they are filled: tiers 4-6 appear; each ore's clump, shard and crystal are found through the `c:clumps/<material>`, `c:shards/<material>` and `c:crystals/<material>` item tags
 - No compile-time reference to Mekanism and no reflection. Tags only: they survive Mekanism updates, and FTB Materials, in Nick's pack, ships Mekanism-style clumps, shards and crystals under the same `c:` tags with no Mekanism code (`docs/research/ftb-materials.md`)
 - For ores with no item under those tags: fallback to raw ore double
 
@@ -1966,7 +1992,7 @@ kindred from the count.
 
 Configuration is intentionally minimal. Most values are derived dynamically from the defined skill tree. Admins can control only things with server performance implications.
 
-**Config file:** `orevault-server.toml` (server-side only, not synced to clients)
+**Config file:** `orevault-server.toml` (a `SERVER` config)
 
 Each value below is added to the config in the ticket that first reads it, never before: a value with no reader is the failure recorded in `DESIGN_LOG.md` 2026-09-03 (`CLAUDE.md` rule 7). The block shows the intended file once every reader exists.
 
@@ -1993,9 +2019,9 @@ Each value below is added to the config in the ticket that first reads it, never
 
 [ore_classification]
     # Override the automatic rarity classification for specific ore blocks.
-    # Format: "modid:block_id" = "common|uncommon|rare"
-    # Example: "minecraft:diamond_ore" = "rare"
-    overrides = {}
+    # A list of "modid:block_id=common|uncommon|rare" strings; each entry is
+    # validated, and a malformed entry or unknown rarity is rejected.
+    overrides = ["minecraft:diamond_ore=rare"]
 
 [disturbed_zones]
     # Maximum number of Disturbed Zone blocks placeable per team.
@@ -2033,7 +2059,7 @@ config screen warn about it instead of silently accepting an edit that does noth
 predicate is evaluated server-side on every execution, so the command really does start working the
 moment the flag flips — but the *client's* copy of the command tree is only sent on login, so the
 command stayed invisible and un-completable until a reload. `ConfigReload` listens for
-`ModConfigEvent.Reloading` and re-sends the tree to everyone online, which re-runs the predicate.
+`ModConfigEvent.Reloading` and re-sends the tree to everyone online inside `server.execute(...)`, which re-runs the predicate.
 
 **Values derived automatically (not configurable):**
 - Level thresholds for Resonance and Animus (derived from tree structure, scaled by `curve_divisor`)
@@ -2057,7 +2083,7 @@ The core of the world-gen system. Rather than static registered `PlacedFeature` 
 **Implementation pattern.** Chunk generation runs on a background executor; team `SavedData` is main-thread-only (`CLAUDE.md` rule 1). The generator therefore never reads `SavedData`. It is handed a `Supplier` of an immutable snapshot, which the main thread rebuilds whenever the team's tree changes:
 
 ```java
-// Main thread, on purchase, refund, fork or tradeoff change, and at Vault load:
+// Main thread, on purchase, refund, fork change, level-up, reset and restore, and at Vault load:
 snapshotHolder.set(GenSnapshot.of(teamNodeState));   // immutable copy
 
 // The generator holds only the supplier, never the team data:
@@ -2093,6 +2119,8 @@ public class OreVaultTeamData extends SavedData {
 
 Run at every server start (not cached to disk). The candidates are the blocks in the `#c:ores` block tag, not blocks of a particular class: a modded ore is an ore because its mod tags it as one. For each, look up its registered `PlacedFeature` entries and extract vein count and height range. Apply the §4.2 rule on expected blocks per chunk and mean blocks per vein (`docs/research/vanilla-ore-generation.md` section 5 covers sampling height providers, expected counts, biome-only features and stone/deepslate pairs).
 
+An ore in `#c:ores` with no overworld `PlacedFeature` is not classified, and so not placed, unless an override names it. Ancient debris is handled by Ancient Traces (§6.1), not by the classifier.
+
 Apply admin config overrides after classification. Store classification in memory for the session.
 
 ### FTB Teams Event Hooks
@@ -2116,7 +2144,9 @@ After 3 consecutive triggers: enter safe window for 10 blocks.
 
 Dimensions are registered **lazily, on the first portal trip by a team member** (§3.1). Earlier drafts of this section recommended registering every team's dimension at server start and creating more on team-created events; that recommendation is withdrawn. FTB Teams auto-creates a single-member team for every player who logs in, so eager registration means one full `ServerLevel` per player account the server has ever seen — chunk map, storage, region directory and all — for a dimension most of them will never enter.
 
-Registration itself: build the `LevelStem`, briefly unfreeze the live `LEVEL_STEM` `MappedRegistry` to register it, re-freeze, construct the `ServerLevel` mirroring what `MinecraftServer#createLevels` does for non-overworld dimensions, and put it into the world map. Deletion removes the registry entry and the level's storage directory — handle carefully to avoid registry desync.
+Registration itself: build the `LevelStem`, briefly unfreeze the live `LEVEL_STEM` `MappedRegistry` to register it, re-freeze, construct the `ServerLevel` mirroring what `MinecraftServer#createLevels` does for non-overworld dimensions, and put it into the world map. Nothing deletes a level's registry entry or folder while the server runs: a disbanded Vault is archived at the next start (§3.1), and a reset that cannot unload a live Vault waits for the next start (§3.5).
+
+**Eager restore.** At server start, before anyone connects, the restore pass scans `<world>/dimensions/orevault/` and re-registers every Vault found there. For each it reads the team's data for the dimension variant and for `disbanded_at`, and skips archived Vaults. A folder that cannot be read is logged and skipped; it never stops the server or the other Vaults. On login, a player whose `in_vault` names a Vault that is not loaded is sent to their return position.
 
 > **The `markWorldsDirty()` trap.** After `server.forgeGetWorldMap().put(key, level)` you **must** call `server.markWorldsDirty()`. `MinecraftServer` ticks levels from a cached `ServerLevel[]` built by `getWorldArray()`, which is only rebuilt when `worldArrayMarker` changes — and `markWorldsDirty()` is the only thing that changes it. Omit the call and a dimension created after the first server tick is placed in the map but **never ticked**.
 >
@@ -2144,6 +2174,7 @@ Rules the implementation must hold:
 - **Player-placed ore is never indexed.** This closes the otherwise obvious exploit — place ore, break it, farm Vault Echo — by construction rather than by a check that could be missed.
 - Chunks generated before the index existed have no entries, and their veins never complete.
 - Chapter's End's per-chunk count lives in the same attachment (§6.1).
+- If an attachment written on the `ProtoChunk` does not carry over to the `LevelChunk`, the generator puts the index in a pending map keyed by chunk, which the main thread drains into the attachment at chunk load.
 
 ### Drop Pipeline
 
@@ -2167,7 +2198,7 @@ Consume, Fortune and Quantity **contribute** to an outcome the pipeline applies 
 
 ### Resonance and Mining-Speed Composition
 
-The drop pipeline settles ordering for item drops. Two other quantities have the same problem, and the same answer: **percentage bonuses sum; penalties multiply after the bonuses are summed; the result is floored at zero** (Nick, 2026-10-26):
+The drop pipeline settles ordering for item drops, and there the Quantity multipliers compose multiplicatively on purpose. Resonance and mining speed follow a different rule: **percentage bonuses sum; penalties multiply after the bonuses are summed; the result is floored at zero** (Nick, 2026-10-26):
 
 ```
 value = base × (1 + sum of bonuses) × product of (1 − each penalty), floored at 0
@@ -2180,7 +2211,7 @@ A penalty is a penalty however it is written: Greedy Seams' "−50% Resonance" m
 | Resonance from one ore break | `ResonanceBonuses` | Shallow Grace (+50%), Apprentice's Ledger (+100% on a trip's first 100 ore), Deep Habit, Calloused Hands, Kindred Rock, Vein Discipline, Molten Seam (+25%), Frontier Bonus (+40%), Vault's Purity (+20%), Last Ore (+100% on the final block), Clean Cut (+50% across the vein), Resonant Overload (+100%), Resonant Symbiosis (+50% with company), Bedrock Communion (+2% per block below Y=0), Volatile Veins: Ultimine Gambit (+20% on surviving operations) | Greedy Seams (−50%), Vault Fever (−25%), Full Spectrum (−20%), Resonant Symbiosis alone (−40%), Bedrock Communion between Y=32 and Y=245 (×0), Silent Stone (×0) |
 | Mining speed on one block | `MiningSpeedModifiers` | Long Delve (+10%/stack), Kindred Rock (+20% on kindred types) | Bedrock Communion (halve) |
 
-Not in either accumulator, and still to be placed by the Balancer: the flat payments (Stone Memory's 0.5 on deepslate and its T5 burst, Vault Echo, Chapter's End, Deep Harvest's extra orb, Silent Stone's rate), which are not per-break percentages and for which it is not yet stated whether the bonuses apply; Hoarder's Instinct's cache multiplier, paid on collection; Brittle Stone's instant break, which replaces mining speed rather than modifying it; and Vault Fever's Haste II, a potion effect.
+Not in either accumulator, and still to be placed by the Balancer: the flat payments (Stone Memory's 0.5 on deepslate and its T5 burst, Vault Echo, Chapter's End, Silent Stone's rate), which are not per-break percentages and for which it is not yet stated whether the bonuses apply (Deep Harvest's extra orb takes none); Hoarder's Instinct's cache multiplier, paid on collection; Brittle Stone's instant break, which replaces mining speed rather than modifying it; and Vault Fever's Haste II, a potion effect.
 
 Summing is what keeps a node's stated number meaning what it says wherever it sits in the tree: +25% is a quarter of the base rate whether it is the first bonus or the seventh. Multiplying a dozen small percentage nodes together compounds far past a curve calibrated for 100 hours, and no node's tooltip could then state its own effect honestly.
 
