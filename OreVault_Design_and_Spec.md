@@ -1621,17 +1621,61 @@ distinctly (§8). A node with no class tag is a small node.
 
 **Silent Stone** `[KEYSTONE]`
 
-> Ore pays no Resonance at all. Instead the team pool gains 0.30 Resonance a second for each team member below Y=0 inside the Vault who has broken a block in the last 10 seconds. The 0.30 is after §4.2 team scaling.
+> Ore pays no Resonance at all. Instead each active team member earns 0.30 Resonance a second, raised by the team's Resonance bonuses that apply to that member, and the pool takes the members' sum through the same §4.2 team scaling as ore. Active means inside the Vault, below Y=0, and having broken a block by hand in the last 10 seconds.
 
 | Tier | Effect | Cost | Level Req | Prereq |
 |---|---|---|---|---|
-| 1 (only tier) | Ore awards no Resonance. The team pool gains 0.30 Resonance a second for each member below Y=0 in the Vault, after team scaling | 8 | 24 | Vault Expansion |
+| 1 (only tier) | Ore awards no Resonance. Each active member (inside the Vault, below Y=0, broke a block in the last 10 seconds) earns 0.30 Resonance a second × (1 + that member's counted Resonance bonuses); the pool gains the sum, divided by team size, × (1 + 0.1 × (team size − 1)) | 8 | 24 | Vault Expansion |
 
-> Divorces progression from extraction. You can chase materials as hard as you like without slowing the tree, or delve slowly and still advance. Every ore-multiplying node you own stops contributing to progression, which is a large sacrifice for anyone deep in Metallurgy, and it makes Greedy Seams a pure upside rather than a pact — a combination that is allowed and is meant to be found.
+> Divorces progression from extraction. You can chase materials as hard as you like without slowing the tree, or delve slowly and still advance. Ore-multiplying nodes stop contributing to progression, which is a large sacrifice for anyone deep in Metallurgy, and it makes Greedy Seams a pure upside rather than a pact — a combination that is allowed and is meant to be found. The Resonance nodes the team has bought keep most of their value, because the state-based ones raise the rate (Nick, 2026-10-26).
 >
-> **AFK guard:** a member's 0.30 accrues only while that member has broken a block in the last 10 seconds.
+> **The rate.** Evaluated once a second on the server:
 >
-> The rate is a constant, not config (Nick, 2026-10-26). Nothing has been observed yet: a solo player's derived rate is 220 ore an hour at 3.485 Resonance each (§4.3), about 0.21 a second, so 0.30 is about 1.4 times it. The 3 a second first written here was about 14 times that rate and would have turned levels 25 to 30, 62 hours on the curve, into about four.
+> ```
+> memberRate    = 0.30 × (1 + sum of that member's counted bonuses), floored at 0     // each active member
+> teamPoolGain  = sum(memberRate) / teamSize × (1 + 0.1 × (teamSize − 1))            // per second
+> ```
+>
+> With no bonuses this is 0.30 a second for a solo player and 0.30 × 5 / 5 × 1.4 = 0.42 for five members all active; four active out of five is 0.336. A member who is not active contributes nothing but still counts in `teamSize`, exactly as a member who is not mining ore does (§4.2). Tithe's 1.75× does not apply: it is a payment for a consumed ore block. The 0.30 is a constant, not config (Nick, 2026-10-26).
+>
+> **What "ore pays no Resonance" covers.** Every payment triggered by breaking ore: the per-break Resonance, Deep Harvest's extra orb, Last Ore, Clean Cut, and the Vault Echo and Chapter's End bursts, which are paid for finishing ore veins. Stone Memory's payments for stone and deepslate are not ore and still pay.
+>
+> **Which bonuses count.** A bonus counts when it can be evaluated for a member at any second without reference to a particular ore break or vein event. Position-based bonuses are evaluated at the member's own position.
+>
+> | §11 bonus | Counts | Evaluated as |
+> |---|---|---|
+> | Shallow Grace (+50%) | Would count, never applies | An active member is below Y=0, so the deepest-Y condition has already failed |
+> | Apprentice's Ledger | No | Tied to a trip's first 100 ore breaks |
+> | Deep Habit (+5% per 1,000 blocks, to +25%) | Yes | The member's blocks broken this trip |
+> | Calloused Hands (to +40%) | Yes | The member's lifetime blocks broken |
+> | Kindred Rock (+15%) | No | Tied to the type of the ore broken |
+> | Vein Discipline (+2% per vein, to +30%) | Yes | The member's current streak |
+> | Molten Seam (+25%) | No | Tied to the ore's distance from lava, and pools are only in the stone band |
+> | Frontier Bonus (+40%) | Yes | The chunk the member stands in was generated within the last 10 minutes |
+> | Vault's Purity (+20%) | Yes | The member has no potion effect |
+> | Last Ore, Clean Cut | No | Vein events |
+> | Resonant Overload (+100%) | Yes | Unconditional |
+> | Resonant Symbiosis (+50%) | Yes | Two or more team members inside the Vault |
+> | Bedrock Communion (+2% per block below Y=0) | Yes | The member's Y; an active member is always below Y=0 |
+> | Volatile Veins: Ultimine Gambit | No | Tied to a surviving Ultimine operation |
+>
+> **No penalty applies to the rate**, including Resonant Symbiosis's −40% alone. The penalties in §11 are priced against ore Resonance, and Silent Stone has already taken all of it; charging them again would double the cost, and it would undo the stated intent that Silent Stone makes Greedy Seams a pure upside. Greedy Seams, Vault Fever and Full Spectrum therefore cost a Silent Stone team nothing in progression; what they still trade is materials and speed, which is the side of the game this keystone frees. Resonant Overload stays a choice against Greedy Seams: +100% rate for half the ore. With no penalty the floor at zero (§11, Nick's N6) can never be reached; it is stated so the code applies it anyway.
+>
+> **Derived, unplaytested.** Curve figures are the §4.3 solo derivation in the stone band, 220 ore an hour at 3.485 Resonance, 0.213 a second; a team of five all mining earns 0.298. Levels 25 to 30 cost about 47,600 Resonance, 62 hours at 0.213. "Ore, same nodes" counts the same bonuses plus the ore-only ones a build has by then (Kindred Rock +15%, Last Ore about +13% spread over a vein; in the maximum case Clean Cut +50% on every vein), and leaves out the bursts. The typical level-24 build has Deep Habit +25%, Calloused Hands tier 2 at about 200,000 blocks +15%, Vein Discipline +20%, Vault's Purity +20% and Frontier Bonus +20% averaged over half the time, so +100%, and +150% for five with Resonant Symbiosis; no Resonant Overload and no Bedrock Communion, which needs level 26. The maximum adds Resonant Overload, Bedrock Communion at Y=−63 and every counted bonus at its cap: +381% solo, +431% for five.
+>
+> | Build | Silent Stone, solo | Ore, same nodes, solo | Silent Stone, five active | Ore, same nodes, five | Levels 25–30 (solo SS / solo ore) |
+> |---|---|---|---|---|---|
+> | No bonuses | 0.30 /s | 0.213 /s (1.41×) | 0.42 /s | 0.298 /s (1.41×) | 44 h / 62 h |
+> | Typical level 24 | 0.60 /s | 0.49 /s (1.24×) | 1.05 /s | 0.83 /s (1.27×) | 22 h / 27 h |
+> | Maximum counted | 1.44 /s | 1.19 /s (1.21×) | 2.23 /s | 1.82 /s (1.23×) | 9 h / 11 h |
+>
+> **No cap.** Silent Stone takes 1.4 times the base and a subset of the bonuses an ore build takes, so it cannot pass about 1.4 times an ore build with the same nodes and no penalties, and the more ore-only bonuses a build owns, the closer it falls to 1.0. The maximum is 1.2 times. Against an ore build that holds Greedy Seams, Vault Fever and Full Spectrum (×0.3 together) it is about 4.7 times, which is the pure upside described above, not a stacking accident.
+>
+> **Against the deepslate band.** An active member is in deepslate, which is twice as dense and pays 3.95 a block at 60/30/10 (§3.1). If 7,200 blocks an hour held there, bare ore would pay 0.47 a second and 0.30 would be about 0.63 of it. Deepslate is twice as hard as stone, so the real figure is lower; T14's timed session below Y=0 settles it. The trade is a constant rate for a slow or distracted delve against a higher one for a fast miner.
+>
+> **AFK guard:** a member accrues only while that member has broken a block in the last 10 seconds. Blocks broken by a machine do not count (§3.4).
+>
+> The 3 a second first written here was about 14 times the solo rate and would have turned levels 25 to 30, 62 hours on the curve, into about four.
 
 ---
 
@@ -2211,7 +2255,9 @@ A penalty is a penalty however it is written: Greedy Seams' "−50% Resonance" m
 | Resonance from one ore break | `ResonanceBonuses` | Shallow Grace (+50%), Apprentice's Ledger (+100% on a trip's first 100 ore), Deep Habit, Calloused Hands, Kindred Rock, Vein Discipline, Molten Seam (+25%), Frontier Bonus (+40%), Vault's Purity (+20%), Last Ore (+100% on the final block), Clean Cut (+50% across the vein), Resonant Overload (+100%), Resonant Symbiosis (+50% with company), Bedrock Communion (+2% per block below Y=0), Volatile Veins: Ultimine Gambit (+20% on surviving operations) | Greedy Seams (−50%), Vault Fever (−25%), Full Spectrum (−20%), Resonant Symbiosis alone (−40%), Bedrock Communion between Y=32 and Y=245 (×0), Silent Stone (×0) |
 | Mining speed on one block | `MiningSpeedModifiers` | Long Delve (+10%/stack), Kindred Rock (+20% on kindred types) | Bedrock Communion (halve) |
 
-Not in either accumulator, and still to be placed by the Balancer: the flat payments (Stone Memory's 0.5 on deepslate and its T5 burst, Vault Echo, Chapter's End, Silent Stone's rate), which are not per-break percentages and for which it is not yet stated whether the bonuses apply (Deep Harvest's extra orb takes none); Hoarder's Instinct's cache multiplier, paid on collection; Brittle Stone's instant break, which replaces mining speed rather than modifying it; and Vault Fever's Haste II, a potion effect.
+Not in either accumulator, and still to be placed by the Balancer: the flat payments (Stone Memory's 0.5 on deepslate and its T5 burst, Vault Echo, Chapter's End), which are not per-break percentages and for which it is not yet stated whether the bonuses apply (Deep Harvest's extra orb takes none); Hoarder's Instinct's cache multiplier, paid on collection; Brittle Stone's instant break, which replaces mining speed rather than modifying it; and Vault Fever's Haste II, a potion effect.
+
+**Silent Stone's rate** is placed: it reads the bonuses in this table that can be evaluated for a member at any second (Deep Habit, Calloused Hands, Vein Discipline, Frontier Bonus at the member's chunk, Vault's Purity, Resonant Overload, Resonant Symbiosis with company, Bedrock Communion at the member's Y), sums them the same way, and takes no penalty; the per-member results then go through the §4.2 team scaling. The other bonuses are tied to an ore break or a vein event and do not apply. The full rule and its numbers are with the node in §6.1.
 
 Summing is what keeps a node's stated number meaning what it says wherever it sits in the tree: +25% is a quarter of the base rate whether it is the first bonus or the seventh. Multiplying a dozen small percentage nodes together compounds far past a curve calibrated for 100 hours, and no node's tooltip could then state its own effect honestly.
 
@@ -2464,7 +2510,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - **Mastery** (anchor: 160 points — keystones only)
   - [ ] Vault Expansion
   - [ ] Full Spectrum
-  - [ ] Silent Stone *(new — 0.30 a second per member below Y=0, after team scaling, a constant)*
+  - [ ] Silent Stone *(new — 0.30 a second per active member below Y=0 × (1 + the member's counted Resonance bonuses, no penalties), summed and team-scaled as ore (§4.2), a constant)*
   - [ ] Resonant Symbiosis *(new)*
   - [ ] Bedrock Communion *(new — penalty lifts at Y=246, speed not damage)*
 
