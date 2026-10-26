@@ -97,7 +97,7 @@ decisions do; the dated log entry is `DESIGN_LOG.md` 2026-10-26.
 | Nh | Players inside at reset | Sent to the Vault's spawn point, where the portal arrives. Their saved return position may be inside rock that the reset replaced. | §3.5; T11 |
 | Ni | Live Vault cannot unload | Everyone is sent out and the Vault regenerates at the next restart, with a message saying so. | T11 |
 | Nj | Mekanism | Tags only. FTB Materials (in Nick's pack) ships Mekanism-style clumps, shards and crystals under `c:` tags with no Mekanism code, so Ore Doubling's Mekanism tiers resolve through tags; see `docs/research/ftb-materials.md`. | §2, §9; T12 |
-| Nk | Cross-cluster prerequisites | **None.** A node that requires a node in another cluster moves so both are in the same cluster. 24 prerequisites crossed clusters on 2026-10-26; the tree is restructured before T8a. | §6.1; T8a, T8 |
+| Nk | Cross-cluster prerequisites | **Retired 2026-10-26.** Nick first ruled out cross-cluster prerequisites, then replaced the hub tree with a Path of Exile style tree (one point per node, adjacency, no anchors or clusters), which makes the rule moot. The skill tree thread's PR rewrites §4.3, §4.4, §6 and §8 Tab 1; §6.1 anchor, gate and cluster text in this file and the spec is superseded by it. | §6.1; T8a, T8 |
 
 ## Shared task list
 
