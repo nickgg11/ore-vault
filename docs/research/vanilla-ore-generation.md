@@ -3,7 +3,22 @@
 Research for Nick's answer N4 (`docs/TEAM_REQUIREMENTS.md`): measure how vanilla chunk generation places
 ore, use it to set the Vault's baseline, which reopens the 3%/6% figures in DESIGN_LOG 2026-09-27, then
 retune Guide Vein so a player can feel it. Owners: Balancer and Architect, Developer review. Written
-2026-10-26. **The proposal in section 3 is not decided until Nick approves it.**
+2026-10-26.
+
+**Decided 2026-10-26: Nick kept 3% stone and 6% deepslate** over the proposed 4%. The rest of section 3
+(mixes, vein sizes, gravel and clay, the rarity rule) and the Guide Vein retune in section 4 are carried
+into the spec at 3%. At 3% the figures that differ from section 3's 4% tables are:
+
+| | At 3% (decided) |
+|---|---|
+| Veins per chunk, stone band | about 141 common, 82 uncommon, 33 rare **(D)** |
+| Ore per hour, solo | 220, as before (§4.3) |
+| Weighted Resonance per ore at 68/25/7 | 3.485 **(D)** |
+| Total Resonance over 100 h / level 1 cost | about 76,700 / about 114 **(D)** |
+| S11 ore band | 176–264, unchanged |
+| Rare ore share of the volume | 0.21%, just under vanilla's best diamond layer (0.24%) |
+| Floor headroom to 60% ore | stone 20x, deepslate 10x |
+| Guide Vein | +32% of a chunk's ore, about +18% Resonance; about +7% at Vein Expansion and Proliferation T5 **(D)** |
 
 ## 1. Method
 
@@ -116,7 +131,7 @@ mostly the bedrock layers' neighbours, so in practice Y-59..-49), gold 0.20% (Y-
    and emerald all fell back to uncommon at mid-depth, and gold came out common off badlands'
    `ore_gold_extra`. `OreClassifierTest` tested only `classify()`, so nothing caught it.
 
-## 3. Proposed baseline (Balancer, after review), for Nick to approve
+## 3. Proposed baseline (Balancer, after review); Nick chose 3% over this 4%
 
 **(D)** marks a derived number; everything in section 2 is computed from vanilla's data. Counts are per
 rarity per band. Sizes are vanilla's configured `size`, which is not a block count (section 2); block
