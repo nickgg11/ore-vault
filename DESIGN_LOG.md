@@ -36,9 +36,10 @@ Nick chose because the Vault is solid rock.
 leave that slice in minutes and the veins could not be told apart. Raising deepslate to 8% to keep the 2x
 ratio, because rarity already pays the keystone.
 
-**Still open.** Generation nodes change only chunks generated after purchase, and view distance has
-generated hundreds of chunks around the arrival point before the first point is earned. Whether nodes
-retrofit older chunks is its own design question before T9.
+**Generated chunks are never changed** (Nick). Generation nodes change only chunks generated after
+purchase, even though view distance has generated hundreds of chunks around the arrival point before the
+first point is earned. Only the dimension reset regenerates them. The Balancer's proposal to place guide
+veins into buried stone of older chunks as they load was turned down.
 
 ---
 
