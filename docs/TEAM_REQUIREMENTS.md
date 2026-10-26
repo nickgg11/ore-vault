@@ -96,7 +96,7 @@ decisions do; the dated log entry is `DESIGN_LOG.md` 2026-10-26.
 | Ng | Silent Stone | 0.30 Resonance a second per member below Y=0, after team scaling, as a constant. | T9 |
 | Nh | Players inside at reset | Sent to the Vault's spawn point, where the portal arrives. Their saved return position may be inside rock that the reset replaced. | §3.5; T11 |
 | Ni | Live Vault cannot unload | Everyone is sent out and the Vault regenerates at the next restart, with a message saying so. | T11 |
-| Nj | Mekanism | Tags only. Look at `ftb-materials-26.1.2.6.jar` in Nick's mod folder for how his pack remaps materials. | §2, §9; T12 |
+| Nj | Mekanism | Tags only. FTB Materials (in Nick's pack) ships Mekanism-style clumps, shards and crystals under `c:` tags with no Mekanism code, so Ore Doubling's Mekanism tiers resolve through tags; see `docs/research/ftb-materials.md`. | §2, §9; T12 |
 | Nk | Cross-cluster prerequisites | **None.** A node that requires a node in another cluster moves so both are in the same cluster. 24 prerequisites crossed clusters on 2026-10-26; the tree is restructured before T8a. | §6.1; T8a, T8 |
 
 ## Shared task list
