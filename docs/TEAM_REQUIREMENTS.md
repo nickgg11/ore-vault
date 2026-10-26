@@ -93,7 +93,7 @@ decisions do; the dated log entry is `DESIGN_LOG.md` 2026-10-26.
 | Nd | Animus row | Hidden until Animus is built, behind one switch that is easy to turn back on. | T7 |
 | Ne | Resonance gain display | Nick read it as a second segment inside the Resonance bar showing the extra gain. To confirm with him before T5. | T5, T7 |
 | Nf | Prospector's Eye | Requires Vein Sight. | T8a |
-| Ng | Silent Stone | 0.30 Resonance a second per member below Y=0, after team scaling, as a constant. | T9 |
+| Ng | Silent Stone | Each active member below Y=0 earns 0.30 Resonance a second, raised by that member's counted Resonance bonuses (no penalties), and the pool is team-scaled like ore: sum / teamSize × (1 + 0.1 × (teamSize − 1)). About 1.4x bare ore at any team size (Nick, 2026-10-26, after he asked that it feel fair to both a solo player and a team of five). Which nodes count is in §6.1 Silent Stone. | T9; deepslate ore rate measured at T14 |
 | Nh | Players inside at reset | Sent to the Vault's spawn point, where the portal arrives. Their saved return position may be inside rock that the reset replaced. | §3.5; T11 |
 | Ni | Live Vault cannot unload | Everyone is sent out and the Vault regenerates at the next restart, with a message saying so. | T11 |
 | Nj | Mekanism | Tags only. FTB Materials (in Nick's pack) ships Mekanism-style clumps, shards and crystals under `c:` tags with no Mekanism code, so Ore Doubling's Mekanism tiers resolve through tags; see `docs/research/ftb-materials.md`. | §2, §9; T12 |
