@@ -6,7 +6,7 @@ question 4). Spec: §6.1 Travel stats and Flavour notables, §11 Tool Wear Hook.
 ## Context
 
 Eight nodes change how much durability an item loses: Tool care and the Tool charge fallback (travel
-stats), Kit Care (travel, outside the Vault), Hammer and Paxel Affinity (+10% Tool care), Tempered, Unyielding Edge, Glass Edge and Galvanic Seam.
+stats), Kit Care (travel, outside the Vault), Hammer and Paxel Affinity (+10% to the care chance), Tempered, Unyielding Edge, Glass Edge and Galvanic Seam.
 They are team-owned nodes, so whatever applies them must read the team's tree for the player holding the
 item.
 
@@ -24,13 +24,19 @@ One Mixin into that `hurtAndBreak` overload, calling one pure `WearRules` class.
 - At the head of the method, change `amount`: Glass Edge ×3, and Galvanic Seam ×2 on a tool with no
   energy storage. This runs before `damageItem` and before Unbreaking, so Unbreaking still rolls per
   point as in vanilla, and an energy tool that pays in FE through `damageItem` sees the same amount.
-- After `processDurabilityChange` returns its amount, roll each remaining point independently for Tool
-  care, the Charge fallback, Kit Care and Tempered, after Unbreaking as the Balancer specified; then
-  Unyielding Edge clamps the result so damage never reaches the maximum.
-- The mixin only checks scope, cheapest first, and calls `WearRules`: the entity is a hand-break player
-  (§3.4: a `ServerPlayer` that is not a fake player and is the one in the player list); the node's scope
-  matches (in a Vault and the main-hand item for the Vault nodes; outside a Vault and any held or worn
-  item for Kit Care); the team's nodes come from the main-thread team snapshot. It holds no other logic.
+- After `processDurabilityChange` returns its amount, each remaining point rolls once against one
+  summed care chance (Tool care, the Charge fallback and Hammer and Paxel Affinity's +10%, at most 80%),
+  then once on its own for Tempered, as the Balancer specified; then Unyielding Edge clamps the result so
+  damage never reaches the maximum. Outside a Vault the only roll is Kit Care's.
+- Scope comes from a per-player hand-breaking-block flag. The break handler sets it when
+  `BreakBlockEvent` passes for a hand break (§3.4) in a Vault, before `mineBlock` damages the tool, and
+  clears it when the break finishes, and at the latest at the end of the server tick. Tool care, the
+  Charge fallback, Hammer and Paxel Affinity, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam act
+  only while it is set and only on the main-hand item. Kit Care ignores the flag: it acts on any
+  durability loss of a held item or worn armour outside a Vault, from any cause, when the entity is a
+  real player (a `ServerPlayer` that is not a fake player and is the one in the player list).
+- The mixin checks the flag or Kit Care's scope, reads the team's nodes from the main-thread team
+  snapshot and calls `WearRules`. It holds no other logic.
 - `WearRules` imports no Minecraft class and carries the unit tests.
 
 ## Consequences
@@ -44,8 +50,11 @@ One Mixin into that `hurtAndBreak` overload, calling one pure `WearRules` class.
   Edge's clamp matters; the gametest covers the two together.
 - Unyielding Edge's half speed is not part of this hook; it is a `MiningSpeedModifiers` entry read in
   `BreakSpeed` (§11).
-- Kit Care runs outside the Vault on armour and off-hand items, so the scope check cannot short-circuit
-  on "not in a Vault" alone.
+- The break-only nodes cannot touch combat, a flint and steel or any wear that is not a hand break,
+  because the flag is set only around one. The flag is per player and cleared by the end of the tick, so
+  a cancelled break or an exception cannot leave it set.
+- Kit Care runs outside the Vault on armour and off-hand items and on any cause of wear, so it is the one
+  node that does not read the flag.
 
 ## Alternatives rejected
 

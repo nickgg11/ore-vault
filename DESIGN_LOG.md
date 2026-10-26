@@ -30,7 +30,7 @@ The design summary he approved is the "Skill tree: PoE tree design" doc. The spe
 |---|---|
 | **A full PoE tree**, with fork choices kept as "choose one side" (Nick) | Nick: "Yeah lets go full PoE tree, I'll still want the choice nodes working where you can choose one side." |
 | **One point a node; distance from the start is what controls power**, not price (Nick) | Nick: "go to 1 point a node and then figure out how to fill out the tree to use distance as the control vector for power rather than required points." Each tier of a tiered skill became one node with its effect values unchanged. |
-| **Adjacency is the only prerequisite.** A node is buyable when one neighbour is owned; a wheel can be walked through | Nick, on "every prerequisite is required": "if a wheel can be pathed through then only one line is needed". The few old prerequisites that carried meaning (Homeward off Second Wind, Echo Chamber off Vault Echo, Prospector's Eye off Vein Sight, the Gambit off Volatile Veins, Vault Smith off Vault-Forged) became leaves off the node they need. |
+| **Adjacency is the only prerequisite.** A node is buyable when one neighbour is owned; a wheel can be walked through | Nick, on "every prerequisite is required": "if a wheel can be pathed through then only one line is needed". The few old prerequisites that carried meaning (Homeward off Second Wind, Echo Chamber off Vault Echo, Prospector's Eye off Vein Sight, Vault Smith off Vault-Forged) became leaves off the node they need. The Gambit went instead to the hidden Ultimine dead-end spur with the other mod-gated nodes (review round 1), since a node that needs a mod sits on a dead end that can be hidden. |
 | **Anchors and cluster names dropped**, and with them the points-spent gates (Nick) | Nick: "I think we can drop anchors and names." |
 | **The no-cross-cluster rule (Nk) retired** (Nick) | Nick: "yeah." With no clusters the rule has nothing to apply to. |
 | **A level gate by distance rings**: every node carries an authored ring, its old level requirement, and needs team level of at least that; the layout puts it no nearer than that ring (Nick, Q1) | Without one a team could walk straight out and buy Vault Expansion at level 4 and Bedrock Communion at level 6, against 18 and 26, and a hundred-hour run would hold every keystone in its first 90 minutes. It is a level requirement, not a prerequisite, and it is drawn as faint rings rather than as a lock on every node. |
@@ -38,7 +38,7 @@ The design summary he approved is the "Skill tree: PoE tree design" doc. The spe
 | **A skill's tier is the number of its nodes owned**, laid out as repeated nodes along paths with the same icon | With adjacency alone a team can reach a far Vein Expansion node without the near one, so "tier 3" cannot mean the third box. Tier is derived, never stored. |
 | **Wheels as notable clusters of several skills** (Nick, Q2) | One skill's tiers sit too far apart in distance to fit one wheel (Vein Expansion's rings are 0, 2, 4, 7 and 10), so a wheel holds tiers of several skills at about the same ring around one notable, and a skill runs outward along an arm across wheels. |
 | **About 200 nodes at 5 points a level** (Nick, Q3), **a team owning about 70% of the tree at level 30** (Q4), and **5 a level pinned** rather than derived (round 3) | Every level up to 30 buys something; the tiered tree could be bought whole by level 26, leaving about 47 hours with nothing to buy. The derived formula would flip to 6 at 215 nodes, at which a team owns nearly every real node and routes stop mattering. |
-| **Ten travel stats sized to be felt one node at a time**, with running totals in the Tome | Nick asked for about ten stats relevant to mining and the pack, move speed and tool power included. The Playtester's rule was that each node must be noticed (+10% mining speed, one heart), not a sliver. |
+| **Twelve travel stats sized to be felt one node at a time**, with running totals in the Tome | Nick asked for about ten stats relevant to mining and the pack, move speed and tool power included; ten serve mining, and Mason's Reach and Kit Care were added for work outside it. The Playtester's rule was that each node must be noticed (+10% mining speed, one heart), not a sliver. |
 | **Max health, armour, move speed and safe fall apply everywhere** (Nick, Q5) | Inside a lit, mob-free Vault they are hardly felt, and Vault-only health is taken away at the exit. Nick also asked for nodes that make other work easier; Mason's Reach and Kit Care took travel slots from armour, health and safe fall, and Landscaper's Swing, Harvester's Lot, Delver's Lungs and Blast-Wise were added as notables. |
 | **Nodes that need a mod are hidden without it**, on dead-end leaves (Nick) | Hiding a dead end changes no other node's distance or level. Nick confirmed this for nodes that need an energy-tool mod. |
 | **Icons for every node, names and numbers in hover tooltips**; no Retro Diffusion unless absolutely necessary (Nick) | Nick: "Let's just do icons for all the nodes and then make tooltips that appear when hovered." |
@@ -88,9 +88,18 @@ The design summary he approved is the "Skill tree: PoE tree design" doc. The spe
 - **Refunds by leaf only.** Loops in the tree let an inner node go safely; the rule is that everything
   owned stays connected.
 
-**Still open.** Echoing Edge's numbers wait on the Balancer's round 3. The free undo window's length, the
-minimum step between Ascending Edge rungs, the ore count for an unbreakable rung and whether the shared
-pin is saved are marked `TODO` in the spec. Nothing here is playtested; every hour rests on the
+**Settled after the first draft.** The Balancer's round 3 set Echoing Edge's numbers (a chance of
+1 in 1,000 × (1 + 3f), a cap of the enchantment's maximum plus 2, half the echoes on another item, one
+in four adding an enchantment). The free undo window is 60 seconds, the minimum step between Ascending
+Edge rungs is 5%, and an unbreakable rung with no data map entry costs `N` at twice the highest finite
+durability among the candidates. The shared pin is saved with the team, with who set it and who bought
+each node (review round 1). No `TODO` markers remain in the spec.
+
+**Still open.** Ores per Ascending Edge rung depend only on the rung reached, not on the size of the
+step, so a pack with many similar pickaxes above diamond makes a long ladder of dear rungs and a slow
+climb (Balancer). It is checked against the real ladder written to the server log at start-up in the
+first modded playtest. The §9 list of mod APIs not yet read from the jars is unverified. Nothing here is
+playtested; every hour rests on the
 unmeasured 220 ore an hour, and the layout needs Nick's yes on a rendered preview before renderer code.
 
 ---

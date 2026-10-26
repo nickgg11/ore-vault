@@ -333,7 +333,7 @@ A five-person team progresses 40% faster than a solo player, not 500% faster. Th
 
 ### 4.3 Level Thresholds and Skill Points
 
-**Levels and skill points are decoupled.** The level cap is 30 and the rings in §6 run from 0 to 26, so the level track paces when nodes open, and the points decide how much of the tree a team can hold.
+**Levels and skill points are decoupled.** The level cap is 30 and the rings in §6 run from 0 to 30 (keystones at 18 to 26; Ore Working's last Mekanism-tag nodes at 25 and 30), so the level track paces when nodes open, and the points decide how much of the tree a team can hold.
 
 **Calculation (performed in code at startup, not configured manually):**
 
@@ -412,7 +412,7 @@ Moving a route already costs its length: rerouting a 10-node path is 30 levels. 
 
 **Free respec after a reset.** For 10 minutes after a dimension reset (§3.5) every refund costs no XP. The end of this window is saved as `freeRefundUntil` (§11).
 
-**Fork options are free both ways.** A fork option is a petal, not a node (§6): it costs nothing to pick and nothing to unpick, and swapping is allowed only outside the Vault. A free choice that is expensive to reverse is a trap, and the fork is a decision a team can revisit between trips. When the team refunds its last node of a fork parent, the choice is cleared with it.
+**Fork options are free both ways.** A fork option is a petal, not a node (§6): it costs nothing to pick and nothing to unpick, and swapping is allowed only outside the Vault. A free choice that is expensive to reverse is a trap, and the fork is a decision a team can revisit between trips. When the team refunds its last node of a fork parent, the choice is cleared with it. A choice that some owned nodes depend on cannot be swapped away until those nodes are refunded: Ore Working's nodes 4 to 6 work only with Ore Doubling, so a team holding any of them refunds them (at the normal price) before it can choose Smelter's Intuition.
 
 **Exclusive pairs.** To swap Greedy Seams for Resonant Overload, refund the leaf (12 levels, a pact) and buy the other (1 point). Both hang off the same junction (§6), so no other node is lost.
 
@@ -468,12 +468,12 @@ The Resonance tree is a Path of Exile style passive tree (Nick, 2026-10-26; `DES
 - **Distance (`d`).** A node's distance is the fewest nodes on a path from the start to it, counting the node itself, so it is the fewest points that can buy it. It is computed by breadth-first search when the layout loads. Distance is the control for power: the stronger a node, the further out it sits.
 - **Ring.** Every node carries an authored ring, which is its level floor: a node needs team level of at least its ring. For a node that existed before the PoE tree, its ring is the level requirement that tier had (Nick, 2026-10-26: distance factor 1.0). The layout places every node at `d >= max(1, ring)` and draws it in its ring's band; a test fails the build otherwise. The code reads the authored ring, never the distance, so moving a node in the layout cannot silently move its level. A team buying as it goes rarely meets the floor; a team walking straight out to a keystone does (Vault Expansion is ring 18, Bedrock Communion ring 26).
 - **Skill and tier.** Nodes that share a skill id are copies of one skill: Vein Expansion is five nodes. **A skill's tier is the number of its nodes the team owns**, wherever they lie on the tree, and its effect table in §6.1 is keyed by that count. Tier is derived from the owned node ids and never stored. Copies are placed in ring order: no copy sits nearer the start than a copy with a lower ring. Every copy of a skill has the same icon.
-- **Wheel.** A group of six rim nodes around a notable at the centre. The notable is reached only from the rim node opposite the wheel's entry, and the wheel's exits leave from its two shoulders, so a path can pass through a wheel without buying its notable. A rim holds tier nodes of several skills at about the same ring, plus one or two travel nodes; one skill's tiers run outward along one arm across successive wheels, since a skill's rings are too far apart to share one wheel. A notable is always a single node. The area around the start is a cluster rather than a wheel, with at least four growth nodes next to the start so level 1 has obvious picks.
+- **Wheel.** A group of six rim nodes around a notable at the centre. The notable is reached only from the rim node opposite the wheel's entry, and the wheel's exits leave from its two shoulders, so a path can pass through a wheel without buying its notable. A rim holds tier nodes of several skills at about the same ring, plus one or two travel nodes; one skill's tiers run outward along one arm across successive wheels, since a skill's rings are too far apart to share one wheel. A notable is always a single node. The area around the start is a group of nodes rather than a wheel, with at least four growth nodes next to the start so level 1 has obvious picks.
 - **Fork.** A fork parent is an ordinary skill whose nodes do nothing until an option is chosen (§6.1 Forks). Its options are petals: drawn beside the parent's lowest-ring node, the fork's `petalAnchor` in the layout, and joined to nothing. A petal has no edges, is never on a path and costs no points, so choosing an option can never open or block a route.
 - **Exclusive pair.** Two single nodes that hang as leaves off one junction node, at the same ring. Owning one locks the other. The travel nodes leading to them lie before the junction, so locking a leaf never strands anything.
-- **Mod-gated nodes.** A node whose effect needs a mod, or a tag only a mod fills, sits on a dead-end leaf or spur. When the mod is absent it is hidden: not drawn, not counted, not buyable, never shown as locked. Because nothing lies beyond it, hiding it never changes another node's distance or what can be reached. A hidden node a team already owns stays in its save, dormant: it has no effect and does not count as spent, and it works again if the mod returns.
-- **Saved state.** The team's tree is saved as `{dataVersion, owned[], forkChoice{}, freeRefundUntil}`: the owned node ids, the chosen option per fork, and the end of the free respec window after a reset (§4.4). Nothing derived is saved: tiers, points spent and unspent, and distances all follow from `owned` and the layout. On load, an id the layout no longer has is dropped, which returns its point, and an owned node no longer connected to the start after a layout change is pruned for free. Tradeoff toggles are per player and live on `PlayerStats` (§11).
-- **Layout data.** The tree's shape is authored data, not code: a JSON resource in the mod jar, not a datapack, so a server and its clients always read the same file. It lists every node (id, skill, class, marks, ring, the mod or tag it requires, exclusive group, drawing position) and every edge, plus each fork's `petalAnchor`. Positions are for drawing only; the rules read edges and rings. The server sends the layout's hash at login so a client with a different layout is caught, and ownership is synced as a bitset in layout order. Tests over the file pin the rules above: every node's distance at least its ring, the copies of a skill in ring order, every mod-gated node on a dead end, exclusive leaves off one junction, petals with no edges, no edge through another node.
+- **Mod-gated nodes.** A node whose effect needs a mod, or a tag only a mod fills, sits on a dead-end leaf or spur. When the mod is absent it is hidden: not drawn, not counted, not buyable, never shown as locked. Because nothing lies beyond it, hiding it never changes another node's distance or what can be reached. A node hidden because its mod or tag is missing that a team already owns stays in its save, dormant: it has no effect and does not count as spent, and it works again if the mod returns. A node hidden by a fork choice is different: it still counts as spent, and the choice cannot be swapped away while the team owns it (§4.4), so a swap can never turn spent points into free ones.
+- **Saved state.** The team's tree is saved as `{dataVersion, owned[], forkChoice{}, freeRefundUntil, pinnedNode, pinnedBy, boughtBy{}}`: the owned node ids, the chosen option per fork, the end of the free respec window after a reset (§4.4), the team's shared pin (a nullable node id and the UUID of the member who set it; absent means no pin) and, per owned node, the UUID of the member who last bought it (absent means empty). On load a pin whose node is gone or hidden is dropped. Nothing derived is saved: tiers, points spent and unspent, and distances all follow from `owned` and the layout. On load, an id the layout no longer has is dropped, which returns its point, and an owned node no longer connected to the start after a layout change is pruned for free. Tradeoff toggles are per player and live on `PlayerStats` (§11).
+- **Layout data.** The tree's shape is authored data, not code: a JSON resource in the mod jar, not a datapack, so a server and its clients always read the same file. It lists every node (id, skill, class, marks, ring, the mod or tag it requires, exclusive group, drawing position) and every edge, plus each fork's `petalAnchor`. Positions are for drawing only; the rules read edges and rings. The server sends the layout's hash at login so a client with a different layout is caught. It syncs ownership and the hidden nodes as two bitsets in layout order, plus the fork choices and the pin, and resends all of them, with the Ascending Edge ladder, on `OnDatapackSyncEvent` (each join and each `/reload`). Tests over the file pin the rules above: every node's distance at least its ring, the copies of a skill in ring order, every mod-gated node on a dead end, exclusive leaves off one junction, petals with no edges, no edge through another node.
 
 **Node classes and marks.** Every node has exactly one **class** and any number of **marks**. The classes are small, travel, notable, keystone, pact, growth and fork parent; fork options are petals, not nodes. Class decides how the node is drawn (§8). The marks are tradeoff, exclusive and requires; a mark adds a rule to a node of any class.
 
@@ -504,7 +504,7 @@ The Resonance tree is a Path of Exile style passive tree (Nick, 2026-10-26; `DES
 
 A start node at the centre, nodes joined by edges, and stronger nodes further out. Power is placed by distance, not by price: every node costs one point, and the level a node needs is its ring, which is also the nearest it may sit to the start. Tiered skills from the earlier tree became one node per tier with the effect values unchanged; their rings are the old level requirements. Between them run travel nodes, each a felt step of one of twelve travel stats. Flavour notables and keystones, some of them for mods in Nick's pack, sit on leaves and at the far ends.
 
-Old prerequisites are gone, with a few that carried meaning kept as placement: the dependent node sits on a leaf whose only neighbour is the node it depends on, so adjacency reproduces the rule. These are Second Wind: Homeward off Second Wind, Echo Chamber off the furthest Vault Echo node, Prospector's Eye off Vein Sight (Nick, 2026-10-26), Volatile Veins: Ultimine Gambit off Volatile Veins, and Vault Smith off Vault-Forged. Vein Sight lies before Vault Echo on every path from the start, so finishing a vein is something a team can plan before the nodes that pay for it (`DESIGN_LOG.md` 2026-09-07, Pacts, growth nodes, and the Claim split). Every other old prerequisite is dropped; distance covers it.
+Old prerequisites are gone, with a few that carried meaning kept as placement: the dependent node sits on a leaf whose only neighbour is the node it depends on, so adjacency reproduces the rule. These are Second Wind: Homeward off Second Wind, Echo Chamber off the furthest Vault Echo node, Prospector's Eye off Vein Sight (Nick, 2026-10-26), and Vault Smith off Vault-Forged. Vein Sight lies before Vault Echo on every path from the start, so finishing a vein is something a team can plan before the nodes that pay for it (`DESIGN_LOG.md` 2026-09-07, Pacts, growth nodes, and the Claim split). Every other old prerequisite is dropped; distance covers it.
 
 **The authored layout lives in a data file** (§6 Layout data), owned by UI/UX, and is not drawn in this document. No renderer code is written until a preview of that file, rendered with `tools/tree-preview` at GUI scales 2, 3 and 4, has Nick's yes (`CLAUDE.md`: anything visual needs his yes on a rendered preview). The two-band preview of 2026-10-26 used one faint ring per level and came out about 2,400 tree pixels across for the whole tree.
 
@@ -1076,7 +1076,9 @@ The nodes are listed in this order: the skills carried over from the tiered tree
 
 > Nodes 4–6 sit on a dead-end spur past the third Ore Working node. They are shown only when Ore
 > Doubling is the chosen option **and** the `c:clumps/`, `c:shards/` and `c:crystals/` item tags have
-> entries (§9); otherwise they are hidden, not shown as locked, and an owned one is dormant (§6).
+> entries (§9); otherwise they are hidden, not shown as locked. While the team owns any of them, Ore
+> Doubling cannot be swapped away; those nodes are refunded first (§4.4). Hidden because the tags
+> emptied, an owned one is dormant (§6).
 > Smelter's Intuition tops out at tier 3, so a team on that option sees three Ore Working nodes.
 
 ---
@@ -1552,7 +1554,7 @@ The next three skills need FTB Ultimine. They sit on a dead-end spur with Steady
 
 > The double roll is derived and unplaytested; T9 confirms it.
 >
-> A leaf off Volatile Veins, so hiding it without Ultimine changes nothing else.
+> On the hidden Ultimine dead-end spur with Ultimine Expansion, Ultimine Safety and Steady Chain, like every other mod-gated node. It acts only while the player has Volatile Veins switched on.
 
 ---
 
@@ -1568,21 +1570,21 @@ The next three skills need FTB Ultimine. They sit on a dead-end spur with Steady
 | Move speed | +5% | 6 to 8 | +40% at 8 | Everywhere | `minecraft:movement_speed`, add multiplied base |
 | Block reach | +1 block | 3 | +3 | Vault | `minecraft:block_interaction_range`, add |
 | Max health | +2 (one heart) | 8 | +16 | Everywhere | `minecraft:max_health`, add |
-| Tool care | +5% chance a hand-broken block costs the held tool no durability | 6 | 30% | Vault | Tool wear hook (§11, `docs/adr/0008-tool-wear-mixin.md`) |
+| Tool care | +5% chance a point of durability a hand-broken block costs the held tool is skipped | 6 | 30% from Tool care; the summed care chance tops out at 80% (rule below) | Vault | Tool wear hook (§11, `docs/adr/0008-tool-wear-mixin.md`) |
 | Tool charge | 50 FE a block into the tool breaking it; +5% Tool care instead when that tool holds no energy | 6 to 8 | 400 FE a block at 8 | Vault | `Capabilities.Energy.ITEM` on the breaking tool, `insert` |
 | Safe fall | +2 blocks | 4 | +8 | Everywhere | `minecraft:safe_fall_distance`, add |
 | Armour | +1 | 6 to 8 | +8 at 8 | Everywhere | `minecraft:armor`, add |
 | Mason's Reach | +1 block reach | 2 | +2 | Outside the Vault | `minecraft:block_interaction_range`, add; removed on entering a Vault, so the Vault cap of +3 holds |
-| Kit Care | +5% chance that a durability loss on held items and worn armour is skipped | 4 | 20% | Outside the Vault | Tool wear hook, as Tool care |
+| Kit Care | +5% chance that a point of durability lost by a held item or worn armour, from any cause, is skipped | 4 | 20% | Outside the Vault | Tool wear hook, as Tool care |
 
 The tree holds 58 to 64 travel nodes. The ranged counts take what the final layout needs; no stat goes past its cap, and if the layout needs more travel, UI/UX shortens paths instead.
 
 Rules for all twelve:
 
-- Attribute stats are transient modifiers, recomputed from the team's owned nodes on login, respawn, dimension change, team change, buy and refund. Vault-only attributes are added on entering a Vault level and removed on leaving it; outside-only ones the other way round. Max health applies everywhere so that leaving the Vault never takes hearts away (Nick, 2026-10-26).
+- Attribute stats are transient modifiers, recomputed from the team's owned nodes on login, respawn, dimension change, team change, buy and refund. Max health is the exception: a transient modifier is not there when health loads at login, so health is clamped to 20 and the extra hearts are lost. It uses a saved (non-transient) modifier with a fixed id, replaced on the same triggers. Vault-only attributes are added on entering a Vault level and removed on leaving it; outside-only ones the other way round. Max health applies everywhere so that leaving the Vault never takes hearts away (Nick, 2026-10-26).
 - Mining speed and Resonance gain are **not attributes**. They are contributors to the §11 accumulators, summed with the other percentage bonuses, so Bedrock Communion's halving and the pact penalties still apply after them.
 - The per-block stats (vanilla XP, Tool care, Tool charge) act only on a hand break (§3.4). A block broken in an FTB Ultimine chain is a hand break, and each block of the chain counts on its own (§9).
-- Tool care, the Charge fallback and Hammer and Paxel Affinity's +10% add into one chance, rolled once per point of durability after Unbreaking. With all six Tool care and all eight Charge nodes on a tool with no energy storage, 70% of points are skipped, 80% on a hammer or paxel with the Affinity. Tempered rolls on its own after that: with Tempered III, 14% of the points that pass Unbreaking still cost durability.
+- Tool care, the Charge fallback and Hammer and Paxel Affinity's +10% add into one chance, rolled once per point of durability after Unbreaking; they are not separate rolls. Tool care alone stops at 30% and the Charge fallback alone at 40%, so with all six Tool care and all eight Charge nodes on a tool with no energy storage the summed chance is 70%, and 80% on a hammer or paxel with the Affinity. That 80% is the most any combination reaches. Tempered rolls on its own after that: with Tempered III, 14% of the points that pass Unbreaking still cost durability.
 - 400 FE a block at 7,200 blocks an hour is about 40 FE a tick, all of it into the one held tool, which cannot pass it on. It is a tool's running cost, never a power source for machines (§3.4). The per-block costs of Mining Gadgets and of Just Dire Things abilities are unmeasured; a playtest reads a tool's charge before and after ten minutes of mining.
 - Left out on purpose: ore yield, vein size or density, flat Resonance per ore, orb pickup radius and hunger, because each undercuts an existing node or the curve's baseline; mob XP, because with mob farms it would cheapen refunds, the 30-level keystone refund included; and other mods' attributes (Ultimine vein size, Paraglider stamina, `ftbevolutioncompanion:*`), because a travel node on a path cannot be hidden when its mod is missing. Those go on leaf notables.
 
@@ -1618,7 +1620,7 @@ The Tome shows a running total per stat (§8).
 
 | Tier (nodes owned) | Effect | Ring |
 |---|---|---|
-| 1 (single node) | Drops from hand-broken ore in the Vault (`#c:ores` sources, after the whole drop pipeline) go into the player's linked container if `level.isLoaded(pos)` and it has room; overflow, stone and gravel drop as normal | 6 |
+| 1 (single node) | Drops from hand-broken ore in the Vault (`#c:ores` sources, after the whole drop pipeline) go into the player's linked container (`courierLink` on `PlayerStats`, §11) if `level.isLoaded(pos)` and it has room; overflow, stone and gravel drop as normal | 6 |
 
 > Replaces Magnetic Seam, which pulled drops into the inventory: Simple Magnets and the Sophisticated Backpacks magnet already do that in Nick's pack. What a magnet does not solve is the full inventory and the walk home. Hooked in the last stage of the one `BlockDropsEvent` listener (§11) through the block item-handler capability (its 26.1 name is checked in the decompiled sources; the transfer API changed). It checks `level.isLoaded(pos)` and never places a chunk ticket, so it cannot load chunks. A delivered drop never spawns an item entity, so it does not compete with a magnet, including the Sophisticated Backpacks magnet that puts items straight into a backpack (Nick, 2026-10-26). No yield change, nothing from automation.
 
@@ -1654,29 +1656,29 @@ The Tome shows a running total per stat (§8).
 |---|---|---|
 | 1 (single node) | Anvil: tool + 1 Resonance Crystal = +50% max durability, once per tool, recorded on the item | 8 |
 
-> `AnvilUpdateEvent` and `DataComponents.MAX_DAMAGE`. The upgrade is stored as a marker on the item and re-applied to the new base item after an Ascending Edge swap, which removes the old item's `MAX_DAMAGE`.
+> `AnvilUpdateEvent` and `DataComponents.MAX_DAMAGE`. The upgrade is stored as `forged` in the item's `orevault:vault_tool` component (Ascending Edge, below) and re-applied to the new base item after an Ascending Edge swap, which removes the old item's `MAX_DAMAGE`.
 
 ---
 
 **Resonant Dynamo** `[NOTABLE]` `[REQUIRES: an item with energy storage]`
 
-> Each ore you mine by hand in the Vault sends 400 FE, split evenly, into the energy items you carry: hotbar, armour, offhand and Curios slots that match `orevault:dynamo_targets`.
+> Each ore you mine by hand in the Vault sends 400 FE, split evenly, into the energy items you carry: main inventory, armour and offhand, when they match `orevault:dynamo_targets`.
 
 | Tier (nodes owned) | Effect | Ring |
 |---|---|---|
 | 1 (single node) | 400 FE per hand-mined Vault ore, split evenly across carried items in `orevault:dynamo_targets` that have energy storage | 8 |
 
-> Default tag: `#c:tools`, armour, `curios:back` and optional `justdirethings:pocket_generator`. Energy goes through `Capabilities.Energy.ITEM`; Curios is reached only behind `ModList.isLoaded`. Hidden when no registered item has energy storage, checked once at server start. 220 ore an hour is 88,000 FE an hour, about 1 FE a tick: it keeps a jetpack and a pocket generator topped up and is never a power source (§3.4).
+> Default tag: `#c:tools`, armour and optional `justdirethings:pocket_generator`. Energy goes through `Capabilities.Energy.ITEM`. Only the main inventory, armour and offhand are read; accessory slots added by other mods are not, since reading them needs that mod's API (`CLAUDE.md` rule 5). Hidden when no registered item has energy storage, checked once at server start. 220 ore an hour is 88,000 FE an hour, about 1 FE a tick: it keeps a jetpack and a pocket generator topped up and is never a power source (§3.4).
 
 ---
 
 **Hammer and Paxel Affinity** `[NOTABLE]` `[REQUIRES: a filled hammer or paxel tag]`
 
-> +25% mining speed and +10% Tool care while holding a hammer, paxel or mining tool.
+> +25% mining speed and +10% to the care chance while holding a hammer, paxel or mining tool.
 
 | Tier (nodes owned) | Effect | Ring |
 |---|---|---|
-| 1 (single node) | +25% mining speed (`MiningSpeedModifiers`) and +10% Tool care while the held item is in `c:ore_hammers`, `c:tools/paxel`, `c:tools/mining_tool` or `cucumber:paxels` | 8 |
+| 1 (single node) | +25% mining speed (`MiningSpeedModifiers`) and +10% added to the summed care chance (§6.1 Travel stats), on hand breaks in the Vault, while the held item is in `c:ore_hammers`, `c:tools/paxel`, `c:tools/mining_tool` or `cucumber:paxels` | 8 |
 
 > Tags only, no mod named. Hidden when all four tags are empty.
 
@@ -1700,7 +1702,7 @@ The Tome shows a running total per stat (§8).
 
 | Tier (nodes owned) | Effect | Ring |
 |---|---|---|
-| 1 (single node) | Per-tool count of hand-mined Vault ores; at 500 / 2,000 / 5,000, each point of durability loss is skipped with chance 10% / 20% / 30%, rolled separately from Tool care | 10 |
+| 1 (single node) | Per-tool count of hand-mined Vault ores; at 500 / 2,000 / 5,000, each point of durability a hand-broken Vault block costs is skipped with chance 10% / 20% / 30%, rolled separately from the summed care chance | 10 |
 
 > About 2, 9 and 23 hours of solo mining. The count is `lifetimeOres` in the `orevault:vault_tool` item component it shares with Ascending Edge (below), so an ascended tool keeps its Tempered level. The roll is in the tool wear hook (§11).
 
@@ -1758,7 +1760,7 @@ The Tome shows a running total per stat (§8).
 
 | Tier (nodes owned) | Effect | Ring |
 |---|---|---|
-| 1 (single node) | Anvil: tool + one `c:storage_blocks/<metal>` block imprints `<metal>`; one imprint per tool, a new one replaces it. On `c:ores/<metal>` in the Vault: +1 Fortune (Fortune stage, §11) and +25% mining speed | 12 |
+| 1 (single node) | Anvil: tool + one `c:storage_blocks/<metal>` block imprints `<metal>`; one imprint per tool, stored as `imprint` in the `orevault:vault_tool` component; a new one replaces it. On `c:ores/<metal>` in the Vault: +1 Fortune (Fortune stage, §11) and +25% mining speed | 12 |
 
 > Per tool, with no limit on tools and no slot in the tree, so it is not the rejected Attunement slots (`DESIGN_LOG.md`).
 
@@ -1788,7 +1790,7 @@ The Tome shows a running total per stat (§8).
 
 | Tier (nodes owned) | Effect | Ring |
 |---|---|---|
-| 1 (single node) | In the Vault, durability loss never takes a tool below 1; at 1 durability its mining speed is ×0.5, a penalty applied last (§11) | 14 |
+| 1 (single node) | In the Vault, durability lost to a hand-broken block never takes the held tool below 1; at 1 durability its mining speed is ×0.5, a penalty applied last (§11) | 14 |
 
 > The clamp is in the tool wear hook (§11), after every other roll. FTB Ultimine's `PREVENT_TOOL_BREAK` setting stops chains near the end of durability before the clamp matters; a gametest covers the two together.
 
@@ -1858,7 +1860,9 @@ The Tome shows a running total per stat (§8).
 >
 > Wood to netherite is 5,904 ores, 27 hours of mining; iron to netherite, what a team holds at level 18, is 24 hours. A modded 2,500-durability pick at speed 9 or 10 costs 3,750 or 3,953 ores. Each member's tool climbs separately.
 >
-> **Counting.** The `orevault:vault_tool` data component (`version`, `lifetimeOres`, `oresSinceRung`, each optional with default 0) is saved with the item, so its names are fixed and every change gets a codec migration (`CLAUDE.md` rule 6). It counts a classified ore broken by hand in a Vault, in the final stage of the §11 drop listener, on `player.getMainHandItem()`, never on the event's tool, which is a copy taken before damage. Each ore of an FTB Ultimine chain counts on its own (§9).
+> **Known risk (Balancer): ores per rung do not scale with the size of the step.** `N` depends only on the rung being reached, so a 6% step from a 2,031-durability pick to a 2,150 one costs about 3,200 ores, more than the whole climb from diamond to netherite. A pack with many pickaxes a few percent apart above diamond gives a long ladder of dear rungs, and the climb past diamond can take several times the 24 hours above. The ladder is computed once per tag reload and written to the server log at start-up, rung, stats and ores to reach; the first modded playtest checks it against the pack and, if the top of the ladder is too slow, the fix is a data map override or making `N` scale with the step, a Balancer change.
+>
+> **Counting.** The `orevault:vault_tool` data component is saved with the item and synced to clients for tooltips: `version`, `lifetimeOres`, `oresSinceRung` (default 0), `forged` (Vault-Forged applied, default false), `imprint` (Ore Imprint's metal, default none) and `echoes` (Echoing Edge's echo count per enchantment, default empty). Its names are fixed and every change gets a codec migration (`CLAUDE.md` rule 6). It counts a classified ore broken by hand in a Vault, in the final stage of the §11 drop listener, on `player.getMainHandItem()`, never on the event's tool, which is a copy taken before damage. Each ore of an FTB Ultimine chain counts on its own (§9).
 >
 > **The swap** is queued and applied in `PlayerTickEvent.Post`, only if the main hand still holds the same stack, so a chain finishes on one tool. The new stack copies the old stack's component patch (enchantments, including any raised past the maximum by Echoing Edge, name, lore, repair cost, trims, other mods' components), removes the old item's patched `MAX_DAMAGE`, `TOOL` and `ATTRIBUTE_MODIFIERS`, re-applies Vault-Forged if it was there, and carries damage over as the same fraction of maximum durability. `oresSinceRung` resets to 0 and `lifetimeOres` is kept. The old item's own behaviour is lost (for example Mystical Agriculture's augment slots); that is why per-stack tools are excluded.
 >
@@ -1999,7 +2003,7 @@ The Tome shows a running total per stat (§8).
 
 | Tier (nodes owned) | Effect | Ring |
 |---|---|---|
-| 1 (single node) | +50% mining speed (`MiningSpeedModifiers` bonus sum); in the Vault, each durability loss on the held tool is multiplied by 3 before Unbreaking, which then rolls per point | 20 |
+| 1 (single node) | +50% mining speed (`MiningSpeedModifiers` bonus sum); in the Vault, the durability a hand-broken block costs the held tool is multiplied by 3 before Unbreaking, which then rolls per point; other durability loss (combat, a flint and steel) is unchanged | 20 |
 
 > It turns the durability nodes from comfort into a build.
 >
@@ -2013,7 +2017,7 @@ The Tome shows a running total per stat (§8).
 
 | Tier (nodes owned) | Effect | Ring |
 |---|---|---|
-| 1 (single node) | Tool charge ×3 (150 FE a block per node); Resonant Dynamo ×2 (800 FE an ore); in the Vault, a tool with no energy storage has each durability loss multiplied by 2 before Unbreaking | 20 |
+| 1 (single node) | Tool charge ×3 (150 FE a block per node); Resonant Dynamo ×2 (800 FE an ore); in the Vault, a tool with no energy storage has the durability a hand-broken block costs it multiplied by 2 before Unbreaking | 20 |
 
 > A tech team mines with energy tools only. Hidden when no registered item has energy storage, checked once at server start.
 
@@ -2041,7 +2045,7 @@ The Tome shows a running total per stat (§8).
 > cap(e) = min(255, e.value().getMaxLevel() + 2)       // read at runtime, never a vanilla constant
 > R      = sum over its enchantments of (cap − level)  // skipping curses, max-level-1 enchantments and #orevault:echoing_edge_excluded
 >          + 1 for each enchantment that could be added (below)
-> n      = echoes this item already has                // item component orevault:echoes
+> n      = echoes this item already has                // sum of orevault:vault_tool echoes
 > f      = n / (n + R)
 > chance = 1 / (1,000 × (1 + 3f))
 > ```
@@ -2054,7 +2058,7 @@ The Tome shows a running total per stat (§8).
 >
 > **Downside: an echoed item cannot be used in an anvil, grindstone or smithing table** (Nick, 2026-10-26, round 2, extended in round 3 to the grindstone and smithing table). No new enchantments by book, no anvil repair, no netherite upgrade, no socketing at a smithing table. It bites because the target is random: an echo can land on diamond armour before its netherite upgrade, or on gear that still needed an Apotheosis socket, and that item is then finished as it stands. A team completes its kit before level 22 or accepts what the echoes freeze. Mending, Highwater Mark, Tool care and Unyielding Edge keep an echoed item alive. Rejected as the downside: extra durability per block (Highwater Mark and Mending make it free), a Resonance tax (the curve stays derived from ore only), an XP cost per echo (free once a mob farm runs), and pausing Ascending Edge (Nick).
 >
-> **With Ascending Edge.** Both roll per ore and neither pays Resonance. An ascending pick keeps its component patch (above), so its `orevault:echoes` count and its raised levels climb with it; the new item does not change any cap, which is per enchantment, not per material.
+> **With Ascending Edge.** Both roll per ore and neither pays Resonance. An ascending pick keeps its component patch (above), so its `orevault:vault_tool` echo counts and its raised levels climb with it; the new item does not change any cap, which is per enchantment, not per material.
 >
 > **Derived, unplaytested.** Echoes depend on ores mined, not on ore rate, since the roll is per ore. Hours are at 220 / 500 / 1,000 ore an hour. Typical level-22 pick: Efficiency V, Unbreaking III, Fortune III, Mending, headroom 6.
 >
@@ -2231,7 +2235,7 @@ Animus orbs drop from mobs killed in Disturbed Zones, behaving identically to XP
 
 **Shift-click** buys the highlighted path, with one confirmation that names the number of points. The server checks each node of the path in order (§4.4); a path that crosses a ring above the team's level, or costs more than the unspent points, is refused before anything is bought.
 
-**Shared pin.** Any member can pin one node for the team. Every member sees the pin, its path highlighted and "Pinned by <name>"; pinning another node moves it. Whether the pin is saved with the team or held only while the server runs is the Architect's call in T6: `TODO(architect: pin-persistence)`.
+**Shared pin.** Any member can pin one node for the team. Every member sees the pin, its path highlighted and "Pinned by <name>"; pinning another node moves it. The pin is saved with the team as `pinnedNode` and `pinnedBy` (§6, §11; Architect, 2026-10-26); a pin whose node is gone or hidden is dropped on load.
 
 **Travel totals panel.** A panel lists every travel stat the tree shows, as "Mining speed +30% (3 of 6 owned)". A travel node's tooltip gives the effect and the team total: "+10% mining speed. Team total +30%, +40% with this".
 
@@ -2379,10 +2383,18 @@ The flavour notables of §6.1 reach other mods in Nick's pack without a compile-
 | Hephaestus Tools | A trait shipped as conditional data; Hephaestus tools are excluded from Ascending Edge by namespace and component id | Resonant Trait, Ascending Edge |
 | Mystical Agriculture, Cucumber | `#minecraft:pickaxes`, `cucumber:paxels` | Ascending Edge, Hammer and Paxel Affinity |
 | Energy tools (Just Dire Things, Mining Gadgets, Ender IO, Oritech) | NeoForge `Capabilities.Energy.ITEM` on the item; no soft dependency | Tool charge, Resonant Dynamo, Galvanic Seam |
-| Curios | Slots read only behind `ModList.get().isLoaded("curios")` | Resonant Dynamo |
 | Hammer and paxel mods | `c:ore_hammers`, `c:tools/paxel`, `c:tools/mining_tool` | Hammer and Paxel Affinity |
 
 Hephaestus tools are not generated as Ascension rungs. Doing so would need a `compileOnly` dependency on Hephaestus to call its tool-building code for every part combination, which `CLAUDE.md` rule 5 does not list, and a pick that climbed into a Hephaestus tool would then stop, since those are excluded (`DESIGN_LOG.md` 2026-10-26).
+
+#### Unverified: check in the jars before building
+
+These names and behaviours come from documentation, other mods' code or memory, not from the 26.1 jars in Nick's pack. Each is read from the jar, or the decompiled sources, before the node that uses it is built, and the result is written here.
+
+- FTB Ultimine's attribute `ftbultimine:cooldown_modifier` (with `ftbultimine:exhaustion_modifier`) exists under that id and is applied per player (Steady Chain).
+- Paraglider's attribute `paraglider:stamina_efficiency` exists under that id and scales stamina use as Wayfarer's Lungs assumes.
+- The shape of `Capabilities.Energy.ITEM` in NeoForge 26.1: the context type it is queried with and the name and signature of the insert method (Tool charge, Resonant Dynamo, Galvanic Seam).
+- Whether Apothic Enchanting 2.1.0's raised maxima show in `Enchantment#getMaxLevel()`, or live in its own config so the `orevault:echo_max_level` fallback is needed (Echoing Edge).
 
 ---
 
@@ -2505,13 +2517,16 @@ public class OreVaultTeamData extends SavedData {
     Set<NodeId> owned;          // owned node ids; a skill's tier is derived from them
     Map<ForkId, OptionId> forkChoice;
     long freeRefundUntil;       // end of the free respec window after a reset (§4.4)
+    @Nullable NodeId pinnedNode; // the team's shared pin; absent means none (§8)
+    @Nullable UUID pinnedBy;
+    Map<NodeId, UUID> boughtBy; // who last bought each owned node; absent means empty
     Map<UUID, PlayerStats> playerStats; // player UUID -> stats
 }
 ```
 
 **Nothing derived is stored.** The current level, unspent skill points and every skill's tier follow from the pool, the curve, `owned` and the layout, and the number of chunk tickets from the anchors placed; storing them as well gives two sources that can disagree. `levelReached` is the exception and is stored on purpose: the curve can move under `curve_divisor` (§4.3), and a team must not lose a level, or the points it paid out, when it does. Animus fields arrive with the post-1.0 epic.
 
-**Tradeoff toggles live on `PlayerStats`, not here.** §6.1 specifies them as per-player — one member of a team can run Tithe while another does not — so `activeTradeoffs` is a `Set<NodeId>` field on `PlayerStats`. An earlier version of this sketch put it on the team object, which contradicted §6.1; the implementation follows §6.1 and this sketch has been corrected to match.
+**Tradeoff toggles live on `PlayerStats`, not here.** §6.1 specifies them as per-player — one member of a team can run Tithe while another does not — so `activeTradeoffs` is a `Set<NodeId>` field on `PlayerStats`. Seam Courier's linked container is per player too: `courierLink` on `PlayerStats` (dimension and block position), absent meaning no link. An earlier version of this sketch put it on the team object, which contradicted §6.1; the implementation follows §6.1 and this sketch has been corrected to match.
 
 **`dataVersion` and migration.** Every load reads `dataVersion` first and migrates forward if it is behind `CURRENT_DATA_VERSION`. This costs almost nothing to add now and is the difference between a schema change being a migration and being a wipe. The shape above is still growing through the remaining phases, so assume it will be needed. Data starts at version 1; saves from before the restart are not supported (§6.1 Reserved node ids). Every rename or removal gets a migration, and every added field reads correctly from a tag written without it: an absent field reads as its documented default.
 
@@ -2582,12 +2597,12 @@ Many nodes modify what a block break drops, and the order they apply in changes 
 
 | Stage | Nodes |
 |---|---|
-| 1. Consume | Tithe (block consumed, no drops), Brittle Stone (shatter roll, and the adjacent ore it destroys), Stone Curse (stone drops nothing) |
+| 1. Consume | Tithe (block consumed, no drops), Brittle Stone (shatter roll, and the adjacent ore it destroys), Stone Curse (stone drops nothing). This stage clears items only and never calls `setDroppedExperience`: vanilla XP from the block always drops (§3.4) |
 | 2. Fortune | Vein Fortune, Vault's Purity's +1 Fortune, Ore Imprint's +1 Fortune on its metal |
 | 3. Quantity | Ore Doubling, Greedy Seams (+100%), Resonant Overload (−50%), Novice's Luck, Resonant Symbiosis (+25% with company), Bedrock Communion (+2% per block below Y=0), Last Ore (final block doubled), Automated Extraction (machine breaks only) |
 | 4. Transform | Smelter's Intuition, Molten Seam (smelted near lava; the better of its roll and Smelter's Intuition's), Runic Attunement (Attuned marking), dust/Mekanism substitution, Kiln Touch (non-ore drops smelted) |
 | 5. Bonus | Items: Stone Memory (flint, nugget), Salvager's Eye, Stonecaller. XP and orbs, from the same listener: Stone Memory XP (tripled by Stone Curse), Ancient Knowledge, Stonecutter's Patience, Pathfinder's Claim, Vault Echo and Echo Chamber, Chapter's End, Stone Memory T5's burst, Deep Harvest, travel vanilla XP from ore. Items, rolled once per ore and skipping stages 2 to 4: Bookseam, Gem Seam |
-| 6. Deliver | Seam Courier moves the final ore drops into the linked container; the counters for Tempered and Ascending Edge and the Echoing Edge roll run here, on the live main-hand stack |
+| 6. Deliver | Budding Seam replaces the broken metal ore with its budding block; Seam Courier moves the final ore drops into the linked container; the counters for Tempered and Ascending Edge and the Echoing Edge roll run here, on the live main-hand stack |
 
 Ancient debris skips stages 2 to 4 entirely and always drops exactly one (Ancient Traces, §6.1). Harvester's Lot runs in the same listener for blocks broken outside the Vault, the only drop change made there.
 
@@ -2651,8 +2666,10 @@ Constants that are not layout live in one class beside it: `LEVEL_CAP = 30`, `PO
 NeoForge posts no event when an item loses durability, and eight nodes need one: Tool care and the Charge fallback, Kit Care, Hammer and Paxel Affinity, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam. Ore Vault therefore has one Mixin into the NeoForge-patched `ItemStack#hurtAndBreak(int, ServerLevel, LivingEntity, Consumer<Item>)`, which calls one pure `WearRules` class (`docs/adr/0008-tool-wear-mixin.md`).
 
 - At the head of the method, the amount is multiplied (Glass Edge ×3; Galvanic Seam ×2 on a tool with no energy storage), before the item's own `damageItem` and before vanilla Unbreaking, so Unbreaking still rolls per point.
-- After vanilla's durability processing returns its amount, each remaining point rolls once against the summed chance of Tool care, the Charge fallback and Hammer and Paxel Affinity (Kit Care outside the Vault), then once for Tempered (§6.1 Travel stats); then Unyielding Edge clamps so the damage never reaches the maximum.
-- The mixin checks, in order, that the entity is a hand-break player (§3.4) and that the node's scope matches: in a Vault for the Vault nodes and the main-hand item, outside a Vault for Kit Care and any held or worn item. It reads the team's nodes from the main-thread team snapshot and holds no other logic.
+- After vanilla's durability processing returns its amount, each remaining point rolls once against the summed care chance of Tool care, the Charge fallback and Hammer and Paxel Affinity, then once on its own for Tempered (§6.1 Travel stats); then Unyielding Edge clamps so the damage never reaches the maximum. Outside the Vault the only roll is Kit Care's.
+- Which nodes act is decided by a per-player hand-breaking-block flag. The break handler sets it when `BreakBlockEvent` passes for a hand break (§3.4) in a Vault, before `mineBlock` damages the tool, and clears it when that break finishes, and at the latest at the end of the server tick, so a cancelled break cannot leave it set. Tool care, the Charge fallback, Hammer and Paxel Affinity, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam act only while the flag is set and only on the main-hand item, so a sword hit, a flint and steel or a hoe in the Vault takes normal wear.
+- Kit Care does not use the flag. It acts on any durability loss of a held item or worn armour outside a Vault, from any cause, when the entity is a real player (a `ServerPlayer`, not a fake player, the one in the player list).
+- The mixin checks the flag or Kit Care's scope, reads the team's nodes from the main-thread team snapshot and calls `WearRules`. It holds no other logic.
 
 The signature and local indices are read from the decompiled 26.1 sources on Nick's PC and pinned by a gametest that breaks a block with each node owned.
 
