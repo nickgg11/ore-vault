@@ -26,7 +26,7 @@ same area.
 
 ## The team
 
-Work is done by seven roles, defined in `.claude/agents/`. Each is focused on one discipline and reviews
+Work is done by ten roles, defined in `.claude/agents/`. Each is focused on one discipline and reviews
 the others' work against its own checklist.
 
 | Role | Owns |
@@ -35,7 +35,10 @@ the others' work against its own checklist.
 | `developer` | Java, Gradle, datapack JSON, resources |
 | `qa` | Builds, test counts, dedicated-server boot, regression list, playtest scripts |
 | `reviewer` | Reading diffs for bugs, rule violations, save-data risk, spec drift |
-| `designer` | Textures, GUI, the Tome, skill tree layout and frames |
+| `architect` | Package layout, data model, persistence and versioning, networking, threading; decision records in `docs/adr/` |
+| `designer` | Art: textures, GUI sprites, the Tome's page, node frames and icons |
+| `ui-ux` | Screen structure, the tree's layout rules and layout data, controls, tooltips, legibility |
+| `playtester` | The player's experience: clarity, pacing in play, Nick's playtests and turning his feedback into tickets or design changes |
 | `writer` | Spec, design log, lang text, tickets, PR bodies |
 | `balancer` | Every number, the level curve, node interactions |
 
@@ -56,15 +59,20 @@ The roles are meant to disagree. Quick agreement is a reason to look harder, not
 6. **Only the Manager asks Nick.** One question at a time, with a recommendation. Anything visual needs
    Nick's yes on a rendered preview before it merges.
 
+Roles for modpack compatibility and performance are deferred to later in development (Nick, 2026-10-26).
+
 ### Review matrix
 
 | Work | Owner | Must review |
 | --- | --- | --- |
-| Java, build, datapack | developer | reviewer, qa; balancer if it has numbers; designer if it draws anything |
-| Textures, GUI art, tree layout | designer | qa (seen in a client), developer (can it be drawn from data); then Nick |
-| Numbers, node design | balancer | developer (buildable), writer (stated precisely); designer if it moves the tree |
+| System design before code (T1, T3 to T8) | architect | developer (buildable), reviewer (rules), qa (testable) |
+| Java, build, datapack | developer | reviewer, qa; architect if it touches persistence, sync or threading; balancer if it has numbers; ui-ux if it draws a screen |
+| Textures, GUI art, frames | designer | ui-ux (legible), qa (seen in a client); then Nick |
+| Screens, tree layout, tooltips | ui-ux | designer (art fits), developer (drawable from data), playtester (clear to a new player); then Nick |
+| Numbers, node design | balancer | developer (buildable), writer (stated precisely), playtester (noticeable in play); ui-ux if it moves the tree |
 | Spec, design log, lang | writer | balancer (numbers match), developer (matches the code) |
-| Plan and sequencing | manager | balancer (baseline before modifiers), qa (each step verifiable) |
+| Plan and sequencing | manager | balancer (baseline before modifiers), qa (each step verifiable), architect (foundations first) |
+| Playtest plan and feedback triage | playtester | qa (steps), writer (design log) |
 
 ### Build order
 
@@ -199,8 +207,8 @@ the art tools are in `.claude/agents/designer.md` and `docs/research/art-tooling
   give the merge order.
 - Design-shaped feedback from a playtest gets a spec PR first, then code. Add a dated `DESIGN_LOG.md`
   entry whenever a playtest or Nick changes a decision.
-- The UI says "Vault Resonance" where plain "Resonance" could be confused with the Resonance mod in FTB
-  packs (see `docs/research/library-scan.md`). Final wording is the Writer's call.
+- Name clashes with other mods in FTB packs (a Resonance mod and an Animus mod exist) are accepted for now;
+  Nick may rename near the end, which would also touch flavour text.
 
 ## Automated PR review
 
