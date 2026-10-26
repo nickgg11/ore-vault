@@ -1,4 +1,4 @@
-# 0001. Tool wear through one mixin on `ItemStack#hurtAndBreak`
+# 0008. Tool wear through one mixin on `ItemStack#hurtAndBreak`
 
 Status: proposed, 2026-10-26, from the Architect's ruling in the skill tree thread (`architect-tool-upgrades.md`
 question 4). Spec: §6.1 Travel stats and Flavour notables, §11 Tool Wear Hook.

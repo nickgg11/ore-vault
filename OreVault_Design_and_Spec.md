@@ -1568,7 +1568,7 @@ The next three skills need FTB Ultimine. They sit on a dead-end spur with Steady
 | Move speed | +5% | 6 to 8 | +40% at 8 | Everywhere | `minecraft:movement_speed`, add multiplied base |
 | Block reach | +1 block | 3 | +3 | Vault | `minecraft:block_interaction_range`, add |
 | Max health | +2 (one heart) | 8 | +16 | Everywhere | `minecraft:max_health`, add |
-| Tool care | +5% chance a hand-broken block costs the held tool no durability | 6 | 30% | Vault | Tool wear hook (§11, `docs/adr/0001-tool-wear-mixin.md`) |
+| Tool care | +5% chance a hand-broken block costs the held tool no durability | 6 | 30% | Vault | Tool wear hook (§11, `docs/adr/0008-tool-wear-mixin.md`) |
 | Tool charge | 50 FE a block into the tool breaking it; +5% Tool care instead when that tool holds no energy | 6 to 8 | 400 FE a block at 8 | Vault | `Capabilities.Energy.ITEM` on the breaking tool, `insert` |
 | Safe fall | +2 blocks | 4 | +8 | Everywhere | `minecraft:safe_fall_distance`, add |
 | Armour | +1 | 6 to 8 | +8 at 8 | Everywhere | `minecraft:armor`, add |
@@ -2614,7 +2614,7 @@ Constants that are not layout live in one class beside it: `LEVEL_CAP = 30`, `PO
 
 ### Tool Wear Hook
 
-NeoForge posts no event when an item loses durability, and seven nodes need one: Tool care and the Charge fallback, Kit Care, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam. Ore Vault therefore has one Mixin into the NeoForge-patched `ItemStack#hurtAndBreak(int, ServerLevel, LivingEntity, Consumer<Item>)`, which calls one pure `WearRules` class (`docs/adr/0001-tool-wear-mixin.md`).
+NeoForge posts no event when an item loses durability, and seven nodes need one: Tool care and the Charge fallback, Kit Care, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam. Ore Vault therefore has one Mixin into the NeoForge-patched `ItemStack#hurtAndBreak(int, ServerLevel, LivingEntity, Consumer<Item>)`, which calls one pure `WearRules` class (`docs/adr/0008-tool-wear-mixin.md`).
 
 - At the head of the method, the amount is multiplied (Glass Edge ×3; Galvanic Seam ×2 on a tool with no energy storage), before the item's own `damageItem` and before vanilla Unbreaking, so Unbreaking still rolls per point.
 - After vanilla's durability processing returns its amount, each remaining point rolls Tool care, the Charge fallback, Kit Care and Tempered independently; then Unyielding Edge clamps so the damage never reaches the maximum.
@@ -2830,7 +2830,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
         change, buy and refund: move speed, Vault reach, max health, safe fall, armour, Mason's Reach
   - [ ] Mining speed and Resonance gain through the §11 accumulators, not attributes
   - [ ] Vanilla XP from ore (Bonus stage)
-  - [ ] Tool care, Kit Care (tool wear hook, ADR 0001)
+  - [ ] Tool care, Kit Care (tool wear hook, ADR 0008)
   - [ ] Tool charge through `Capabilities.Energy.ITEM`, with the Tool care fallback
   - [ ] Travel totals panel in the Tome (§8)
 - **Flavour notables** (§6.1)

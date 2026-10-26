@@ -22,7 +22,7 @@ spine). He chose a Path of Exile passive tree in three rounds of answers on 2026
 in the skill tree thread (`nick-decisions-2026-10-26.md`), with the Balancer's economy, travel and flavour
 reports, the Architect's ruling on tool upgrades, and the Developer's, UI/UX's and Playtester's reviews.
 The design summary he approved is the "Skill tree: PoE tree design" doc. The spec was rewritten to match
-(§4.3, §4.4, §6, §6.1, §8, §9, §11); the tool-wear decision is `docs/adr/0001-tool-wear-mixin.md`.
+(§4.3, §4.4, §6, §6.1, §8, §9, §11); the tool-wear decision is `docs/adr/0008-tool-wear-mixin.md`.
 
 **Decisions.**
 
@@ -50,7 +50,7 @@ The design summary he approved is the "Skill tree: PoE tree design" doc. The spe
 | **The item may be replaced, keeping its enchantments and name**; Hephaestus tools and energy tools are left out | Nick said the item may change if enchantments and name stay, and that Hephaestus tools should not be upgraded (or be a toggle), since part bonuses could be lost. |
 | **Gem Seam drops real Apotheosis gems**, more often and more of them from rarer ore, Apotheosis choosing gem and purity by world tier (Nick, round 3) | Nick preferred gems to rarity materials and asked for a tie to the world tier. |
 | **Seam Courier replaces Magnetic Seam** (Nick, round 3) | Nick was unsure a magnet node is useful with so many mods adding magnetism. Seam Courier sends ore to a linked container instead; it does not compete with the Sophisticated Backpacks magnet, which Nick pointed out puts items straight into the backpack. |
-| **Tool wear goes through one mixin**, the mod's first | NeoForge has no event when an item loses durability, and seven nodes need one. `docs/adr/0001-tool-wear-mixin.md`. |
+| **Tool wear goes through one mixin**, the mod's first | NeoForge has no event when an item loses durability, and seven nodes need one. `docs/adr/0008-tool-wear-mixin.md`. |
 
 **Rejected.**
 
