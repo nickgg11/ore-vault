@@ -28,8 +28,8 @@ section).
 | S3 | Is the hub layout playtested? Is the 3%/6% baseline? | The hub concept was played twice and is not reopened. Not yet played: the 944 by 6008 page, the 0.2x minimum, the chain highlight and named lock reasons as built, per-class art. Those are T8's session. The baseline is decided but unplayed; T4's session checks it. Neither is a question for Nick. | Log 2026-09-07 and 09-09 entries headed "playtest of the hub renderer"; lessons doc ("none of the three has been playtested"); log 2026-09-27 "Still open" |
 | S4 | Where builds and runs happen; QA's request to allowlist Maven and Mojang hosts for cloud sessions | On Nick's PC, through a Remote Control session. The allowlist request and the Xvfb plan are withdrawn. No result is reported unless it came from his machine. | `CLAUDE.md` Build (Nick, 2026-10-26) |
 | S5 | "Vault Resonance" prefix in UI text | No prefix. Plain "Resonance" everywhere; renaming is a late-development question. | `CLAUDE.md` Conventions (Nick, 2026-10-26) |
-| S6 | Anchor gates as stated points (10/25/45/55/70/100) or as fractions | Fractions of `totalTreeCost`, rounded up: Prospecting 0, Excavation 15, Assay 39, Broad Cut 39, Metallurgy 71, Claim 89, Deep Lore 110, Mastery 160. The point figures date from the 225-point tree. | §6.1 ("pinned to a fraction"); log 2026-09-07; the §6.1 cost columns sum to 354 (parsed) |
-| S7 | `totalTreeCost` over the full registry (354) or excluding conditional content (311) | Full registry, every pack: 354, so `pointsPerLevel` is 12. With 311 the tree is not buyable at level 30 (330 points against 347 holdable). The Writer withdrew 311. | §4.3 steps 1 and 3; arithmetic |
+| S6 | Anchor gates as stated points (10/25/45/55/70/100) or as fractions | **Retired 2026-10-26:** the PoE tree has no anchors or gates; see `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree". Was: Fractions of `totalTreeCost`, rounded up: Prospecting 0, Excavation 15, Assay 39, Broad Cut 39, Metallurgy 71, Claim 89, Deep Lore 110, Mastery 160. The point figures date from the 225-point tree. | §6.1 ("pinned to a fraction"); log 2026-09-07; the §6.1 cost columns sum to 354 (parsed) |
+| S7 | `totalTreeCost` over the full registry (354) or excluding conditional content (311) | **Retired 2026-10-26:** every node costs 1 point and points per level are pinned at 5 (§4.3); see `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree". Was: Full registry, every pack: 354, so `pointsPerLevel` is 12. With 311 the tree is not buyable at level 30 (330 points against 347 holdable). The Writer withdrew 311. | §4.3 steps 1 and 3; arithmetic |
 | S8 | A stub node at T5 or the full node data first | Full node data model (ids, tiers, costs, level requirements, class, marks, prerequisites, reserved ids; no effects, no layout) as T8a, before T5's point award. With one node, `pointsPerLevel` is 1. | §4.3 step 3 |
 | S9 | First purchasable node for the loop | Stone Memory T1, bought by debug command at T5 as a technical check: visible on the next stone block, no Resonance or baseline effect. The player-facing loop milestone is the first node bought through the Tome (T8). Vein Expansion T1 is the first T9 generation node, verified with the density command. Guide Vein is not used. | Vein Expansion T1 is +15% over about five veins in ten minutes and a modifier before the measured baseline; Guide Vein is about +0.5% of a chunk's ore (Balancer, Playtester) |
 | S10 | A provisional tree view for the T5 node | None. Command purchase until T8's approved renderer. | Lessons doc: renderer built three times |
@@ -97,7 +97,7 @@ decisions do; the dated log entry is `DESIGN_LOG.md` 2026-10-26.
 | Nh | Players inside at reset | Sent to the Vault's spawn point, where the portal arrives. Their saved return position may be inside rock that the reset replaced. | §3.5; T11 |
 | Ni | Live Vault cannot unload | Everyone is sent out and the Vault regenerates at the next restart, with a message saying so. | T11 |
 | Nj | Mekanism | Tags only. FTB Materials (in Nick's pack) ships Mekanism-style clumps, shards and crystals under `c:` tags with no Mekanism code, so Ore Doubling's Mekanism tiers resolve through tags; see `docs/research/ftb-materials.md`. | §2, §9; T12 |
-| Nk | Cross-cluster prerequisites | **Retired 2026-10-26.** Nick first ruled out cross-cluster prerequisites, then replaced the hub tree with a Path of Exile style tree (one point per node, adjacency, no anchors or clusters), which makes the rule moot. The skill tree thread's PR rewrites §4.3, §4.4, §6 and §8 Tab 1; §6.1 anchor, gate and cluster text in this file and the spec is superseded by it. | §6.1; T8a, T8 |
+| Nk | Cross-cluster prerequisites | **Retired 2026-10-26.** Nick first ruled out cross-cluster prerequisites, then replaced the hub tree with a Path of Exile style tree (one point per node, adjacency, no anchors or clusters), which makes the rule moot. The spec's §4.3, §4.4, §6 and §8 Tab 1 are rewritten for it; anchor, gate and cluster text elsewhere in this file is superseded. See `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree". | §6.1; T8a, T8 |
 
 ## Shared task list
 
@@ -107,11 +107,11 @@ checks before "ready to merge". Every build, test and client result is from Nick
 | Task | Owner | Reviewers | Done when | Needs from other roles |
 |---|---|---|---|---|
 | T1 Toolchain, empty mod | Architect (ADR 0001), then Developer | Developer, Reviewer, QA on the ADR; Reviewer, QA on code | `build`, `test --rerun-tasks` with XML counts, `runServer`, `runGameTestServer` with one passing and one deliberately failing gametest, `runClient` to the title screen; no committed `org.gradle.java.installations.paths`; ArchUnit rules each shown failing; `CompoundTag`-in-JUnit result recorded | Versions re-checked (Ultimine 26.1.2.6 in FTB Evolution 2); Writer's mod description; Nick on the CI question |
-| Docs PR | Writer | Balancer, Developer | Every item under "Spec corrections" fixed, or marked with the open question it waits on; log entries for the restart and the 2026-10-26 decisions | Balancer's rare constant and tolerances; the cross-cluster restructure (Nk) and the ore research (N4) for the items that wait on them |
+| Docs PR | Writer | Balancer, Developer | Every item under "Spec corrections" fixed, or marked with the open question it waits on; log entries for the restart and the 2026-10-26 decisions | Balancer's rare constant and tolerances; the cross-cluster restructure (Nk, retired 2026-10-26) and the ore research (N4) for the items that wait on them |
 | T2 Vault Frame and Crude Igniter | Developer; Designer for textures | Reviewer, QA; UI-UX and QA on art; Nick | Id-aware registration, creative tab, `items/` definitions, pickaxe tag under `data/minecraft/`; gametests for tag, drop and recipe; Nick sees both in creative and JEI and approves the contact sheet | Nick's liked textures and art tool approvals; portal cost answer; Writer's lang |
 | T3 Dimension path | Architect (ADR 0002), then Developer | Matrix design row; Reviewer, QA, Architect on code; Designer, UI-UX on the portal texture | S14 and S19 hold; lazy create only through `findOrCreate`; one world-map insert that calls `markWorldsDirty()`; restore survives a bad folder; return position saved after success; scripted restart passes; level-unload spike result written down; Nick confirms logout-inside once | Designer's portal strip and four tints; Playtester's arrival checks |
 | T4 Generator, classifier, baseline | Architect (ADR 0003 snapshot, ADR 0004 vein extents), then Developer | Matrix design row; Reviewer, QA, Architect, Balancer on code | S12 and S13 tests; seeding determinism; `Variant` against `dimension_type` JSON; density command within tolerance; Nick mines ten minutes in a fresh Vault and answers the T4 question | Balancer's tolerances (S12); QA's density procedure |
-| T8a Node data model | Architect, then Developer | Balancer, Reviewer, QA, Writer | Tests pin 354, the gates in S6, 12 points per level, every fork option covering every parent tier, each gate reachable from the clusters above it | Balancer's node list; N4 and Nf, and the no-cross-cluster restructure (Nk), which change the totals |
+| T8a Node data model | Architect, then Developer | Balancer, Reviewer, QA, Writer | Tests pin 354, the gates in S6, 12 points per level, every fork option covering every parent tier, each gate reachable from the clusters above it. **Amended 2026-10-26:** 354, the gates, 12 a level and Nk are retired with the PoE tree; the tests are now the layout tests in spec §6 and 5 points a level (§4.3); see `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree" | Balancer's node list; N4 and Nf |
 | T5 Resonance loop | Developer | Reviewer, QA, Balancer, Architect | Orb modelled on `ExperienceOrb`; three-breaker gametest (S21); vanilla XP still drops; curve and scaling tests; pool persisted with `data_version` from its first commit; Stone Memory T1 bought by command and its XP seen; Nick's pacing session inside the S11 bands | T6 ADR agreed first; Balancer's rare constant and milestones; Designer's orb tint check; Playtester and QA's script |
 | T6 Persistence | Architect (ADR 0005); Developer | Matrix design row; Reviewer, QA | Lands with T5's first field; golden key-set test per shape; fixtures load; absent fields read their documented default; one gametest per storage mechanism; reserved ids | N1 |
 | T7 Network and Tome shell | Architect (ADR 0006), Developer; UI-UX for screen structure | Matrix rows; Designer, Developer, Playtester on screens; Nick | Payload set in the Architect's section; server validates every mutation; refusal payload with a lang key; pending state; header drawn after first sync; accepted top bar reproduced; `runGameTestServer` after each payload change; Nick's yes | N2, N3 and Nd; Writer's UI strings; Designer's shell art |
@@ -198,7 +198,8 @@ match where the code derives them.
 - Prospector's Eye requires Vein Sight (Nf). Gravel Purge removes the gravel and clay the Vault now
   generates (N4). Guide Vein waits on the vanilla ore research (N4).
 - Every cross-cluster prerequisite goes (Nk); the node moves into its prerequisite's cluster or the
-  prerequisite moves into its. Waits on the restructure.
+  prerequisite moves into its. Waits on the restructure. **Retired 2026-10-26:** no clusters remain; see
+  `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree".
 
 §8. Three tabs and a reset button "in the Ore Memory tab" while §12 defers that tab: a small Ore Memory tab
 ships with the Survey panel and the reset button (N3).
@@ -838,7 +839,8 @@ until sync; a refusal flashes it and shows the server's reason.
 Before sync. The tree draws neutral under "Waiting for team data" and takes no clicks.
 
 Cross-cluster prerequisites. Nick ruled there are none (Nk), so every prerequisite edge stays inside its
-cluster and no tag or gutter route is needed.
+cluster and no tag or gutter route is needed. **Retired 2026-10-26:** the PoE tree has no clusters or
+prerequisite edges, only adjacency; see `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree".
 
 Reset screens. Initiator: a vanilla confirmation screen over the Tome naming what is deleted and kept
 (§3.5), with the backup checkbox. Other online members: a chat message with a clickable vote and a toast,
@@ -982,7 +984,8 @@ with the tool named in the script.
 T6. `deepest_y` must not read as 0, or Shallow Grace starts Outgrown and Highwater Mark counts free steps;
 absence covers it (S16).
 
-T8a. I pin 354 and the gates, and test that each gate is reachable from the clusters above it.
+T8a. I pin 354 and the gates, and test that each gate is reachable from the clusters above it. (Retired
+2026-10-26 with the anchors; see `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree".)
 
 T9. A stacking review per cluster before its tickets, and pure tests for every per-tier value.
 
@@ -991,6 +994,9 @@ reopen the respec window (worth 1,062 XP levels of refunds at 354 points). T12: 
 Ultimine; Mekanism tiers hidden without it. T14: the measurements, then a re-derived curve.
 
 ### Tree cost and gates
+
+**Retired 2026-10-26.** These figures describe the tiered cluster tree, replaced by the PoE tree; see
+`DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree" and spec §6.1 Totals.
 
 Prospecting 42, Excavation 41, Assay 46, Metallurgy 76 (32 of them Mekanism-only Ore Working tiers), Claim
 59, Deep Lore 35, Broad Cut 11, Mastery 44: 354. The two exclusive pairs cost one side each, so at most 347
