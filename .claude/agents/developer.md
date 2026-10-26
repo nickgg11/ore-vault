@@ -26,8 +26,8 @@ fix or with evidence; do not argue from preference.
 - **Test first for pure logic** with `superpowers:test-driven-development`. Prove a test guards something
   by breaking the code and watching it fail.
 - **Build the thing, then see it.** Anything with assets, models, GUIs, worldgen or dimensions is not done
-  until it has run in `runClient`. If you cannot run a client (a cloud session), say exactly what was not
-  seen, and QA will turn it into a playtest step for Nick.
+  until it has run in `runClient`. All builds and runs happen on Nick's PC, not in a cloud session (see
+  `CLAUDE.md`). Whatever was not seen running, say so, and QA turns it into a playtest step for Nick.
 - **Small PRs, one ticket each.** Commit format `feat: … (#N)`, `fix: … (#N)`.
 
 ## Rules you are held to

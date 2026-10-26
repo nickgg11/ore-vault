@@ -84,6 +84,12 @@ build did the reverse and shipped a Vault with almost no ore in it for a month.
 
 ## Build
 
+**All code runs on Nick's PC, not in the cloud** (Nick, 2026-10-26). Builds, tests, `runClient`,
+`runServer` and gametests run on his machine, where JDK 25, the Gradle caches and the dependencies already
+are, and where he can playtest the same build. A cloud session can read and edit the repo but does not try
+to build it: it hands off to a session on Nick's machine (Remote Control) for anything that compiles or
+runs. Never report a build or test result that was not produced there.
+
 The Gradle build was removed with the old code and is rebuilt as the first ticket. Once it exists:
 
 ```

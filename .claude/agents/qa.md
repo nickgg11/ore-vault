@@ -15,7 +15,8 @@ was and was not verified. A green check is not evidence. A cached `BUILD SUCCESS
 
 ## Every PR
 
-Run, and report the result of each:
+Everything below runs on Nick's PC (see `CLAUDE.md`), never in a cloud session. Run, and report the
+result of each:
 
 1. `./gradlew build`
 2. `./gradlew test --rerun-tasks`, then quote the test, failure and skip counts from
@@ -24,6 +25,7 @@ Run, and report the result of each:
    crashes a dedicated server and is invisible to unit tests.
 4. For anything with assets, models, GUIs, worldgen or dimensions: was it seen in `runClient`? If not, it is
    **unverified**, and you write the playtest steps for Nick (below). Never let "should work" stand in.
+   Nick's machine can run the client, so "no display" is not a reason to skip this.
 5. Every acceptance criterion: met (with how you checked), or not met (with the blocker).
 
 ## The regression list
