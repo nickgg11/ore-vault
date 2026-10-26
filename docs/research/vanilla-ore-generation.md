@@ -22,8 +22,8 @@ retune Guide Vein so a player can feel it. Owners: Balancer and Architect, Devel
   Y=64 describe mountains only. The large copper and iron **ore veins** from the noise router (copper Y0..50,
   iron Y-60..-8) are **not included**.
 - **Solid rock is the intended model.** The Vault is solid rock, so Nick chose (2026-10-26) not to
-  measure a real vanilla world with caves. The vein port is being checked line by line against the
-  decompiled 26.1 `OreFeature`; section 7 records the result.
+  measure a real vanilla world with caves. The vein port was checked line by line against the
+  decompiled 26.1 source (section 7) and matches it.
 
 Raw output is in `vanilla-ore/results.txt`. To rerun: download the JSONs named in `profile.py` from
 `https://raw.githubusercontent.com/misode/mcmeta/26.1.2-data/data/minecraft/worldgen/` into `mc/p` and
@@ -293,4 +293,14 @@ to measure a real vanilla world (2026-10-26), since the Vault is solid rock.
   9-block vein cannot be traced to the node (now 51-block veins and a Survey count), the playtest list did
   not fit one session (split, rig added, "same seed" corrected).
 - **Architect** flagged the rarity rule (answered in section 3).
+- **Source check (2026-10-26).** The port was compared with the decompiled `OreFeature`,
+  `OreConfiguration`, `TrapezoidHeight`, `UniformHeight`, `HeightRangePlacement`, `CountPlacement`,
+  `RarityFilter` and `VerticalAnchor` from `neoforge-26.1.2.95-sources.jar` on Nick's PC. Every step
+  matches: the direction and spread (`size/8`), the endpoint heights (`origin.y + nextInt(3) - 2`), the
+  radius formula, the pairwise cull, the box clamps, the strict ellipsoid tests, trapezoid sampling, the
+  `below_top` resolution (`genDepth - 1 + minGenY - offset`, so 319) and `rarity_filter`
+  (`nextFloat() < 1/chance`). The only differences are `Mth.sin`'s lookup table against exact `sin`, and
+  vanilla's BitSet index, which can alias on the very edge of a vein's box and skip a block; both are far
+  below the precision quoted here. In solid rock every target test passes, so `canPlaceOre` and the air
+  check do not change the counts.
 
