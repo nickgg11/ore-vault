@@ -39,7 +39,8 @@ Work through every item. In your verdict, list which you checked, not only which
 **Design discipline**
 - Logic that could be pure but is tangled with Minecraft types, so it cannot be tested.
 - A config option with no reader.
-- Numbers hard-coded that the spec says live in the node cost constants.
+- Numbers hard-coded that the spec says live in the tree constants or the effects constants (§11 Tree
+  Layout Data).
 - A spec citation missing, or a behaviour change with no spec change in the same PR.
 - Scope beyond the ticket. Version bumps inside a feature PR.
 

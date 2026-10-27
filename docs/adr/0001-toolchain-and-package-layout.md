@@ -74,11 +74,11 @@ Pure packages. None imports Minecraft, NeoForge or Mojang classes, so all of it 
 |---|---|---|
 | `core.ore` | `Rarity` with its base Resonance (§4.2); the rarity rule (100 expected blocks a chunk, 4.5 blocks a vein, §4.2); `OreTable`, the classifier's output as plain values; `HeightProfile` (ADR 0009) | nothing |
 | `core.layout` | `TreeLayout` over the layout file (§6 Layout data): nodes with id, skill, class, marks, ring, required mod or tag, exclusive group and drawing position; edges; each fork's `petalAnchor`; the layout hash. `NodeClass` and the marks. Distances by breadth-first search, the cheapest path, and the layout rules §6 lists | `com.google.gson`, to read the file from the jar |
-| `core.tree` | `SkillTree`: buyable when adjacent to an owned node and the ring is at most team level; refund by connectivity and price (§4.4); a skill's tier as the count of its owned nodes; fork choices; exclusive pairs; hidden and dormant nodes; points from level. The tree constants (`LEVEL_CAP`, `POINTS_PER_LEVEL`, refund prices, §11 Tree Layout Data). The effects constants keyed by skill id and count owned. The reserved ids (§6.1). The team vote rule for Volatile Veins and Molten Seam (Q1). No clusters, anchors, gates or node costs | `core.layout` |
+| `core.tree` | `SkillTree`: buyable when adjacent to an owned node and the ring is at most team level; refund by connectivity and price (§4.4); a skill's tier as the count of its owned nodes; fork choices; exclusive pairs; hidden and dormant nodes; points from level. The `Refusal` enum with its lang keys (ADR 0006). The tree constants (`LEVEL_CAP`, `POINTS_PER_LEVEL`, refund prices, §11 Tree Layout Data). The effects constants keyed by skill id and count owned. The reserved ids (§6.1). The team vote rule for Volatile Veins and Molten Seam (Q1). No clusters, anchors, gates or node costs | `core.layout` |
 | `core.curve` | `LevelCurve`, `TeamScaling` | `core.gen` (the baseline's density and shares), `core.ore` |
 | `core.gen` | `OreBaseline` (ADR 0009), `VeinShape`, `VeinPlacer`, `GenSnapshot` (ADR 0003), vein extents (ADR 0004), the chunk seed | `core.ore`, `core.tree` |
 | `core.mining` | `ResonanceBonuses`, the drop-stage outcome (§11 Drop Pipeline), `MiningSpeedModifiers` | `core.ore`, `core.tree` |
-| `core.vein` | Vein index arithmetic: remaining count, completion, abandon (ADR 0004) | nothing |
+| `core.vein` | Vein index arithmetic: remaining count, completion, abandon; `VeinRecord`, the header bit layout, and the encoder from `core.gen`'s vein extents (ADR 0004); the explored map's cells, window, compass choice and shade (ADR 0004 Amendment 1) | `core.gen` (`VeinExtent`) |
 | `core.session` | The trip record (§11 Vault Session State), including Apprentice's Ledger's 10-minute continuation (Q9) | nothing |
 | `core.reset` | The reset vote state machine (ADR 0007) | nothing |
 | `core.wear` | `WearRules` (ADR 0008) and `WearScope`, the per-player wear inputs the mixin reads | `core.tree` |
@@ -90,17 +90,17 @@ Minecraft-facing adapters. They hold as little logic as they can and call into `
 | root | `OreVault`, the `@Mod` entry; wires the mod bus and `NeoForge.EVENT_BUS` (rule 3) | MC, core, every adapter except `client`; `integration.*` only through its entry class, after the `isLoaded` check |
 | `registry` | `DeferredRegister` holders, data components, attachments, tags, creative tab | MC, core, `vault`, `mining` (the blocks, items and entities it registers) |
 | `team` | `TeamHelper` and the FTB Teams event listeners | MC, `dev.ftb.mods.ftbteams..`, core, `data`, `vault` |
-| `data` | `OreVaultTeamData`, `PlayerStats`, attachment codecs, migrations; the main-thread builders of `GenSnapshot` and the effects view (ADR 0003) | MC, core |
+| `data` | `OreVaultTeamData`, `PlayerStats`, the per-Vault explored map `SavedData` (ADR 0004 Amendment 1), attachment codecs, migrations; `GenSnapshots`, the main-thread builders of `GenSnapshot` and `TeamEffects` (ADR 0003) | MC, core |
 | `ore` | `OreClassifier`: reads `#c:ores` and the placed features at server start and publishes an immutable `OreTable` (ADR 0009) | MC, core |
-| `vault` | `VaultLevels` (the one world-map insert, with `markWorldsDirty()`), `VaultDimensions` (find-or-create, restore, archive), teleport, the portal and frame blocks, the igniters, the layer config (ADR 0002) | MC, core, `data`, `worldgen`, `team`, `registry` |
+| `vault` | `VaultLevels` (the one world-map insert, with `markWorldsDirty()`), `VaultDimensions` (find-or-create, restore, archive), `VaultFolders` and the start-of-server pass (ADR 0007), the Vault `ChunkEvent.Load` listener (vein index settle, explored map, `chunks_explored` credit; ADR 0004 Amendment 1), teleport, the portal and frame blocks, the igniters, the layer config (ADR 0002) | MC, core, `data`, `worldgen`, `team`, `registry` |
 | `worldgen` | `VaultChunkGenerator` and its codec | MC, core, `ore`; never `data` or `team` |
 | `mining` | The single `BlockDropsEvent` listener (§11 Drop Pipeline), the orb entity, the award, stat recording, vein index updates, filling `core.wear.WearScope` | MC, core, `data`, `ore`, `team`, `registry` |
-| `network` | Payload records and server handlers (ADR 0006) | MC, core, `data`, `team`, `vault` |
+| `network` | Payload records, server handlers and `TomeActions` (ADR 0006) | MC, core, `data`, `team`, `vault` |
 | `mixin` | ADR 0008's mixin; no logic | MC, `core.wear` |
 | `chunkload`, `reset`, `config`, `debug` | Adapters for §3.4 chunk loading, ADR 0007, §10 and S44 | MC, core, `data`, `ore`, `team`, `vault`, `worldgen`, `registry`, `network` |
 | `integration.ultimine` | Everything naming an FTB Ultimine type, entered only after `ModList.get().isLoaded("ftbultimine")` | MC, `dev.ftb.mods.ftbultimine..` and whatever FTB Library types its API exposes (to confirm at T12), core, `data`, `mining` |
 | `integration.processing` | The `c:clumps/`, `c:shards/` and `c:crystals/` tag lookups for Ore Doubling's extra tiers (§2, §9) | MC, core |
-| `client` | The `@Mod(dist = Dist.CLIENT)` entry, `client.tome`, `client.tree`, renderers, the on-screen Resonance bar, `ClientTomeState` | anything, subject to the named rules below |
+| `client` | The `@Mod(dist = Dist.CLIENT)` entry, `client.tome`, `client.tree`, `client.net`, renderers, the on-screen Resonance bar, `ClientTomeState` | anything, subject to the named rules below |
 
 Blocks, items and entities live in the package of the system that owns their behaviour: the frame, portal
 and igniters in `vault`, the orb entity in `mining`. `registry` only holds the registers. Where the Tome item
@@ -119,10 +119,10 @@ implementations, no service layer, no mod-internal event bus.
 player UUID, of the wear inputs `WearRules` needs (whether the hand-breaking flag is set, the summed care
 chance, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam multipliers, Kit Care's tier). `mining`
 fills an entry when a hand break passes `BreakBlockEvent` and clears it when the break ends and at the end
-of the tick; it fills Kit Care's entry from the effects view (ADR 0003) for real players only. The mixin
-casts the entity to `ServerPlayer`, looks up its UUID and passes the scope and the amount to `WearRules`;
-an absent entry means vanilla wear. This refines ADR 0008's "reads the team's nodes from the main-thread
-team snapshot"; E0-S11 (#226) should fold it in when it confirms that record.
+of the tick; at the end of each tick it sets each online real player's Kit Care tier from the effects view
+(ADR 0003), 0 inside a Vault, and removes it at logout. The mixin checks that the entity is the
+`ServerPlayer` the player list holds for its UUID, looks up the entry and passes the scope and the amount
+to `WearRules`; an absent entry means vanilla wear. ADR 0008 (accepted by E0-S11, #226) has the details.
 
 ### Architecture rules
 

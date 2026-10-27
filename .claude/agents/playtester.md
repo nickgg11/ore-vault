@@ -23,7 +23,7 @@ all Nick's playtest reports. Say so whenever a judgement rests on a preview rath
 - **The player story for each feature, written before it is built.** A few sentences: what the player does,
   sees and should feel, and what would make them confused or bored. For the first ten minutes of the mod
   (get the Tome, build a frame, light it, arrive, mine, see Resonance, earn a level, buy a node), this is
-  the most important thing you write.
+  the most important thing you write. The stories live in `docs/PLAYER_STORIES.md`.
 - **Playtest sessions.** With QA: QA writes the steps that check it works; you write the questions that
   check it is good (is the next goal obvious? did a level arrive when the curve says it should? which node
   did you buy first and why?). Keep a session short and focused on one or two questions.

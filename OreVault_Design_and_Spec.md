@@ -112,14 +112,15 @@ The dimension type JSON is static (two variants, below), but the chunk generator
 | Bedrock floor | Y=0 | Y=−64 |
 | Deepslate band | none | Y=−63…−1 — the densest ore band in the mod |
 
-Shared attributes for both types:
-- `ambient_light: 1.0` — full universal brightness, no torches needed
-- `visual/sky_light_factor: 1.0` + `visual/ambient_light_color` — fullbright terrain (MC 26.1 renders block brightness from environment attributes; `ambient_light` alone no longer lights terrain)
-- `fixed_time: 6000` — always midday aesthetically
-- `monster_spawn_light_level: 0` — monsters would only spawn in total darkness, which the fullbright environment never has
-- `has_raids: false`
-- `bed_works: false` / `respawn_anchor_works: false`
-- `natural: false` — disables passive mob spawning, sleep and spawn protection
+Shared fields for both types, in the 26.1 `DimensionType` codec (`net/minecraft/world/level/dimension/DimensionType.java`, quoted in `docs/research/neoforge-26.1-sources.md` "DimensionType codec fields"). The gameplay and visual rules are environment attributes under `attributes`, keyed by their full id:
+- `ambient_light: 1.0` and `has_skylight: true`, with the attributes `minecraft:visual/sky_light_factor: 1.0` and `minecraft:visual/ambient_light_color` — fullbright terrain, no torches needed. 26.1 renders block brightness from these attributes; `ambient_light` alone no longer lights terrain
+- `has_fixed_time: true` (a boolean, not a time of day) and no `timelines`, so the sun holds at the default `minecraft:visual/sun_angle` of 0.0, the midday position in vanilla's `day` timeline. That the sun then draws at midday is inferred from the data, not traced through the renderer: **unverified, to be checked in `runClient`** by E3-S5 (#233). With a fixed time it is never "dark outside", so a `when_dark` rule never fires
+- `minecraft:gameplay/bed_rule: { "can_sleep": "never", "can_set_spawn": "never" }` — no sleeping and no spawn set in the Vault. `explodes` is left at its default, `false`
+- `minecraft:gameplay/respawn_anchor_works: false` (also its default)
+- `minecraft:gameplay/can_start_raid: false` — the default is `true`, so the Vault must set it
+- `monster_spawn_light_level: 0` (an IntProvider; a constant 0) and `monster_spawn_block_light_limit: 0` — monsters could only spawn in total darkness, which the fullbright Vault never has
+- Mob spawning is off because the Vault biome has empty spawner lists (`"spawners"` with every category empty, `"spawn_costs": {}`), not through the dimension type, which in 26.1 has no field for it. Whether another mod's NeoForge biome modifier can add spawns to the Vault biome is unverified until NeoForge's own sources are read (E1-S5, #195)
+- The required fields with nothing Vault-specific: `has_ceiling: false`, `has_ender_dragon_fight: false`, `coordinate_scale: 1.0`, `infiniburn: #minecraft:infiniburn_overworld`, and `min_y`, `height` and `logical_height` from the table above. The last build's working file is `src/main/resources/data/orevault/dimension_type/ore_vault.json` at commit 9fc3086, which also set the sky and fog colours of old #83 (`minecraft:visual/sky_color` `#78a7ff`, `minecraft:visual/fog_color` `#c0d8ff`) and an ambient light colour of `#c8c8c8`, and still carried a pre-26.1 spawning key the 26.1 codec does not read
 
 **World generation (overworld-style layering, data-driven — #76):**
 - The layer stack is a bottom-up list of `{block, thickness}` pairs, jamd-style, loaded per dimension type from `data/orevault/worldgen/vault_layers/<type>.json` and validated against the dimension height; missing/malformed configs fall back to the built-in stack for that type
@@ -1270,6 +1271,8 @@ The nodes are listed in this order: the skills carried over from the tiered tree
 | 3 | Drawn chunks are shaded by ore density | 15 |
 
 > Tiers 2 and 3 absorb what was going to be a separate Cartographer's Instinct node. Two chunk-density readouts competing in the same Tome is one too many, so the map is this node's later tiers instead of a rival to it.
+>
+> **What it reads.** An explored chunk is a chunk of the team's current Vault that has been generated: the same event that counts for Wanderer's Cache and "newly explored" everywhere in §6.1, whether or not anyone walked into it. A chunk's density is its standing indexed ore, so it falls as the team mines. The compass and the map cover 33 by 33 chunks centred on the viewer's chunk, and only inside the team's Vault. The compass points to the explored chunk in that window with the most standing ore, if it has more than the viewer's own chunk; otherwise it shows no denser rock nearby. Tier 3's shade is measured against the ore a newly generated chunk would hold under the team's current generation nodes. Chunks not yet generated are never predicted. A reset starts the map empty. The state is kept per Vault (§11 Vein Index; `docs/adr/0004-vein-index.md`, Amendment 1).
 
 ---
 
@@ -1284,7 +1287,7 @@ The nodes are listed in this order: the skills carried over from the tiered tree
 
 > The repair amounts are derived and unplaytested; T9 confirms them.
 >
-> **How a cache drops.** The count is per player: `chunks_explored` on `PlayerStats` (§8 Tab 3, "Chunks explored (generated) in the Vault"). Each time a player's count reaches a multiple of 50 while the team owns the node, one cache drops as an item at that player's position; chunks counted before the purchase move the count but drop nothing. A newly generated chunk is credited to the team member in that Vault nearest the chunk's centre, within view distance, when the chunk first loads; a chunk generated with no member in range counts for nobody (§11 SavedData Pattern). Because the count is on `PlayerStats`, it survives logouts, server restarts and dimension resets; a team change leaves it with the old team (§9).
+> **How a cache drops.** The count is per player: `chunks_explored` on `PlayerStats` (§8 Tab 3, "Chunks explored (generated) in the Vault"). Each time a player's count reaches a multiple of 50 while the team owns the node, one cache drops as an item at that player's position; chunks counted before the purchase move the count but drop nothing. A newly generated chunk is credited, when it first loads, to the one member of the Vault's team in that Vault who is nearest it, counted in chunks, among those within the server's view distance of it; spectators and players who are not current members are passed over, ties go to the lower UUID, and a chunk generated with no member in range counts for nobody, so chunks loaded by an Anchor, Far Reach, a machine or a command earn no caches (`docs/adr/0004-vein-index.md`, Amendment 1). Because the count is on `PlayerStats`, it survives logouts, server restarts and dimension resets; a team change leaves it with the old team (§9).
 >
 > **Opening it.** Using the cache opens it: it rolls the loot table `orevault:chests/wanderers_cache` into the opener's inventory, dropping what does not fit, and repairs the most-damaged tool in the opener's hotbar by 25% of its maximum durability (50% at tier 2). At tier 2 the table is rolled twice and a 20% chance adds one enchanted book. The contents are a loot table so that a pack can retune them without touching code. Defined 2026-10-27.
 
@@ -1300,6 +1303,8 @@ The nodes are listed in this order: the skills carried over from the tiered tree
 
 > Deliberately rewards moving on rather than strip-mining one spot to exhaustion, which is the behaviour every other node in the tree encourages.
 
+> "Generated within the last 10 minutes" is 12,000 ticks of server game time since the chunk first became a full chunk, recorded on the chunk (§11 Vein Index), so a restart neither ages nor freshens it.
+
 ---
 
 **Pathfinder's Claim**
@@ -1309,6 +1314,8 @@ The nodes are listed in this order: the skills carried over from the tiered tree
 | Tier (nodes owned) | Effect | Ring |
 |---|---|---|
 | 1 | The first vein mined in each newly generated chunk grants 50 vanilla XP | 7 |
+
+> Each chunk generated since the vein index existed pays once, team-wide, for its first hand-broken indexed ore, and that includes chunks generated before the team bought the node (a chunk records when it was generated, not whether the node was owned then). Chunks generated before the index existed pay nothing (§11 Vein Index). Derived; the Balancer confirms the reading.
 
 ---
 
@@ -2323,7 +2330,7 @@ Post-1.0, with the Animus epic (§12).
 **In 1.0 this tab is small** (Nick, 2026-10-26). It holds a **Survey panel** and the Vault Reset button:
 
 - Survey panel: a depth gauge marked with the band edges (§3.1), a death marker, and Seismic Sense's
-  readouts (§6.1) once the team owns that node
+  readouts (§6.1) once the team owns that node, shown while the viewer is in the team's Vault
 - The death marker is the viewing player's last death in the team's current Vault. It is drawn on the
   depth gauge at the death's Y, and its tooltip gives the X, Y and Z. It is stored on the player
   attachment as `last_vault_death`, holding the team, the reset count (`vault_generation`, §11) and the
@@ -2585,7 +2592,7 @@ Everything else that reads the tree on the main thread (the drop listener, the t
 
 ### SavedData Pattern
 
-Persistent team state (the Resonance pool, skill tree state, player stats) is stored with `SavedData`, declared through a `SavedDataType<T>` and a codec, in the overworld's storage. One `SavedData` instance per team, id `orevault:team_<teamUuidNoHyphens>`, which 26.1 writes to `<world>/dimensions/minecraft/overworld/data/orevault/team_<id>.dat`. It is created on its first write, never when the team is created: read paths use `get` and treat a missing file as every field at its default. The shape is fixed by `docs/adr/0005-persisted-data-and-versioning.md`; the tables below are the contract its golden tests pin.
+Persistent team state (the Resonance pool, skill tree state, player stats) is stored with `SavedData`, declared through a `SavedDataType<T>` and a codec, in the server's storage (`MinecraftServer#getDataStorage()`), where 26.1 keeps its own world-wide data such as the scoreboard and command storage. One `SavedData` instance per team, id `orevault:team_<teamUuidNoHyphens>`, which 26.1 writes to `<world>/data/orevault/team_<id>.dat`. Data about one Vault's terrain is kept in that Vault level's own storage instead, so it moves with the folder: today only the explored map (§11 Vein Index), at `<world>/dimensions/orevault/vault_<hex>/data/orevault/explored_map.dat`, with its own `data_version`. It is created on its first write, never when the team is created: read paths use `get` and treat a missing file as every field at its default. The shape is fixed by `docs/adr/0005-persisted-data-and-versioning.md`; the tables below are the contract its golden tests pin.
 
 **Keys and clock.** Every persisted key in every shape the mod writes is snake_case: team data, `PlayerStats`, the player attachment, the chunk attachment, item components and entity data. Java fields are camelCase and the reader maps them; the spec names the key. Every saved time is overworld game time in ticks (`level.getGameTime()`, one clock for every level), so a window or cooldown does not run out while the server is stopped: 10 minutes is 12,000 ticks and 24 hours is 1,728,000. UUIDs are stored as hyphenated strings, ids as their string form.
 
@@ -2627,7 +2634,7 @@ Persistent team state (the Resonance pool, skill tree state, player stats) is st
 | `active_tradeoffs` | list of node ids | empty | Per-player tradeoffs; the member's vote for Volatile Veins and Molten Seam |
 | `courier_link` | {dim, x, y, z, generation} | no link | Seam Courier; a link into the team's Vault from before a reset reads as no link |
 
-A newly generated chunk is credited to `chunks_explored` of the team member in that Vault nearest the chunk's centre, within view distance, when the chunk first loads; a chunk generated with no member in range is credited to nobody.
+A newly generated chunk is credited to `chunks_explored` of one member of the Vault's team, by the rule in §6.1 Wanderer's Cache (nearest in chunks within the server's view distance, ties to the lower UUID); a chunk generated with no member in range is credited to nobody.
 
 **The player attachment `orevault:player`** (`copyOnDeath`): `data_version`; `return_pos {dim, x, y, z}`; `in_vault {team, generation}` (the Vault the player is in and its `vault_generation` at entry, absent when outside; `docs/adr/0002-vault-lifecycle.md`); `tome_granted`; `entry_points`, a list of up to three `{team, generation, x, y, z}`; `homeward {team, generation, x, y, z}`; `homeward_cooldown_until` (game time); `last_vault_death {team, generation, x, y, z}` (§8 Tab 3). A position whose team is not the player's current team, or whose generation is behind that team's `vault_generation`, reads as absent; that is how a reset clears them without editing offline players' files.
 
@@ -2641,7 +2648,7 @@ A newly generated chunk is credited to `chunks_explored` of the team member in t
 
 **Saves carry over from T5 to 1.0** (Nick, 2026-10-27). Nick's playtest world is kept between builds, so every change to a saved shape from T5 on reads the tag the previous build wrote: an added field reads its default, and a rename or removal comes with a migration.
 
-**`data_version` and migration.** Each shape (team data, `PlayerStats`, the player attachment, the chunk attachment, `orevault:vault_tool`, the orb) has its own `data_version`, and they move independently. Every load reads it first and migrates forward if it is behind the current version, through a fall-through chain that takes any older tag to the current shape in one pass; each step keeps frozen copies of what it translates from and running it twice changes nothing. Data starts at version 1, and a tag with no `data_version` reads as 1; saves from before the restart are not supported (§6.1 Reserved node ids). An added field never bumps the version: it reads its documented default from a tag written without it. A rename, a removal or a change of type or unit bumps it, with a migration, a fixture of the old tag and an updated golden key set in the same PR. A tag from a newer build loads best-effort with one WARN.
+**`data_version` and migration.** Each shape (team data, `PlayerStats`, the player attachment, the chunk attachment, the explored map, `orevault:vault_tool`, the orb) has its own `data_version`, and they move independently. Every load reads it first and migrates forward if it is behind the current version, through a fall-through chain that takes any older tag to the current shape in one pass; each step keeps frozen copies of what it translates from and running it twice changes nothing. Data starts at version 1, and a tag with no `data_version` reads as 1; saves from before the restart are not supported (§6.1 Reserved node ids). An added field never bumps the version: it reads its documented default from a tag written without it. A rename, a removal or a change of type or unit bumps it, with a migration, a fixture of the old tag and an updated golden key set in the same PR. A tag from a newer build loads best-effort with one WARN.
 
 **Loading never throws.** In 26.1 `SavedDataStorage` turns a parse error or an exception during load into a missing file, and the next save then writes an empty team over the real one. So the team codec maps a `CompoundTag` through a hand-written reader with defaults for every key, not a strict record codec, and no input can make it throw. On load, an owned id the layout no longer has is dropped (its point returns), a node cut off from the start is pruned free, a fork choice or pin that no longer resolves is dropped, entries in `bought_by`, `generation_tradeoffs` and `active_tradeoffs` for ids that are not owned or not known are dropped, and a mod-hidden owned node is kept dormant (§6).
 
@@ -2708,6 +2715,7 @@ Rules the implementation must hold:
 - Veins created by **Twin Veins** are registered into the index when spawned, inside the source vein's chunk, so they behave identically to generated veins. A copy that does not fit in the chunk is not made, and a copy never writes another chunk.
 - **Player-placed ore is never indexed.** This closes the otherwise obvious exploit — place ore, break it, farm Vault Echo — by construction rather than by a check that could be missed.
 - Chunks generated before the index existed have no entries, and their veins never complete.
+- The Seismic Sense map (§6.1) needs chunks that are not loaded, and a chunk's attachment is never read from disk on demand. Each Vault therefore keeps one more saved file in its own folder, `orevault:explored_map`, holding two bytes per generated chunk: zero when not generated, otherwise the chunk's standing indexed ore plus one, or a mark for "generated, density unknown" when the chunk has no index. It is written on the main thread at every chunk load and at every change to a loaded chunk's index, and it is deleted, backed up and archived with the Vault folder (§3.5). It grows by at most 2 KB per 32 by 32 chunk region the Vault reaches, and never across a reset.
 - The same attachment holds the chunk's other state: when it was first generated (Frontier Bonus), whether its first vein has paid Pathfinder's Claim, Chapter's End's count and fired flag (§6.1), and which veins are guide veins (§8).
 - The same attachment records a stamp of the generation snapshot the chunk was made with, which the Survey panel compares with the team's current one (§8 Ore Memory). A chunk with no stamp was generated before it existed and reads as not current.
 - If an attachment written on the `ProtoChunk` does not carry over to the `LevelChunk`, the generator puts the index in a pending map keyed by chunk, which the main thread drains into the attachment at chunk load.
@@ -2764,7 +2772,7 @@ Three nodes count something per Vault visit — Deep Habit (blocks this trip), L
 
 The record is **in memory only, not `SavedData`**: a relog is a new trip for Deep Habit and Long Delve. That is the simpler rule and the one that cannot be farmed by logging out to bank a Delve stack. The kept Ledger count is held in memory per player UUID, so it survives a logout within the 10 minutes and is lost only when the server stops.
 
-Leaving is watched through the dimension change rather than through the portal code, because a player also leaves by dying, by `/execute in`, and by logging out — and only the portal path goes through `VaultTeleport`. Login is watched too: a player who logged out inside a Vault reconnects straight into one with no dimension change to observe.
+Leaving is not watched through the portal code, because a player also leaves by dying, by `/execute in`, and by logging out, and only the portal path goes through `VaultTeleport`. Nor is the dimension-change event enough: `PlayerChangedDimensionEvent` is posted only from the cross-level branch of `ServerPlayer#teleport`, and a death respawn never calls `teleport` (`PlayerList#respawn` builds a new `ServerPlayer` in the respawn level and posts only `PlayerRespawnEvent`; `docs/research/neoforge-26.1-sources.md` "Respawn and PlayerChangedDimensionEvent"). A death exit therefore fires no dimension-change event; the last build never ended a trip on death (old #149). So trips are keyed by player UUID, never by the `ServerPlayer` object, which respawn replaces, and a per-tick guard ends the trip of any player who has one and is no longer in a Vault, whatever route they left by. The dimension-change and logout events end a trip at once; the guard catches the rest within a tick. Login is watched too: a player who logged out inside a Vault reconnects straight into one with no dimension change to observe.
 
 The trip record also lists the veins the player has broken into and not finished, which is what Vein Discipline's abandon reads (§6.1). Leaving by any of the routes above, logging out included, applies the abandon from that list before the record is discarded. The list is never saved, so a server crash applies no abandon; the streak itself is on `PlayerStats` and keeps its last saved value.
 
@@ -2790,15 +2798,15 @@ One payload channel, registered on the mod bus through `RegisterPayloadHandlersE
 
 ### Tool Wear Hook
 
-NeoForge posts no event when an item loses durability, and eight nodes need one: Tool care and the Charge fallback, Kit Care, Hammer and Paxel Affinity, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam. Ore Vault therefore has one Mixin into the NeoForge-patched `ItemStack#hurtAndBreak(int, ServerLevel, LivingEntity, Consumer<Item>)`, which calls one pure `WearRules` class (`docs/adr/0008-tool-wear-mixin.md`).
+NeoForge posts no event when an item loses durability, and eight nodes need one: Tool care and the Charge fallback, Kit Care, Hammer and Paxel Affinity, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam. Ore Vault therefore has one mixin class with two injections into the NeoForge-patched `ItemStack`, which call one pure `WearRules` class (`docs/adr/0008-tool-wear-mixin.md`).
 
-- At the head of the method, the amount is multiplied (Glass Edge ×3; Galvanic Seam ×2 on a tool with no energy storage), before the item's own `damageItem` and before vanilla Unbreaking, so Unbreaking still rolls per point.
-- After vanilla's durability processing returns its amount, each remaining point rolls once against the summed care chance of Tool care, the Charge fallback and Hammer and Paxel Affinity, then once on its own for Tempered (§6.1 Travel stats); then Unyielding Edge clamps so the damage never reaches the maximum. Outside the Vault the only roll is Kit Care's.
-- Which nodes act is decided by a per-player hand-breaking-block flag. The break handler sets it when `BreakBlockEvent` passes for a hand break (§3.4) in a Vault, before `mineBlock` damages the tool, and clears it when that break finishes, and at the latest at the end of the server tick, so a cancelled break cannot leave it set. Tool care, the Charge fallback, Hammer and Paxel Affinity, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam act only while the flag is set and only on the main-hand item, so a sword hit, a flint and steel or a hoe in the Vault takes normal wear.
-- Kit Care does not use the flag. It acts on any durability loss of a held item or worn armour outside a Vault, from any cause, when the entity is a real player (a `ServerPlayer`, not a fake player, the one in the player list).
-- The mixin checks the flag or Kit Care's scope, reads the team's nodes from the main-thread team effects view (§11 Dynamic Chunk Generator, `docs/adr/0003-generation-snapshot.md`) and calls `WearRules`. It holds no other logic.
+- At the head of `hurtAndBreak(int, ServerLevel, LivingEntity, Consumer<Item>)`, the amount is multiplied (Glass Edge ×3; Galvanic Seam ×2 on a tool with no energy storage), before the item's own `damageItem` and before vanilla Unbreaking, so Unbreaking still rolls per point and an energy tool pays the same amount in FE.
+- At the return of the private `processDurabilityChange(int, ServerLevel, LivingEntity)`, which is vanilla's durability processing, each remaining point rolls once against the summed care chance of Tool care, the Charge fallback and Hammer and Paxel Affinity, then once on its own for Tempered (§6.1 Travel stats); then Unyielding Edge clamps so the damage never reaches the maximum. Outside the Vault the only roll is Kit Care's. Both `hurtAndBreak` and `hurtWithoutBreaking` (a trident's throw and riptide wear) go through this method, so Kit Care covers a trident too.
+- The scope comes from `core.wear.WearScope`, a main-thread table keyed by player UUID that the mining code fills from the team effects view (§11 Dynamic Chunk Generator, `docs/adr/0003-generation-snapshot.md`). When `BreakBlockEvent` passes for a hand break (§3.4) in a Vault, before `mineBlock` damages the tool, the player's break entry is set; it is cleared when that break finishes, and at the latest at the end of the server tick, so a cancelled break cannot leave it set. Tool care, the Charge fallback, Hammer and Paxel Affinity, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam act only while it is set and only on the main-hand item, so a sword hit, a flint and steel, a trident or a hoe in the Vault takes normal wear.
+- Kit Care does not use the break entry. At the end of each server tick every online real player's Kit Care tier is set, or 0 inside a Vault. It acts on any durability loss of a held item or worn armour outside a Vault, from any cause, when the entity is a real player: a `ServerPlayer` that is the one the server's player list holds for its UUID (§3.4). A dispenser or a machine never qualifies.
+- The mixin checks the player-list identity and the item's slot, looks up `WearScope` and calls `WearRules`. It holds no other logic and reads nothing else of Ore Vault's.
 
-The signature and local indices are read from the decompiled 26.1 sources on Nick's PC and pinned by a gametest that breaks a block with each node owned.
+The mixin config `orevault.mixins.json` is declared by a `[[mixins]]` entry in `neoforge.mods.toml` and sets `injectors.defaultRequire: 1`, so a NeoForge bump that moves either target fails at load instead of leaving wear vanilla. Neither injection reads a local variable, so no bytecode slot needs pinning; a gametest or playtest that breaks a block with each node owned pins the order.
 
 ---
 
@@ -2855,8 +2863,9 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Per-team dimension key `orevault:vault_<teamUuidNoHyphens>`, and restore mapping a folder name back to a team (§3.1, §11) — E3-S6a (#237)
 
 ### Dimension
-- [ ] Dimension types `orevault:ore_vault` and `orevault:ore_vault_expanded` with the §3.1 fields: base `min_y: 0` / `height: 320`, expanded `min_y: -64` / `height: 384`, fullbright through attributes — E3-S5 (#233)
-- [ ] The Vault biome with empty spawner lists — E3-S5 (#233)
+- [ ] Dimension types `orevault:ore_vault` and `orevault:ore_vault_expanded`: base `min_y: 0` / `height: 320`, expanded `min_y: -64` / `height: 384` — E3-S5 (#233)
+- [ ] The 26.1 fields of §3.1 in both types: `ambient_light: 1.0`, `has_skylight: true`, `has_fixed_time: true` with no `timelines`, `monster_spawn_light_level: 0` and `monster_spawn_block_light_limit: 0`, and the attributes `minecraft:visual/sky_light_factor`, `minecraft:visual/ambient_light_color`, `minecraft:gameplay/bed_rule` (`can_sleep` and `can_set_spawn` never), `minecraft:gameplay/respawn_anchor_works: false` and `minecraft:gameplay/can_start_raid: false`; the midday sun seen in `runClient` — E3-S5 (#233)
+- [ ] The Vault biome with empty spawner lists, which is what keeps mobs from spawning — E3-S5 (#233)
 - [ ] Custom chunk generator with the §3.1 layer stack loaded from `vault_layers/<type>.json`: bedrock, stone, dirt, grass surface and 69 blocks of open air — E3-S5 (#233)
 - [ ] Vault creation on the portal path only: `VaultDimensions#findOrCreate` is the one entry, and no login or team event creates a Vault (§3.1, ADR 0002) — E3-S6a (#237)
 - [ ] Eager restore at server start of every Vault on disk, before anyone connects, skipping unreadable folders and archived teams (§11 Dimension-per-Team Registration) — E3-S6a (#237)
@@ -2906,7 +2915,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Team scaling: `sum / teamSize × (1 + 0.1 × (teamSize − 1))`, with no `ASSUMED_TEAM_SIZE` anywhere (§4.2) — E5-S1 (#240)
 - [ ] Skill point award at every level crossed, announced to every online member — E5-S4 (#274); the announcement becomes a toast with the Tome shell — E7-S6 (#291)
 - [ ] Drop pipeline: one `BlockDropsEvent` listener with the six ordered stages and the break context (§11) — E5-S3 (#264); the accumulators and the effects view — E9-S2 (#306); the Fortune re-roll with the first Fortune node — E9-S26 (#330)
-- [ ] Vault session state: trips, the per-tick death guard, logout ending a trip (§11) — E9-S5 (#309)
+- [ ] Vault session state: trips keyed by player UUID, a per-tick guard that ends the trip of a player no longer in a Vault (a death exit fires no dimension-change event), logout ending a trip (§11) — E9-S5 (#309)
 - [ ] Vein index consumers: completion detection, Twin Veins registration, player-placed ore never indexed (§11 Vein Index) — E9-S4 (#308), E9-S36b (#344)
 - [ ] Refund (§4.4): connectivity rule, 3 XP levels a node, 12 a pact, 30 a keystone, outside the Vault only, team told; free undo window; free for 10 minutes after a reset (`free_respec_until`), at most once per 24 hours of server time (`free_respec_opened_at`) — E8a-S6 (#230), E8-S10 (#303), E11-S3 (#284)
 - [ ] Pacing tools and session: per-minute readout, team dump and wipe — E5-S5 (#275); the log parser — E5-S9 (#280); the T5 session — E5-S7 (#287); the ledger — E5-S12 (#285)

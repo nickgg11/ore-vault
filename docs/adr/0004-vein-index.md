@@ -363,9 +363,12 @@ All on the main thread; the generator never reads or writes it (`CLAUDE.md` rule
   save.
 - Nothing is written at unload: the cell is already current.
 
-The class is in `data` (it is a persisted shape, with its codec and migration), its in-memory form a map
-from region key to `short[1024]`. The pure parts are in `core.vein`: cell encoding, the window cut, the
-compass choice and the shade (below), unit-tested without Minecraft.
+The `SavedData` class is in `data` (a persisted shape, with its codec and migration); its in-memory form is
+a map from region key to `short[1024]`. The `ChunkEvent.Load` listener is in `vault`, which holds the
+team's generator and so the pending map if Result B (ADR 0002), and may import `data`, `team` and
+`registry` (ADR 0001). The bit-clear updates are in `mining`, beside the other vein index updates. The pure
+parts are in `core.vein`: cell encoding, the window cut, the compass choice and the shade (below),
+unit-tested without Minecraft.
 
 #### Unloaded chunk attachments are never read from disk on demand
 

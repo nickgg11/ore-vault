@@ -14,6 +14,51 @@ Newest first.
 
 ---
 
+## 2026-10-27 — What the architecture records changed in the spec
+
+**Where this came from.** ADRs 0001 to 0007 and 0009 were written for Epic 0 (E0-S3 to E0-S10, #179,
+#223, #186, #224, #182, #225, #183, #258), and ADR 0008 was accepted (E0-S11, #226). Most of what they
+changed in the spec records mechanics the spec left open. The rows below are the ones that settle a
+choice, each with what it replaced. The FTB Teams finding comes from the source read in
+`docs/research/neoforge-26.1-sources.md` ("FTB Teams party join and disband"); the 26.1 dimension-type
+fields from the same file (E0-S1, #222). The spec was changed in §3.1, §3.2, §3.3, §3.5, §4.2, §4.3, §6,
+§6.1, §8, §9, §11 and §13, and `CLAUDE.md` rule 6 for the storage row (E0-S12, #231).
+
+**Decisions.**
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| Saved data is named in the spec by its NBT key, snake_case, in every shape (`vault_generation`, `free_respec_until`, `ores_mined`) | Java field names in camelCase (`vaultGeneration`, `freeRefundUntil`, `PlayerStats#oresMined`) mixed with snake_case keys (`resonance_pool`, `return_pos`) | The key is what a save file holds and what a migration has to match; the drafts mixed both conventions in one shape (ADR 0005). `freeRefund…` also became `free_respec…`, the name §4.4 uses. |
+| The Resonance pool is stored as a long of thousandths of a Resonance | A long of whole Resonance, as the last build had; a double was also considered | Whole units silently drop Stone Memory's 0.05 payments (2026-10-27, Q8). A double gives sums that can differ between machines. For the Balancer to confirm. |
+| Every saved time is overworld game time in ticks: the respec window, its 24-hour limit, `disbanded_at`, the Homeward Seam cooldown, the Frontier timestamp | No clock stated | Wall-clock times would close a window or finish a cooldown while the server was stopped. Game time advances only while the server runs, which is what "24 hours of server time" (Q14) means. |
+| A party join never disbands the player's solo team. In FTB Teams the personal team's id is the player's UUID and is never deleted; disband is `TeamDeleted`, posted only when a party's last member leaves. A team change is seen through `PlayerChangedTeam`, which fires for offline players too | The conditional "a party join is exempt from archiving if it disbands the solo team" (Q-conditional, above) | Read from `ftb-teams-26.1.2.4-sources.jar`. A solo Vault stays on disk while its player is in a party and is theirs again when they leave. `PlayerJoinedPartyTeam` is not posted for an offline player, so team-change work cannot listen to it. |
+| A newly generated chunk counts toward `chunks_explored` of the member of the Vault's team in that Vault nearest it in chunks, within the server's view distance, ties to the lower UUID; a chunk with nobody in range counts for nobody | "Which player a chunk is credited to is settled by ADR 0005" (Wanderer's Cache, 2026-10-27) | Generation runs off-thread with no player attached (`CLAUDE.md` rule 1); the first load on the main thread is where a player can be found. Chunks loaded by an Anchor or a machine pay no exploration. |
+| Every "one per N chunks" rate (Geode Clusters, Ancient Traces, Molten Seam's 50%) is a 1-in-N roll per chunk from that chunk's seed, and each feature has its own salt | Unstated; a counter carried between chunks was the obvious reading | Chunks generate in whatever order players reach them, so a counter would give a different Vault for the same seed. In a short run of chunks the count now varies. For the Balancer. |
+| The 40% stone floor scales every rarity's vein count in a band by one factor, computed on the main thread and carried in the snapshot | "Enforced", with no method | Cutting one rarity first would shift the mix the level curve is derived from (§4.3). |
+| A block that is not a classified ore pays no Resonance; there is no default rarity | An unclassified block fell to a default rarity | The old default of Uncommon paid 5 Resonance for stone (old PR #117). |
+| Every vein lies inside one chunk; a configured size above 37 is split into smaller veins of the same expected total | Veins crossing chunk borders (old #45) | Cross-chunk veins put one vein's state in several chunks and needed a chunk load to decrement (ADR 0004, S20). Ore thins by a block or two toward chunk borders as a result; the T4 mine looks for it. |
+| Volatile Veins and Molten Seam: a former member's switch is not counted; refunding the node switches the applied state off, and buying it again leaves it off until the Vault is next empty and the vote passes | Unstated | A former member's switch stays in the old team's records (Q3) and would otherwise vote forever. A rebought node must not switch on under players already inside (Q1). |
+| Team `SavedData` is kept in the server's storage (`MinecraftServer#getDataStorage()`, `<world>/data/orevault/`). Data about one Vault's terrain, today only the Seismic Sense explored map, is kept in that Vault level's own storage | The overworld's per-level storage (`CLAUDE.md` rule 6's old wording, and the last build's choice) | 26.1 split the two and keeps its own world-wide data, the scoreboard and command storage among it, in the server's storage; `ServerLevel#getDataStorage()` is per level (ADR 0005, E0-S12 cross-ADR pass). Nothing has been written yet, so no migration. Per-Vault data in the Vault's folder is deleted, backed up and archived with it. |
+| A reset vote counts the members online when it opens; a member who disconnects leaves the count; a vote not passed within its time limit fails; one open vote per team. Players inside at a reset wait at their return position and are placed at the new Vault's spawn point; a failed backup abandons the reset; a disbanded team's folder and data file go to `<world>/orevault_archive/<teamUuid>/<disbandedAt>/`, apart from reset backups | Online members counted with no rule for joins and leaves; no time limit; the archive's location unstated | Late joiners got no toast and could block a reset by logging in to vote no. A backup taken from an open folder copies half-written region files (old #96). The time limit's length, proposed at 60 seconds in ADR 0007, is for the Balancer and is not in the spec yet. |
+| `in_vault` on the player attachment holds the team and its `vault_generation` at entry, and a player who logs in to a Vault reset while they were offline is placed at its spawn point | `in_vault` as a dimension key, checked only for "not loaded" | A reset keeps the dimension key, so only the generation shows that the ground changed under an offline player (ADR 0002, ADR 0007). |
+| A client whose layout hashes differently from the server's is disconnected with a message naming the mismatch | "The layout's hash is sent at login so a client with a different layout is caught" | Ownership and node ids travel by index in layout order, so a client with a different layout would draw and request the wrong nodes. The server disconnects rather than the client, so the server log says why (ADR 0006). |
+| The 26.1 dimension type: `has_fixed_time`, the `minecraft:gameplay/bed_rule`, `respawn_anchor_works` and `can_start_raid` attributes, and an IntProvider spawn light with `monster_spawn_block_light_limit`. Mob spawning is off through the biome's empty spawner lists | `fixed_time: 6000`, `bed_works`, `respawn_anchor_works`, `has_raids` and `natural: false`, which the 26.1 codec no longer has | Copying the old fields gives JSON that fails to parse or does nothing (old #13). `can_start_raid` defaults to true, so it must be set. The midday sun with no `timelines` is inferred from vanilla's data and is checked in `runClient` by E3-S5 (#233). |
+| A trip ends on a per-tick guard as well as on the dimension-change event, keyed by player UUID | Watching the dimension change alone | A death exit fires no `PlayerChangedDimensionEvent`, so the last build never ended a trip on death (old #149). |
+
+**Rejected.**
+
+- **A counter for "one per N chunks"** and **saving the pending vote result**: order-dependent, and two
+  saved sources that can disagree (ADR 0003, ADR 0005).
+- **Archiving a solo Vault on a party join**: the solo team is never deleted, so the event never comes.
+- **Adding late joiners to an open reset vote**: they never got the toast (ADR 0007).
+- **A default rarity for unclassified blocks** (ADR 0009) and **cross-chunk veins** (ADR 0004).
+- **Wall-clock timestamps**, **a pool of whole Resonance** and **the overworld's per-level storage for team data** (ADR 0005).
+
+**Still open.** A bed in the Vault does not explode (`explodes` at its default); the pre-26.1 `bed_works: false`
+made it explode, and the spec never said which was meant.
+
+---
+
 ## 2026-10-27 — Four node items and choices defined
 
 **Where this came from.** Drafting the node stories turned up four nodes whose text names an item or a
@@ -71,9 +116,10 @@ Discipline and The Vault Keeps It, §8 Tab 3 and §11 Vault Session State.
 ## 2026-10-27 — Nick's answers to the ticket questions
 
 **Where this came from.** Drafting the tickets for the rebuilt plan turned up seventeen questions only Nick
-could answer, sent by the Manager on 2026-10-26 with context and a recommendation each
-(`questions-for-nick.md` in the tickets folder). Nick answered on 2026-10-27 in his "Nick Input" lines;
-`nick-answers-2026-10-27.md` in the same folder holds them. Where he left no comment, the recommendation
+could answer, sent by the Manager on 2026-10-26 with context and a recommendation each, in a questions
+document outside the repo. Nick answered on 2026-10-27 in his "Nick Input" lines there. His words are
+quoted in the table below, which is the record in the repo; the working files the tickets were drafted
+from are not committed. Where he left no comment, the recommendation
 stands. The spec was changed to match in §3.1 to §3.5, §4.1, §4.2, §4.4, §6, §6.1 (Stone Memory,
 Apprentice's Ledger, Volatile Veins, Molten Seam, Ultimine Gambit), §8, §9, §10, §11, §12 and §13, and
 `docs/TEAM_REQUIREMENTS.md` gained the table "Nick's answers, 2026-10-27".
@@ -99,7 +145,7 @@ Apprentice's Ledger, Volatile Veins, Molten Seam, Ultimine Gambit), §8, §9, §
 | **A Vault Anchor set as an entry point takes one of the player's entry-point slots** (Q15) | Nick: yes. Old #30. The Tier 2 igniter's one slot stays one. |
 | **The reset vote reaches other members as a toast and a clickable chat line; no screen opens by itself** (Q16) | Nick: "Yeah a toast would be good." A screen opening unasked takes control from someone mid-swing in the Vault, and a missed toast can be reopened from the chat line. |
 | **1.0 ships no advancements and no Vault Recall item. A guide is decided after the first-ten-minutes playtest, preferring a hover-in-JEI-and-hold-a-key guide over a book** (Q17) | Nick: "A guide book might be good, depends on how much needs to be explained like how to make the portal. I know some mods you can hover an item in JEI and hold a key and then a guide opens up which might be better than a book. I don't really care about advancements." He did not ask for Vault Recall (old #74). |
-| **If joining a party disbands the player's solo team, the party join is exempt from archiving** (conditional) | No comment from Nick; the recommendation stands and applies only if the FTB Teams source read (E1-S5) shows the disband. |
+| **If joining a party disbands the player's solo team, the party join is exempt from archiving** (conditional) | No comment from Nick; the recommendation stands and applies only if the FTB Teams source read (E1-S5) shows the disband. Settled the same day: the read shows a party join never disbands the solo team, so the case never arises ("What the architecture records changed in the spec", above). |
 
 **What this supersedes.**
 

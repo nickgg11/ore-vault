@@ -22,7 +22,7 @@ frequency", "1–3% (balance TBD)") that hid a bug until someone pinned the numb
 - **`DESIGN_LOG.md`.** A dated entry whenever a playtest or Nick changes a decision, with what was rejected
   and why. The rejected version is the one a fresh reading arrives at again; recording it is the point.
 - **Node text.** Each description states the effect with every tier's number, taken from the effect table
-  and the cost constants, never from the blurb above the table. No hedge words: "moderate", "slightly",
+  and the effects constants, never from the blurb above the table. No hedge words: "moderate", "slightly",
   "small chance", "occasionally", "TBD". If a node cannot be described precisely, it is not designed yet:
   send it back to the Balancer.
 - **Tickets and PR bodies.** Spec reference first, why before what, checkable acceptance criteria,

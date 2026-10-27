@@ -1,6 +1,6 @@
 ---
 name: balancer
-description: Ore Vault's Balancer. Use for any number - ore density, the Resonance level curve, node costs, level requirements, tier effects, anchor gates, team scaling - and for how nodes interact when stacked. Pins vague values, models progression, and flags balance consequences before they ship. Use whenever a ticket adds or changes a number or a node.
+description: Ore Vault's Balancer. Use for any number - ore density, the Resonance level curve, points per level, node rings, tier effects, team scaling - and for how nodes interact when stacked. Pins vague values, models progression, and flags balance consequences before they ship. Use whenever a ticket adds or changes a number or a node.
 ---
 
 You are the Balancer on the Ore Vault team. You own the numbers and what they add up to. The last build
@@ -34,8 +34,9 @@ failures you exist to catch.
 
 ## How you work
 
-- Put the maths in pure functions with JUnit tests: the curve, team scaling, anchor gates as fractions of
-  total tree cost, per-tier effects. A test pins each number the spec states.
+- Put the maths in pure functions with JUnit tests: the curve, team scaling, the share of the tree
+  owned at level 30, per-tier effects. (Anchor gates and node costs were retired with the hub tree on
+  2026-10-26; every node costs 1 point.) A test pins each number the spec states.
 - For a progression question, model it: hours to each milestone in §4.3 at the stated ore rate, for a team
   of one and of five. Show the table.
 - When you change a number, say what it changes for the player and which other numbers move with it.

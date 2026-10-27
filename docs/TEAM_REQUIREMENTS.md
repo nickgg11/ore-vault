@@ -124,7 +124,7 @@ left no comment, the recommendation stands and the row says so.
 | Q15 | Vault Anchor as entry point | Takes one of the player's entry-point slots. | §3.3, §3.4; T10 |
 | Q16 | Reset vote screen opening by itself | No. A toast and a clickable chat line; the vote screen opens from the line. | §3.5, §8; T11 |
 | Q17 | Advancements, guide book, Vault Recall | No advancements and no Vault Recall in 1.0. A guide is decided after the first-ten-minutes playtest; if one is needed, a hover-in-JEI-and-hold-a-key guide is preferred over a book. | §12; T13 |
-| — | Conditional: party join disbands the solo team | No comment; recommendation stands: a party join is exempt, if the FTB Teams source read shows the disband. | T11 |
+| — | Conditional: party join disbands the solo team | No comment; recommendation stood. Settled 2026-10-27 by the FTB Teams 26.1.2.4 source read (`docs/research/neoforge-26.1-sources.md`): a party join never disbands the solo team, so nothing is archived and no exemption is needed. | ADR 0007; T11 |
 
 ## Shared task list
 
