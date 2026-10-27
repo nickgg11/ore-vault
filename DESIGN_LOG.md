@@ -14,6 +14,60 @@ Newest first.
 
 ---
 
+## 2026-10-27 — Four node items and choices defined
+
+**Where this came from.** Drafting the node stories turned up four nodes whose text names an item or a
+choice the spec never defined (E0-S14, #227). A node that cannot be described is not designed (2026-09-09).
+The answers are the Balancer's recommendations in the ticket; none of them moves a number. Stone Memory's
+own numbers for tiers 3 and 5 were set by Nick earlier the same day (Q8, below). The spec was changed in
+§6.1 Stone Memory, Guide Vein, Salvager's Eye and Wanderer's Cache.
+
+**Decisions.**
+
+| Decision | Reasoning |
+|---|---|
+| Stone Memory tier 4's "raw common ore nugget" is an existing nugget: a common metal's item from `c:nuggets/<material>`, picked by the common ores' baseline shares. Coal has no nugget and is never picked; on vanilla it is iron or copper | No new item means no texture, model or lang work for a 2% stone drop, and a pack's own common metals take part through their tags. Whether 26.1's `c:nuggets/copper` holds the copper nugget is unverified, to be read by E1-S5 (#195). |
+| Guide Vein's metal is copper or iron per vein, 50/50, from the chunk's seeded random | Generation runs off the main thread with no player involved (`CLAUDE.md` rule 1), so nothing a player chose can reach it, and a chunk must come out the same whenever it is first visited (§3.1). |
+| Salvager's Eye drops the raw form of a common ore, picked by the common ores' baseline shares from `c:raw_materials/<material>`, or one coal where the ore has no raw form. The player does not choose | A choice would need a screen and saved state for a growth node that retires at level 12. Weighting by the baseline gives the same mix of common ore the Vault's own veins give. |
+| Wanderer's Cache is an item dropped at the player every 50 of that player's `PlayerStats#chunksExplored`; opening it rolls `orevault:chests/wanderers_cache` and repairs | The text already said "drops" and "opener". The count is per player and saved, so it survives restarts and resets; which player a new chunk is credited to is left to ADR 0005 (E0-S8). |
+
+**Rejected.**
+
+- **A new raw-ore-nugget item for Stone Memory.** It would need a Designer texture story before the story
+  that registers it, for a 2% drop that an existing nugget covers.
+- **Letting the player pick Guide Vein's or Salvager's Eye's metal.** Guide Vein cannot read a player at
+  generation time, and Salvager's Eye would need UI and saved state for a node that switches itself off.
+- **A Wanderer's Cache count per team, or one kept in memory.** Per team, a team of five would get caches
+  five times as often as each member explores; in memory, a restart would lose up to 49 chunks of progress.
+
+---
+
+## 2026-10-27 — Vein Discipline across logout, and the death marker
+
+**Where this came from.** Two questions on saved shape were open before ADR 0005 (E0-S8, #225) could
+list `PlayerStats` and player-attachment fields: whether Vein Discipline's streak survives a logout and
+what a logout with a part-mined vein does, and what the Survey panel's death marker stores (E0-S13, #184).
+Both are answered by the documents rather than by a new decision. The spec was changed in §6.1 Vein
+Discipline and The Vault Keeps It, §8 Tab 3 and §11 Vault Session State.
+
+**Decisions.**
+
+| Decision | Reasoning |
+|---|---|
+| Vein Discipline's streak is saved on `PlayerStats` and survives logout. A logout with a part-mined vein is an abandon (streak −3), applied at logout from the in-memory trip record; a server crash applies nothing | §6.1 says the streak persists across trips. §6.1 defines abandoning as leaving the Vault with ore standing, and §11 counts logging out as leaving. The part-mined veins are trip state, which §11 keeps in memory, so a crash loses them and with them the abandon. |
+| The death marker is the player's last death in the team's current Vault, stored on the player attachment as `last_vault_death` (team, reset count, position). It is drawn at its Y on the depth gauge with X, Y and Z in its tooltip, and cleared when the reset count changes. The Vault Keeps It marks the same spot | One marker covers both uses. A reset replaces the terrain (§3.5), so a marker from the previous generation names a place that no longer exists. On the player attachment it follows the player, not the team file, so it needs no entry in `PlayerStats`. |
+
+**Rejected.**
+
+- **A logout that keeps the part-mined vein pending until the player returns.** It would need the vein's
+  state saved, and a logout would become a free way to step around the −3.
+- **A streak that ends with the trip, as Deep Habit's count does.** §6.1 says it persists across trips,
+  and the 2026-09-07 decay rule exists so that one slip does not cost fifteen veins of work.
+- **Keeping every death, or keeping the marker across a reset.** §8 draws one marker, and after a
+  reset the coordinates point into new rock.
+
+---
+
 ## 2026-10-27 — Nick's answers to the ticket questions
 
 **Where this came from.** Drafting the tickets for the rebuilt plan turned up seventeen questions only Nick

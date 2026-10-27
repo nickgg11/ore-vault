@@ -262,8 +262,10 @@ Vein** (Vein Expansion, Proliferation, Deep Veins), so it went to Nick. **He dec
   ahead of the player, off-thread, in any order. It may use chunk coordinates, band and Y window, vein
   count and size, and team level. S12's mix check runs with Guide Vein off, since it adds common ore. The
   retrofit into existing chunks (section 4) is outside this and not yet reviewed.
-- **Decision records**: ADR 0008 "Baseline ore as vein count, size and height profile" (the model, derived
-  shares, floor clip, sampling classifier). The chunk-border shape rule goes in the planned ADR 0004.
+- **Decision records**: ADR 0009 "Baseline ore as vein count, size and height profile"
+  (`docs/adr/0009-baseline-ore-model-and-classifier.md`: the model, derived shares, floor clip, sampling
+  classifier). It was planned as 0008, but S47 reserved 0001 to 0007 and commit bf13b82 numbered the tool
+  wear record 0008. The chunk-border shape rule goes in the planned ADR 0004.
 
 ## 6. What a playtest must check
 
@@ -297,7 +299,7 @@ to measure a real vanilla world (2026-10-26), since the Vault is solid rock.
   size is not blocks (answered: sizes now in configured units); closed-form density overcounts at high
   density through overlap (answered: counts allow for it, curve reads placed blocks); per-rarity counts
   cannot make deepslate "tilt rarer" (answered: deepslate has its own counts and mix); ore before gravel
-  (adopted). Classifier notes for ADR 0008: build the `WorldGenerationContext` from the real overworld
+  (adopted). Classifier notes for ADR 0009 (planned as 0008 when this was written): build the `WorldGenerationContext` from the real overworld
   rather than hard-coding -64/384; read private placement fields by encoding through
   `PlacementModifier.CODEC` instead of new access transformers; "all-biome" means present in the
   underground-ores step of every overworld biome source biome; custom-config ores (Mekanism's) and

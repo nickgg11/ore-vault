@@ -41,10 +41,22 @@ breaks.
 - Every block and item: visible in creative, in JEI, with a model and a texture, not the purple cube.
 - Every node: a lang key for its name and description; no raw keys in a tooltip.
 - Singleplayer with a team of one: nothing divides by team size zero.
-- Ore density in a freshly generated Vault matches the spec within tolerance (use the test-ore command).
+- Ore density in a freshly generated Vault matches the spec within tolerance: `/orevault density` on a
+  dedicated server (S12), never the old test-ore cube fill.
 - Vanilla XP still drops from ore in the Vault.
 - Machine-broken blocks pay no Resonance.
 - Config: each value changed in game does what its tooltip says, when it says.
+- A death inside the Vault ends the trip: a death exit fires no dimension-change event, so a per-tick guard
+  ends it (old #149).
+- No stuck death screen after a dimension change: the player is not left invulnerable while
+  `isChangingDimension()` holds (old PR #108).
+- Choosing a fork option is not refused on an empty pool: the free-option check runs before the point
+  check (old #102).
+- A growth node stops paying once its condition can no longer be met, and is drawn Outgrown (old #139).
+- Attribute modifiers from nodes (max hearts, travel stats) survive respawn, are removed where the spec says
+  and never apply twice on re-entry or relog (old #143).
+- A node id removed from the layout does not crash the load: it is dropped and its point returned (old PR
+  #110, §6 Saved state).
 
 ## Playtest scripts for Nick
 
