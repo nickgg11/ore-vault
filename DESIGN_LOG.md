@@ -14,6 +14,92 @@ Newest first.
 
 ---
 
+## 2026-10-27 — What the Epic 0 review changed
+
+**Where this came from.** Nine roles reviewed the Epic 0 records in round 1 (the architecture records in
+`docs/adr/`, the spec changes, `docs/PLAYER_STORIES.md`, `docs/TEAM_REQUIREMENTS.md` and the 26.1 source
+notes), and the Manager ruled on every objection from the documents. Most rulings fix wording or add a test.
+The rows below are the ones that change a decision, each with what it replaced; three more were put to Nick
+and he took the recommended option on each the same day (below). The spec
+was changed in §3.1, §3.4, §3.5, §4.2, §4.3, §6.1, §8, §10, §11 and §13.
+
+**Decisions.**
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| A reset vote that has not passed within 120 seconds (2,400 ticks, a constant) fails. The initiator can cancel the countdown | "Within its time limit", with 60 seconds proposed in ADR 0007; no cancel in §3.5 | A member mid-vein or mid-fall needs time to finish, open chat and click; a toast shows for 5 seconds and a chat line for about 10. Longer lets the online set drift. The Balancer owns the number. Unplaytested; Nick's E11 session confirms it. |
+| Team level is not in the generation snapshot | Team level in `GenSnapshot`, as the E0-S5 ticket listed | No 1.0 generation node reads it, and the snapshot is memory only, so adding it later costs no migration (`CLAUDE.md` rule 7). |
+| A team file that exists but cannot be read is copied aside to `team_<hex>.dat.unreadable-<gametime>` with an ERROR naming the path, and play goes on with a new team record | Nothing: 26.1's `SavedDataStorage` returns null on a load error and the next save wrote an empty team over the real file | Both forms considered keep the original bytes, which is what QA tests. Carrying on keeps the session; the original is there to recover. |
+| A player whose team changes while inside another team's Vault is sent to their return position with a chat line saying why; the login check does the same for a Vault not the player's current team's; ore broken in a Vault pays only that Vault's team | Unhandled: a member removed from a party could keep mining in its Vault, paying nobody knew whom | A Vault belongs to one team (§3.1), and records stay with the old team (Q3). The Reviewer asked for the eviction and the Playtester for the message; this does both. |
+| A clean server stop is a logout for every player and applies Vein Discipline's abandon once; only a crash applies nothing | "A restart treats nothing as abandoned" (ADR 0004) | A clean stop runs the logout for every player, and §11 counts logging out as leaving. It costs at most one slip a session, which the 2026-09-07 decay rule absorbs. |
+| A Resonance orb's base pull radius is 8 blocks, vanilla's; Resonance Magnetism is 12 / 16 / 24 | Magnetism 8 / 16 / 24, with the base radius unstated | Tier 1 at 8 equalled vanilla's radius and did nothing, the "node that does nothing" failure the Balancer's checklist exists for. Unplaytested; T9 confirms it. |
+| A "+x% vein size" is +x% of a vein's mean blocks, reached through the inverse of the shape table; size bonuses sum, Abundance's −20% multiplies after, and guide veins take no generation bonus | No unit; read as vanilla's configured `size`, +100% would have meant four to five times the blocks | §6.1 Guide Vein's "about 7%" and the team requirements' 26.4% were only true on the blocks reading. On it nothing in 1.0 reaches the 37 split, which stays as a safety net. |
+| Pathfinder's Claim sets a chunk's `pathfinder_claimed` on its first hand-broken indexed ore whether or not the team owns the node, and pays only when it does | Every chunk generated since the index existed paid once, including chunks mined before the purchase | As first written, the node paid 50 XP for every old chunk the team revisited after buying it. |
+| A node the team could buy but for an unspent point is "in reach", drawn as buyable without the highlight, its tooltip naming the level of the next point | Three locked states only, so such a node read as locked or out of reach | At level 0 on first login, and after most shopping trips, every node next to what the team owns is in this state; drawn as locked the start reads as a wall. Final on Nick's E8-S5 preview. |
+| Node descriptions say in words what the node does and repeat no number; every number is an argument of the per-tier effect line, filled from the effects constants | "Each description states the effect with every tier's number" (2026-09-09) | Nick's Q12 answer replaced the every-tier tooltip. The 2026-09-09 rules still hold: no flavour text, no hedge words, every number traced to a constant. |
+| Apprentice's Ledger counts only ore mined by hand while the team owns the node | Unstated: ore mined earlier on the trip could use up the 100 | The difference at level 1 is up to about 33 doubled ore, a whole level; the generous reading is also the simpler rule. |
+| A vein Volatile Veins vanishes closes silently: no streak step or −3, no Chapter's End count, no Last Ore or Clean Cut. Last Ore pays when a hand break completes the vein through its own collateral, such as Brittle Stone's | Unstated | Counting a vanished vein as completed lets a 3% roll finish veins for the streak; counting it as abandoned charges twice for a risk already paid. Without the collateral rule Brittle Stone switches Last Ore off in most compact veins. |
+| The 40% floor's factor is `min(1, 0.60 / densest)`, over the densest region the nodes create in a band (Deep Veins' layers, a Vein Singularity chunk), one factor per band | One factor per band computed on the band's average | On the average, a Singularity chunk under a clipped band still came out near 100% ore. |
+| An ore's weight when picking which ore a vein is includes the share of overworld biomes that place it | Expected blocks a chunk counted as if every chunk were every biome | Emerald, a mountain-only ore, came out as 55% of all rare ore; weighted by biome share it is about 18%. |
+| Wanderer's Cache is the item `orevault:wanderers_cache`; its tier is stamped on it at the drop as `orevault:cache_tier`; its repair picks the damageable hotbar item with the highest damage fraction, ties to the lower slot; its tier 2 book is a second loot table, `orevault:chests/wanderers_cache_book`, with `random_chance` 0.2 | An unnamed "supply cache"; tier, target and book chance unstated or in code | The id is save data from T5 and decides the texture story. A loot table lets a pack retune the book like the rest of the cache. |
+| A reveal by Chapter's End lasts 30 seconds (600 ticks) | No duration | It fires once per chunk, so it must last long enough to tunnel about 30 blocks to the nearest vein it shows. Unplaytested. |
+| A chunk with no generation stamp reads "Generated before this was tracked" on the Survey panel, apart from "generated with older nodes" | Both read as "not current" | A team with no generation nodes in a chunk made before stamps existed was told its chunk was out of date. |
+| The empty-state line shows while the team's pool and level are 0 | "Until the team first enters a Vault", which nothing on the wire carries | Same meaning for a new team, and no protocol change. |
+| A generation tradeoff vote is applied at the end of the tick in which the Vault holds no player other than a spectator | "At the moment the last player leaves" | A player logging out is still in the level when the logout event fires, so the moment of leaving is the wrong tick. |
+| Stone Memory's XP column is the total a block drops at each tier: 1, 2, 3, 4, 5 | "+2 XP", "+3 XP" read either as totals or as additions (15 at tier 5) | The Balancer's XP-a-minute figures use the totals reading. |
+
+**Nick's answers (2026-10-27).** He chose the recommended option on all three.
+
+- **Ore at every height. Answered 2026-10-27: Nick chose "same density at every height".** In §3.1 and
+  ADR 0009: the same density at every height (3% stone, 6% deepslate, the same mix), with which ore a vein
+  is still set by height. Rejected: vanilla's
+  height profile, which puts about 15% ore in the 16 layers above bedrock and 1.7 to 2.7% above them, so
+  floor mining would finish the 100-hour curve in about 13 hours. This unblocks ADR 0009, E4-S1 (#234)
+  and E4-S3 (#247).
+- **What Wanderer's Cache counts. Answered 2026-10-27: Nick chose "chunks walked into, 50 each".** In
+  §6.1, §11 and ADR 0004 Amendment 1: chunks a team member stands in for the first time, found by an
+  end-of-tick check, 50 a cache, one flag per chunk. Rejected: generated chunks at one cache per 1,000. Generated chunks at 50 paid about 20 times the intended rate (21 chunks generated for each chunk
+  crossed at view distance 10; 8 caches on first arrival). Waits for E9-S33 (#338).
+- **A bed in the Vault. Answered 2026-10-27: Nick chose "no explosion".** In §3.1: the bed says you cannot
+  sleep here. Rejected: exploding as in the Nether.
+
+**What this supersedes.**
+
+- In "What the architecture records changed in the spec" below: the chunk-credit row (nearest member
+  within view distance, now chunks walked into, Nick), the reset vote's time limit "not in the spec yet" (now 120
+  seconds), and the bed under "Still open" (now settled by Nick: no explosion).
+- In "Four node items and choices defined" below: weighting the nugget and Salvager's Eye by "share of the
+  common ore the baseline places" now names ADR 0009's whole weight (coal 1,108, iron 646, copper 134 on
+  vanilla), not a share within the band being mined.
+
+**Rejected.**
+
+- **Refusing writes to an unreadable team file for the session** (Reviewer). It loses a whole session of
+  play with nothing on screen saying so, the silent-failure class `docs/LESSONS_LEARNED.md` lists.
+- **Keeping team level in the generation snapshot** because the ticket listed it. No reader.
+- **A 60-second vote timeout** (ADR 0007's proposal). Fails real votes from members mid-vein.
+- **Badging or dimming every node in reach.** It puts a team-wide fact, already in the header, on every
+  node.
+- **Setting `pathfinder_claimed` only while the node is owned.** It pays for the backlog of old chunks.
+- **Vein size bonuses on vanilla's configured `size`.** Not a block count; +100% would be four to five
+  times the ore.
+- **Pricing the curve on the floor's ore density** (the alternative to the flat height rule). Everyone not
+  mining at the floor would be about 7 times slower.
+
+**Still open.**
+
+- Stone Memory's XP against refund prices. At tier 1 about 115 XP a minute reaches 30 levels from 0 in
+  about 12 minutes, under 3 at tier 5, so toggling a keystone (refund 30 levels, rebuy with the returned
+  point) costs minutes rather than hours. No change now: a toggle also costs two portal trips, and Nick
+  likes being overpowered. If his sessions show him toggling, the fix is a rebuy cooldown on a refunded
+  keystone or pact (one 24-hour game-time window), not dearer XP, which would also punish honest reroutes.
+  Recorded for the T9 Stone Memory and keystone batch, E9-S11 (#315) and E9-S64 (#367).
+- Seismic Sense's compass margin: the needle points at a denser chunk only when it beats the viewer's own
+  by a margin, and holds its target until another beats it by the same margin, the constant `COMPASS_MARGIN`.
+  The Balancer sets its value before E9-S32a (#336).
+
+---
+
 ## 2026-10-27 — What the architecture records changed in the spec
 
 **Where this came from.** ADRs 0001 to 0007 and 0009 were written for Epic 0 (E0-S3 to E0-S10, #179,
@@ -74,7 +160,7 @@ own numbers for tiers 3 and 5 were set by Nick earlier the same day (Q8, below).
 | Stone Memory tier 4's "raw common ore nugget" is an existing nugget: a common metal's item from `c:nuggets/<material>`, picked by the common ores' baseline shares. Coal has no nugget and is never picked; on vanilla it is iron or copper | No new item means no texture, model or lang work for a 2% stone drop, and a pack's own common metals take part through their tags. Whether 26.1's `c:nuggets/copper` holds the copper nugget is unverified, to be read by E1-S5 (#195). |
 | Guide Vein's metal is copper or iron per vein, 50/50, from the chunk's seeded random | Generation runs off the main thread with no player involved (`CLAUDE.md` rule 1), so nothing a player chose can reach it, and a chunk must come out the same whenever it is first visited (§3.1). |
 | Salvager's Eye drops the raw form of a common ore, picked by the common ores' baseline shares from `c:raw_materials/<material>`, or one coal where the ore has no raw form. The player does not choose | A choice would need a screen and saved state for a growth node that retires at level 12. Weighting by the baseline gives the same mix of common ore the Vault's own veins give. |
-| Wanderer's Cache is an item dropped at the player every 50 of that player's `PlayerStats#chunksExplored`; opening it rolls `orevault:chests/wanderers_cache` and repairs | The text already said "drops" and "opener". The count is per player and saved, so it survives restarts and resets; which player a new chunk is credited to is left to ADR 0005 (E0-S8). |
+| Wanderer's Cache is an item dropped at the player every 50 of that player's `chunks_explored` on `PlayerStats`; opening it rolls `orevault:chests/wanderers_cache` and repairs | The text already said "drops" and "opener". The count is per player and saved, so it survives restarts and resets; which player a new chunk is credited to is left to ADR 0005 (E0-S8). |
 
 **Rejected.**
 

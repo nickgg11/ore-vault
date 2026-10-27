@@ -138,7 +138,7 @@ Each row below is a design that read well on paper and was rejected, usually in 
 | Anchors gated on team level | A team can grind levels without committing | Gated on points spent, as a fraction of total tree cost |
 | Repricing early keystones for the Mastery gate | Removes the early decision they exist for | `[PACT]` class: keystones allowed to be early |
 | Refunding growth nodes when they retire | Makes them free picks | Point kept, node shown as Outgrown |
-| Flavour text in descriptions | "The mirror image." tells a player nothing | Description states the effect and every tier's number |
+| Flavour text in descriptions | "The mirror image." tells a player nothing | Description states the effect precisely; since Q12 (2026-10-27) the numbers are in the per-tier effect line, filled from the effects constants, not typed into the description |
 | A test that every description has a digit | Many precise descriptions have none | `NodeLangTest` bans hedge words like "moderate" |
 | Vague-but-honest descriptions for undefined nodes | The node was never specified | Pick the number, put it in `NodeCosts` |
 | Hard reset on Vein Discipline's streak | Punishes exploring | Streak decays by 3 |

@@ -1,8 +1,9 @@
 # 0009. Baseline ore as vein count, size and height profile, and the sampling classifier
 
-Status: proposed, 2026-10-27, for T4 (E0-S7, #182). Spec: §3.1 Baseline ore distribution, §4.2 rarity
-classification, §4.3 step 4, §11 Ore Rarity Classification. Research: `docs/research/vanilla-ore-generation.md`
-sections 2, 3 and 5.
+Status: proposed, 2026-10-27, for T4 (E0-S7, #182). The height placement below is Nick's answer to
+question 1 on 2026-10-27: same density at every height, ore type still by height. Spec: §3.1 Baseline ore
+distribution, §4.2 rarity classification, §4.3 step 4, §11 Ore Rarity Classification. Research:
+`docs/research/vanilla-ore-generation.md` sections 2, 3 and 5.
 
 Numbered 0009, not 0008: S47 reserved 0001 to 0007 for the planned records, and commit bf13b82 numbered the
 tool wear record 0008 after them. The research doc's section 5 planned this record as "ADR 0008"; that
@@ -28,9 +29,17 @@ for plain stone until PR #117 added `isClassifiedOre` (`docs/research/issue-harv
 The research measured vanilla 26.1.2 in solid rock, Nick kept 3% stone and 6% deepslate, and §3.1 now
 states the baseline as counts per rarity and band (about 141, 82 and 33 veins in the stone band; 65, 52
 and 25 in deepslate), configured sizes (9–12, 7–9, 5–7) and gravel and clay blobs. §4.2 states the rarity
-rule: Common at 100 or more expected blocks a chunk over every overworld feature placing the ore,
-otherwise Rare under 4.5 blocks a vein, else Uncommon. This record decides how the code holds the
-baseline and how the classifier reads a pack.
+rule: Common at 100 or more expected blocks a chunk over the features the classifier uses for it (its
+all-biome features, or its biome-only ones when it has none; step 3 below), otherwise Rare under 4.5
+blocks a vein, else Uncommon. This record decides how the code holds the baseline and how the classifier
+reads a pack.
+
+In round 1 the Balancer modelled the first draft's height placement per 16-layer slab (BAL-1): with each
+rarity's veins placed by its mapped vanilla profile, the base type's lowest 16 stone layers came out about
+15% ore and everything above 1.7 to 2.7%. A player strip-mining at the floor would level about 7.5 times
+faster than the §4.3 curve, which prices the band average, so the 100 hours would become about 13, and the
+arrival height would read thinner than 3%. That is the 2026-09-27 failure again: a curve priced for a Vault
+nobody mines. The height decision below answers it.
 
 ## Decision
 
@@ -76,35 +85,77 @@ generation nodes' changes (T9), multiplies by the band's clip factor, and rolls 
 chunk seed: `floor(c)` veins, plus one when a draw falls under `c - floor(c)`. There is no fill-to-budget
 loop.
 
-The clip factor is one number per band, the same for every rarity, so clipping never shifts the mix. It is
-computed on the main thread when the snapshot is built (ADR 0003): the band's requested density, in closed
-form from `OreBaseline` with the team's generation nodes applied (including veins those nodes add, such as
-Guide Vein's), against the 60% ore cap of §3.1; the factor is `min(1, 0.60 / requested)`. It travels in
-`GenSnapshot`, so the generator never computes it from team state. Gravel and clay are not clipped; they
-count as stone. A per-band hard stop in the placer stays as a safety net only, and S13's test, at the full
-deepslate stack (132% requested), asserts the clip holds the band under 60% without the stop firing.
+There are two clip factors, one for the stone band and one for the deepslate band, each the same for every
+rarity in its band, so clipping never shifts the mix. Each is computed on the main thread when the
+snapshot is built (ADR 0003) as `min(1, 0.60 / densest)`, where `densest` is the highest ore density, in
+closed form from `OreBaseline` with the team's generation nodes applied (including veins those nodes add,
+such as Guide Vein's), that the nodes request in any one region of that band: a band-wide request, a
+layer range a node concentrates ore into (Deep Veins' lowest 30 layers), or one chunk outcome of a
+per-chunk roll (a Vein Singularity chunk). The §3.1 cap is on every block of the Vault, not the band
+average, so the factor is set by the densest region (Balancer, BAL-3). It travels in `GenSnapshot`, so the
+generator never computes it from team state. Gravel and clay are not clipped; they count as stone. A
+per-band hard stop in the placer stays as a safety net only.
 
-### Height: one profile per rarity and band
+The clip test computes the full stack's request for each band from `OreBaseline` with every generation
+node at its top tier, asserts that the deepslate request is above 0.9 (so the clip really fires), and then
+runs the placer over 81 chunks for each region outcome and asserts that every 16-layer slab, averaged over
+those chunks, is at or under 60% within S12's 5% relative tolerance, and that the hard stop never fired.
+The record quotes no figure for the full stack: the earlier 132% came from the tiered tree and was never
+re-derived, and the Balancer's estimate is 100 to 140% until T9 pins Vein Shaping and Stone Reduction
+(BAL-4). The figure is recorded once T9 pins them.
 
-Each classified ore carries a block-weighted height profile over the overworld's generation range, in 24
-bins of 16 layers (Y-64..319), summed over the features the classifier uses for it (below).
+### Height: veins spread evenly through the band, ore type by height
 
-The profiles are mapped onto the Vault by one linear map: the overworld range Y-64..319 onto the expanded
-type's mineralizable column, Y-63..245, the same map for both dimension types, so an ore sits at the same
-Vault height whichever type a team has. In the base type, whose column starts at Y=1, the mass the map puts
-below Y=1 goes into the stone band's lowest 16 layers. That is §3.1's "clamped into it rather than
-skipped", stated as arithmetic.
+Nick's answer to question 1, 2026-10-27: "Same density at every height".
 
-For each band and rarity, the rarity's profile is the sum over its ores of each ore's weight × its mapped
-profile, restricted to the band. An ore's weight is its expected blocks a chunk in the overworld. If a
-rarity has no mass in a band, its whole mapped profile is moved into the band's nearest bins. A vein
-draws its bin from the rarity's band profile, a layer uniformly inside the bin, and then its ore from the
-rarity's ores in proportion to weight × that ore's mapped profile at the bin. That reproduces vanilla's
-mix at each depth, rescaled, and places a modded ore where its own features put it.
+A vein's height is drawn uniformly over its band's layers, for every rarity. Each band then holds its
+density and its mix at every height: 3% at 68/25/7 in every slab of the stone band, 6% at 60/30/10 in
+deepslate. The curve holds wherever a player mines. Going deeper pays through the nodes priced for it
+(Deep Veins, Deep Harvest, Bedrock Communion; Shallow Grace and Highwater Mark from the other side), not
+through the baseline.
 
-These profiles are built once at server start from the classifier's table, and `OreBaseline` with them is
-immutable, so the generator thread reads it safely. The profiles never change a count, a share or the
-density, so the curve does not depend on the pack.
+Which ore a vein is still follows height. Each classified ore carries a block-weighted height profile over
+the overworld's generation range, in 24 bins of 16 layers (Y-64..319), summed over the features the
+classifier uses for it (below). The profiles are mapped onto the Vault by one linear map: the overworld
+range Y-64..319 onto the expanded type's mineralizable column, Y-63..245, the same map for both dimension
+types, so an ore sits at the same Vault height whichever type a team has. In the base type, whose column
+starts at Y=1, the mass the map puts below Y=1 goes into the stone band's lowest 16 layers. That mass now
+decides only which ores appear there, not how many veins.
+
+Once a vein has its rarity and its layer, its ore is drawn from that rarity's ores in proportion to each
+ore's weight × its mapped profile at the layer's bin. Where no ore of the rarity has mass at that bin, the
+draw uses the nearest bin in the band that has some (the lower one on a tie). So diamond sits low and
+emerald high, coal and iron through the upper band, and an uncommon or rare vein high in the band, where
+vanilla puts no ore of its rarity, takes the ores of the nearest height that has one: some gold or redstone
+appears high up.
+
+An ore's weight is its expected blocks a chunk in the overworld × the share of the overworld's
+`possibleBiomes()` that list the feature, summed over its features. An all-biome feature (step 3) counts at
+1.0, since the classifier already treats it as everywhere; a biome-only feature counts at its share, about
+0.18 for emerald's mountain feature on vanilla. Without the share, emerald's single mountain feature
+counted every chunk as a mountain and made 55% of rare blocks emerald (Balancer, BAL-2); with it, emerald
+is about 18% of rare. The share changes only the weight used to pick an ore; the §4.2 rule classifies on
+the unweighted expected blocks of step 8. On vanilla the common weights are unchanged, coal 1,108, iron
+646 and copper 134, the figures §6.1 Salvager's Eye cites.
+
+### Publication to the generator threads
+
+The classifier's table and the profiles are built on the main thread at server start and read on the
+generator's worker threads. The classifier publishes them as one immutable object through a `volatile`
+field, written once, before ADR 0002's restore registers any Vault level, so no chunk of any Vault can
+generate before it. The volatile write happens-before every later read, so a worker that sees the object
+sees all of it. Nothing writes the field again in the session; `/reload` does not reclassify. `OreBaseline`
+itself is a constant record.
+
+### The ore group's id
+
+Stone and deepslate variants are one ore (step 4 below). The group's id, the string every other record
+stores for it (ADR 0004's vein palette, ADR 0005 section 1), is the `Identifier` string of the block the
+group places in the stone band: the target whose `RuleTest` matches stone's default state. A group with no
+stone-band block uses its deepslate-band block. If a group has more than one stone-band block (two features
+merged it), the id is the least of them by string order. The id is a block id, not a name derived from the
+grouping, so a mod that later adds a feature targeting `minecraft:iron_ore` cannot change what a stored
+iron vein is (ADR 0004, "What a vein's ore matches").
 
 ### The classifier
 
@@ -125,19 +176,22 @@ memory for the session, never on disk (§11). A `/reload` does not reclassify.
    copper: `ore_copper` is absent from dripstone caves, so copper would fall to its biome-only features and
    pull in `ore_copper_large` (527 blocks a chunk, research section 2). With the majority reading,
    badlands' `ore_gold_extra` and `ore_copper_large` are ignored and emerald, which has only the mountain
-   feature, keeps it.
+   feature, keeps it. The share of biomes listing each feature is kept for the weight above.
 4. Stone and deepslate variants are grouped: blocks targeted by the same feature belong to one ore, so a
    feature is counted once per ore, not once per target. Which variant each band places is found by
    testing each target's `RuleTest` against stone's and deepslate's default states (`RuleTest#test(BlockState,
    RandomSource)` is public, `levelgen/structure/templatesystem/RuleTest.java` line 11; `targetStates`,
    `target` and `state` are public fields of `OreConfiguration`). A single-variant ore places that block
-   in both bands.
+   in both bands. The group's id is as stated above.
 5. Placement fields are read by encoding each `PlacementModifier` through `PlacementModifier.CODEC` with
-   `JsonOps` and decoding the field it carries: `count` (an `IntProvider`, codec
-   `IntProviders.codec(0, 4096)`), `chance` on `rarity_filter`, and `height` (a `HeightProvider`, decoded
-   with `HeightProvider.CODEC`). All three are codec fields (`CountPlacement.java` line 11,
-   `RarityFilter.java` line 9, `HeightRangePlacement.java` lines 14–15), so no access transformer is
-   needed. A modifier type the classifier does not know is passed over and logged once per type.
+   `RegistryOps.create(JsonOps.INSTANCE, server.registryAccess())`, not bare `JsonOps`, and decoding the
+   field it carries: `count` (an `IntProvider`, codec `IntProviders.codec(0, 4096)`), `chance` on
+   `rarity_filter`, and `height` (a `HeightProvider`, decoded with `HeightProvider.CODEC`). Registry ops are
+   needed because modifiers that hold holder sets (block predicate and environment scan filters, and
+   modded ones) fail to encode without them and would be passed over for the wrong reason (Developer,
+   DEV-20). All three fields are codec fields (`CountPlacement.java` line 11, `RarityFilter.java` line 9,
+   `HeightRangePlacement.java` lines 14–15), so no access transformer is needed. A modifier type the
+   classifier does not know is passed over and logged once per type.
 6. Heights are sampled, not switched on by provider type: 4,096 draws from a fixed seed per feature, with
    the public `HeightProvider#sample(RandomSource, WorldGenerationContext)` (`HeightProvider.java` line 19),
    against `new WorldGenerationContext(overworldGenerator, overworld)`, whose public constructor takes the
@@ -185,11 +239,22 @@ cannot come back through a default.
 - Pure golden fixture: vanilla 26.1.2's 21 features from research section 2, entered as plain numbers,
   give coal, iron and copper Common, gold, redstone and lapis Uncommon, diamond and emerald Rare, with
   expected blocks within 10% of the research figures. Lapis (4.97 blocks a vein against 4.5) has the
-  thinnest margin and is asserted on its own.
-- A gametest on a dedicated server runs the real classifier on vanilla and asserts the same eight classes.
-  The old bug was in reading the features, not in the rule, so only this test would have caught it.
-- The placer count above, the clip test at the full deepslate stack, and a test that a block with no entry
-  pays 0.
+  thinnest margin and is asserted on its own. The fixture also asserts the weights: emerald's biome share
+  applied, common weights 1,108, 646 and 134 within 10%.
+- A gametest on a dedicated server runs the real classifier on vanilla and asserts the same eight
+  classes, each ore's expected blocks within 10% of research section 2, and the features used: copper
+  without `ore_copper_large`, gold without `ore_gold_extra`. A class can come out right from the wrong
+  features, and the old bug was in reading the features, not in the rule, so only this test would have
+  caught it.
+- Unit cases in `core.gen`: the fractional roll's mean over many seeds equals `c`; with no generation
+  nodes, vein heights are uniform in the band, every 16-layer slab within 10% relative of the band density over 81 chunks, the lowest 16
+  layers included; the base type's below-Y=1 mass lands in the identity profile of the lowest 16 stone
+  layers; a bin where a rarity has no ore mass draws from the nearest bin with mass, the lower on a tie;
+  the group id is the stone-band block, and the deepslate one for a group with none.
+- The placer count above, the clip test above, and a test that a block with no entry pays 0.
+- On a dedicated server, `/orevault density` over at least 81 generated chunks checks S12's tolerances
+  and the per-slab rule against blocks the generator really wrote. The pure tests cannot catch a generator
+  that writes blocks wrong; this is S12's second step (`docs/TEAM_REQUIREMENTS.md` S12).
 
 ## Consequences
 
@@ -197,14 +262,17 @@ cannot come back through a default.
   `HeightProfile`; `ore` is a new adapter package (ADR 0001).
 - `LevelCurve` depends on `core.gen`. A Balancer change to a count or size reprices the curve in the same
   commit, and the curve tests show it.
+- The curve's ore an hour holds at any Y, so the §4.3 pacing check needs no height. A player who mines at
+  the floor finds deep ore types there, not more ore.
 - Node effects that change generation (T9) express themselves as changes to counts and sizes per rarity
-  and band, so the clip factor can be computed for them. A node that cannot be written that way needs this
-  record amended first.
-- The linear height map decides where diamond sits. In the base type it piles into the stone band's lowest
-  16 layers; in the expanded type most diamond moves into deepslate, and the stone band's rare veins are
-  diamond near its floor and emerald near its top. That is "diamond generates low because diamond
-  generates low", but it is a feel question the Balancer should confirm and Nick's T4 ten-minute mine
-  should look at.
+  and band, or a region of the band they concentrate into, so the clip factor can be computed for them. A
+  node that cannot be written that way needs this record amended first.
+- The height map decides which ore a vein is. In the base type the lowest 16 stone layers carry the
+  deep types (diamond, redstone, gold); in the expanded type most of those move into deepslate, and the
+  stone band's rare veins are diamond near its floor and emerald near its top. Above the highest bin where
+  vanilla puts an uncommon ore, every uncommon vein takes that bin's ores, so the upper band's uncommon
+  veins are mostly lapis and gold on vanilla. Unmeasured: the Balancer's model should confirm the mix by
+  height before T4, and Nick's T4 ten-minute mine looks at it.
 - A pack whose ores are placed by a feature type that is not `OreConfiguration`-based (Mekanism's custom
   config is the known case, research section 7) generates those ores only through an override.
 - The classifier's sampling costs 4,096 draws per height provider at start-up, a few hundred features in a
@@ -212,28 +280,81 @@ cannot come back through a default.
 
 ## Rejected alternatives
 
+Rejected by Nick's answer to question 1 (2026-10-27):
+
+- Placing each rarity's veins by its mapped vanilla height profile (the first draft of this record, and
+  question 1 option B). The floor becomes a treasure layer: about 15% ore in the base type's lowest 16
+  layers against 1.7 to 2.7% above, so floor-mining levels about 7.5 times faster than the curve and the
+  100 hours become about 13. Pricing the curve on the richest slab instead makes everyone who does not mine
+  at the floor about 7 times slower.
+
+Rejected:
+
 - Holding the baseline as a density and a mix and filling toward a block budget, as old PR #153 did. S13
   rules it out, and the generated amount then depends on fill order and overlap rather than on counts the
   tests can pin.
 - Per-ore counts copied from vanilla. Density would grow with the modpack, and the mix would drift past
   S12.
+- One clip factor from the band's average request. The cap is on every block, and a Vein Singularity chunk
+  or Deep Veins' layers can exceed 60% while the average is under it (BAL-3).
+- An ore's weight from its expected blocks alone. A biome-only feature then counts every chunk as its
+  biome, which made emerald over half of rare ore (BAL-2).
 - Switching on height provider type, as the old classifier did. It silently drops any provider it does not
   know, which is how most of vanilla went missing.
+- Encoding modifiers with bare `JsonOps`. Holder-set modifiers fail to encode (DEV-20).
 - Running the placement chain (`PlacementModifier#getPositions`) on a fake context. It needs a
   `PlacementContext` over a `WorldGenLevel`, and a biome filter reads the level.
 - Calling vanilla's `OreFeature` to place veins. It needs a `WorldGenLevel`, writes blocks instead of
   returning extents, and spills into neighbouring chunks (research section 5; ADR 0004).
 - The midpoint of merged height ranges as an ore's depth, as old PR #153 did. It put iron at about Y=160.
 - A default rarity for unclassified blocks. It is the stone-pays-5 bug.
+- A group id derived from the classifier's grouping. It would change when a mod's feature joins or leaves
+  a group, and every stored vein of that ore would read as foreign (Reviewer, RV-2).
 - Computing shares at start-up by running the placer. It would give the same number as the test but hide a
   drift between the shape code and the curve instead of failing on it.
 
 ## Spec sections changed
 
-§3.1 (the 40% floor bullet and "Where each ore sits"), §4.2 (the rarity classification paragraph), §4.3
-step 4 and §11 Ore Rarity Classification. The exact old and new text is in the run's
-`spec-changes/E0-S7.md` for the Writer to apply.
+Applied in the same PR: §3.1 (the 40% floor bullet: two factors set by the densest region; the weight's
+biome share in "Where each ore sits"), §4.2 (the rarity classification paragraph, "over the features the
+classifier uses for it"), §4.3 step 4 and §11 Ore Rarity Classification.
+
+Waiting for Nick's answer to question 1: §3.1 "Where each ore sits" reworded to say veins are spread
+evenly through each band's height and the profile picks only which ore a vein is. The Writer applies it
+when he answers, with a dated `DESIGN_LOG.md` entry.
 
 ## Reviews
 
-To be filled: developer, reviewer, qa, writer. Each verdict lists what it checked.
+Round 1, 2026-10-27. Matrix reviewers: developer, reviewer, qa, writer; the balancer reviewed because the
+record holds the baseline's numbers. Rulings are the Manager's triage of the same date.
+
+- Developer: approve with comments. Checked `CountPlacement.CODEC` line 11, `HeightRangePlacement.CODEC`
+  lines 14 to 15, `RarityFilter` lines 9 to 10, `HeightProvider#sample` line 19, the public
+  `WorldGenerationContext` constructor, `Biome#getGenerationSettings` lines 207 to 208,
+  `ScatteredOreFeature` line 23. DEV-20 (encode with registry ops): fixed in step 5.
+- Reviewer: approve with comments. Checked one pure record with derived figures; counts per rarity; one
+  clip factor per band in the snapshot; the codec path needing no access transformer; the access
+  transformer caveat; no default rarity; the gametest that would have caught the old bug. RV-19 (publish
+  the table and profiles safely to the generator threads): fixed, one `volatile` write before any Vault
+  registers. RV-2's group-id part (merged M8): fixed, the group id is the stone-band block id.
+- QA: approve with comments. Checked the baseline record, the 81-chunk placer test and its S12 tolerances,
+  the clip test, the classifier steps and the Tests section against S12, S13 and old #15. QA-27 (a class
+  can be right from the wrong features): fixed, the gametest asserts expected blocks and the features
+  used. QA-28 (tests stop at the pure placer): fixed, `/orevault density` over 81 chunks on a dedicated
+  server is in Tests. QA-29 (unit cases for the roll, the clamp, the empty bin): fixed for option A; the
+  band-floor case is the per-slab check, which depends on Nick's answer.
+- Writer: request changes. Checked counts, sizes and band heights against §3.1; the height map and the
+  16-layer clamp against §3.1 "Where each ore sits"; §4.3 step 4; the research doc's numbering note.
+  WRITER-7 (§4.2's "every overworld feature" is the rule this record rejects): fixed in Context. WRITER-1
+  (pointer into the session folder): fixed in Spec sections changed.
+- Balancer: request changes. Checked §3.1's counts against density and mix (stone 3.04%, 68.0/24.9/7.0;
+  deepslate 6.2%, 59.8/30.1/10.1), band heights, mean blocks and Resonance a vein, the clip formula, the
+  height map and clamp, the classifier weights, the 132% figure and the 37 split. BAL-1 (the height map
+  breaks the curve for anyone who picks a Y): written as Nick's question 1 option A, pending his answer;
+  option B is under rejected pending. BAL-2 (emerald over half of rare): fixed, the weight takes the biome
+  share; all-biome features count at 1.0, as the Balancer wrote, so the common weights §6.1 cites stand.
+  BAL-3 (the clip from the band average): fixed, `min(1, 0.60 / densest)`, still one factor per band, and
+  the clip test checks every slab. BAL-4 (132% never re-derived): fixed, the test asserts the request is
+  above 0.9 and the record quotes no figure. BAL-5 is ADR 0004's; BAL-6 is ADR 0003's.
+
+Round 2 verdicts go here.

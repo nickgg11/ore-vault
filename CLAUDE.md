@@ -74,8 +74,8 @@ Roles for modpack compatibility and performance are deferred to later in develop
 | Plan and sequencing | manager | balancer (baseline before modifiers), qa (each step verifiable), architect (foundations first) |
 | Playtest plan and feedback triage | playtester | qa (steps), writer (design log) |
 
-Whatever its row, any PR that adds a lang key, a registry entry, or spec or design-log text lists the
-Writer as a reviewer.
+Whatever its row, any PR that adds or changes a lang key, a registry entry, or spec or design-log text
+lists the Writer as a reviewer.
 
 ### Build order
 

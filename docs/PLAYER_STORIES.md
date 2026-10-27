@@ -13,8 +13,8 @@ Nothing below has been played. Every time and count is derived from the spec, mo
 a reading of the spec rather than on play, it says so.
 
 Sources: spec §3.1, §3.2, §3.3, §4.2, §4.3, §4.4, §6 (Notation, Wheel, Ring), §6.1, §8, §11, §12;
-`DESIGN_LOG.md` 2026-10-27 and both 2026-10-26 entries on the tree and the baseline; `docs/TEAM_REQUIREMENTS.md`
-"Nick's answers" (Nb) and "Nick's answers, 2026-10-27" (Q1 to Q17).
+`DESIGN_LOG.md` 2026-10-27 and both 2026-10-26 entries on the tree and the baseline;
+`docs/TEAM_REQUIREMENTS.md` "Nick's answers" (Nb) and "Nick's answers, 2026-10-27" (Q1 to Q17).
 
 ---
 
@@ -34,9 +34,10 @@ unspent points and an empty progress bar; there is no Animus row (§8 Team; Nd).
 node, already owned and with no effect (§6 Notation, Start). Around it sit at least four growth nodes,
 placed there "so level 1 has obvious picks" (§6 Wheel), plus the other ring-0 nodes. None can be bought
 yet, because the team has no points (§4.4: "the team has an unspent point"). A faint level ring marks where
-level 1 opens (§8 Tab 1, Layout). Until the team first enters a Vault, an empty-state line says
-"Mine ore inside your Vault to earn Resonance." (UI/UX's screen inventory in `docs/TEAM_REQUIREMENTS.md`;
-the spec does not have this line yet).
+level 1 opens (§8 Tab 1, Layout). While the team's pool is 0 and its level is 0, an empty-state line says
+"Mine ore inside your Vault to earn Resonance." (UI/UX's screen inventory in `docs/TEAM_REQUIREMENTS.md`; the
+Writer adds the sentence defining it to §8). It goes away with the first Resonance the team earns, which
+needs no new data on the wire.
 
 Hovering a node shows its name, its effect as a "Next:" line because the team owns none of it, its ring and
 whether the team has reached it, and why it cannot be bought now (§8 Tooltip). A generation node adds
@@ -71,20 +72,25 @@ safe and quiet.
 ### The first minute of mining
 
 They dig down through four blocks of dirt (Y=246 to 249) into stone, which runs from Y=245 to the bedrock
-floor at Y=0 (§3.1 Base stack). Ore sits only in the stone. At the 3% baseline and about 7,200 blocks an
-hour (§3.1, §4.3 step 4), a player breaks about 120 blocks a minute, of which about 3.6 are ore: the first
-vein should show within a minute. Gravel and clay are in the rock too (§3.1, Gravel and clay), so the odd
-blob of gravel falls on a player digging under it.
+floor at Y=0 (§3.1 Base stack). Ore sits only in the stone. At the 3% baseline and about 7,200 blocks an hour
+(§3.1, §4.3 step 4), a player breaks about 120 blocks a minute, of which about 3.6 are ore. At about 7.45
+blocks a vein that is about one vein broken into every two minutes, while a 1 by 2 tunnel exposes about two
+veins a minute in its walls (the Balancer's figures, BAL-12). So a vein shows in the tunnel wall within about
+a minute; the first one broken into takes about two. The session logs the time of the first ore broken. This
+rests on the same ore density at every height, which Nick chose on 2026-10-27 (same density everywhere, ore
+type still by height). Gravel and clay are in the rock too
+(§3.1, Gravel and clay), so the odd blob of gravel falls on a player digging under it.
 
 There are no caves, aquifers or lava (§3.1), so the only things that can hurt them are a fall into their
 own shaft and hunger.
 
 ### The orb and the bar
 
-The first ore drops its vanilla XP exactly as in the Overworld (§3.4 Vanilla XP is untouched) and, beside
-it, a Resonance orb tinted blue or cyan that flies to them from up to 8 blocks away (§4.2; §11 Resonance Orb
-Entity; §13 Resonance System). The orb is the first new thing the mod shows, so it must read as different
-from the green vanilla orb at a glance. Common ore pays 2, uncommon 5, rare 12.5 (§4.2).
+The first ore drops its vanilla XP exactly as in the Overworld (§3.4 Vanilla XP is untouched) and, beside it,
+a Resonance orb tinted blue or cyan that flies to them from up to 8 blocks away, the same base radius as a
+vanilla XP orb (§4.2; §11 Resonance Orb Entity; §13 Resonance System). The orb is the first new thing the mod
+shows, so it must read as different from the green vanilla orb at a glance. Common ore pays 2, uncommon 5,
+rare 12.5 (§4.2).
 
 While they are inside the Vault, a small on-screen bar shows the team's level and progress to the next
 level, so the Resonance they earn is visible without opening the Tome (§8 On-screen Resonance bar; Nick,
@@ -94,11 +100,14 @@ the share that came from bonuses is decided on a rendered preview with Nick's ye
 
 ### Level 1, at 7 to 11 minutes
 
-Level 1 costs about 114 Resonance, about 33 ore at the 68/25/7 mix (S11 in `docs/TEAM_REQUIREMENTS.md`).
-At 220 ore an hour it arrives around minute 9; §4.3's pacing check sets the band at 7 to 11 minutes, and
-level 2 at 15 to 23. A toast tells every online member (§4.3 Skill point award; §8 Team). The pool is not
-reset (§4.3). The team now has 5 unspent points (§4.3 step 2, `POINTS_PER_LEVEL = 5`; §4.4: unspent is
-`5 × level − owned visible nodes`).
+Level 1 costs about 113 Resonance, about 32 ore at the 68/25/7 mix and 3.48 Resonance an ore (S11 in
+`docs/TEAM_REQUIREMENTS.md`; the Balancer's figures from ADR 0009's closed form, 218.9 ore an hour). At that
+rate it arrives around minute 9; §4.3's pacing check sets the band at 7 to 11 minutes, and level 2 at 15 to
+23. About 32 ore is only four or five veins, so one player's level-1 time can easily land outside the band
+by luck (QA's estimate: about ±50%). A session records the time as an observation; pacing is judged on ore an
+hour from the per-minute readout (S44), not on a stopwatch. A toast tells every online member (§4.3 Skill
+point award; §8 Team). The pool is not reset (§4.3). The team now has 5 unspent points (§4.3 step 2,
+`POINTS_PER_LEVEL = 5`; §4.4: unspent is `5 × level − owned visible nodes`).
 
 Nothing opens by itself: the level-up is a toast, and the player opens the Tome when they choose. This is
 the same rule Nick set for the reset vote (Q16).
@@ -117,7 +126,7 @@ The ring-0 nodes in §6.1:
 | Vein Expansion, tier 1 | small | +15% vein size | No. Generation node |
 | Stone Memory, tier 1 | small | Stone drops 1 XP when mined | Yes, on the next stone block |
 | Miner's Constitution, tier 1 | small | −20% hunger drain inside the Vault | Barely. Nothing shows in ten minutes |
-| Novice's Luck | growth | `(30 − teamLevel)%` bonus ore drops: +29% at level 1 | Yes, as extra drops on roughly one ore in four |
+| Novice's Luck | growth | `(30 − teamLevel)%` bonus ore drops: +29% at level 1 | Yes, as extra drops on about one ore in three or four |
 | Apprentice's Ledger | growth | The first 100 ore of each trip pay double Resonance | Yes, on the on-screen bar |
 | Shallow Grace | growth | +50% Resonance from all ore while every member inside has an all-time deepest Y above 100 | Yes on the bar, but only if nobody inside has been below Y=100 |
 | Guide Vein | growth | 12 extra copper or iron veins of about 51 blocks per newly generated chunk | No. Generation node |
@@ -148,7 +157,7 @@ Two traps a new player can walk into:
   "once its condition can no longer be met"; the tooltip has to say so before purchase too, not only once
   it is owned.
 - Apprentice's Ledger counts "the first 100 ore blocks of each Vault trip" (§6.1). By level 1 the player
-  has mined about 33 ore on this trip. The spec does not say whether ore mined before the node was bought
+  has mined about 32 ore on this trip. The spec does not say whether ore mined before the node was bought
   uses up the 100. Open question, below.
 
 ### Generation nodes and the chunks round the arrival point
@@ -174,14 +183,14 @@ understood), not a reason to reopen the 2026-10-26 rule.
 
 ### Refunds while XP levels are few
 
-A refund costs 3 Minecraft XP levels for any node, travel included (§4.4). Refunds happen outside the Vault
-only. A node bought in the last 60 seconds refunds free, but the same outside-only rule applies, so a
-player who misclicks while deep in a tunnel cannot reach the portal at X=0, Z=0 in time, and the misclick
-costs 3 levels. Buying is not limited to outside the Vault (§4.4 lists no such condition), so the first
-purchase will often happen underground.
+A refund costs 3 Minecraft XP levels for any of these nodes, travel included (§4.4; a pact or keystone costs
+more, and none sits in ring 0). Refunds happen outside the Vault only. A node bought in the last 60 seconds
+refunds free, but the same outside-only rule applies, so a player who misclicks while deep in a tunnel cannot
+reach the portal at X=0, Z=0 in time, and the misclick costs 3 levels. Buying is not limited to outside the
+Vault (§4.4 lists no such condition), so the first purchase will often happen underground.
 
 At minute 9 a player's XP comes from vanilla ore XP only. Raw iron, copper and gold drop no XP when mined in
-vanilla; coal, redstone, lapis, diamond and emerald do. From about 33 ore that is a few levels at most
+vanilla; coal, redstone, lapis, diamond and emerald do. From about 32 ore that is a few levels at most
 (an estimate, not measured). A player with fewer than 3 levels cannot refund at all, and the Tome must say
 how many levels the refund needs and how many they have (§4.4: "When a node cannot be refunded, the Tome
 always says why").
@@ -231,10 +240,26 @@ Kind: first ten minutes (buy freely)
 Focus: 1. At which step would a new player have needed to be told something, and what?
        2. Which nodes did you buy at level 1, why, and how did you know each worked?
 Setup: fresh world, iron and redstone for 10 frames and an igniter in a chest, stone pickaxe or better
-Steps: QA's, at most fifteen: login, open the Tome, craft, build, light, enter, mine to level 1, buy,
-       open the Survey panel, leave, try one refund
+Steps (QA's, QA-34):
+        1. Log in; the Tome is in the inventory.
+        2. Open it: level 0, the empty-state line.
+        3. Hover a ring-0 node; the tooltip says why it cannot be bought.
+        4. Craft 10 frames and an igniter.
+        5. Build the frame and light it; the green portal fills it.
+        6. Enter; arrive at X=0, Z=0 on grass with the return portal there.
+        7. Dig to stone; note the time of the first ore broken.
+        8. See an orb fly in and be absorbed; the on-screen bar moves.
+        9. Mine to the level-1 toast; note the time.
+       10. Open the Tome: 5 points.
+       11. Buy; note the order and how each node showed it worked.
+       12. Open the Survey panel and read the chunk line.
+       13. Leave the Vault.
+       14. Refund one node; note XP levels before and after.
+       15. Attach latest.log.
 Watch for: the confusion and boredom list above
-Record: time of first vein, time of level 1, the nodes bought in order, XP levels at the refund
+Record: time of the first vein seen in a wall, time of the first ore broken (from the log), time of
+        level 1 (an observation, not a pass or fail), ore an hour from the readout, the nodes bought in
+        order, XP levels at the refund
 After the session, answer in your own words:
   1. <focus 1>
   2. <focus 2>
@@ -277,9 +302,13 @@ The player builds a frame, lights it with the igniter, and sees the green portal
 frame plays the failure sound only (Q6). They step in, wait four seconds through the wobble, and arrive on
 grass at X=0, Z=0 with the return portal on the same spot (§3.1, §3.2). Stepping back through the return
 portal puts them just outside the Overworld portal they used, walked out far enough that it does not fire
-again (§3.2: "walked out along the approach direction"). Logging out inside the Vault and back in leaves
-them inside it, on the same block, not falling through the Overworld sky (§3.1 Restoration is eager;
-`CLAUDE.md` rule 2).
+again (§3.2: "walked out along the approach direction"). Logging out inside the Vault, stopping and
+starting the dedicated server, and logging back in leaves them inside it, on the same block, not falling
+through the Overworld sky (§3.1 Restoration is eager; `CLAUDE.md` rule 2). A plain relog without the restart
+does not test this. A teleport that does not complete (QA's bounced-teleport step) leaves the return
+position where it was, because it is saved only after a teleport succeeds (§3.2; `CLAUDE.md` rule 2). In a
+Vault created while the server is running, the first trip of a new team, blocks break normally instead of
+stalling (`CLAUDE.md` rule 2, `markWorldsDirty()`).
 
 Not yet there: ore. The baseline comes at T4, and Nick should not judge the Vault's richness here.
 
@@ -292,14 +321,18 @@ How the player knows it worked: the portal lights, the trip lands at the same an
 return lands where they left.
 
 Session focus: Did you build a valid frame without being told the shape, and if not, what would you have
-needed (feeds Q17)? After logging out inside the Vault, were you exactly where you left?
+needed (feeds Q17)? After logging out inside the Vault and restarting the server, were you exactly where you
+left?
 
 ### T4: Generator, classifier and baseline
 
 The player arrives, digs through four blocks of dirt into stone, and mines for ten minutes with nothing
-bought (§3.1 baseline; T4 done-when). They should find a first vein within a minute and about 37 ore in ten
-minutes at the derived 220 an hour (§4.3). Commons are most of it; rare ore sits deep because it sits deep
-in vanilla (§3.1 Where each ore sits). Gravel and clay appear as blobs in the stone (§3.1).
+bought (§3.1 baseline; T4 done-when). They should see a first vein in the tunnel wall within about a
+minute, break into one within about two, and mine about 36 ore in ten minutes at the derived 218.9 an hour
+(§4.3; ADR 0009). Commons are most of it. Ore is as dense at every height, and which ore a vein is follows
+its vanilla height, so diamond is found low and emerald high (§3.1 Where each ore sits). Nick chose
+this on 2026-10-27.
+Gravel and clay appear as blobs in the stone (§3.1).
 
 Not yet there: Resonance and orbs (T5). Vanilla XP drops as in the Overworld (§3.4).
 
@@ -313,10 +346,11 @@ enough that the tree has something to sell? How many ore did you count, and how 
 
 ### T5: The Resonance loop
 
-The player breaks ore. Vanilla XP still drops, and a blue or cyan Resonance orb flies to them and is
-absorbed (§3.4, §4.2). Level 1 arrives at 7 to 11 minutes and level 2 at 15 to 23 (§4.3 Pacing check).
-Until the network channel lands at T7, the level-up is an overlay message rather than a toast (§13
-Resonance System). Stone Memory tier 1 is bought by command and its XP seen on stone (T5 done-when).
+The player breaks ore. Vanilla XP still drops, and a blue or cyan Resonance orb flies to them and is absorbed
+(§3.4, §4.2). Level 1 arrives at 7 to 11 minutes and level 2 at 15 to 23 (§4.3 Pacing check). Until the Tome
+shell lands at T7, the level-up is an overlay message to every online member rather than a toast (E5-S4, #274;
+the toast comes with E7-S6, #291, §13 Resonance System). Stone Memory tier 1 is bought by command and its XP
+seen on stone (T5 done-when).
 
 Not yet there: the Tome and the on-screen bar (T7). The readout is the per-minute debug readout (S44).
 
@@ -326,10 +360,12 @@ A pacing session never buys anything, because the growth nodes change the rate b
 Confusing: an orb that looks like vanilla XP; an orb that drifts to the wrong player in a two-session test
 (§11 Resonance Orb Entity; Q10); vanilla XP missing.
 
-How the player knows it worked: the orb flies in, and the level-up message arrives inside the band.
+How the player knows it worked: the orb flies in, the level-up message arrives, and ore an hour from the
+readout is near 218.9.
 
-Session focus: Did level 1 and level 2 arrive inside their bands (record the times and the readout)? Could
-you tell the Resonance orb from vanilla XP at a glance?
+Session focus: What ore an hour did the per-minute readout (S44) show over the session, and when did level
+1 and level 2 arrive (recorded as observations; one session's level times vary too much to pass or fail the
+bands)? Could you tell the Resonance orb from vanilla XP at a glance?
 
 ### T6: Persistence
 
@@ -347,12 +383,18 @@ Session focus: After a logout inside the Vault and a server restart, was anythin
 ### T7: Network, the Tome shell and the on-screen bar
 
 On first login the player has the Tome (§11 FTB Teams Event Hooks). Opened, it shows the header (level,
-unspent points, progress bar, the pool on hover) once the team data has arrived, and "Waiting for team
-data" before that, never a row of zeros (§13 UI). No Animus row (Nd). The empty-state line shows until the
-team first enters a Vault. The Ore Memory tab holds the Survey panel: depth gauge with band edges, a death
-marker, and the line saying whether this chunk was generated with the team's current generation nodes
-(§8 Tab 3; Q13). With no nodes yet, every chunk should read as current; a chunk with no stamp reads as not
-current (§11 Vein Index). The reset button is absent without a Tier 4 igniter (§3.5).
+unspent points, progress bar, the pool on hover) once the team data has arrived, and "Waiting for team data"
+before that, never a row of zeros (§13 UI). No Animus row (Nd). The empty-state line shows while the team's
+pool is 0 and its level is 0, so in Nick's carried-over world (Q4), where the team already has Resonance, it
+does not show; a fresh world shows it. The Ore Memory tab holds the Survey panel: depth gauge with band edges,
+a death marker, and the line saying whether this chunk was generated with the team's current generation nodes
+(§8 Tab 3; Q13). A chunk has three readings: current, generated with older nodes, and "Generated before this
+was tracked" for a chunk with no stamp (ADR 0006 `chunkStamp`; §11 Vein Index). What Nick sees at T7 in his
+carried-over world: every chunk generated before the stamp existed reads "Generated before this was tracked".
+Only a chunk generated after the stamp is written reads as current, since no generation node is owned yet. If
+the stamp has not landed by T7 (§13 lists the line under E7-S7, #295, and E9-S3, #307), every chunk reads
+"Generated before this was tracked". Neither is a bug. The reset button is absent without a Tier 4 igniter
+(§3.5).
 
 Inside the Vault the on-screen bar shows level and progress while mining, and turning
 `hud.show_resonance_bar` off hides it at once (§10; Q11). The level-up is now a toast to every online
@@ -373,7 +415,8 @@ nodes around it as icons with no text, faint rings marking where each level open
 node shows its tooltip with a "Next:" line from the constants (Q12) and, for a generation node, "Only in
 chunks generated after you buy it." Clicking buys it; every online member is told who bought what (§4.4).
 Shift-click buys a highlighted path after one confirmation naming the points (§8). The travel totals panel
-lists every travel stat the team owns. The page zooms between a fifth and one and a half times, anchored on
+lists every travel stat the tree shows, with how many of its nodes the team owns, so a stat with none owned
+shows as 0 of N. The page zooms between a fifth and one and a half times, anchored on
 the pointer (§8; `DESIGN_LOG.md` 2026-09-07). Leaving the Vault, the player refunds a node for 3 XP levels,
 or free within 60 seconds of buying it (§4.4).
 
@@ -393,14 +436,36 @@ why?
 
 ---
 
+## Session steps for later tasks
+
+Stories for T9 and later are written with their tickets. These steps are recorded now because a review
+round asked for them.
+
+### T11: a player whose team changes while inside a Vault
+
+Two dev client sessions on Nick's PC with different dev usernames (Q10), both in one party, both inside the
+party's Vault. The owner kicks the other, or the other leaves the party. The player who left is sent at once
+to their saved return position in the Overworld, with a chat line saying why (Manager triage RV-8; §3, a
+Vault belongs to one team). Their personal records stay with the old team (Q3). Ore they break afterwards
+pays only their new team, in their new team's Vault. Logging out inside a Vault of a team they no longer
+belong to and logging back in also puts them outside it. Ticket: E11-S8 (#301).
+
+Confusing: being moved with no message; staying inside and mining for a team they have left.
+
+Session focus: When you were moved out, did the message tell you why, and did it feel fair?
+
+---
+
 ## Open questions
 
 For the Manager, from writing these stories:
 
 1. The state of a node that is in reach and at its ring when the team has no unspent point. §8 lists owned,
    buyable and three locked states; this one is none of them, and it is every node round the start at
-   level 0. UI/UX's screen inventory has "met but unaffordable". It must not read as locked. UI/UX and the
-   Writer.
+   level 0. UI/UX's screen inventory records it as open for T8. It must not read as locked. UI/UX and the
+   Writer. Ruled 2026-10-27 (Manager triage M18): a fourth unlocked state, "in reach", drawn as buyable
+   without the buyable highlight, its tooltip naming the level that brings the next point; the Writer adds
+   it to §8 States, and Nick says yes or no on the E8-S5 (#283) preview.
 2. Shallow Grace bought after it is already outgrown. Should the tooltip of an unowned growth node say
    Outgrown before purchase? Recommendation: yes; §8 can be read either way. UI/UX.
 3. Apprentice's Ledger and ore mined before the purchase. Does the trip's count include ore mined before

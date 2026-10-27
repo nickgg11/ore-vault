@@ -36,7 +36,8 @@ of `build.gradle`, and the Gradle version, which is in `gradle/wrapper/gradle-wr
 | FTB Ultimine | `ftb_ultimine_version=26.1.2.5` | `gradle.properties` | `compileOnly`. Pinned at the last build's 26.1.2.5 and re-checked against 26.1.2.6, the version FTB Evolution 2 ships (`docs/research/library-scan.md`); T1 either keeps 26.1.2.5 or moves to 26.1.2.6 and pins that. |
 | NeoGradle | `net.neoforged.gradle.userdev` 7.1.38 | `build.gradle` `plugins` | |
 | FTB maven | `https://maven.ftb.dev/releases`, restricted with `content { includeGroup 'dev.ftb.mods' }` | `build.gradle` `repositories` | As the last build had it. |
-| JUnit 5 and ArchUnit (`archunit-junit5`) | chosen at T1, then pinned | `gradle.properties`, `testImplementation` | T1 confirms the chosen ArchUnit release reads Java 25 class files. |
+| JUnit 5 and ArchUnit (`archunit-junit5`) | chosen at T1, then pinned | `gradle.properties`, `testImplementation` | T1 confirms the chosen ArchUnit release reads Java 25 class files: the main architecture test asserts it imported more than zero classes, and an unreadable class file fails that import rather than a rule (below). |
+| Gson (`com.google.code.gson:gson`) | the version Minecraft 26.1 ships, read at T1 from the dependency tree | `gradle.properties`, `testImplementation` | Declared at T1 so `core.layout`'s tests do not depend on what NeoGradle happens to put on the unit test classpath (Developer, round 1). |
 
 Each version is re-checked once, at T1, then pinned. A bump of any of them is its own PR that changes
 nothing else and repeats T1's checks on Nick's PC (`build`, `test --rerun-tasks` with XML counts,
@@ -76,12 +77,13 @@ Pure packages. None imports Minecraft, NeoForge or Mojang classes, so all of it 
 | `core.layout` | `TreeLayout` over the layout file (§6 Layout data): nodes with id, skill, class, marks, ring, required mod or tag, exclusive group and drawing position; edges; each fork's `petalAnchor`; the layout hash. `NodeClass` and the marks. Distances by breadth-first search, the cheapest path, and the layout rules §6 lists | `com.google.gson`, to read the file from the jar |
 | `core.tree` | `SkillTree`: buyable when adjacent to an owned node and the ring is at most team level; refund by connectivity and price (§4.4); a skill's tier as the count of its owned nodes; fork choices; exclusive pairs; hidden and dormant nodes; points from level. The `Refusal` enum with its lang keys (ADR 0006). The tree constants (`LEVEL_CAP`, `POINTS_PER_LEVEL`, refund prices, §11 Tree Layout Data). The effects constants keyed by skill id and count owned. The reserved ids (§6.1). The team vote rule for Volatile Veins and Molten Seam (Q1). No clusters, anchors, gates or node costs | `core.layout` |
 | `core.curve` | `LevelCurve`, `TeamScaling` | `core.gen` (the baseline's density and shares), `core.ore` |
-| `core.gen` | `OreBaseline` (ADR 0009), `VeinShape`, `VeinPlacer`, `GenSnapshot` (ADR 0003), vein extents (ADR 0004), the chunk seed | `core.ore`, `core.tree` |
-| `core.mining` | `ResonanceBonuses`, the drop-stage outcome (§11 Drop Pipeline), `MiningSpeedModifiers` | `core.ore`, `core.tree` |
+| `core.gen` | `OreBaseline` (ADR 0009), `VeinShape`, `VeinPlacer`, `GenSnapshot` and `TeamEffects` with their pure builders from plain values (ADR 0003), vein extents (ADR 0004), the chunk seed | `core.ore`, `core.tree` |
+| `core.mining` | `ResonanceBonuses`, the drop-stage outcome (§11 Drop Pipeline), `MiningSpeedModifiers` | `core.ore`, `core.tree`, `core.vein` (the completion outcome the vein index decrement returns to the drop pipeline, ADR 0004) |
 | `core.vein` | Vein index arithmetic: remaining count, completion, abandon; `VeinRecord`, the header bit layout, and the encoder from `core.gen`'s vein extents (ADR 0004); the explored map's cells, window, compass choice and shade (ADR 0004 Amendment 1) | `core.gen` (`VeinExtent`) |
 | `core.session` | The trip record (§11 Vault Session State), including Apprentice's Ledger's 10-minute continuation (Q9) | nothing |
 | `core.reset` | The reset vote state machine (ADR 0007) | nothing |
 | `core.wear` | `WearRules` (ADR 0008) and `WearScope`, the per-player wear inputs the mixin reads | `core.tree` |
+| `core.key` | `VaultKeys`: the one function pair between a team UUID and the lower-case hex form used by the dimension path `vault_<teamUuidNoHyphens>` and the team `SavedData` id (ADR 0002, ADR 0005 "one function parses both"), so any adapter can tell whether a level is a Vault and whose without importing `vault` | nothing |
 
 Minecraft-facing adapters. They hold as little logic as they can and call into `core`.
 
@@ -90,17 +92,34 @@ Minecraft-facing adapters. They hold as little logic as they can and call into `
 | root | `OreVault`, the `@Mod` entry; wires the mod bus and `NeoForge.EVENT_BUS` (rule 3) | MC, core, every adapter except `client`; `integration.*` only through its entry class, after the `isLoaded` check |
 | `registry` | `DeferredRegister` holders, data components, attachments, tags, creative tab | MC, core, `vault`, `mining` (the blocks, items and entities it registers) |
 | `team` | `TeamHelper` and the FTB Teams event listeners | MC, `dev.ftb.mods.ftbteams..`, core, `data`, `vault` |
-| `data` | `OreVaultTeamData`, `PlayerStats`, the per-Vault explored map `SavedData` (ADR 0004 Amendment 1), attachment codecs, migrations; `GenSnapshots`, the main-thread builders of `GenSnapshot` and `TeamEffects` (ADR 0003) | MC, core |
+| `data` | `OreVaultTeamData`, `PlayerStats`, the per-Vault explored map `SavedData` (ADR 0004 Amendment 1), attachment codecs other than the vein index's, migrations; `GenSnapshots`, the holders and the main-thread code that reads team data into plain values and calls `core.gen`'s builders (ADR 0003); `SyncOutbox`, the outbound sync set (below) | MC, core. Never `team`: a rebuild takes the team's member list and online members as values from its caller |
 | `ore` | `OreClassifier`: reads `#c:ores` and the placed features at server start and publishes an immutable `OreTable` (ADR 0009) | MC, core |
-| `vault` | `VaultLevels` (the one world-map insert, with `markWorldsDirty()`), `VaultDimensions` (find-or-create, restore, archive), `VaultFolders` and the start-of-server pass (ADR 0007), the Vault `ChunkEvent.Load` listener (vein index settle, explored map, `chunks_explored` credit; ADR 0004 Amendment 1), teleport, the portal and frame blocks, the igniters, the layer config (ADR 0002) | MC, core, `data`, `worldgen`, `team`, `registry` |
-| `worldgen` | `VaultChunkGenerator` and its codec | MC, core, `ore`; never `data` or `team` |
-| `mining` | The single `BlockDropsEvent` listener (§11 Drop Pipeline), the orb entity, the award, stat recording, vein index updates, filling `core.wear.WearScope` | MC, core, `data`, `ore`, `team`, `registry` |
-| `network` | Payload records, server handlers and `TomeActions` (ADR 0006) | MC, core, `data`, `team`, `vault` |
+| `vault` | `VaultLevels` (the one world-map insert, with `markWorldsDirty()`), `VaultDimensions` (find-or-create, restore, archive), `VaultFolders` and the start-of-server pass (ADR 0007), the Vault `ChunkEvent.Load` listener (vein index settle, explored map, `chunks_explored` credit; ADR 0004 Amendment 1), the end-of-tick empty-Vault check that applies a pending generation vote (ADR 0003), teleport, the portal and frame blocks, the igniters, the layer config (ADR 0002) | MC, core, `data`, `worldgen`, `worldgen.index`, `team`, `registry` |
+| `worldgen` | `VaultChunkGenerator` and its codec | MC, core, `ore`, `worldgen.index`; never `data` or `team` |
+| `worldgen.index` | The `orevault:vein_index` chunk attachment: its record, its codec and its `AttachmentType` holder in its own `DeferredRegister`, registered on the mod bus from the `@Mod` constructor (ADR 0004 "The attachment"). A leaf, so the generator can call `setData` on the `ProtoChunk` without reaching `registry`, which reaches `data` through `vault`. The same leaf holds the map value type if ADR 0004 takes its Result B | MC, `core.vein` |
+| `mining` | The single `BlockDropsEvent` listener (§11 Drop Pipeline), the orb entity, the award, stat recording, vein index updates, filling `core.wear.WearScope` | MC, core, `data`, `ore`, `team`, `registry`, `worldgen.index` |
+| `network` | Payload records, server handlers and `TomeActions` (ADR 0006); the end-of-tick drain of `data.SyncOutbox` | MC, core, `data`, `team`, `vault`, `reset` (`StartReset` and `CastResetVote` drive ADR 0007's sequence), `worldgen.index` (`RequestSurvey` reads the chunk's stamp) |
 | `mixin` | ADR 0008's mixin; no logic | MC, `core.wear` |
-| `chunkload`, `reset`, `config`, `debug` | Adapters for §3.4 chunk loading, ADR 0007, §10 and S44 | MC, core, `data`, `ore`, `team`, `vault`, `worldgen`, `registry`, `network` |
+| `chunkload`, `reset`, `config`, `debug` | Adapters for §3.4 chunk loading, ADR 0007, §10 and S44 | MC, core, `data`, `ore`, `team`, `vault`, `worldgen`, `worldgen.index`, `registry`, `network` |
 | `integration.ultimine` | Everything naming an FTB Ultimine type, entered only after `ModList.get().isLoaded("ftbultimine")` | MC, `dev.ftb.mods.ftbultimine..` and whatever FTB Library types its API exposes (to confirm at T12), core, `data`, `mining` |
 | `integration.processing` | The `c:clumps/`, `c:shards/` and `c:crystals/` tag lookups for Ore Doubling's extra tiers (§2, §9) | MC, core |
 | `client` | The `@Mod(dist = Dist.CLIENT)` entry, `client.tome`, `client.tree`, `client.net`, renderers, the on-screen Resonance bar, `ClientTomeState` | anything, subject to the named rules below |
+
+A row names one package, not its subpackages: `worldgen` and `worldgen.index` are separate rows and
+separate rules.
+
+Outbound sync goes through one pattern. `team`, `mining` and `vault` never import `network`. When one of
+them changes something a client shows, it records what changed in `data.SyncOutbox`, a main-thread set of
+entries keyed by team or player and payload kind (a team's `TreeState`, `TeamProgress` or `ResetVoteState`
+is stale, a player's `EntryPoints` is stale, a player has a `VeinOutline` waiting with its positions), and returns.
+`network` drains the outbox at the end of the server tick, builds each payload once from the current state
+and sends it (ADR 0006 Triggers). The triggers that use it are the ones raised outside `network`: a member's
+team change (`team`), Resonance gain, a level-up and a vein outline (`mining`), and a pending generation
+vote applied in an empty Vault (`vault`). A level-up's `TeamProgress` still reaches the client in the tick
+it happens, so ADR 0006's "at once on a level-up" holds. `reset`, `chunkload`, `config` and `debug` may call
+`network` directly, as their row allows; mutations `network` itself accepts or refuses resync in the
+handler. Several changes in one tick then cost one payload, which is also what the 10-tick coalescing of
+`TeamProgress` needs.
 
 Blocks, items and entities live in the package of the system that owns their behaviour: the frame, portal
 and igniters in `vault`, the orb entity in `mining`. `registry` only holds the registers. Where the Tome item
@@ -135,10 +154,10 @@ and only the named rules apply.
 
 Named rules, which hold whatever the rows say:
 
-1. No class in `worldgen` depends, directly or transitively through Ore Vault's own classes, on
-   `..orevault.data..`, `..orevault.team..`, `net.minecraft.world.level.saveddata.SavedData` or
-   `net.minecraft.world.level.storage.SavedDataStorage` (S15; `CLAUDE.md` rule 1). The same holds for
-   `core.gen`. In 26.1 the level's storage class is `SavedDataStorage`, returned by
+1. No class in `worldgen..` (`worldgen.index` included) or `core.gen` depends, directly or transitively
+   through Ore Vault's own classes, on `..orevault.data..`, `..orevault.team..`, any class in
+   `net.minecraft.world.level.saveddata..`, `net.minecraft.world.level.storage.SavedDataStorage`, or any
+   `dev.ftb..` class (S15; `CLAUDE.md` rule 1; the same list as ADR 0003, Enforcement). In 26.1 the level's storage class is `SavedDataStorage`, returned by
    `ServerLevel#getDataStorage()` (`net/minecraft/server/level/ServerLevel.java` line 1489, NeoForge
    26.1.2.95 sources); `DimensionDataStorage` does not exist in that tree.
 2. No class outside `team` depends on `dev.ftb.mods.ftbteams..` (`CLAUDE.md` rule 5).
@@ -165,6 +184,16 @@ evidence permanent rather than a one-off screenshot. No rule is weakened with `a
 rule over a package that has no classes yet runs only against its fixture until the package's first class
 lands, in the same PR.
 
+Because `allowEmptyShould` is off, a rule also fails when it matches no class at all, so a fixture whose
+package name is mistyped would make the fixture test pass while proving nothing (QA, round 1). Each fixture
+assertion therefore checks that the rule's failure report (`EvaluationResult#getFailureReport`) names the
+planted class, for example `PlantedWorldgenImportsData`, not only that the rule failed. The main test
+asserts that the imported main class set is not empty; that is also T1's evidence that the pinned ArchUnit
+reads Java 25 class files, since a class file it cannot read fails the import.
+
+T1's PR quotes `git grep -n installations.paths` returning nothing, as the check that no committed file
+pins a machine-local JDK.
+
 ### Porting the old pure classes (S42)
 
 The old pure classes are ported, one ticket per class, through normal review; they are not rewritten from
@@ -188,9 +217,11 @@ Nick can overrule S42.
   above and no machine path. Each later ticket adds classes into a package this record names, or amends
   this record first.
 - A new package needs a row here and its rule in the same PR.
-- `core.layout` depends on Gson. T1 confirms Gson is on the unit test classpath; if it is not, it is added
-  as a `testImplementation` at the version Minecraft ships, or the layout file is parsed in the adapter and
-  handed over as plain records.
+- `core.layout` depends on Gson. T1 declares it as a `testImplementation` at the version Minecraft ships
+  (pin table), so the unit tests do not rely on NeoGradle's test classpath.
+- `team`, `mining` and `vault` reach the client only through `data.SyncOutbox`, so a sync is one tick late
+  at most and is built from the state at the end of the tick, not from the state at the moment of the
+  change.
 - The mixin seam goes through `core.wear.WearScope`, which is main-thread state in a pure package. ArchUnit
   cannot check threading; the Reviewer does.
 - Builds and every check above run on Nick's PC (`CLAUDE.md` Build). Nothing in this record was compiled.
@@ -204,6 +235,9 @@ Nick can overrule S42.
   only in `team`, nothing from `worldgen` to `data`) still need ArchUnit.
 - Grep checks instead of ArchUnit. They miss fully qualified references and transitive paths, which is how
   the old generator reached `data`.
+- Widening the `team`, `mining` and `vault` rows to import `network`, which the round 1 review found each
+  ADR would otherwise force on its first PR. It makes every listener that changes state also a sender, and
+  several changes in one tick then send several payloads; the outbox gives one place that sends.
 - Strict acyclic rules across the adapters. `team` must call `vault` on a disband and `vault` must ask
   `team` for a player's team; breaking that cycle would need the internal event bus this layout rules out.
 - Keeping `integration.mekanism` as the package name, for the reason above.
@@ -211,9 +245,50 @@ Nick can overrule S42.
 
 ## Spec sections changed
 
-§13 Infrastructure's "Package structure created" line names the pre-restart packages. The replacement text
-is in the run's `spec-changes/E0-S3.md` for the Writer to apply. No other spec section changes.
+§13 Infrastructure's "Package structure created" line, which named the pre-restart packages. Applied in the
+same PR. No other spec section changes.
 
 ## Reviews
 
-To be filled: developer, reviewer, qa, writer. Each verdict lists what it checked.
+Matrix row, system design: developer (buildable), reviewer (rules), qa (testable); writer added because the
+record changes a spec line. Round 1, 2026-10-27. Each objection is marked fixed (what changed here) or
+rebutted (the evidence). The record stays proposed until each reviewer confirms its objections landed in
+round 2.
+
+- developer: request changes (DEV-1, DEV-2). Checked every package row against what ADRs 0002 to 0009 make
+  each package call; the eight named rules against rule 1's transitive wording; `SavedDataStorage`
+  (`ServerLevel.java` line 1489, no `DimensionDataStorage` in the tree); `forgeGetWorldMap` and
+  `markWorldsDirty` (`MinecraftServer.java` lines 1892, 1899); the old pins (`git show 1e7cdad`
+  `gradle.properties` and `build.gradle`). Found pins, AT location, mixin placement and the S42 port list
+  buildable as written.
+  - DEV-1, the generator cannot reach the vein-index attachment type without breaking rule 1: fixed. The
+    attachment's record, codec and holder are in the leaf `worldgen.index` (MC and `core.vein` only), with
+    its own row; `worldgen`, `vault`, `mining`, `network` and the shared adapter row may import it.
+  - DEV-2, rows missing imports: fixed. `network` imports `reset` and `worldgen.index`; `data` rebuilds take
+    the member list as values from the caller; `mining` tells a Vault from its key through the new pure
+    `core.key` rather than importing `vault`.
+  - Gson answer (architect question 4): fixed. Gson is a pinned `testImplementation` at T1; the "if it is
+    not" branch is gone.
+- reviewer: request changes (RV-9). Checked package rows and import columns; named rules 1 to 8; S15 and S43
+  with a permanent fixture test and no `allowEmptyShould`; pins and the re-check-once rule; no machine JDK
+  path; the AT file with ticket comments; mixin location and "further mixins need an ADR"; the S42 port
+  list; the `integration.processing` rename.
+  - RV-9, import columns that forbid calls other ADRs require: fixed, with the pattern the Reviewer named.
+    `team`, `mining` and `vault` record changes in `data.SyncOutbox` and `network` drains it at the end of
+    the tick, so none of the three imports `network`; `network` may import `reset`; `data` takes the member
+    list as values; `core.mining` may import `core.vein`. Named rule 1 now carries ADR 0003's list (the
+    whole `saveddata` package and any `dev.ftb` class) and covers `worldgen..`.
+  - RV-16 (raised under ADR 0006) is the same finding and is answered by the same change.
+- qa: approve with comments (QA-1, QA-2). Checked that each package row and named rule maps to an ArchUnit
+  rule; S43's "shown failing" mechanism; T1's version and machine-path checks; Gson on the classpath and
+  ArchUnit reading Java 25 as T1 pass/fail items.
+  - QA-1, a mistyped fixture passes vacuously: fixed. Each fixture assertion checks that the failure report
+    names the planted class; the main test asserts a non-empty import.
+  - QA-2, no stated check for "no machine path" and "reads Java 25": fixed. T1's PR quotes `git grep -n
+    installations.paths` empty, and the non-empty import is the Java 25 check.
+- writer: approve with comments (WRITER-1). Checked the package table against the ticket's list
+  (`core.vein`, `core.session`, `core.wear`, `mixin`, no clusters or costs); the named rules against
+  `CLAUDE.md` rules 1, 2, 4, 5 and S15, S24, S43; the pin table against `CLAUDE.md` Build; §13
+  Infrastructure against the record; the rarity rule quoted in `core.ore` against §4.2.
+  - WRITER-1, "Spec sections changed" pointed at a session file outside the repo: fixed. The section now
+    names the §13 line and says it was applied in the same PR.

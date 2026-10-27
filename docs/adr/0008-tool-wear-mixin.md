@@ -1,7 +1,7 @@
 # 0008. Tool wear through one mixin on `ItemStack`
 
-Status: accepted, 2026-10-27 (E0-S11, #226), with three checks E9-S7 (#311) runs at first load, listed under
-Consequences. Proposed 2026-10-26 from the Architect's ruling in the skill tree thread
+Status: accepted 2026-10-27 (E0-S11, #226), after the round 1 verdicts below; three first-load checks in
+E9-S7 (#311), listed under Consequences. Proposed 2026-10-26 from the Architect's ruling in the skill tree thread
 (`architect-tool-upgrades.md` question 4). Spec: §3.4 (what a hand break is), §6.1 Travel stats and Flavour
 notables, §11 Tool Wear Hook. Sources: `docs/research/neoforge-26.1-sources.md` "ItemStack#hurtAndBreak and
 processDurabilityChange" (E1-S5, #195). Folds in ADR 0001's `core.wear.WearScope` and ADR 0003's
@@ -176,16 +176,22 @@ everything that needs Minecraft or NeoForge (tags, energy capability, per-tool c
 entry, the values the mixin passes on are plain numbers:
 
 - Break scope. When `BreakBlockEvent` passes for a hand break (§3.4) in a Vault, before `mineBlock` damages
-  the tool, `mining` sets the player's break entry: the summed care chance (Hammer and Paxel Affinity
+  the tool, `mining` sets the player's break entry. The listener is registered on `NeoForge.EVENT_BUS` at
+  `EventPriority.LOWEST` and does not receive cancelled events, so it runs after every other mod's listener
+  has had the chance to cancel; a break another mod cancels never sets an entry that the next wear in the
+  same tick (a sword hit) would consume. The entry holds the summed care chance (Hammer and Paxel Affinity
   included only if the held tool is in its tags), Tempered's chance for that tool, whether Unyielding Edge
   is owned, and the head multiplier (Glass Edge's ×3 and, if the tool has no energy storage, Galvanic Seam's
-  ×2). It clears the entry when the break finishes, and at the latest at the end of the server tick, so a
-  cancelled break or an exception cannot leave it set.
+  ×2). It clears the entry when the break finishes, and at the latest at the end of the server tick, so an
+  exception cannot leave it set.
 - Kit Care. At the end of each server tick `mining` sets each online real player's Kit Care tier from
   `TeamEffects` (`WearRules` turns it into a chance with the `core.tree` constants), or 0 while the player
   is in a Vault, and removes it at logout. This replaces a list of
   refresh triggers (purchase, refund, dimension change, respawn) with one place; the cost is a field read
   per online player per tick, and the worst case is one tick of stale scope after a change.
+- Server stop. `WearScope` is static state in a pure package, so `mining` clears the whole table on
+  `ServerStoppedEvent`. Otherwise a singleplayer player who quits to the menu and opens another world in the
+  same JVM would carry entries into it.
 
 The mixin's own work is limited to the checks that need Minecraft objects, then a call into `WearRules`:
 
@@ -202,8 +208,11 @@ The mixin's own work is limited to the checks that need Minecraft objects, then 
    random source wrapped in a plain Java functional type around `level.getRandom()`, so unit tests can seed
    it.
 
-`WearRules` imports no Minecraft class and carries the unit tests: the multiplier, the per-point rolls in
-order, the 80% cap, Kit Care alone outside, the clamp, and that a non-positive amount passes unchanged.
+`WearRules` imports no Minecraft class and carries the unit tests, with a seeded random source: the
+multiplier before the per-point rolls (so Unbreaking, which the mixin's position puts between them, sees
+the multiplied amount), care then Tempered, the clamp last, the 80% cap, Kit Care alone outside, and that a
+non-positive amount passes unchanged. The order is pinned here and not in a gametest, because a gametest
+draws from `level.getRandom()` and cannot fix the rolls (QA, round 1).
 
 ### Mixin config and `[[mixins]]` entry for E9-S7
 
@@ -247,11 +256,20 @@ config = "orevault.mixins.json"
      to this record, not a new one.
   3. The game log at load shows both injections applied, with `defaultRequire: 1` in force (proved once by
      pointing one injection at a wrong descriptor and seeing the load fail, then restoring it).
-- A gametest breaks a block with each break-scope node owned and pins the order: multiplier before
-  Unbreaking, care then Tempered, clamp last. The gametest's player must pass the player-list check in
-  step 1; if the gametest framework cannot provide one, the node effects are a `runClient` playtest step and
-  the gametest covers only that vanilla wear is unchanged with no scope set. Kit Care on a trident (a throw
-  and a riptide launch, outside the Vault) is a playtest step.
+- A gametest covers the hook end to end with deterministic cases only: Glass Edge alone on an unenchanted
+  tool loses exactly 3; a tool at one below its maximum damage with Unyielding Edge owned loses nothing
+  more; with no scope set a break loses exactly 1. The player is a survival `ServerPlayer` built the way
+  `GameTestHelper#makeMockServerPlayerInLevel()` builds one (an anonymous `ServerPlayer` passed through
+  `PlayerList#placeNewPlayer`, so it is the instance the player list holds and passes step 1), but without
+  that helper's `gameMode()` override to CREATIVE: a creative player has infinite materials, and
+  `processDurabilityChange` returns 0 for it (line 488), so every wear test would pass with no wear. The test
+  asserts `!player.hasInfiniteMaterials()` before the break and breaks through
+  `player.gameMode.destroyBlock(pos)`, so `BreakBlockEvent` fires and the scope is set by the real listener.
+  The helper is deprecated for removal; if a bump removes it, the test keeps its own copy of the
+  construction. The node effects are therefore a gametest, not a playtest step (Developer and QA, round 1).
+- Kit Care on a trident (a throw and a riptide launch, outside the Vault) is a playtest step. `mining` logs
+  the points Kit Care saves at DEBUG, so one throw is enough to see it apply rather than a count of throws
+  against the tier's chance.
 - FTB Ultimine's `PREVENT_TOOL_BREAK` setting stops chains near the end of durability before Unyielding
   Edge's clamp matters; the gametest or playtest covers the two together.
 - Unyielding Edge's half speed is not part of this hook; it is a `MiningSpeedModifiers` entry read in
@@ -289,16 +307,44 @@ config = "orevault.mixins.json"
 
 §11 Tool Wear Hook: the target becomes two injection points, trident wear is covered, the scope comes from
 `WearScope`, and the closing paragraph names the config and `defaultRequire: 1` instead of "local indices".
-§6.1 Kit Care is unchanged; this record implements it as written. The exact text, and the matching changes
-to ADR 0001 and `docs/research/neoforge-26.1-sources.md`, are in the E0 run's `spec-changes/E0-S11.md` for
-the Writer and the file owners to apply. No `DESIGN_LOG.md` entry: no decision changed.
+§6.1 Kit Care is unchanged; this record implements it as written. Applied in the same PR, with the
+matching changes to ADR 0001 and `docs/research/neoforge-26.1-sources.md`. No `DESIGN_LOG.md` entry: no
+decision changed.
 
 ## Reviews
 
 Matrix row, system design: developer (buildable), reviewer (rules), qa (testable); ticket adds writer. Each
 verdict lists what it checked.
 
-- developer:
-- reviewer:
-- qa:
-- writer:
+Round 1, 2026-10-27: four approvals with comments, none requesting changes, so the record is accepted
+without a second round; each reviewer confirms its comment landed. Each comment is marked fixed (what
+changed here).
+
+- developer: approve with comments (DEV-18, DEV-19). Checked `hurtAndBreak` and both
+  `processDurabilityChange` overloads (`ItemStack.java` lines 469 to 534); `TridentItem.java` line 81;
+  `ItemStack.java` line 588; `EquipmentSlot.java` lines 13 to 18; `PlayerList#getPlayer(UUID)` line 841; the
+  break order in `ServerPlayerGameMode#destroyBlock` (lines 271 to 301); `BreakBlockEvent` as the 26.1 name
+  (imported by `event/PortalEvents.java` at 1e7cdad, which compiled on the same pin). Found that the two
+  injections need no local slot and no MixinExtras, and agreed the research file's items 7 and 9 close.
+  - DEV-18, listener priority: fixed. `EventPriority.LOWEST`, cancelled events skipped.
+  - DEV-19, the mock player is creative: fixed. Survival player built as the helper does; node effects are
+    a gametest.
+- reviewer: approve with comments (RV-17, RV-18). Checked both descriptors against the source; that the
+  `ServerPlayer` overloads delegate, so each call is seen once; that `processDurabilityChange` has exactly
+  two callers; no local captured; `defaultRequire: 1`; that the mixin calls only `core.wear` (ADR 0001 rule
+  8); the player-list identity check (§3.4); creative and repair paths untouched.
+  - RV-17, a later canceller can leave the break entry set: fixed, same change as DEV-18.
+  - RV-18, `WearScope` survives a world switch in one JVM: fixed. Cleared on `ServerStoppedEvent`.
+- qa: approve with comments (QA-25, QA-26). Checked the injection points against the quoted source,
+  `defaultRequire`, the three first-load checks, the gametest and playtest plan.
+  - QA-25, order cannot be pinned through `level.getRandom()`: fixed. Order pinned in `WearRules` unit tests
+    with a seeded source; the gametest has the three deterministic cases QA listed.
+  - QA-26, the gametest player: fixed, same change as DEV-19, with the `hasInfiniteMaterials()` assertion,
+    `gameMode.destroyBlock`, the copy if the helper is removed, and DEBUG logging of Kit Care's saved
+    points for the trident step.
+- writer: approve with comments (WRITER-1, status). Checked §11 Tool Wear Hook against the record line by
+  line (two injections, trident coverage, `WearScope`, the player-list check, `defaultRequire: 1`), and that
+  §6.1 Kit Care's "from any cause" is unchanged and now implemented as written.
+  - WRITER-1, pointer to a session file: fixed. "Applied in the same PR."
+  - Status read "accepted" with an empty Reviews block: fixed. The status now says accepted after these
+    verdicts, the rule ADRs 0002, 0004 and 0007 state.

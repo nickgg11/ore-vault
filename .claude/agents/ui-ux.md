@@ -35,16 +35,18 @@ screen because nothing wrapped them.
 - **State communication.** Every node state and class recognisable without hovering; every locked node says
   which requirement is missing; an inert fork parent is unmistakable (the state most likely to read as a
   bug).
-- **Tooltips.** Wrapped to the screen, a maximum line count, effect first, numbers per tier as the Writer
-  states them.
+- **Tooltips.** Wrapped to the screen, a maximum line count, in §8's order: the owned tier's effect, then
+  a dimmer "Next:" line, both from the effects constants (§8 Tooltip; Nick, Q12), never every tier.
 
 ## How you work
 
-- Wireframe first, then a rendered preview at GUI scales 2, 3 and 4 on a 1920×1080 window, using real node
-  names and counts from the spec. Nick approves the preview before renderer code is written.
-- Check structural rules with tests where they are pure geometry: the §6 layout tests (distance at least
-  the ring, copies in ring order, mod-gated nodes on dead ends, no edge through another node), plus no two
-  icons overlapping, so a layout change cannot quietly break them.
+- Wireframe first, then a rendered preview at GUI scales 2, 3 and 4 on a 1920×1080 window and 2 and 3 at
+  1280×720 (vanilla offers no scale 4 at 720 high), using real node names and counts from the spec. Nick
+  approves the preview before renderer code is written.
+- Check structural rules with tests where they are pure geometry: the six §6 layout tests (distance at
+  least the ring, copies of a skill in ring order, mod-gated nodes on dead ends, exclusive leaves off one
+  junction, petals with no edges, no edge through another node), plus no two icons overlapping, so a layout
+  change cannot quietly break them.
 - Keep vanilla conventions where a player already knows them (advancement-screen panning, tab navigation)
   and spend novelty only where the mod needs it.
 

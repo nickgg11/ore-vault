@@ -31,16 +31,16 @@ section).
 | S6 | Anchor gates as stated points (10/25/45/55/70/100) or as fractions | **Retired 2026-10-26:** the PoE tree has no anchors or gates; see `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree". Was: Fractions of `totalTreeCost`, rounded up: Prospecting 0, Excavation 15, Assay 39, Broad Cut 39, Metallurgy 71, Claim 89, Deep Lore 110, Mastery 160. The point figures date from the 225-point tree. | §6.1 ("pinned to a fraction"); log 2026-09-07; the §6.1 cost columns sum to 354 (parsed) |
 | S7 | `totalTreeCost` over the full registry (354) or excluding conditional content (311) | **Retired 2026-10-26:** every node costs 1 point and points per level are pinned at 5 (§4.3); see `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree". Was: Full registry, every pack: 354, so `pointsPerLevel` is 12. With 311 the tree is not buyable at level 30 (330 points against 347 holdable). The Writer withdrew 311. | §4.3 steps 1 and 3; arithmetic |
 | S8 | A stub node at T5 or the full node data first | The full node data first, as T8a, before T5's point award. **Amended 2026-10-26:** T8a is the node data model and the tree layout file together (§12 T8a): node and skill ids, rings, classes, marks, edges, petals, mod conditions, reserved ids, and the layout tests of §6; no effects. There are no costs (every node is 1 point) and no level requirement besides the ring. Points per level are pinned at 5 (§4.3 step 2), so "with one node, `pointsPerLevel` is 1" is retired. | §4.3 step 3; amended by §4.3 step 2, §6, §12 |
-| S9 | First purchasable node for the loop | Stone Memory T1, bought by debug command at T5 as a technical check: visible on the next stone block, no Resonance or baseline effect. The player-facing loop milestone is the first node bought through the Tome (T8). Vein Expansion T1 is the first T9 generation node, verified with the density command. Guide Vein is not used. | Vein Expansion T1 is +15% over about five veins in ten minutes and a modifier before the measured baseline; Guide Vein is about +0.5% of a chunk's ore (Balancer, Playtester) |
+| S9 | First purchasable node for the loop | Stone Memory T1, bought by debug command at T5 as a technical check: visible on the next stone block, no Resonance or baseline effect. The player-facing loop milestone is the first node bought through the Tome (T8). Vein Expansion T1 is the first T9 generation node, verified with the density command. Guide Vein is not used. | Vein Expansion T1 is +15% over about five veins in ten minutes and a modifier before the measured baseline. Guide Vein is a generation node: it changes only chunks generated after purchase (§6.1 Guide Vein), so it shows nothing near arrival. **Evidence restated 2026-10-27:** the earlier "about +0.5% of a chunk's ore" is retired; since `DESIGN_LOG.md` 2026-10-26 "The baseline measured against vanilla, and Guide Vein made visible", §6.1 puts it at about +32% of a chunk's ore. The ruling stands |
 | S10 | A provisional tree view for the T5 node | None. Command purchase until T8's approved renderer. | Lessons doc: renderer built three times |
-| S11 | T5 pacing check "level 1 inside the first hour" | Replaced by a measurement: solo, 30 minutes in fresh chunks, zero points, buying nothing, tool named by the Balancer. Bands of ±20%: blocks 5,760 to 8,640 an hour, ore 176 to 264 an hour, level 1 at 7 to 11 minutes, level 2 at 15 to 23. Ore per hour outside its band means the curve is re-derived before any T9 node merges. | §4.3 curve (about 76,700 total at the 68/25/7 mix; level 1 costs about 114); a 2.7x mispricing still passes the old question; log 2026-09-27 "Still open" |
+| S11 | T5 pacing check "level 1 inside the first hour" | Replaced by a measurement: solo, in fresh chunks, zero points, buying nothing, tool named by the Balancer. **Amended 2026-10-27:** 60 minutes, or two 30-minute sessions pooled, and pacing is judged on ore an hour from the S44 per-minute readout; level times are reported as observations, not pass or fail. Bands of ±20%: blocks 5,760 to 8,640 an hour, ore 176 to 264 an hour; observed level 1 expected at about 7 to 11 minutes, level 2 at about 15 to 23. Ore per hour outside its band means the curve is re-derived before any T9 node merges. Was: one 30-minute session with the level times as pass or fail. | §4.3 curve (about 76,259 total at 218.9 ore an hour on the 68/25/7 mix; level 1 costs about 113; Balancer, 2026-10-27); a 2.7x mispricing still passes the old question; log 2026-09-27 "Still open"; QA's variance estimate (2026-10-27): 30 minutes is about 16 veins, roughly ±28%, wider than the band, and one level-1 time varies by roughly ±50% |
 | S12 | How density is measured | Not `/orevault testore`, which fills a cube. A pure JUnit count over the placement function, then a read-only `/orevault density [chunks]` on a dedicated server. Tolerance: each band within ±5% relative over at least 81 chunks; rarity shares by placed blocks within ±2 points of 68/25/7 in the stone band and 60/30/10 in deepslate, on a vanilla-only pack, with Guide Vein off. | Old `VaultDiag` (fact); Balancer owns numbers |
-| S13 | Generation model and the 40% floor | Veins are placed by count and size, never filled toward a target. The floor clips proportionally across vein counts, every clipped modifier is in the snapshot, and the floor test uses the full deepslate stack (132% requested). | §3.1; Vein Expansion plus Proliferation alone reach 26.4%, so a test on those passes vacuously |
+| S13 | Generation model and the 40% floor | Veins are placed by count and size, never filled toward a target. The floor clips proportionally across vein counts, every clipped modifier is in the snapshot, and the floor test uses the full deepslate stack: it computes the stack's request from `OreBaseline` and asserts it is above 0.9, so the clip really fires (ADR 0009). **Amended 2026-10-27:** "132% requested" was a hub-tree figure nobody re-derived; the Balancer's estimate is 100 to 140% until T9 pins Vein Shaping and Stone Reduction, and the number is recorded then. | §3.1; Vein Expansion plus Proliferation alone reach 26.4%, so a test on those passes vacuously; Balancer (BAL-4) |
 | S14 | T3 as three PRs or one; how the logout case is checked | One PR, three acceptance criteria, plus a login check that sends a player whose `in_vault` names a Vault they are not in to their return position. The gate is a scripted headless restart on every dimension PR; Nick confirms once in a client. | `CLAUDE.md` rule 2; lessons doc (#89's regression) |
 | S15 | Who verifies the generator never reads SavedData | A static rule: ArchUnit, owned by the Reviewer. QA does not sign it as observed. `GenSnapshot` lives in `core.gen`, built on the main thread. | `CLAUDE.md` rule 1; the old `SkillSnapshot.of(OreVaultTeamData)` made worldgen depend on `data` |
 | S16 | Persisted shape basics | `data_version` from the first field; the team-data shape agreed in an ADR before T5 opens. Available points derived, not stored. `level_reached` stored and monotonic. `deepest_y` absent means never entered: no sentinel, no flag. No stored derived totals. | `CLAUDE.md` rule 6; §4.3 step 4 (thresholds must not move under teams that passed them); Architect owns the data model |
 | S17 | Save-shape tests as JUnit or gametests | JUnit through `CompoundTag` if T1 confirms it loads, as the old `PlayerStatsVersionTest` did; one gametest per storage mechanism (SavedData, chunk attachment, player attachment across death). `CLAUDE.md` Tests is corrected after T1 confirms. | Old test suite (fact) |
-| S18 | Team data and the Tome grant at team creation | Team data is created on first write, never on `TeamEvent.CREATED`. The Tome is granted on first login and recorded as `tome_granted`. | `CLAUDE.md` rule 2's reasoning; §13 records that `PLAYER_JOINED` misses solo players |
+| S18 | Team data and the Tome grant at team creation | Team data is created on first write, never on `FTBTeamsEvent.TeamCreated` (the FTB Teams 26.1.2.4 name, §11 FTB Teams Event Hooks). The Tome is granted on first login and recorded as `tome_granted`. | `CLAUDE.md` rule 2's reasoning; §13 records that `PLAYER_JOINED` misses solo players |
 | S19 | Disband and reset mechanics, whatever Nick picks | No level is deleted or moved while the server runs. Disband sets `disbanded_at` and evacuates online players; the folder is handled at the next start, before restore, and restore skips it. | §11 registry-desync warning; Architect, Developer, Reviewer |
 | S20 | Vein index timing and storage | T4's placement returns vein extents as values (ADR 0004 decided in T4). The index is persisted in a versioned chunk attachment by its own ticket ahead of Vein Sight, written only for the chunk being generated; veins never cross a chunk border; player-placed ore is never indexed; chunks generated before it never complete. Chapter's End state lives on the chunk, not in `PlayerStats`. | §11 Vein Index; no player worlds exist before 1.0; a reset wipes chunks but not player files |
 | S21 | What "machine-broken" means; machines and vein completion | A break pays only when the breaker is a `ServerPlayer` that is not a `FakePlayer`; no breaker pays nothing. A vein whose last block a machine broke fires no completion effect. | §3.4 ("never award Resonance, in any quantity, under any node") |
@@ -54,7 +54,7 @@ section).
 | S29 | QA's "no vertical placement without a prerequisite" property | **Retired 2026-10-26:** the PoE tree has no prerequisites besides adjacency, and §8 no longer has the "one outside the other" rule. Position is checked by the §6 layout tests instead: every node at distance at least its ring, the copies of a skill in ring order, no edge through another node. Was: replaced by the polar invariants and a radial test of §8's rule. | §6 Layout data; `DESIGN_LOG.md` 2026-10-26 |
 | S30 | Node frames in T8 or T13 | T8. A layout cannot be approved with placeholder frames. | Anything visual needs Nick's yes on a rendered preview |
 | S31 | Drawing Hoarder's Instinct larger because it is strong | No. Class decides visual weight; strength is a number for the Balancer. | §8 class table |
-| S32 | Tooltip and name limits | Tooltips at most 240 GUI units wide and 20 lines; description wrapped at 220 px, at most 8 lines. Previews include 1280x720. **Amended 2026-10-26:** nodes are icons with no text on the page (§8 Tab 1), so the box widths are retired: names at most 196 px in a 208 px box, anchors 228 in 240. "Prerequisites at most 4" is retired with prerequisites; the tooltip names the path cost, the highest ring on it and the lock reason instead (§8 Tooltip). A name's limit is now the tooltip's width. | Vanilla picks the largest GUI scale leaving at least 320x240; log 2026-09-07, 09-09; amended by §8 Tab 1 and log 2026-10-26 |
+| S32 | Tooltip and name limits | Tooltips at most 240 GUI units wide and 20 lines; description wrapped at 220 px, at most 8 lines. Previews include 1280x720, at GUI scales 2 and 3 only: `Window#calculateScale` offers no scale 4 at 720 high (amended 2026-10-27). **Amended 2026-10-26:** nodes are icons with no text on the page (§8 Tab 1), so the box widths are retired: names at most 196 px in a 208 px box, anchors 228 in 240. "Prerequisites at most 4" is retired with prerequisites; the tooltip names the path cost, the highest ring on it and the lock reason instead (§8 Tooltip). A name's limit is now the tooltip's width. | Vanilla picks the largest GUI scale leaving at least 320x240; log 2026-09-07, 09-09; amended by §8 Tab 1 and log 2026-10-26 |
 | S33 | What "matches the preview" means | In each named view: the same nodes visible, icons within 2 GUI px of their layout position, no truncated tooltip text, no edge across an icon, zoom readout present, tooltip line count equal, every class and state identifiable in greyscale. **Amended 2026-10-26:** boxes became icons (§8 Tab 1); "with names hidden" is moot, since no name is drawn on the page. | A browser render cannot match the game pixel for pixel |
 | S34 | Reset button in the top bar; who must hold the Tier 4 igniter | Not in the top bar (its location is open). It shows when the viewing player holds a Tier 4 igniter, per §8; §3.5 changes to match. | Log 2026-09-03 ("accepted as-is"); §13 Polish; a client can see only its own inventory |
 | S35 | Refunding a fork parent inside the Vault | Refused inside the Vault, since it clears the option. | §6.1 Forks (the restriction is on changing an option) |
@@ -66,7 +66,7 @@ section).
 | S41 | Where per-tier effect numbers live | One effects-constants source beside `NodeCosts`, read by effect code, the lang test and the balance tests. | Lessons doc ("one constant read by everything") |
 | S42 | Port the old pure classes or rewrite | Port, one ticket per class through normal review, into `core.*` with no Minecraft imports, without stored derived totals and without `NodeMigration`. Minecraft-facing adapters are rewritten. Nick can overrule. | `CLAUDE.md` (read the old commits before rebuilding); lessons doc "What went well"; Architect's purity findings |
 | S43 | ArchUnit strictness | At T1, each rule shown failing once against a planted violation. | ArchUnit fails a rule matching nothing unless told not to, and a vacuous pass is not evidence |
-| S44 | Debug tooling | Behind `[debug].enable_debug_commands`: density count, create a team's Vault, dump team data, wipe a team's progress, a per-minute blocks, ore and Resonance readout held in session state (never persisted), named-view client command. Removed at T14. | `CLAUDE.md` rule 7; no persisted diagnostic |
+| S44 | Debug tooling | The `/orevault` root is always registered; only the debug subcommands sit behind `[debug].enable_debug_commands`: density count, create a team's Vault, dump team data, wipe a team's progress, a per-minute blocks, ore and Resonance readout held in session state (never persisted), named-view client command. **Added 2026-10-27:** a snapshot readout printing the team's current generation `stamp`, applied generation tradeoffs, `vault_generation` and clip factor, and the `gen_stamp` of the chunk the player stands in, so each ADR 0003 rebuild trigger has a step (do it, read the stamp); and fault points that halt the process (`Runtime.halt`) after reset steps 3, 6, 7, 8 and 9 of ADR 0007, so a crash mid-reset can be tested. Removed at T14. | `CLAUDE.md` rule 7; no persisted diagnostic |
 | S45 | When the docs PR lands | Before T3, not with T4. | A spec sample that shows the race should not survive into a ticket citing §11 |
 | S46 | First-pass textures at T2 | Allowed at 16x16 when they pass the checks and Nick says yes on a contact sheet. No placeholder art is committed. | `CLAUDE.md` Textures (N2) |
 | S47 | ADRs | ADRs 0001 to 0007 land as docs PRs ahead of T1, T3, T4, T6, T7 and T11, reviewed by the matrix row for system design. | `CLAUDE.md` matrix |
@@ -107,7 +107,7 @@ left no comment, the recommendation stands and the row says so.
 
 | # | Question | Answer | Work it changes |
 |---|---|---|---|
-| Q1 | Whose switch decides Volatile Veins and Molten Seam, which change generation | A team vote. Each member's switch is their vote; it passes with more than half the team's members, or one of two in a two-member team; the result applies only once nobody is inside the Vault, then holds for every member. Every other tradeoff stays per player. Counting all members, online or not, is the Writer's reading of "majority" and waits on the Manager's confirmation. | §6.1, §11; ADR 0003 (snapshot), ADR 0005 (team field); T9 |
+| Q1 | Whose switch decides Volatile Veins and Molten Seam, which change generation | A team vote. Each member's switch is their vote; it passes with more than half the team's members, or one of two in a two-member team; the result applies only once nobody is inside the Vault, then holds for every member. Every other tradeoff stays per player. Counting all members, online or not, is the Writer's reading of "majority", confirmed by the Manager on 2026-10-27: "50% works if there are only 2 people" counts team size, not who is online. The change is applied at the end of the tick in which the Vault becomes empty, counting non-spectator players. | §6.1, §11; ADR 0003 (snapshot), ADR 0005 (team field); T9 |
 | Q2 | New vein positions on reset | Yes: the reset count (`vault_generation`) is part of the seed. | §3.1, §3.5, §11; ADR 0003, ADR 0007; T4, T11 |
 | Q3 | Personal progress on a team change | Stays with the old team; the player starts fresh in the new one (option b). Rejoining finds it where it was left. | §9, §11; ADR 0005; T6 |
 | Q4 | Playtest world carried from T5 to 1.0 | No comment; recommendation stands: carry over, added fields read a default, renames migrate. | §11; T6 onward |
@@ -124,7 +124,7 @@ left no comment, the recommendation stands and the row says so.
 | Q15 | Vault Anchor as entry point | Takes one of the player's entry-point slots. | §3.3, §3.4; T10 |
 | Q16 | Reset vote screen opening by itself | No. A toast and a clickable chat line; the vote screen opens from the line. | §3.5, §8; T11 |
 | Q17 | Advancements, guide book, Vault Recall | No advancements and no Vault Recall in 1.0. A guide is decided after the first-ten-minutes playtest; if one is needed, a hover-in-JEI-and-hold-a-key guide is preferred over a book. | §12; T13 |
-| — | Conditional: party join disbands the solo team | No comment; recommendation stood. Settled 2026-10-27 by the FTB Teams 26.1.2.4 source read (`docs/research/neoforge-26.1-sources.md`): a party join never disbands the solo team, so nothing is archived and no exemption is needed. | ADR 0007; T11 |
+| — | Party join and the player's solo team | A party join never disbands the solo team (FTB Teams 26.1.2.4 source read, `docs/research/neoforge-26.1-sources.md`, 2026-10-27), so nothing is archived and no exemption is needed. Nick left no comment on the conditional question, which the read made moot. | ADR 0007; T11 |
 
 ## Shared task list
 
@@ -139,13 +139,13 @@ checks before "ready to merge". Every build, test and client result is from Nick
 | T3 Dimension path | Architect (ADR 0002), then Developer | Matrix design row; Reviewer, QA, Architect on code; Designer, UI-UX on the portal texture | S14 and S19 hold; lazy create only through `findOrCreate`; one world-map insert that calls `markWorldsDirty()`; restore survives a bad folder; return position saved after success; scripted restart passes; level-unload spike result written down; Nick confirms logout-inside once | Designer's portal strip and four tints; Playtester's arrival checks |
 | T4 Generator, classifier, baseline | Architect (ADR 0003 snapshot, ADR 0004 vein extents), then Developer | Matrix design row; Reviewer, QA, Architect, Balancer on code | S12 and S13 tests; seeding determinism; `Variant` against `dimension_type` JSON; density command within tolerance; Nick mines ten minutes in a fresh Vault and answers the T4 question | Balancer's tolerances (S12); QA's density procedure |
 | T8a Node data model | Architect, then Developer | Balancer, Reviewer, QA, Writer | Tests pin 354, the gates in S6, 12 points per level, every fork option covering every parent tier, each gate reachable from the clusters above it. **Amended 2026-10-26:** 354, the gates, 12 a level and Nk are retired with the PoE tree; the tests are now the layout tests in spec §6 and 5 points a level (§4.3); see `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree" | Balancer's node list; N4 and Nf |
-| T5 Resonance loop | Developer | Reviewer, QA, Balancer, Architect | Orb modelled on `ExperienceOrb`; three-breaker gametest (S21); vanilla XP still drops; curve and scaling tests; pool persisted with `data_version` from its first commit; Stone Memory T1 bought by command and its XP seen; Nick's pacing session inside the S11 bands | T6 ADR agreed first; Balancer's rare constant and milestones; Designer's orb tint check; Playtester and QA's script |
-| T6 Persistence | Architect (ADR 0005); Developer | Matrix design row; Reviewer, QA | Lands with T5's first field; golden key-set test per shape; fixtures load; absent fields read their documented default; one gametest per storage mechanism; reserved ids | N1 |
+| T5 Resonance loop | Developer | Reviewer, QA, Balancer, Architect | Orb modelled on `ExperienceOrb`; three-breaker gametest (S21); vanilla XP still drops; curve and scaling tests; pool persisted with `data_version` from its first commit; Stone Memory T1 bought by command and its XP seen; Nick's pacing session per S11 (60 minutes, or two of 30 pooled), its ore an hour inside the band and the level times reported as observations | T6 ADR agreed first; Balancer's rare constant and milestones; Designer's orb tint check; Playtester and QA's script |
+| T6 Persistence | Architect (ADR 0005); Developer | Matrix design row; Reviewer, QA | Lands with T5's first field; golden key-set test per shape; fixtures load, including wrong-type keys; absent fields read their documented default; `SavedData` and the chunk attachment checked across a scripted dedicated-server stop and start, compared through the S44 dump (a gametest cannot restart), the player attachment across death by a gametest if the mock player respawns through `PlayerList#respawn`, else a playtest step; an unreadable team file is copied aside, never overwritten (ADR 0005); reserved ids | N1 |
 | T7 Network and Tome shell | Architect (ADR 0006), Developer; UI-UX for screen structure | Matrix rows; Designer, Developer, Playtester on screens; Nick | Payload set in ADR 0006 (`docs/adr/0006-network-channel-and-tome-sync.md`); server validates every mutation; refusal payload with a lang key; pending state; header drawn after first sync; accepted top bar reproduced; `runGameTestServer` after each payload change; Nick's yes | N2, N3 and Nd; Writer's UI strings; Designer's shell art |
-| T8 Tree layout and renderer | UI-UX (the authored layout file, named views, layout tests); Designer (node icons, class frames, state tints, badges, `style.json`); Developer (renderer over `TreeLayout`) | Designer, Developer, Playtester; then Nick | Nick's yes on the preview set drawn from the layout file with `tools/tree-preview` (§6.1); the §6 layout tests pass; renderer holds no placement code; client matches the preview (S33) at scales 2, 3 and 4; first node bought through the Tome. **Amended 2026-10-26:** golden layout files and geometry proofs with random widths are retired with the computed layout (S27) | Node list, rings and layout file from T8a; Writer's names, descriptions and every tooltip line; Nick's preview approval |
-| T9 Node effects | Developer, a batch of nodes at a time in §6.1 order (the tree has no clusters since 2026-10-26) | Reviewer, QA, Balancer, Writer; UI-UX if it shows in the Tome | Balancer's stacking review before the batch's tickets open; per-tier pure tests; gametest where a block or drop is touched; Fortune-before-Quantity test; every node answers "how does the player know it worked"; descriptions pass the lang test | T5 pacing inside its band; N5 to N7; UI-UX mockups for Tome-visible effects |
-| T10 Chunk loading | Developer | Reviewer, QA, Architect, Balancer | `TicketController` on the mod bus; tickets validated on load; the ceiling has a reader; Anchor only inside the Vault; igniter returned as a crafting remainder; S21 holds | Designer's Anchor texture; Writer's messages |
-| T11 Reset and disband | Architect (ADR 0007), Developer; UI-UX for screens | Matrix rows; Nick | Pure vote machine tested at 1, 2 and 3+ online; scripted reset with backup on and off, region files checked on disk; S19 holds; a reset within 24 h of the last free window opens none (Q14); the reset count changes the seed (Q2); other members get a toast and chat line, never a forced screen (Q16) | N3, N8, Nh and Ni; T3's spike result |
+| T8 Tree layout and renderer | UI-UX (the authored layout file, named views, layout tests); Designer (node icons, class frames, state tints, badges, `style.json`); Developer (renderer over `TreeLayout`) | Designer, Developer, Playtester; then Nick | Nick's yes on the preview set drawn from the layout file with `tools/tree-preview` (§6.1); the §6 layout tests pass; renderer holds no placement code; client matches the preview (S33) at scales 2, 3 and 4 at 1920x1080 and 2 and 3 at 1280x720; first node bought through the Tome. **Amended 2026-10-26:** golden layout files and geometry proofs with random widths are retired with the computed layout (S27) | Node list, rings and layout file from T8a; Writer's names, descriptions and every tooltip line; Nick's preview approval |
+| T9 Node effects | Developer, a batch of nodes at a time: the ring-0 nodes first, then §6.1 order (the tree has no clusters since 2026-10-26) | Reviewer, QA, Balancer, Writer; UI-UX if it shows in the Tome | Balancer's stacking review before the batch's tickets open; per-tier pure tests; gametest where a block or drop is touched; Fortune-before-Quantity test; every node answers "how does the player know it worked"; descriptions pass the lang test; the first-ten-minutes session (E9-S59, #363) runs after the ring-0 batch and answers Q17 | T5 pacing inside its band; N5 to N7; UI-UX mockups for Tome-visible effects |
+| T10 Chunk loading | Developer | Reviewer, QA, Architect, Balancer | `TicketController` on the mod bus; tickets validated on load; a restored Vault's saved tickets reactivated at restore, as `prepareLevels` does for levels present at start (ADR 0002), checked by a restart with nobody joining; the ceiling has a reader; Anchor only inside the Vault; igniter returned as a crafting remainder; S21 holds | Designer's Anchor texture; Writer's messages |
+| T11 Reset and disband | Architect (ADR 0007), Developer; UI-UX for screens | Matrix rows; Nick | Pure vote machine tested at 1 to 5 members online with ADR 0007's cases; S44 fault points after reset steps 3, 6, 7, 8 and 9, each followed by a start and a check; scripted reset with backup on and off, region files checked on disk; S19 holds; a reset within 24 h of the last free window opens none (Q14); the reset count changes the seed (Q2); other members get a toast and chat line, never a forced screen (Q16) | N3, N8, Nh and Ni; T3's spike result |
 | T12 Integrations | Developer | Reviewer, QA, Architect | Dedicated server boots with no soft dependencies, with Ultimine only, with Mekanism; import greps pass; the Ultimine nodes hidden without Ultimine (Broad Cut, a cluster, retired 2026-10-26) | Nick on Mekanism; Balancer on Mekanism-only tiers |
 | T13 Content | Developer, Designer, Writer | Matrix rows; Nick on art | Datagen recipes, loot, tags, blockstates; full `en_us.json`; lang coverage and PNG size tests; every texture batch approved on a contact sheet | N2 sets the PNG test's scope |
 | T14 Release | Manager, with QA, Playtester, Balancer | All | Load test in FTB Evolution 2 on Nick's PC, on the version pinned at T3 and re-checked (Q7); debug block removed; `KNOWN_ISSUES.md`; §12 and §13 match what merged; full playtest against the milestone table; curve re-derived if measured rates are outside band | Every role |
@@ -160,9 +160,10 @@ renderer code before Nick approves the T8 preview.
 **Done by #158.** Re-checked against the spec on 2026-10-27 (E0-S2): every item below is fixed, or retired
 because the PoE tree removed what it corrected (`DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a
 Path of Exile tree"): §4.4's 354 points and 1,062 levels (a refund now costs XP levels per node, §4.4), the
-anchor class in §6 notation, the §6.1 gates and cluster intros, and the cross-cluster item. One item is still
-open: §13 "Mod icon (`pack.png`)", where the Designer's asset table names `logo.png` through `logoFile`; the
-Writer settles the name with the Designer. The list below is kept as the record of what #158 did.
+anchor class in §6 notation, the §6.1 gates and cluster intros, and the cross-cluster item. The last open
+item, §13 "Mod icon (`pack.png`)", was settled by E0-S16: §13 now reads "Mod logo as `logoFile` in
+`neoforge.mods.toml`, not `pack.png`", and the Designer names the file `logo.png` at the resources root
+(2026-10-27). Nothing in this list is open. The list below is kept as the record of what #158 did.
 
 The Writer fixes these in one docs-only PR before T3. Each was checked against the current spec on
 2026-10-26. Nick answered the questions these waited on (see "Nick's answers"); each item names the answer it
@@ -368,10 +369,11 @@ afterwards.
 
 ### What I need
 
-From the Manager, the sketch step on T1 and T3 to T8 (S47). From the Developer, the sources-jar checks
-named under T4 and T11 before those tickets are sized. From the Balancer, for each node: what state it
-reads (team, player, trip, chunk) and whether that state outlives logout, death, reset or a team change.
-From UI-UX, the inputs the tree screen needs, so I can check they are in the sync payload.
+From the Manager, the sketch step on T1 and T3 to T8 (S47). From the Developer, each read on the "Still to
+read" list of `docs/research/neoforge-26.1-sources.md` (E1-S5, #195), before the story that item names. From
+the Balancer, for each node: what state it reads (team, player, trip, chunk) and whether that state outlives
+logout, death, reset or a team change. From UI-UX, the inputs the tree screen needs, so I can check they are
+in the sync payload.
 
 ### Package layout
 
@@ -388,10 +390,13 @@ reads the authored layout file (§6 Layout data, §11 Tree Layout Data). ADR 000
 ### Persisted data
 
 Every persisted shape, its keys, defaults, versioning and load rules are ADR 0005
-(`docs/adr/0005-persisted-data-and-versioning.md`, proposed 2026-10-27): team data (its section 3),
-`PlayerStats` (4), the player attachment (5), versioning (6), the tree's load rules (7), what is in memory
-only (8), a team change (9), the orb (10) and item components (11). The tree's saved state is §6 Saved
-state; the vein index is ADR 0004's (`docs/adr/0004-vein-index.md`). This section no longer restates the
+(`docs/adr/0005-persisted-data-and-versioning.md`, proposed 2026-10-27): one key convention, one clock and
+one id form (its section 1), where everything lives (2: team data in the server's storage,
+`<world>/data/orevault/`, not the overworld's), team data (3), `PlayerStats` (4), the player attachment
+(5), versioning (6), the tree's load rules (7), what is in memory only (8), a team change (9), the orb (10)
+and item components (11). The tree's saved state is §6 Saved state; the vein index is ADR 0004's
+(`docs/adr/0004-vein-index.md`), and its Amendment 1 holds `orevault:explored_map`, stored in the Vault
+level's own storage. This section no longer restates the
 shapes. The table that stood here stored node state as `nodes {id: tier}`, which the PoE tree retired on
 2026-10-26: a skill's tier is the count of its owned nodes and is never stored (§6), so team data saves
 `owned[]` and the fork choices.
@@ -415,23 +420,25 @@ the layout hash.
 
 ### Per task
 
-T1: package skeleton, ArchUnit rules, ADR 0001. T3: ADR 0002 (lifecycle): `VaultLevels.register` is the
-only insert; restore scans `<world>/dimensions/orevault/`, reads `vault_variant` and `disbanded_at`, and
-survives a bad folder; the `in_vault` login check; I review the level-unload spike. T4: ADR 0003
-(`GenSnapshot`: only what placement reads, including team level, rebuilt on the main thread after purchase,
-refund, fork change, level-up, reset and restore) and ADR 0004 (vein extents as values, veins inside their
-chunk). T5: pool and `level_reached` on the T6 codec from the first field; orb award goes through
-`mining`. T6: ADR 0005, golden key sets, fixtures. T7: ADR 0006 (sync) with a "waiting for sync" client
-state. T8a and T8: `core.layout.TreeLayout` read from the authored layout file (§6 Layout data, §11 Tree
-Layout Data), with the hidden set from the server's mod and tag checks; no width function, since nodes are
-icons (S27, superseded 2026-10-26). T9: each node's state checked against ADR 0005; nothing grows without
-bound. T10:
-`TicketController` on the mod bus. T11: ADR 0007, reset and disband share archive and regenerate.
+T1: package skeleton, ArchUnit rules, ADR 0001. T3: ADR 0002 (lifecycle): `VaultLevels.register` is the only
+insert; restore scans `<world>/dimensions/orevault/`, reads `vault_variant` and `disbanded_at`, and survives a
+bad folder; restore reactivates the level's saved tickets as `prepareLevels` does; the `in_vault` login check,
+including a Vault whose team is not the player's current team; I review the level-unload spike. T4: ADR 0003
+(`GenSnapshot` and `TeamEffects`, rebuilt on the main thread on the triggers that record lists; team level is
+not in the snapshot since 2026-10-27, as no 1.0 generation node reads it) and ADR 0004 (vein extents as
+values, veins inside their chunk). T5: pool and `level_reached` on the T6 codec from the first field; orb
+award goes through `mining`. T6: ADR 0005, golden key sets, fixtures. T7: ADR 0006 (sync) with a "waiting for
+sync" client state. T8a and T8: `core.layout.TreeLayout` read from the authored layout file (§6 Layout data,
+§11 Tree Layout Data), with the hidden set from the server's mod and tag checks; no width function, since
+nodes are icons (S27, superseded 2026-10-26). T9: each node's state checked against ADR 0005; nothing grows
+without bound. T10: `TicketController` on the mod bus. T11: ADR 0007, reset and disband share archive and
+regenerate.
 
 ### My gates
 
 - A persisted shape changes only with a version bump, a migration, a fixture and a golden key-set update.
-- No generation code reaches `data`, `team` or `SavedData`; the snapshot is rebuilt on every trigger above.
+- No generation code reaches `data`, `team` or `SavedData`; the snapshot is rebuilt on every trigger ADR
+  0003 lists.
 - One world-map insert, with `markWorldsDirty()`. No level created off the portal path; none removed while
   the server runs unless the spike proves it safe.
 - Every mutation validated on the server, and refused inside the Vault where §6.1 says so.
@@ -473,18 +480,22 @@ definitions, `pack.mcmeta`, the pickaxe tag under `data/minecraft/tags/block/min
 
 T3. One PR (S14): lazy create in `findOrCreate` only, through the single insert that calls
 `markWorldsDirty()`; eager restore in `ServerStartedEvent`; teleport with the return position saved after
-success, the fixed anchor at X=0 Z=0 and an idempotent return portal. The `storageSource` AT returns with
-its comment. I spike level unload here, because T11 depends on it.
+success, the team anchor (X=0, Z=0) and an idempotent return portal. The `storageSource` AT returns with
+its comment: the sources tree we read had the old build's transformers applied, so its `public` is not
+evidence, and the AT stays the plan until a clean read (E1-S5, #195) says otherwise (ADR 0002). I spike
+level unload here, because T11 depends on it.
 
 T4. The generator reads team state only through the snapshot supplier. Layer JSON validated against the
 heights duplicated in `Variant`. Placement is a pure function returning ore indices and vein extents (S13,
-S20); candidates come from `c:ores`. The placement ATs return with comments. The density command (S12).
+S20); candidates come from `c:ores`. Placement fields are read through their codecs; an AT only as ADR
+0009's fallback, with its comment. The density command (S12).
 
 T8a and T5. The node data and the layout file read into `TreeLayout` with a `NodeClass` enum and marks, and
 the §6 layout tests (§12 T8a). (Was: `NodeDefs` with gates as `ceil(fraction × totalTreeCost)`; retired
 2026-10-26 with the gates, since every node costs 1 point and the ring is the only level floor.)
-`VaultOrbEntity` modelled on `ExperienceOrb`, server-authoritative, carrying a source-ore
-count so Hoarder's Instinct counts ore, not orb entities. `LevelCurve` and `TeamScaling` pure, team size
+`VaultOrbEntity` modelled on `ExperienceOrb`, server-authoritative, carrying `orb_count`, the
+number of orbs merged into it, which is Hoarder's Instinct's N (§6.1: "N counts orbs, not Resonance"; ADR
+0005 section 10). `LevelCurve` and `TeamScaling` pure, team size
 never below 1. Breaker rules per S21. Available points derived. Stone Memory T1 bought by debug command
 (S9).
 
@@ -505,13 +516,20 @@ are authored and nodes carry no text on the page.)
 T9. Each effect a pure function plus a zero-logic adapter, into the single `BlockDropsEvent` pipeline and
 the `ResonanceBonuses` accumulator. The old build's `FoodData.exhaustionLevel` AT (old PR #150 in
 `docs/research/issue-harvest.md`) returns with the first node that changes hunger drain, which is Miner's
-Constitution at ring 0, not Long Delve at ring 7; Long Delve uses the same hook. Whether 26.1 still needs
-the AT is unverified, to be read by E1-S5 (#195).
+Constitution at ring 0, not Long Delve at ring 7; Long Delve uses the same hook. Settled 2026-10-27: 26.1
+still needs it. `FoodData.exhaustionLevel` is private with no accessor (`FoodData.java` line 16; the old AT
+never touched it, so the tree's `private` is reliable) and `Player#causeFoodExhaustion` posts no event.
 
-T10. `TicketController` on the mod bus; `max_loaded_chunks_per_team` gets its reader here.
+T10. `TicketController` on the mod bus; `max_loaded_chunks_per_team` gets its reader here. A restored
+Vault's saved tickets, Anchor tickets included, load deactivated and only `prepareLevels` reactivates them
+for levels present at start, so restore reactivates them (ADR 0002): `getDataStorage().get(TicketStorage.TYPE)`,
+`activateAllDeactivatedTickets()`, then NeoForge's `ForcedChunkManager.activateAllDeactivatedTickets(level,
+saved)`. That method's visibility, and when the `TicketController` validation callback runs for a level added
+after start, are unverified: E1-S5 (#195) reads them before E3-S6a (#237).
 
-T11. Vote state machine pure and tested; deletion depends on the spike and on Nick's disband answer. Before
-T11 I confirm in FTB Teams' sources whether joining a party disbands the player's own team.
+T11. Vote state machine pure and tested; deletion depends on the spike and on Nick's disband answer (N8).
+Joining a party never disbands the player's own team (FTB Teams 26.1.2.4, read 2026-10-27,
+`docs/research/neoforge-26.1-sources.md`), so T11 needs no exemption for it.
 
 T12. Ultimine per S24, on the 26.1 registration events; the server tells the client whether it is active.
 Mekanism per Nick's answer.
@@ -537,8 +555,9 @@ generator sample. Placement code in the renderer. Save sentinels. Config before 
 ### Conflicts I expect
 
 With the Balancer: the curve is provisional until a playtest measures blocks per hour, and T5 marks it so.
-With QA: client checks wait on Nick's sessions. With the Reviewer: the Ultimine package looks like a §9
-violation until the docs PR lands.
+With QA: client checks wait on Nick's sessions. With the Reviewer and the Architect: an ADR 0001 import row
+that a later record needs is changed by an ADR amendment, never widened in a code PR. (Was: the Ultimine
+package against §9, stale since #158.)
 
 ## QA
 
@@ -557,8 +576,12 @@ step number, with `logs/latest.log` and screenshots for failures.
 ### Per task
 
 T1. I check that `runServer` and `runGameTestServer` boot an empty mod with FTB Teams and log no error, on
-Nick's PC. If Nick wants a GitHub Actions check as well (open), it must fail when it cannot run; a skipped
-job reporting green is the 2026-08-29 problem again.
+Nick's PC. Nick answered the GitHub Actions question no (Na); if a check is ever added, it must fail when it
+cannot run, since a skipped job reporting green is the 2026-08-29 problem again. ArchUnit (ADR 0001): each
+fixture assertion checks that the failure report names its planted class, and the main test asserts the
+imported class count is above zero, which is also the check that ArchUnit reads Java 25 class files. The T1
+PR quotes `git grep -n installations.paths` returning nothing, and records whether `CompoundTag` loads in
+JUnit, here and in `CLAUDE.md` Tests (S17; E1-S3, #194).
 
 T2. Frame mines at stone speed with a pickaxe and drops (#87); gametests for tag, drop and recipe; creative
 and JEI visibility are Nick's.
@@ -566,20 +589,54 @@ and JEI visibility are Nick's.
 T3. No level is created by a login or a team event (the Reviewer's ArchUnit rule, plus the scripted run); a
 Vault created after the first tick ticks (a mock player breaks a block in it); a bounced teleport leaves the
 return position unchanged. The scripted restart: create a Vault by debug command, stop, start, then
-`execute in orevault:vault_<id>` from the console before anyone connects.
+`execute in orevault:vault_<id>` from the console before anyone connects. The folder-name and key functions
+are pure `core` functions with unit cases (round trip, upper-case hex, 31 and 33 hex digits, a hyphenated
+name). A restore fixture: one good folder, one `vault_zzz`, one whose team file is garbage bytes; pass is
+one restored, two logged (WARN and ERROR) with their folder names, and "restored 1, skipped 2". Login case 1
+is checked by renaming the folder while the server is down. The E3-S11 level-unload spike passes only if
+every check passes on both runs (one per variant order); one failed check, even intermittent, is Result B
+(ADR 0002).
 
 T4. Unit tests for 3% and 6%, the 68/25/7 stone-band and 60/30/10 deepslate mix (S12; 70/25/5 retired
 2026-10-26 by the vanilla ore research), vein sizes, the floor with the full deepslate stack (S13) and
-seeding determinism; then the density command on a dedicated server inside tolerance, quoted in the PR.
+seeding determinism; golden tests for the seed and the generation stamp (ADR 0003); each per-chunk rate
+over 10,000 chunk seeds within three standard errors, and a salt-isolation test; the classifier gametest
+also asserts each ore's expected blocks within 10% and the features it used (ADR 0009); then the density
+command over at least 81 chunks on a dedicated server inside tolerance, quoted in the PR. For the vein
+index (ADR 0004): the E6-S4 attachment spike as a gametest half over at least 81 chunks plus a scripted
+dev-server restart half, a mixed result counting as Result B; the size measurement against 73,728 bytes
+(raw `long[]` plus palette), the maximum over 81 chunks deciding.
 
-T5. `LevelCurve` sums to the total with ratio 100, about 76,700 at 220 ore an hour on the 68/25/7 mix with
-rare at 12.5 (3.485 Resonance an ore, §4.2, §4.3); `curve_divisor` scales every threshold equally; level 1
-costs about 114 and arrives at 0.15 h, level 2 at about 247 cumulative and 0.32 h (derived, not measured); `TeamScaling` 1.0, 1.1, 1.2, 1.4 and size 0 or unknown read as 1. Gametests for the orb paying
-only its team, the three breakers (S21) and vanilla XP.
+T5. `LevelCurve` sums to the total with ratio 100, about 76,259 at 218.9 ore an hour (7,200 blocks an hour
+times ADR 0009's closed-form density) on the 68/25/7 mix with rare at 12.5 (3.4845 Resonance an ore, §4.2,
+§4.3); thresholds stored cumulative, each rounded from the cumulative value; `curve_divisor` scales every
+threshold equally; level 1 costs about 113 and arrives at 0.15 h, level 2 at about 245 cumulative and 0.32 h
+(derived, not measured; Balancer, 2026-10-27). Pool unit cases from ADR 0005 section 3: rounded once, half up,
+at pool entry after team scaling; 20 payments of 0.05 sum to exactly 1,000 thousandths. `TeamScaling` 1.0,
+1.1, 1.2, 1.4 and size 0 or unknown read as 1. Gametests for the orb paying only its team, the three breakers
+(S21) and vanilla XP. The pacing session per S11 (60 minutes, or two of 30 pooled), judged on ore an hour from
+the S44 readout.
 
-T6. A fixture per persisted shape, including one without `deepest_y` that reads as never entered.
+T6. The tests of ADR 0005 section 6: a golden key set per shape, a fixture per shape and version
+(including one without `deepest_y` that reads as never entered), an absent-field test per field, and per
+key a wrong-type fixture (`resonance_pool` as a string, `owned` as an int, `player_stats` as a list) loading
+to its default; the unit cases for the pool, `curve_divisor`, the Q14 window at 1,727,999 and 1,728,000
+ticks, and an older generation's team-scoped position reading absent. `SavedData` and the chunk attachment
+across a restart are a scripted dedicated-server stop and start, with named fields compared through the
+S44 dump, because a gametest is one server lifetime. The corrupt-file step: corrupt a team file, start,
+mine one ore; the original bytes are still on disk as `team_<hex>.dat.unreadable-<gametime>` and an ERROR
+line names the path (ADR 0005).
 
-T7. `runGameTestServer` after every payload or screen change.
+T7. `runGameTestServer` after every payload or screen change. ADR 0006's checks: a refused purchase
+resyncs; `/reload` with a tag change hides or shows the Mekanism-tag nodes on an open Tome; a second dev
+client (Q10) sees a purchase, a pin and a vote within one second; a mismatched layout disconnects with the
+message, produced by running the client from a build with one node moved in the layout file. Added: the
+header reads "Waiting for team data", not zeros, on a slow join; no level-up toast on the first
+`TeamProgress` after joining; the rate bucket and coalescing are pure `core` rules with unit cases (11
+payloads in one tick, a refusal at most once a second); `canonicalHash()` keeps its value under CRLF,
+whitespace and edge reordering, and changes when an edge is added, a node moves or nodes are reordered; one
+gametest per bounded field decoding an oversize buffer; a golden test pinning `PROTOCOL_VERSION` with the
+hash of the sorted node ids.
 
 T8a and T8. Every fork option covers every parent tier (§6.1 Forks); the §6 layout tests (distance at least
 the ring, copies of a skill in ring order, mod-gated nodes on dead ends, exclusive leaves off one junction,
@@ -589,7 +646,13 @@ failing against broken input. (Was: gates from fractions and the polar invariant
 T9. Per batch of nodes: pure tests per tier, a gametest where a block or drop is touched, the Balancer's stacking
 case (Volatile Veins at 3% against Ultimine Safety, never zero, is the template), Fortune before Quantity.
 
-T10 and T11. Gametests for tickets and the ceiling; vote tests at 1, 2 and 3+ online; scripted reset with
+T10 and T11. Gametests for tickets and the ceiling; an Anchor set, the server restarted with nobody
+joining, and the anchored chunk ticking (a furnace in it advances), which proves restore reactivated the
+tickets. Vote unit cases at 1 to 5 members online with ADR 0007's list (a late joiner not counted, an early
+fail once yes cannot reach the threshold, a second start refused, a disbanded team refused, the timeout at
+exactly its tick) and the Q14 window as a pure `core.reset` function; the S44 fault points after reset steps
+3, 6, 7, 8 and 9, each followed by a start and a check of the folder, `vault_generation`, the window and the
+log, with the backup-abort branch induced by making `orevault_backups` a regular file; scripted reset with
 backup on and off, region files checked on disk.
 
 T12. Three dedicated-server boots (no soft dependencies, Ultimine only, Mekanism present); greps fail on
@@ -629,8 +692,8 @@ temporary dev client sessions on Nick's PC, each with its own dev username (Q10)
 ### Conflicts I expect
 
 With the Developer and Manager: gametests and the restart script cost time on tickets that feel finished; I
-block on them for T3, T4 and T6. With the Balancer: 220 ore an hour and the stacking model are derivations
-until measured, and I say so in every PR that depends on them.
+block on them for T3, T4 and T6. With the Balancer: 218.9 ore an hour and the stacking model are
+derivations until measured, and I say so in every PR that depends on them.
 
 ## Reviewer
 
@@ -653,23 +716,31 @@ T2. Id-aware registration, creative tab, `items/` definition, `pack.mcmeta`, pic
 `minecraft` namespace (#87), block and item textures 16x16 (N2).
 
 T3. Only `findOrCreate` creates a Vault; no team event reaches it (#82). Every folder restored in
-`ServerStartedEvent`, one bad folder not aborting the rest. `markWorldsDirty()` after every insert. Return
-position saved only after success. Registry unfreeze and refreeze paired in a `finally`. No level removed
-while the server runs (S19).
+`ServerStartedEvent`, one bad folder not aborting the rest, and each restored level's saved tickets
+reactivated as `prepareLevels` does (ADR 0002). `markWorldsDirty()` after every insert and every removal.
+Return position saved only after success. Registry unfreeze and refreeze paired in a `finally`. No level
+removed while the server runs (S19) unless E3-S11 took Result A (ADR 0002). A player whose team changes
+while inside a Vault that is not their new team's is sent to `return_pos` with a chat line saying why; the
+login check treats a Vault whose team is not the player's current team the same way; mining in a Vault pays
+only that Vault's team.
 
-T4. Team state reaches the generator only through the snapshot. One constant for the 68/25/7 and 60/30/10
-mix, read by the generator and the curve (was 70/25/5, retired 2026-10-26). The floor enforced,
-every clipped modifier in the snapshot. `Variant` heights match the JSON. ATs carry their task comments.
+T4. Team state reaches the generator only through the snapshot. One `OreBaseline` record of counts and
+sizes (ADR 0009), read by the generator and `LevelCurve`; no mix constant beside it (was one constant for
+the mix, and before that 70/25/5, retired 2026-10-26). The floor enforced, the clip factor in the snapshot.
+`Variant` heights match the JSON. ATs carry their task comments.
 
 T5. Orb modelled on `ExperienceOrb`, not a subclass. Team size never 0. Breaker rules per S21. Vanilla XP
 untouched. `averageOresPerHour` a constant; `curve_divisor` and `target_play_hours` `worldRestart()`.
 `POINTS_PER_LEVEL` a constant of 5, not derived (§4.3 step 2); `totalTreeCost` is retired with node costs
 (2026-10-26).
 
-T6. Any save-data risk is a block. `data_version` and `migrate()` on team data and on `PlayerStats`
-separately; every new field reads correctly from a tag without it; `deepest_y` absent means never entered
-(S16); every rename or removal ships a migration tested against the previous version; reserved ids never
-reused. The vein index is a versioned attachment written only on its own chunk.
+T6. Any save-data risk is a block. `data_version` and `migrate()` on each of the seven shapes of ADR 0005
+section 6, each moving independently; snake_case keys; every new field reads correctly from a tag without
+it; `deepest_y` absent means never entered (S16); every rename or removal ships a migration tested against
+the previous version; reserved ids never reused. Read paths use `get`, never `computeIfAbsent`; an existing
+but unreadable team file is copied aside with an ERROR before anything writes (ADR 0005). The vein index is a
+versioned attachment written only on its own chunk, its ore-group palette stored as block ids, and an unknown
+palette id never throws (ADR 0004).
 
 T7. Mutations validated on the server; client cost and tier never trusted; tradeoff, fork swap and every
 refund refused inside the Vault (§4.4, S35), the generation vote excepted (§8); client code behind the client entry; the Ultimine flag from
@@ -693,8 +764,8 @@ Attuned ore's component id treated as save data. Debug block and `VaultDiag` rem
 Every code PR, listed in the verdict as checked or failed:
 
 1. No `SavedData` reachable from generator code. (ArchUnit)
-2. A Vault is created only from `findOrCreate`; every world-map insert goes through one method calling
-   `markWorldsDirty()`. (ArchUnit)
+2. A Vault is created only from `findOrCreate`; every world-map insert and every removal goes through one
+   method calling `markWorldsDirty()`. (ArchUnit)
 3. Gameplay listeners on `NeoForge.EVENT_BUS`; registries and config on the mod bus. (Review)
 4. No common-code dependency on `client`; state mutated through `ServerLevel` and `ServerPlayer`. (First
    part ArchUnit)
@@ -702,11 +773,16 @@ Every code PR, listed in the verdict as checked or failed:
    (ArchUnit)
 6. No pre-26.1 names; no JetBrains or NeoForge `@Nullable`. (Grep)
 7. Every access-transformer line preceded by a comment naming its task. (Lint)
-8. A persisted shape change means a version bump plus a migration test. (Golden key-set test)
+8. A persisted shape change means a version bump plus a migration test; a change to a seed or stamp
+   function is a save-data change (ADR 0003). (Golden key-set test)
 9. No config value without a reader; start-time reads `worldRestart()`. (Mostly automatable)
 10. No number literal where the value lives in a constants class. (Review)
 11. A behaviour change comes with its spec change and §13 tick in the same PR. (Review)
 12. Nothing outside the ticket; no `neo_version` or FTB bump in a `feat:` PR. (Diff check)
+13. A diff that touches a codec under `network/` or a node id bumps `PROTOCOL_VERSION`, and every decoded
+    string and collection is bounded (ADR 0006). (Review, plus QA's golden protocol test)
+14. Any mixin beyond ADR 0008's has its own ADR, and the mixin config keeps `defaultRequire: 1` (ADR 0001).
+    (Review)
 
 Also automated: a grep for `popExperience` and `data/orevault/tags/block/mineable`, a test comparing
 `dimension_type/*.json` with `Variant`, the PNG size test, `NodeLangTest`.
@@ -715,7 +791,7 @@ Also automated: a grep for `popExperience` and `data/orevault/tags/block/mineabl
 
 Dimension creation on any team event, and "cleaning up" the restore as dead code. Config ahead of its
 reader. Ore density, ore per hour or Silent Stone's rate as config. A rejected design returning through
-code. Removing §11's `dataVersion` paragraph along with the old-id table.
+code. Removing §11's `data_version` paragraph along with the old-id table.
 
 ### Conflicts I expect
 
@@ -738,10 +814,10 @@ look. So I prove the art on a preview at real size, get Nick's yes, and hand the
 |---|---|---|---|
 | Review of my `mc-asset` drafts, saying what to improve (Q5: I draft first, no reference textures) | Nick, via the Manager | Comments on a contact sheet | Each texture batch, from T2 |
 | The accepted Tome top bar | Developer, from the old `TomeScreen` | PNG at scales 2 and 3 | Before T7 |
-| Node list with skills, classes and marks: one icon per skill, travel stat, notable and keystone (§8) | Balancer, via T8a | The layout file's node list | Before T8 |
+| Node list with skills, classes and marks: one icon per skill, travel stat, notable, pact and keystone, and per fork option (§8) | Balancer, via T8a | The layout file's node list | Before T8 |
 | The layout file and named views | UI-UX | The authored layout file (§6 Layout data) and a view list | Before T8 preview |
 | Approval for `mc-asset` and the preview tools on Nick's PC | Nick, via the Manager | Yes or no | Before T2 |
-| Client screenshots at scales 2, 3 and 4 | Nick or a session on his PC | PNG, same named views | Before a visual PR is ready |
+| Client screenshots at scales 2, 3 and 4 at 1920x1080, and 2 and 3 at 1280x720 | Nick or a session on his PC | PNG, same named views | Before a visual PR is ready |
 
 ### Per task
 
@@ -752,18 +828,21 @@ the 3% band (S46).
 T3. The portal: one near-white translucent animated strip tinted per tier (§3.2). Green and orange
 converge under deuteranopia, so tints also differ in lightness.
 
-T5. I check the tinted orb reads unlike vanilla XP and sign off the toast.
+T5. I check the tinted orb reads unlike vanilla XP. T5 announces a level-up with an overlay message, not a
+toast.
 
-T7. Window, tab and top-bar art on vanilla screens, reproducing the accepted top bar.
+T7. Window, tab and top-bar art on vanilla screens, reproducing the accepted top bar. I sign off the
+level-up toast, which arrives with the Tome shell (E7-S6, #291).
 
-T8. Node icons, class frames at §8's icon sizes, the state tints, the badge sheet, the faint level rings
+T8. Node icons, class frames at §8's icon sizes, the state treatments, the badge sheet, the faint level rings
 and edge style, and `style.json`, drawn into UI-UX's preview set (S30). No tree-drawing code until Nick says
 yes. Retired 2026-10-26: anchor frames, gate badges, tier pips and nine-slice washes sized to text boxes;
 the PoE tree has no anchors or gates, a node is one tier, and nodes are fixed-size icons with no text.
 
 T9 to T13. Mockups before build for each effect shown in the Tome (the inert fork parent, Outgrown, toggles
 disabled in the Vault, Seismic Sense, Stratified's bands); the Vault Anchor; reset screens with UI-UX; the
-rest of the inventory and the logo. T14: client against the approved previews at all three scales.
+rest of the inventory and the logo. The Wanderer's Cache item texture has its own story, E13-S2d, ordered
+before E9-S33 (#338). T14: client against the approved previews at every scale the preview set names.
 
 ### Asset inventory for 1.0
 
@@ -783,21 +862,27 @@ beside the vanilla font at scales 2, 3 and 4.
 | Tome window, top bar, progress bar | `gui/sprites/tome/*.png` | Nine-slice, one texel per unit | Top bar reproduces the accepted one |
 | Tabs | `gui/sprites/tome/tab_*.png` | 28x32 units | Resonance and Ore Memory (N3) |
 | Tree page | `gui/tree/page.png` | Tiled, opaque, one texel per unit | Low contrast under one-pixel lines |
-| Node icons: one per skill (every copy shares it), travel stat, notable and keystone | `gui/sprites/tree/`, names set at T8 | 18 units for small and travel, 26 for notables, 36 for keystones (§8), one texel per unit | No Retro Diffusion unless absolutely necessary (Nick, 2026-10-26) |
-| Class frames: small, travel, notable, keystone, pact, growth, fork parent; the fork option petal | `gui/sprites/tree/frame_<class>.png` | Fixed size per §8 icon size, one texel per unit | Pact keystone-ornamented but colder (§8); growth plain while live |
-| State tints | `style.json` | Colours, no geometry | Out of reach dimmed, inert fork parent washed, Outgrown greyed (§8) |
-| Badges: level lock with the opening level, exclusive lock, toggle on, toggle off, disabled in the Vault, fork option, pending, pin | `gui/tree/icons.png` | 9x9 units each, one sheet | Shape, not colour alone; the list is checked against §8's states by UI-UX at T8 |
-| Seismic arrow, chunk cell | `gui/tome/icons.png` | 9x9 units, one sheet | T9 |
-| Mod logo | `logo.png` (`logoFile`) | 256x256 | §13 calls it `pack.png` |
+| Wanderer's Cache | `item/wanderers_cache.png` | 16x16 | One item for both tiers. Reads at slot size as supplies a traveller left (a strapped pack or small crate with a torch showing), never as vanilla's bundle; a light, warm accent so the dropped item shows on stone and deepslate in a torch-lit tunnel. Its own story, E13-S2d (being filed 2026-10-27), before E9-S33 (#338) |
+| Node icons: one per skill (every copy shares it), travel stat, notable, pact and keystone; one per fork option, at petal size, reused as the chosen-option badge on its parent | `gui/sprites/tree/`, names set at T8 | Travel 14; small, growth and fork parent 18; notable 26; pact 26; keystone 36; petal 12 (provisional, DES-3 ruling 2026-10-27, final on Nick's E8-S5 #283 preview); one texel per unit | No Retro Diffusion unless absolutely necessary (Nick, 2026-10-26) |
+| Class frames: small, travel, notable, keystone, pact, growth, fork parent; the fork option petal | `gui/sprites/tree/frame_<class>.png` | Fixed size per class, as the icon row, one texel per unit | Pact at notable size with keystone-style ornament and colder, so it differs from a keystone in size and ornament, not only hue; growth plain while live |
+| State treatments | `style.json` (colours) and the badge sheet | Colours, no geometry | Every state has a badge shape or a luminance step no other state uses; hue is a second signal. Out of reach: frame and icon dimmed, no badge. Outgrown: owned frame at full luminance, icon desaturated, Outgrown badge. Inert fork parent: owned frame with a hatched overlay and a "no option" badge (§8) |
+| Badges: level lock, exclusive lock, toggle on, toggle off, disabled in the Vault, fork option, pending, pin, Outgrown, no option | `gui/tree/icons.png` | 9x9 units each, one sheet | Shape, not colour alone. The lock badge stays 9x9 and the opening level is drawn as text beside it ("26" alone is 11 px in the vanilla font); UI-UX places the number. The list is checked against §8's states by UI-UX at T8 |
+| Seismic arrow, its "nothing nearby" variant, chunk cell | `gui/tome/icons.png` | Arrow 9x9; chunk cell 4 units, so the 33-cell map is 132 units, inside the 240 units of height at scale 3 on 720 high | The "nothing nearby" variant is a different shape, not the arrow greyed. T9 |
+| Seismic map shades | `style.json` | Colours | One hue stepped in luminance, five steps (UI-UX sets the boundaries); unexplored is bare page; explored with unknown density (tier 3) is a two-texel hatch, never a shade. T9 |
+| On-screen Resonance bar (§8, Q11) | `gui/sprites/hud/`, names set at E5-S11 (#281) | Frame and fill, one texel per unit | Includes the bonus-share segment; E5-S11 (#281) preview |
+| Survey panel: depth gauge with band edges, death marker | `gui/sprites/tome/`, names set at E7-S4 (#213) | One texel per unit | The death marker in both treatments, plain and The Vault Keeps It (§8 Tab 3) |
+| Mod logo | `logo.png` at the resources root, named by `logoFile="logo.png"` in `neoforge.mods.toml` | 256x256, drawn at 64x64 and scaled by whole numbers | Not a texture, so not under `textures/`. §13 says `logoFile`, not `pack.png` (E0-S16). Whether `logoBlur` is needed is an E1-S5 (#195) read |
 
-About 10 world textures, about 8 frames, the badge and Tome icon sheets, and one icon per skill, travel stat,
-notable and keystone (§6.1 Totals gives the node counts), with state carried by tint and badges. Was: 7
-frames and 7 nine-slice washes with pips, retired 2026-10-26.
+About 11 block and item textures, about 8 frames, the badge and Tome icon sheets, the HUD bar and Survey
+sprites, and one icon per skill, travel stat, notable, pact, keystone and fork option (§6.1 Totals gives the
+node counts), with state carried by badges and luminance steps. Was: 7 frames and 7 nine-slice washes with
+pips, retired 2026-10-26.
 
 ### Preview workflow, art side
 
 UI-UX's preview tool (`tools/tree-preview`, §6.1) draws the authored layout file with my sprites, `style.json`
-and `en_us.json` (for tooltips) at 1920x1080 and 1280x720, GUI scales 2, 3 and 4, in UI-UX's named views, on Nick's PC. A debug command opens the Tome on the
+and `en_us.json` (for tooltips) at GUI scales 2, 3 and 4 at 1920x1080 and 2 and 3 at 1280x720 (no scale 4
+exists at 720 high), in UI-UX's named views, on Nick's PC. A debug command opens the Tome on the
 same views for comparison.
 
 ### My gates
@@ -805,8 +890,12 @@ same views for comparison.
 - Every PNG under `textures/block/` and `textures/item/` is size-checked at 16x16 (animated strips at 16 wide).
 - Each texture ticket shows a hex palette, a contact sheet and Nick's yes. Only the portal has partial
   alpha; blocks tile seamlessly; portal tiers survive colour-blind simulation.
-- Every class is identifiable at its §8 icon size without hovering. A pact reads colder than a keystone (the old pact
-  colour, warm red `0xFFC0563C`, was the reverse of §8). An inert fork parent reads as deliberately inert.
+- Every class is identifiable at its §8 icon size without hovering. Icon art is legible from effective
+  scale 1 upward; at 0.2x, class (by size and frame silhouette) and owned or not are still told apart.
+- A pact differs from a keystone in size and ornament, and reads colder (the old pact colour, warm red
+  `0xFFC0563C`, was the reverse of §8). An inert fork parent reads as deliberately inert.
+- Every state has a badge shape or a luminance step no other state uses, checked on a greyscale copy of the
+  preview (S33).
 - The top bar matches the accepted one; the page is opaque.
 
 ### What I will push back on
@@ -842,17 +931,19 @@ accepted on 2026-09-03 does not change without Nick.
 
 ### Per task
 
-T5: level-up as a one-line vanilla toast. T7: screen shell on vanilla `TabNavigationBar`, reproducing the
-accepted top bar, with the interaction model below; no tree drawing until T8's preview is approved. T8a and
-T8: the layout file, the preview set and the §6 layout tests. T9: Tome-visible effects (inert parent,
-Outgrown, toggles disabled in the Vault, Seismic Sense, Stratified's bands, the death marker, trip
-counters); Vein Sight outlines checked against stone and deepslate. T10: an action-bar message naming the
-limit when an Anchor is refused. T11: reset button, initiator confirmation with the backup checkbox, vote
-screen opened from a toast and chat line (Q16), countdown. T7: the on-screen Resonance bar inside the Vault
-and its client toggle, on a preview first (Q11); the Survey panel's current-chunk line (Q13). T12: the
-Ultimine nodes hidden on the server's flag (S25); Ore Working's Mekanism-tag nodes hidden when their tags are
-empty (§6.1 Forks). (Was: Broad Cut hidden whole and tier pips, retired 2026-10-26.) T13 and T14: text fit
-with the Writer; a UI section, by view and scale, in every playtest script.
+T5: level-up as an overlay message to every online member; the toast arrives with T7 (E7-S6, #291). T7: screen
+shell on vanilla `TabNavigationBar`, reproducing the accepted top bar, with the interaction model below; no
+tree drawing until T8's preview is approved; the level-up toast; the on-screen Resonance bar inside the Vault
+and its client toggle, on a preview first (Q11), built by E5-S13 (#288) after E7-S2a (#255), because the bar
+reads `TeamProgress` (T5's pacing session uses the E5-S5 per-minute readout instead); the Survey panel's
+current-chunk line (Q13). T8a and T8: the layout file, the preview set and the §6 layout tests. T9:
+Tome-visible effects (inert parent, Outgrown, toggles disabled in the Vault, Seismic Sense, Stratified's
+bands, the death marker, trip counters); Vein Sight outlines checked against stone and deepslate. T10: an
+action-bar message naming the limit when an Anchor is refused. T11: reset button, initiator confirmation with
+the backup checkbox, vote screen opened from a toast and chat line (Q16), countdown. T12: the Ultimine nodes
+hidden on the server's flag (S25); Ore Working's Mekanism-tag nodes hidden when their tags are empty (§6.1
+Forks). (Was: Broad Cut hidden whole and tier pips, retired 2026-10-26.) T13 and T14: text fit with the
+Writer; a UI section, by view and scale, in every playtest script.
 
 ### Screen inventory for 1.0
 
@@ -861,26 +952,37 @@ progress bar, pool on hover. Esc closes; Ctrl+Tab switches tabs. A small Ore Mem
 Survey panel and the reset button (N3).
 
 Resonance tree tab (§8 Tab 1). Opaque pannable page with faint level rings. Drag to pan with 4 px slop; wheel
-zooms on the pointer; arrow keys pan, plus and minus zoom, Home centres the start. Search box, focused with
-Ctrl+F. Travel totals panel. Zoom readout bottom right. When the free-respec window is open, a countdown line
-at the bottom. Pan and zoom persist for the session. An empty-state line ("Mine ore inside your Vault to earn
-Resonance.") until the team first enters a Vault. Retired 2026-10-26: Page Up and Page Down jumping hub to
-hub, and the cluster index of eight names with gate met or unmet.
+zooms on the pointer; arrow keys pan, plus and minus zoom, Home centres the start. The page consumes arrow
+keys, Home, plus and minus before the screen's focus navigation, except while the search box has focus
+(vanilla `Screen#keyPressed` otherwise moves focus to a tab); Esc in the search box unfocuses it before it
+closes the Tome. Search box, focused with Ctrl+F. Travel totals panel. Zoom readout bottom right. When the
+free-respec window is open, a countdown line at the bottom. Pan and zoom persist for the session. An
+empty-state line ("Mine ore inside your Vault to earn Resonance.") while the team's pool is 0 and its level is
+0 (`TeamProgress`), which needs no field on the wire (amended 2026-10-27; was "until the team first enters a
+Vault", which nothing synced could tell). Retired 2026-10-26: Page Up and Page Down jumping hub to hub, and
+the cluster index of eight names with gate met or unmet.
 
-Node. An icon with no text on the page (§8): class by frame and size (18, 26 and 36 units for small and
-travel, notable, keystone), state by tint and badge shape. States per §8: owned, buyable, out of reach,
-level-locked (lock badge with the opening level), excluded, inert fork parent, Outgrown, tradeoff on,
-tradeoff off, toggle disabled in the Vault, pending; and the team's pin (§8 Shared pin). A node in reach and at its ring with no unspent
-point (every node at level 0) is not in §8's list; it must not read as locked, and its drawing is open for
-T8 (Playtester, E0-S17). Retired 2026-10-26: the two-line node box (name; tier pips plus "2 pts · Lv 5").
+Node. An icon with no text on the page (§8): class by frame and size (travel 14; small, growth and fork
+parent 18; notable 26; pact 26 with keystone-style ornament; keystone 36; petal 12; provisional until Nick's
+E8-S5 #283 preview), state by badge shape or a luminance step no other state uses. States per §8: owned,
+buyable, in reach, out of reach, level-locked (lock badge, opening level as text beside it), excluded, inert
+fork parent, Outgrown, tradeoff on, tradeoff off, toggle disabled in the Vault, pending; and the team's pin
+(§8 Shared pin). In reach (settled 2026-10-27): adjacent and at its ring but no unspent point, which is every
+node next to the start at level 0 and most frontier nodes for a team that spends as it earns. Drawn as
+buyable without the buyable highlight (a lit outline, shape plus brightness), never dimmed or badged; its
+tooltip reads "No unspent points. Next point at level N."; a click is answered with
+`refusal.orevault.no_points`. Nick sees it on the E8-S5 (#283) preview. Retired 2026-10-26: the two-line
+node box (name; tier pips plus "2 pts · Lv 5").
 
 Actions. Left-click buys the node, one point; pacts, keystones and exclusives confirm first, naming the
 downside or the partner they lock. Shift-click buys the highlighted path after one confirmation naming the
-points (§8). Right-click opens an action list: refund (3, 12 or 30 XP levels, or free inside the 60-second
-undo window or the respec window, with its time left), toggle, pick, unpick or swap a fork option, pin.
-Inside the Vault, refund, toggle, unpick and swap show disabled with "Leave the Vault to change this"
-(§4.4, S35); the vote on Volatile Veins and Molten Seam works anywhere (§8). A click shows the node pending
-until sync; a refusal flashes it and shows the server's reason.
+points (§8). Left-click on a petal picks it (free, outside the Vault); right-click a picked petal to unpick.
+Buying an unowned growth node that is already Outgrown asks one confirmation naming why. Right-click opens an
+action list: refund (3, 12 or 30 XP levels, or free inside the 60-second undo window or the respec window,
+with its time left), toggle, pick, unpick or swap a fork option, pin. Inside the Vault, refund, toggle, unpick
+and swap show disabled with "Leave the Vault to change this" (§4.4, S35); the vote on Volatile Veins and
+Molten Seam works anywhere (§8). A click shows the node pending until sync; a refusal flashes it and shows the
+server's reason.
 
 Before sync. The tree draws neutral under "Waiting for team data" and takes no clicks.
 
@@ -892,18 +994,32 @@ Reset screens. Initiator: a vanilla confirmation screen over the Tome naming wha
 never a screen forced open; the vote screen shows who voted, the threshold, the backup choice read-only,
 and a cancel for the initiator. Countdown: title plus action-bar seconds for players inside.
 
-Trip counters (Deep Habit, Long Delve, Vein Discipline, Kindred Rock, Second Wind) show live in tooltips.
+Trip counters (Deep Habit, Long Delve, Vein Discipline, Kindred Rock, Second Wind) show live in tooltips,
+from the counters the server sends to the player while the Tome is open; Outgrown comes from a
+server-computed bitset in `TreeState`, in layout order, owned or not, so the client holds no growth rule
+(ADR 0006).
+
+Survey panel and Seismic Sense map (§8 Tab 3). The shade value stays full on the wire; the map draws it in
+five steps by ore left against a new chunk (under 0.25 mined out, 0.25 to 0.75 thin, 0.75 to 1.25 like new
+ground, 1.25 to 1.75 rich, 1.75 and above very rich), so the steps can move on the preview with no protocol
+bump. Unexplored is blank page; explored with unknown density (tier 3) is hatched, never a shade; at tier 2
+every explored cell is one flat fill. A one-line legend under the map: "Shade: ore left, compared with a
+new chunk". At "no denser rock nearby" the compass is a still needle with that text. A chunk with no
+generation stamp reads "Generated before this was tracked", not "not current".
 
 ### Tooltip rules
 
-The order is §8 Tab 1 "Tooltip": name; class and marks; the effect at the tier the team owns, then a dimmer
-"Next:" line, both from the constants (Q12); "Only in chunks generated after you buy it" on a generation
-node (Q13); the vote count, threshold and pending change on Volatile Veins and Molten Seam (Q1); a fork
-parent's option or that it does nothing yet; the ring and whether it is reached; on hover, the path's point
-cost and highest ring; the lock or refund reason naming the node, level or partner in the way; who last
-bought it; for a travel node, the team total. Limits per S32. Shown beside the node, flipped to stay on
-screen, wrapped with `font.splitIgnoringLanguage`. Never a raw key. Retired 2026-10-26: "next tier's cost",
-"prerequisites with tier and cluster" and a name cut with an ellipsis on the box.
+The order is §8 Tab 1 "Tooltip": name; the description (at most 8 lines, S32); class and marks; on an unowned
+growth node that can no longer pay, "Outgrown: <why>"; the effect at the tier the team owns, then a dimmer
+"Next:" line, both from the constants (Q12); "Only in chunks generated after you buy it" on a generation node
+(Q13); the vote count, threshold and pending change on Volatile Veins and Molten Seam (Q1); a fork parent's
+option or that it does nothing yet; the ring and whether it is reached; on hover, the path's point cost and
+highest ring; the lock or refund reason naming the node, level or partner in the way; who last bought it; for
+a travel node, the team total. Limits per S32. The worst case, and so "the longest tooltip" in the gates, is
+an owned Volatile Veins inside the Vault: name, description at 8 lines, class and marks, effect 2, Next 2, the
+generation line, vote 2, ring, refund reason, bought by, which reaches 20. Shown beside the node, flipped to
+stay on screen, wrapped with `font.splitIgnoringLanguage`. Never a raw key. Retired 2026-10-26: "next tier's
+cost", "prerequisites with tier and cluster" and a name cut with an ellipsis on the box.
 
 ### Zoom and text
 
@@ -928,11 +1044,13 @@ skill run outward in ring order.
 
 ### My gates
 
-- Nick's yes on the preview set at scales 2, 3 and 4 on 1920x1080 and 1280x720, with real names in the
-  tooltips: the start area at zoom 1, the whole tree at 0.2x, every class in every state, a hover with its
-  path highlighted, the longest tooltip, the tree with the mod-gated nodes hidden, a mid-game state (level
-  15, 75 nodes owned, two forks chosen, two growth nodes Outgrown, a tradeoff on, a pin set), and the Tome
-  opened inside the Vault with toggles disabled.
+- Nick's yes on the preview set at scales 2, 3 and 4 on 1920x1080 and 2 and 3 on 1280x720, with real names
+  in the tooltips: the start area at zoom 1, level 0 at first login (every node next to the start in
+  reach), the whole tree at 0.2x, every class in every state, a hover with its path highlighted, the
+  longest tooltip (owned Volatile Veins inside the Vault), the tree with the mod-gated nodes hidden, a
+  mid-game state (level 15, 75 nodes owned, two forks chosen, two growth nodes Outgrown, a tradeoff on, a pin
+  set), the Survey panel with the Seismic map and its legend, and the Tome opened inside the Vault with
+  toggles disabled.
 - The §6 layout tests, shown failing once: every node at distance at least its ring, copies of a skill in
   ring order, every mod-gated node on a dead end, exclusive leaves off one junction, petals with no edges,
   no edge through another node; plus no two icons overlapping and edges meeting icon borders. (Was: the
@@ -965,23 +1083,27 @@ makes, dated and in his wording, the same day.
 
 ### Per task
 
-Docs PR: the corrections list above. T1: the `neoforge.mods.toml` description and an `en_us.json` skeleton;
-check `CLAUDE.md` Build against the rebuilt Gradle setup. T2: lang for Vault Frame, Crude Vault Igniter, the
-creative tab and the igniter tooltip. T3: §3.1, §3.2 and §11 checked against the code. T4: tolerances in
-§3.1, marked unplaytested. T5: the level-up toast; §4.3 marks 7,200 blocks an hour as derived until
-measured. T6: §11 "SavedData Pattern" matching what is persisted. T7: tab names, top-bar labels,
-waiting-for-sync text, lock reasons, refusal, pending, swap and "Leave the Vault to change this" strings,
-each naming the node, number or level in the way. T8: final ids, display names, reserved ids, lang keys
-(S36, S37). T9: one description per node from the effect table and constants; a node whose table hedges
-goes back to the Balancer before I write it; §13 ticked per node as each merges. T10 to T12: Anchor, reset
-and integration text; no non-Ultimine string names an Ultimine node. T13: the complete `en_us.json`. T14:
-playtest notes, log entries, release notes, `KNOWN_ISSUES.md`, §12 and §13 in step with what shipped.
+Docs PR: done by #158; the `pack.png` item is settled (§13 names `logoFile`; the Designer names the file
+`logo.png`). T1: the `neoforge.mods.toml` description and an `en_us.json` skeleton; check `CLAUDE.md` Build
+against the rebuilt Gradle setup. T2: lang for Vault Frame, Crude Vault Igniter, the creative tab and the
+igniter tooltip. T3: §3.1, §3.2 and §11 checked against the code. T4: tolerances in §3.1, marked unplaytested.
+T5: the level-up overlay message (the toast's text comes with T7, E7-S6); §4.3 marks 7,200 blocks an hour as
+derived until measured. T6: §11 "SavedData Pattern" matching what is persisted. T7: tab names, top-bar labels,
+waiting-for-sync text, lock reasons, refusal, pending, swap and "Leave the Vault to change this" strings, each
+naming the node, number or level in the way, including every key in ADR 0006's refusal table and
+`disconnect.orevault.layout_mismatch`, whose text I own. T8: final ids, display names, reserved ids, lang keys
+(S36, S37). T9: per node, an effect-line lang template per tier whose numbers are arguments filled from the
+effects constants (§8 Tooltip, Q12), and a description that says in words what the node does and repeats no
+number the effect line shows; no number is typed into a lang string; a node whose table hedges goes back to
+the Balancer before I write it; §13 ticked per node as each merges. T10 to T12: Anchor, reset and integration
+text; no non-Ultimine string names an Ultimine node. T13: the complete `en_us.json`. T14: playtest notes, log
+entries, release notes, `KNOWN_ISSUES.md`, §12 and §13 in step with what shipped.
 
 ### My gates
 
 1. Every registered block, item, entity and node has a name key, and every node a description key.
 2. No description contains a banned word (S38).
-3. Every number in a description equals the constant, per tier.
+3. Every effect-template argument is a constant, per tier; no number is typed into a lang string.
 4. No description copies rationale; the node's text is the description and the notes are not.
 5. Every tradeoff and fork-option description says it can only be changed outside the Vault, except
    Volatile Veins and Molten Seam, whose say they are team-voted and change only once nobody is inside
@@ -1008,7 +1130,9 @@ shrinks. With the Developer: behaviour changes without the spec edit; I block ra
 ## Balancer
 
 I own every number, the level curve and node interactions. Hours come from the §4.3 curve: 30 levels, ratio
-100, 220 ore an hour times 3.485 Resonance per ore (68/25/7, rare at 12.5) = about 767 an hour, about 76,700 total. Purchase
+100, 218.9 ore an hour (7,200 blocks an hour times ADR 0009's closed-form density) times 3.4845 Resonance per
+ore (68/25/7, rare at 12.5) = about 762.6 an hour, about 76,259 total (re-derived 2026-10-27; was 220, 767
+and 76,700). Purchase
 timings come from a model over every §6.1 node row with its ring, at 5 points a level (§4.3 step 2). (Was:
 gates at S6 and 12 points a level, retired 2026-10-26 with the tiered tree.)
 
@@ -1027,13 +1151,15 @@ T4. Pure tests pin 3% stone, 6% deepslate, 68/25/7 in stone and 60/30/10 in deep
 configured `size` (common 9 to 12, uncommon 7 to 9, rare 5 to 7), and the floor (S13). The mean stone-band
 vein is about 7.4 ore, about 26 Resonance (derived from `docs/research/vanilla-ore-generation.md`). Tolerances per S12.
 
-T5. `LevelCurve` and `TeamScaling` tests: per-level costs, 5 points per level (§4.3 step 2; 12 a level
-retired 2026-10-26), multipliers 1.0, 1.1, 1.2, 1.4, unknown size as 1, milestones at 68/25/7 with rare at
-12.5: level 1 costs about 114 Resonance and arrives at 0.15 h, level 2 at about 247 cumulative and 0.32 h,
-level 10 at about 2,570 and 3.35 h, level 18 at about 10,840 and 14.1 h, level 30 at about 76,700 and
-100 h. The hours do not move with the mix, because the total is the hourly rate times 100 hours; the
-thresholds do. All derived, none measured. One rare constant (S40), which I set in the docs PR. The pacing session per S11,
-with the tool named in the script.
+T5. `LevelCurve` and `TeamScaling` tests: per-level costs, 5 points per level (§4.3 step 2; 12 a level retired
+2026-10-26), multipliers 1.0, 1.1, 1.2, 1.4, unknown size as 1, milestones at 68/25/7 with rare at 12.5 and
+218.9 ore an hour, as cumulative thresholds: level 1 costs about 113 Resonance and arrives at 0.15 h, level 2
+at about 245 cumulative and 0.32 h, level 10 at about 2,555 and 3.35 h, level 18 at about 10,784 and 14.1 h,
+level 29 at about 64,966 and 85.2 h, level 30 at about 76,259 and 100 h. Thresholds are stored cumulative,
+each rounded from the cumulative value, and the pool is rounded once, half up, at entry after team scaling
+(ADR 0005 section 3). The hours do not move with the mix, because the total is the hourly rate times 100
+hours; the thresholds do. All derived, none measured. One rare constant (S40), which I set in the docs PR. The
+pacing session per S11, with the tool named in the script.
 
 T6. `deepest_y` must not read as 0, or Shallow Grace starts Outgrown and Highwater Mark counts free steps;
 absence covers it (S16).
@@ -1059,12 +1185,12 @@ pack and 207 to 213 in FTB Evolution 2 (§6.1 Totals), and a node's ring is its 
 
 ### Derived, not measured
 
-- 220 ore an hour is 7,200 blocks an hour times 3%. Density measurement confirms the 3%, not the rate; only
-  a timed session measures blocks per hour.
+- 218.9 ore an hour is 7,200 blocks an hour times ADR 0009's closed-form density (was 220, from a flat 3%).
+  Density measurement confirms the density, not the rate; only a timed session measures blocks per hour.
 - Calloused Hands' cap arrives at (e^(0.4/0.07) − 1) × 10,000, about 3.0 million blocks at tier 3.
 - Silent Stone pays 0.30 a second per active member below Y=0, raised by that member's counted bonuses and
-  team-scaled like ore (Ng; §6.1 Silent Stone): 1,080 an hour solo against 767 for bare ore, about 1.4
-  times. (Was 3 a second, about 14 times solo; retired 2026-10-26.)
+  team-scaled like ore (Ng; §6.1 Silent Stone): 1,080 an hour solo against about 763 for bare ore, about
+  1.4 times. (Was 3 a second, about 14 times solo; retired 2026-10-26.)
 - Stone Memory T5's 0.5% burst paid about 1,745 Resonance an hour, about 2.3 times the curve's rate. Lowered
   to 0.05%, and T3 to 0.05 per deepslate block, about a fifth of each band's ore rate (Q8).
 - Every value pinned on 2026-09-09 is unplaytested.
@@ -1087,7 +1213,9 @@ first T9 batch opens.
 5. Apprentice's Ledger never retires; Shallow Grace reads one member's depth and pays the team (N5: Ledger stays; Shallow Grace counts members inside the Vault).
 6. Echo's flat burst favours small veins: with Abundance, Echo T3 turns a 14-Resonance common vein into 64.
 7. Hoarder's Instinct's ×3 then ×4 is the tree's largest Resonance multiplier, on a free option.
-8. Volatile Veins: the spec does not say whether a vanished vein counts as completed.
+8. Volatile Veins: the spec does not say whether a vanished vein counts as completed. Settled 2026-10-27:
+   neither; a vanished vein closes silently, with no Vein Discipline change, no Chapter's End count and no
+   Last Ore or Clean Cut (ADR 0004 `VANISHED`; §6.1 Volatile Veins).
 9. Silent Stone does not say whether it pays per member or per team, or where scaling applies.
 
 ### My gates
@@ -1135,15 +1263,20 @@ points and the ring-0 nodes next to the start (§4.3, §6). The old text is in g
 
 T2: did Nick have enough iron, and how long did it take? T3: the return portal is visible on arrival and
 returning lands where you left. T4: after ten minutes at zero points, does the Vault feel rich enough to come
-back to and lean enough that the tree has something to sell? T5: the pacing session; the orb and toast are
-on my checklist. T6: log out inside the Vault, log back in, open the Tome; nothing changed. T7: the
-empty-state line, the Tome reaching solo players, every disabled control saying why on the control itself.
-T8: can Nick find the next thing to buy in a few seconds, and at 0.2x find a searched or pinned node and zoom
-back in one gesture? (Was "a named cluster", retired 2026-10-26.) The answer to "is the loop playable"
-comes here, from the first node bought through the Tome.
-T9: every node ticket answers "how does the player know this worked?" T11: two temporary dev sessions on Nick's PC (Q10), one votes; the vote,
-countdown and respec window must reach players who did not press the button. T12: on a pack without
-Ultimine, does anything mention it? T14: the full playtest against the milestone table.
+back to and lean enough that the tree has something to sell? T5: the pacing session; the orb, and the level-up
+message arriving inside the S11 bands, are on my checklist (the toast comes with T7). T6: log out inside the
+Vault, log back in, open the Tome; nothing changed. T7: the level-up toast; the empty-state line, shown while
+the team's pool and level are 0 (§8); the Tome reaching solo players; every disabled control saying why on the
+control itself. T8: can Nick find the next thing to buy in a few seconds, and at 0.2x find a searched or
+pinned node and zoom back in one gesture? (Was "a named cluster", retired 2026-10-26.) The answer to "is the
+loop playable" comes here, from the first node bought through the Tome. T9: every node ticket answers "how
+does the player know this worked?" After the ring-0 batch, the first-ten-minutes session
+(`docs/PLAYER_STORIES.md`, E9-S59 #363), which answers Q17. T10: placing an Anchor, and a refused one, tell
+the player what happened and why. T11: two temporary dev sessions on Nick's PC (Q10), one votes; the vote,
+countdown and respec window must reach players who did not press the button; one session leaves the party
+while inside its Vault and is sent home with a chat line saying why. T12: on a pack without Ultimine, does
+anything mention it? T13: read every tooltip as a new player; any line that needs the spec is a screen defect
+for UI-UX. T14: the full playtest against the milestone table.
 
 ### Session template
 

@@ -16,6 +16,25 @@ and names the stories it unblocks. Story ids and issue numbers are from the file
   below under "FTB Teams party join and disband").
 - Paths below are paths inside the jar. Line numbers are lines of the decompiled `.java` file.
 
+### The old build's access transformers are applied in this jar
+
+NeoGradle recompiles the `ng_dummy_ng` artifact with the project's access transformers applied, and this jar
+came from the old build's folder. In it, five members read as public: `MinecraftServer.storageSource`
+(`net/minecraft/server/MinecraftServer.java` line 218), `CountPlacement.count`, `HeightRangePlacement.height`,
+`UniformHeight.minInclusive` and `UniformHeight.maxInclusive`. Those are exactly the five lines of the old
+build's `META-INF/accesstransformer.cfg` (`git show 86360a3^:src/main/resources/META-INF/accesstransformer.cfg`,
+the same five as at `aa431c6`), while `RarityFilter.chance`, which the old build never transformed, reads as
+private. ADR 0009 found the same pattern independently. A sixth line, `public net.minecraft.world.food.FoodData
+exhaustionLevel`, was added in `0e0222b` on a branch that is not an ancestor of `86360a3^`; the jar shows that
+field private, so it was built from the five-line file.
+
+What follows from it: a member that reads public in this jar may not be public in a clean 26.1.2.95
+decompile, so no "public" read here is evidence that an access transformer can be dropped. A member that
+reads private is reliable, because a transformer only widens: `FoodData.exhaustionLevel` and
+`MobEffectInstance.duration` below are private in 26.1. ADR 0002 keeps the `storageSource` line in the AT
+file, with its ticket comment, until a clean read settles it (item 13 under "Still to read"). The same
+caveat ends once the reads are redone from a fresh E1-S1 (#188) build.
+
 ### What the jar does not contain
 
 The jar holds 26,874 entries: `net/minecraft`, `com/mojang`, `assets/minecraft` and `data/minecraft`. It is
@@ -294,7 +313,9 @@ Injection forms that need no local index avoid the check: a `@ModifyVariable` on
 `HEAD` with `argsOnly = true` for the head multiplier, and for the post-Unbreaking roll either a
 modification of `processDurabilityChange`'s return value at its call in `hurtAndBreak` or an injection at
 `RETURN` of the private `processDurabilityChange(ILnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/LivingEntity;)I`.
-Unverified: NeoForge sources not yet read (E1-S5 #195 stays open for these). Must read: whether NeoForge 26.1.2.95 bundles MixinExtras (its jar-in-jar list), before the ADR picks `@ModifyExpressionValue` over a plain `@Inject` at `RETURN`.
+Whether NeoForge 26.1.2.95 bundles MixinExtras (its jar-in-jar list) was not read. ADR 0008 then chose plain
+Mixin with no local by index, so neither that read nor the `javap` check is needed for it (items 7 and 9 under
+"Still to read").
 
 ## FTB Teams party join and disband
 
@@ -703,7 +724,7 @@ instance.
 
 ## Also found
 
-- §3.1's copper nugget question (`c:nuggets/copper`): the `c:` tags are in NeoForge's jar. Unverified: NeoForge sources not yet read (E1-S5 #195 stays open for these). Must read: `data/c/tags/item/nuggets/copper.json` in NeoForge's jar.
+- §6.1 Stone Memory's tier 4 nugget question (`c:nuggets/copper`): the `c:` tags are in NeoForge's jar. Unverified: NeoForge sources not yet read (E1-S5 #195 stays open for these). Must read: `data/c/tags/item/nuggets/copper.json` in NeoForge's jar.
   Vanilla 26.1 has the item, `Items.COPPER_NUGGET` (`net/minecraft/world/item/Items.java` line 1906), and
   `data/minecraft/tags/item/metal_nuggets.json` lists `minecraft:copper_nugget`, `minecraft:iron_nugget` and
   `minecraft:gold_nugget`.
@@ -711,18 +732,54 @@ instance.
 ## Still to read, from NeoForge's own jar on Nick's PC
 
 One Remote Control session with `net.neoforged:neoforge:26.1.2.95`'s classes (or its sources jar) closes
-these. `find ~/.gradle -name 'neoforge-26.1.2.95*'` on Nick's PC lists what NeoGradle downloaded.
+these. `find ~/.gradle -name 'neoforge-26.1.2.95*'` on Nick's PC lists what NeoGradle downloaded. The session
+runs after E1-S1 (#188) re-checks the pin, from a fresh build, which also ends the access-transformer caveat
+under Provenance. Each item names the record waiting on it and the first story it must land before. If one
+session cannot do all of them, the ones needed before T3 to T5 go first: items 4, 6, 11, 13, 14, 15 and 1.
 
-1. `BlockDropsEvent`: the experience getter and setter, and where Fortune and Silk Touch apply (E5-S3, E9-S9).
+1. `BlockDropsEvent`: the experience getter and setter, and where Fortune and Silk Touch apply. Waiting:
+   §11 drop pipeline. Before E5-S3 (#264); also E9-S9 (#312).
 2. `Capabilities.Energy.ITEM`: its context type and the insert method's name and signature; the item
-   handler's interface and insert signature behind `Capabilities.Item.BLOCK` (E9-S8, E9-S45, E9-S41, E12-S1).
-3. The data-component ingredient's class and JSON `type` id (E9-S28).
+   handler's interface and insert signature behind `Capabilities.Item.BLOCK`. Waiting: §9's Unverified list.
+   Before E9-S8 (#313), E9-S45 (#352), E9-S41 (#349) and E12-S1 (#217).
+3. The data-component ingredient's class and JSON `type` id. Waiting: §9. Before E9-S28 (#332) and E12-S1
+   (#217).
 4. `AttachmentInternals.copyChunkAttachmentsOnPromotion` and the `AttachmentType` builder: which attachments
-   are copied, and thread safety from the generator (E6-S4, E0-S6, ADR 0005's `copyOnDeath()`).
-5. `RegisterPayloadHandlersEvent` and `PayloadRegistrar`: a client-only handler registration,
-   `optional()`, decode failure behaviour (E0-S9).
-6. `ForcedChunkManager.activateAllDeactivatedTickets` visibility and `TicketController`'s API (E10-S3, E0-S4).
-7. Whether MixinExtras ships with NeoForge 26.1.2.95 (E0-S11, E9-S7).
-8. `c:nuggets/copper` in NeoForge's tag data (§3.1 tier 4 nugget).
-9. `javap -c -p -l` on `ItemStack#hurtAndBreak`, only if ADR 0008's mixin uses a local by index or ordinal
-   (E0-S11).
+   are copied, thread safety when written from the generator, and `copyOnDeath()`. Waiting: ADR 0004, ADR 0005
+   (the player attachment `orevault:player`). Before E3-S6a (#237), which first stores `return_pos` on that
+   attachment, and E6-S4 (#209), the carry-over spike.
+5. `RegisterPayloadHandlersEvent` and `PayloadRegistrar`: a client-only handler registration, `optional()`,
+   decode failure behaviour. Waiting: ADR 0006. Before E7-S2a (#255).
+6. `ForcedChunkManager.activateAllDeactivatedTickets` (is it public) and `TicketController`'s API, including
+   when a controller's loading validation runs and whether it runs at all for a level added after server
+   start. Waiting: ADR 0002's restore step, ADR 0007's ticket release. Before E3-S6a (#237), the restore,
+   and E10-S3 (#373), the Vault Anchor.
+7. Whether MixinExtras ships with NeoForge 26.1.2.95. Not needed: ADR 0008 (section "(c) MixinExtras") uses
+   plain Mixin only. A later ticket that wants MixinExtras reads it then.
+8. `c:nuggets/copper` in NeoForge's tag data. Waiting: §6.1 Stone Memory tier 4 nugget. Before E9-S11 (#315).
+9. `javap -c -p -l` on `ItemStack#hurtAndBreak`. Not needed: ADR 0008 uses no local by index or ordinal and
+   says no `javap` check is needed.
+10. The `[[mixins]]` keys FML 26.1.2.95 accepts in `neoforge.mods.toml`, the mixin config's
+    `compatibilityLevel` for Java 25, and whether a refmap is needed. Waiting: ADR 0001 (Mixins) and ADR 0008
+    first-load check 1. Before E9-S7 (#311), the first mixin.
+11. The accessor on NeoForge's `ChunkEvent.Load` for the new-chunk flag (the second constructor argument at
+    `ChunkStatusTasks.java` line 204). Waiting: ADR 0004 and its Amendment 1 (vein-index settle,
+    `generated_at`, the explored map and its chunk credit). Before E6-S4 (#209).
+12. NeoForge's registry alias API for a renamed block or item id. Waiting: ADR 0005 (the rename rule).
+    Before the first PR that renames a registered block or item id.
+13. The visibility of `MinecraftServer.storageSource`, `CountPlacement.count`, `HeightRangePlacement.height`,
+    `UniformHeight.minInclusive` and `UniformHeight.maxInclusive` in a clean 26.1.2.95 decompile, with no
+    project access transformers applied (see Provenance). Waiting: ADR 0002 (whether the `storageSource` AT
+    line stays) and ADR 0009 (its AT fallback). Before E3-S6a (#237); for the placement fields, before
+    E4-S2 (#238) only if its codec path fails.
+14. The `c:ores` block tag key in NeoForge's `Tags` class. Waiting: ADR 0009, ADR 0001's `ore` row. Before
+    E4-S2 (#238).
+15. Whether another mod's NeoForge biome modifier (the biome modifier registry and `neoforge:add_spawns`) can
+    add spawns to `orevault:vault`. Waiting: §3.1 (mob spawning). Before E3-S5 (#233).
+16. Whether NeoForge holds registered payloads to vanilla's `MAX_PAYLOAD_SIZE` caps (32767 serverbound,
+    1048576 clientbound) or splits them, and the `RegisterConfigurationTasksEvent` task API. Waiting:
+    ADR 0006 (the bounds and the rejected configuration-phase layout check). Before E7-S2a (#255), which
+    also revisits the configuration-phase check.
+17. The `logoFile` and `logoBlur` keys in `neoforge.mods.toml`, where `logoFile` resolves from (expected: the
+    root of the mod jar), and whether NeoForge 26.1 shows a per-mod entry in the resource pack screen that
+    would use a `pack.png`. Waiting: §13 mod logo line, the Designer's logo row. Before E13-S2c (#191).

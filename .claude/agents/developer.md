@@ -21,6 +21,11 @@ fix or with evidence; do not argue from preference.
 - **Settle 26.1 names from the decompiled sources, not memory.** Your training mostly predates 26.1.
   `ResourceLocation` is `Identifier`; screens extract render state rather than draw; blocks and items need
   their id set on the properties at registration. When unsure, read the sources jar named in `CLAUDE.md`.
+  That tree is recompiled with this mod's own access transformers (the old build's widened
+  `MinecraftServer.storageSource`, `CountPlacement.count`, `HeightRangePlacement.height` and
+  `UniformHeight.minInclusive` and `maxInclusive`), so a member reading `public` there is not evidence. Read
+  a member's visibility from a clean decompile or NeoForge's own `accesstransformer.cfg`; a `private` read
+  is reliable, since a transformer only widens (`docs/research/neoforge-26.1-sources.md` Provenance).
 - **Pure logic in plain classes.** Anything that can be a function of ints, enums and records is, so it can
   have a JUnit test. `ServerPlayer` and `ServerLevel` overloads are zero-logic adapters around it.
 - **Test first for pure logic** with `superpowers:test-driven-development`. Prove a test guards something

@@ -1,6 +1,7 @@
 # 0005. Persisted data and versioning
 
-Status: proposed, 2026-10-27 (E0-S8, #225). Spec: §3.2 Teleportation Logic, §4.3, §4.4, §6 Saved state,
+Status: proposed, 2026-10-27 (E0-S8, #225). Round 1 reviews are answered below; accepted once the matrix
+reviewers sign round 2. Spec: §3.2 Teleportation Logic, §4.3, §4.4, §6 Saved state,
 §6.1 (Vein Discipline, Wanderer's Cache, Homeward Seam, The Vault Keeps It, Seam Courier, Hoarder's
 Instinct, Travel stats, Ascending Edge), §8 Tab 3, §9 FTB Teams, §11 SavedData Pattern, Vault Session State
 and Resonance Orb Entity. `CLAUDE.md` technical rule 6. Settled decisions S16, S17, S18 and N1
@@ -24,8 +25,13 @@ Read on 2026-10-27 from the decompiled NeoForge 26.1.2.95 sources (paths inside 
 - `net/minecraft/world/level/storage/SavedDataStorage.java` `getDataFile`: the file is
   `id.withSuffix(".dat").resolveAgainst(dataFolder)`, so `orevault:team_<id>` is
   `<dataFolder>/orevault/team_<id>.dat`. `readSavedData` parses with `resultOrPartial` and returns
-  **null** on a parse error, and also on any exception, logging it. `computeIfAbsent` then creates a fresh
-  instance and marks it dirty, so the next save **overwrites the team's file with an empty team**.
+  null on a parse error, and also on any exception, logging it (lines 95 to 111), which includes an
+  `IOException` from a truncated or zero-byte file before any codec runs. `get` caches that as empty
+  (lines 85 to 93), and `computeIfAbsent` then creates a fresh instance and marks it dirty (lines 74 to 83),
+  so the next save overwrites the team's file with an empty team.
+- `SavedDataStorage#encodeUnchecked` writes the file's root as `{data: {...}, DataVersion}` (`tag.put("data",
+  ...)`), and no method saves one file: `saveAndJoin()` writes every dirty entry of a storage and blocks on
+  `Util.ioPool()` (read by the Developer in round 1).
 - 26.1 has two kinds of `SavedDataStorage`. The server's own is built at
   `new SavedDataStorage(storageSource.getLevelPath(LevelResource.DATA), fixerUpper, ...)`
   (`net/minecraft/server/MinecraftServer.java` line 329), that is `<world>/data/`, and returned by
@@ -53,7 +59,7 @@ the personal team is never deleted (`TeamManagerImpl#createPlayerTeam`); joining
 personal team at the party and posts `PlayerChangedTeamEvent`, never `TeamDeletedEvent`
 (`PartyTeam#join`); `PlayerChangedTeamEvent` is posted for offline players too (`AbstractTeam#onPlayerChangeTeam`).
 
-Not in the decompiled Minecraft tree and so **unverified: to be read by E1-S5 (#195)**: NeoForge's
+Not in the decompiled Minecraft tree and so Unverified: to be read by E1-S5 (#195): NeoForge's
 `AttachmentType` builder and its `copyOnDeath()`, the chunk attachment carry-over from `ProtoChunk` to
 `LevelChunk` (ADR 0004), and NeoForge's registry alias API for a renamed block or item id.
 
@@ -61,32 +67,34 @@ Not in the decompiled Minecraft tree and so **unverified: to be read by E1-S5 (#
 
 ### 1. One key convention, one clock, one id form
 
-- **Every persisted key is snake_case**, in every shape this mod writes: team `SavedData`, `PlayerStats`,
+- Every persisted key is snake_case, in every shape this mod writes: team `SavedData`, `PlayerStats`,
   the player attachment, the chunk attachment, item components, entity data. Java fields stay camelCase;
   the codec or the read/write method maps them. When the spec talks about saved data it names the key
   (`deepest_y`), not the Java field.
-- **Every time field is overworld game time**, in ticks, read with `level.getGameTime()` (one clock for
+- Every time field is overworld game time, in ticks, read with `level.getGameTime()` (one clock for
   every level, `DerivedLevelData`): `free_respec_until`, `free_respec_opened_at`, `disbanded_at`,
   `pending_reset`'s `requested_at`, `homeward_cooldown_until` and the chunk's `generated_at` for Frontier
   Bonus (ADR 0004). Game time does
   not move while the server is stopped, so "10 minutes" is 12,000 ticks and "24 hours of server time"
   (Q14) is 1,728,000 ticks of a running server. A window survives a restart with no extra code (old #95).
   Wall-clock time is never stored.
-- **UUIDs are stored as hyphenated strings**, as map keys and as values. Node, skill and option ids are
-  stored as their layout id strings. Dimension and block ids are stored as `Identifier` strings.
-- **A position** is `{dim, x, y, z}` where the dimension can vary, and `{x, y, z}` inside a shape that
+- UUIDs are stored as hyphenated strings, as map keys and as values. Node, skill and option ids are
+  stored as their layout id strings. Dimension and block ids are stored as `Identifier` strings, the vein
+  index's ore palette among them (ADR 0004).
+- A position is `{dim, x, y, z}` where the dimension can vary, and `{x, y, z}` inside a shape that
   already names it.
 
 ### 2. Where everything lives
 
 | Shape | Storage | Version key |
 |---|---|---|
-| Team data | `SavedData`, id `orevault:team_<teamUuidNoHyphens>`, in the server's storage (`MinecraftServer#getDataStorage()`): `<world>/data/orevault/team_<hex>.dat`. Created on first write, never on `TeamEvent.CREATED` (S18) | `data_version` |
+| Team data | `SavedData`, id `orevault:team_<teamUuidNoHyphens>`, in the server's storage (`MinecraftServer#getDataStorage()`): `<world>/data/orevault/team_<hex>.dat`. Created on first write, never on `FTBTeamsEvent.TeamCreated` (S18) | `data_version` |
 | `PlayerStats` | Nested in team data under `player_stats`, one entry per player UUID | its own `data_version` |
 | Player data | NeoForge player attachment `orevault:player`, `copyOnDeath` (unverified API, E1-S5) | `data_version` |
-| Vein index and chunk fields | Chunk attachment `orevault:vein_index`, written only for the chunk being generated (ADR 0004 owns its fields) | `data_version` |
+| Vein index and chunk fields | Chunk attachment `orevault:vein_index`, written only for the chunk being generated (ADR 0004 owns its fields, its block-id palette among them) | `data_version` |
 | Explored map | `SavedData` `orevault:explored_map` in the Vault level's own storage (`ServerLevel#getDataStorage()`): `<world>/dimensions/orevault/vault_<hex>/data/orevault/explored_map.dat`. Deleted, backed up and archived with the Vault folder (ADR 0004 Amendment 1 owns its fields) | `data_version` |
 | Tool counters | Item component `orevault:vault_tool` | `data_version` |
+| Wanderer's Cache tier | Item component `orevault:cache_tier` on the `orevault:wanderers_cache` item, an int | none (see 11) |
 | Attuned ore | Item component `orevault:attuned`, a marker with no fields | none (see 5) |
 | Resonance orbs | Entity data of the orb entity types | `data_version` |
 | Max health | A permanent vanilla attribute modifier with the fixed id `orevault:travel_max_health`, saved by vanilla with the player | none; the id is the contract |
@@ -97,10 +105,17 @@ the server's storage, beside vanilla's other world-wide data. Data about one Vau
 Vault level's storage, so it goes wherever the folder goes. Data about one chunk is on the chunk.
 
 The `SavedData` id uses the team UUID without hyphens, the same form as the dimension key
-`orevault:vault_<teamUuidNoHyphens>`, so one function parses both. A personal team's id is its player's
-UUID (FTB Teams), so a solo team's file is named after the player. Read paths call
-`SavedDataStorage#get` and treat `null` as "every field at its default"; only a write calls
+`orevault:vault_<teamUuidNoHyphens>`, so one pure function, `core.key.VaultKeys` (ADR 0001), parses both.
+A personal team's id is its player's UUID (FTB Teams), so a solo team's file is named after the player. Read
+paths call `SavedDataStorage#get` and treat `null` as "every field at its default"; only a write calls
 `computeIfAbsent`, so a player who logs in and never mines creates no file.
+
+An unreadable team file is never overwritten. `get` returns null both for an absent file and for one that
+failed to read (Context), so the one write accessor in `data`, when `get` returned null, checks whether the
+data file exists. If it does not, it creates the team as usual. If it does, it logs ERROR with the path,
+copies the file to `team_<hex>.dat.unreadable-<gametime>` beside it, and only then creates. Play goes on
+and the original bytes stay on disk for repair by hand. Restore (ADR 0002) uses the same check to tell an
+absent file from an unreadable one. The explored map gets a WARN and no copy (ADR 0004 Amendment 1).
 
 ### 3. Team data
 
@@ -121,20 +136,24 @@ UUID (FTB Teams), so a solo team's file is named after the player. Read paths ca
 | `vault_generation` | int | 0 | Reset count, + 1 per reset, part of every chunk seed (Q2, ADR 0003) |
 | `generation_tradeoffs` | list of node ids | empty | Applied state of Volatile Veins and Molten Seam (Q1, ADR 0003) |
 | `disbanded_at` | long, game time | not disbanded | Set by the FTB Teams delete event; the folder moves to the archive at the next start (ADR 0007) |
-| `pending_reset` | {`requested_at` long, game time; `backup` boolean} | no reset under way | Written and saved before a reset deletes anything, cleared in the same write that raises `vault_generation`; a start that finds it finishes the reset (ADR 0007). The start-of-server pass reads it from raw NBT, so the reader for this file must also work on a bare `CompoundTag` |
+| `pending_reset` | {`requested_at` long, game time; `backup` boolean} | no reset under way | Written and saved before a reset deletes anything, cleared in the same write that raises `vault_generation`; a start that finds it finishes the reset (ADR 0007). The start-of-server pass reads it from raw NBT, so the reader for this file must also work on a bare `CompoundTag`: the file's root is `{data: {...}, DataVersion}`, and the reader reads the `data` compound. "Saved at once" is `server.getDataStorage().saveAndJoin()` |
 | `player_stats` | {player UUID string: `PlayerStats`} | empty | One entry per player who has recorded anything for this team |
 
-**Nothing derived is stored.** Not the current level, unspent points, any skill's tier, distances, the
+Nothing derived is stored. Not the current level, unspent points, any skill's tier, distances, the
 ticket count, the team's deepest Y, a chunk's completed veins or the team size. The current level is the
 curve's level for `resonance_pool`, raised to `level_reached` if that is higher; whenever the curve's
 level passes `level_reached`, `level_reached` is raised to it. Unspent points are `5 × that level − owned
 visible nodes` (§4.4). A `curve_divisor` change can therefore move future thresholds but never takes a
 level, or its points, back (§4.3; old PR #115).
 
-**The pool is fixed-point.** Payments have fractions: Stone Memory pays 0.05 per deepslate block, Deep
+The pool is fixed-point. Payments have fractions: Stone Memory pays 0.05 per deepslate block, Deep
 Harvest's orb 1, 2.5 or 6.25, and every percentage bonus makes fractions of the base. A long of whole
-Resonance would drop the 0.05 payments entirely. Each payment is rounded to the nearest thousandth when
-it is added, and sums stay exact. The level curve's thresholds are compared in the same unit.
+Resonance would drop the 0.05 payments entirely. An amount is rounded once, half up, to the nearest
+thousandth where it enters the pool, after the §4.2 team scaling; an orb's `value` holds the thousandths
+before scaling, so the double rounding stays within 0.001 (Balancer, round 1). Sums stay exact.
+`LevelCurve` stores cumulative thresholds in the same unit, each rounded from the cumulative double, never
+a sum of rounded per-level costs, so no drift builds up by level 30. The Resonance bar shows progress
+toward level `max(curve level, level_reached) + 1`.
 
 ### 4. `PlayerStats`
 
@@ -150,9 +169,9 @@ changes, so they find their old personal record again (§9).
 | `ores_mined` | {block id: int} | empty | §8 stats, Kindred Rock |
 | `stone_broken` | int | 0 | §8 stats; counted against `#orevault:vault_stone` (§6.1 Stonecutter's Patience) |
 | `total_blocks_broken` | int | 0 | Calloused Hands |
-| `deepest_y` | int | **never entered** (no sentinel, no flag, S16) | Shallow Grace, Highwater Mark, team deepest Y (derived) |
+| `deepest_y` | int | never entered (no sentinel, no flag, S16) | Shallow Grace, Highwater Mark, team deepest Y (derived) |
 | `time_in_vault_ticks` | long | 0 | §8 stats |
-| `chunks_explored` | int | 0 | Wanderer's Cache (rule below) |
+| `chunks_explored` | int | 0 | Wanderer's Cache (rule in ADR 0004 Amendment 1) |
 | `veins_completed` | int | 0 | §8 stats |
 | `vein_discipline_streak` | int | 0 | Vein Discipline (rule below) |
 | `deaths_in_vault` | int | 0 | §8 stats |
@@ -162,22 +181,17 @@ changes, so they find their old personal record again (§9).
 A counter from a machine break never moves (§3.4). The §8 post-1.0 stats (lifetime Resonance, Vault Echo
 triggers, mob kills, Animus) are not written in 1.0; each arrives later as an addition with a default.
 
-**Which player a newly generated chunk is credited to (`chunks_explored`).** Generation runs off-thread and
-knows no player, so the credit is given on the main thread when the chunk is first loaded after being
-generated: to the team member in that Vault level nearest the chunk's centre, horizontally, within the
-server's view distance, ties broken by the lower UUID. A chunk generated with no member in range (an
-Anchor ticket, a machine, a command) is credited to nobody. ADR 0004 Amendment 1 (E0-S12, #231) confirms
-this and makes it exact: only current members of the Vault's team who are not spectators are candidates,
-range is the Chebyshev distance in chunks, nearest is the squared horizontal distance in chunks. It needs
-no new field.
+Which chunks `chunks_explored` counts, and which player each is credited to, is ADR 0004 Amendment 1's
+rule (chunks entered, Nick's answer of 2026-10-27); this record owns only the key.
 
-**Vein Discipline (settled, E0-S13).** The streak is `vein_discipline_streak` on `PlayerStats`, so it
+Vein Discipline (settled, E0-S13). The streak is `vein_discipline_streak` on `PlayerStats`, so it
 survives logout, restart and reset (§6.1 "persisting across trips") and stays with the old team on a team
 change. A logout with a part-mined vein is an abandon: §11 Vault Session State counts a logout as leaving
 the Vault, and §6.1 defines abandoning as leaving with ore standing. The abandon is applied at the logout
-from the in-memory trip record, which lists the veins broken into and not finished. That list is never
-saved, so a server crash applies nothing and the streak keeps its last saved value. A team change while
-inside is a leave for the old team's streak.
+from the in-memory trip record, which lists the veins broken into and not finished. A clean server stop
+logs every player out, so it applies the abandon once, as any logout does (Manager's ruling, round 1). That
+list is never saved, so a crash applies nothing and the streak keeps its last saved value. A team change
+while inside is a leave for the old team's streak.
 
 ### 5. Player attachment `orevault:player`
 
@@ -200,41 +214,54 @@ death marker without editing offline players' files (ADR 0007).
 
 ### 6. Versioning rules
 
-- **Each shape has its own `data_version`**, and they move independently (old PR #111): team data,
-  `PlayerStats`, the player attachment, the chunk attachment, `orevault:vault_tool` and the orb entity.
-  `orevault:attuned` has no fields; if it ever gains one, it becomes a record whose codec also reads the
-  empty form.
-- **Every shape starts at 1.** A tag with no `data_version` reads as 1: no build writes one without it,
+- Each shape has its own `data_version`, and they move independently (old PR #111): team data,
+  `PlayerStats`, the player attachment, the chunk attachment, the explored map, `orevault:vault_tool` and
+  the orb entity. `orevault:attuned` has no fields and `orevault:cache_tier` is a bare int; if either ever
+  gains a field, it becomes a record whose codec also reads the old form.
+- Every shape starts at 1. A tag with no `data_version` reads as 1: no build writes one without it,
   and pre-restart saves are not supported (N1). The last build's version 0 for unversioned tags is not
   carried over.
-- **Additions never bump.** A new key reads its documented default from a tag written without it.
-- **A rename, a removal, a change of type or of unit bumps `data_version`** and ships a migration, a
+- Additions never bump. A new key reads its documented default from a tag written without it.
+- A rename, a removal, a change of type or of unit bumps `data_version` and ships a migration, a
   fixture of the previous version's tag, and an updated golden key set, in the same PR. From T5 on this is
   required, not a stretch goal, because Nick's world carries over (Q4); N1's stretch goal is migrating
   saves across tree changes after 1.0.
-- **`migrate(tag, storedVersion)` is a fall-through chain**: each step upgrades one version in place and
+- `migrate(tag, storedVersion)` is a fall-through chain: each step upgrades one version in place and
   falls through to the next, so any older tag reaches the current shape in one pass. Each step keeps frozen
   copies of the ids and constants it translates from, never the live ones, and running it twice changes
   nothing (old PR #135). A test runs each step twice.
-- **A tag from a newer build** loads best-effort: known keys are read, unknown keys are dropped on the next
+- A tag from a newer build loads best-effort: known keys are read, unknown keys are dropped on the next
   save, and one WARN names the shape, both versions and the team or player. It never throws.
-- **Loading never fails.** The team codec is `CompoundTag.CODEC.xmap(read, write)` with a hand-written
+- Loading never fails. The team codec is `CompoundTag.CODEC.xmap(read, write)` with a hand-written
   reader that uses `get…Or` defaults, as the last build's was; the same holds for every other shape. No
   read throws, for any input. This is not style: `SavedDataStorage#readSavedData` turns a parse error or
-  an exception into `null`, and the next save then replaces the team's file with an empty team.
-- **Registry ids are save data.** Every id below is frozen from T5: block and item ids, the orb entity
-  types, `orevault:player`, `orevault:vein_index`, `orevault:vault_tool`, `orevault:attuned`, the dimension
+  an exception into `null`. A codec cannot cover a file that fails before it runs (truncated or not gzip);
+  section 2's copy-aside does.
+- Registry ids are save data. Every id below is frozen from T5: block and item ids (the
+  `orevault:wanderers_cache` item among them), the orb entity types, `orevault:player`,
+  `orevault:vein_index`, `orevault:vault_tool`, `orevault:attuned`, `orevault:cache_tier`, the dimension
   types `orevault:ore_vault` and `orevault:ore_vault_expanded`, the dimension key and `SavedData` id
   patterns, the `SavedData` id `orevault:explored_map`, the biome `orevault:vault`, the `TicketController` id, `orevault:travel_max_health`, and every
   node, skill and option id in the layout (with the §6.1 reserved ids never reused). All of them are
   string constants in one pure class (`core` has no Minecraft imports) that registration reads, pinned by a
   golden JUnit test. Renaming a block or item id needs NeoForge's alias mechanism (unverified API, E1-S5);
   renaming any other id needs a migration.
-- **Tests (S17).** A golden key-set test per shape, a fixture of each shape at each version that loads,
-  and an absent-field test per field reading its default. They run in JUnit through `CompoundTag` if T1
-  confirms those classes load in the unit source set; otherwise as gametests. One gametest per storage
-  mechanism: `SavedData` across a restart, the chunk attachment across unload, the player attachment
-  across death.
+- Tests (S17). A golden key-set test per shape, the chunk attachment's including its `ores` palette of
+  block id strings (ADR 0004); a fixture of each shape at each version that loads; and an absent-field test
+  per field reading its default. Wrong-type fixtures per key load to the default without throwing, at
+  least `resonance_pool` as a string, `owned` as an int, `player_stats` as a list, and a palette entry that
+  is not a string or names no registered block. Pure unit cases: 20 payments of 0.05 sum to exactly 1,000
+  thousandths; a `curve_divisor` raise keeps `level_reached` and its points; a reset 1,727,999 ticks after
+  `free_respec_opened_at` opens no window and one at 1,728,000 opens one; a team-scoped position from an
+  older generation reads absent. These run in JUnit through `CompoundTag` if Minecraft's NBT classes load
+  in the unit source set; otherwise they become gametests, never dropped. E1-S3 (#194) finds out and writes
+  the result here and in `CLAUDE.md` Tests.
+- A gametest is one server lifetime and `SavedDataStorage#get` cannot drop a cached entry, so the restart
+  checks are a scripted dedicated-server stop and start (E3-S10, #200), comparing named fields from the S44
+  debug dump before and after: team `SavedData`, the explored map, and the chunk attachment across unload
+  and restart. The same script covers the corrupt file: write garbage bytes to a team file, start, mine one
+  ore, and the original bytes are still on disk under the `.unreadable-` name. The player attachment across
+  death is a gametest if the test player respawns through `PlayerList#respawn`, otherwise a playtest step.
 
 ### 7. Load rules for the tree (§6)
 
@@ -253,6 +280,10 @@ unit-tested. Each change is logged once and the data is marked dirty only if som
 - A node owned but hidden because its mod or tag is missing is kept, dormant: no effect, not counted as
   spent, active again if the mod returns. It is excluded from both views of ADR 0003.
 
+The same never-throw rule holds outside the tree. An unknown palette id in the vein index (a block id the
+registry or `OreTable` does not know) never throws: it is kept as stored and its vein reconciles against
+that id alone (ADR 0004).
+
 ### 8. In memory only, never saved
 
 Trip state (§11 Vault Session State), including the veins broken into this trip and Apprentice's Ledger's
@@ -267,14 +298,15 @@ needs one.
 Handled on `FTBTeamsEvent.PlayerChangedTeam`, which fires for every change, online or offline, including a
 party join (`PlayerJoinedPartyTeam` does not fire for an offline player). Nothing is copied: the old
 team's `PlayerStats` entry stays, and the new team writes a fresh one when the player next records
-anything. Both teams' views are rebuilt (ADR 0003). What happens to a player inside the old team's Vault
-is ADR 0002's.
+anything. Both teams' views are rebuilt (ADR 0003). An online player inside a Vault that is not their new
+team's is sent to `return_pos` with a chat line saying why, and login treats a Vault whose team is not the
+player's current team as one to leave (ADR 0002). Mining in a Vault pays only members of that Vault's team.
 
 ### 10. The Resonance orb
 
 Saved through `addAdditionalSaveData`/`readAdditionalSaveData`, snake_case keys, its own `data_version`:
 `team` (UUID string), `value` (long, thousandths of a Resonance), `orb_count` (int, default 1: how many
-orbs merged into this one, the N of Hoarder's Instinct's cache multiplier) and `age` (int ticks, default
+orbs merged into this one, the N of Hoarder's Instinct's cache multiplier; one field, confirmed in round 1, not a source-ore count) and `age` (int ticks, default
 0). Whether an orb despawns is not stored: while its team has Hoarder's Instinct chosen, the orb's age does
 not advance (read from `TeamEffects`), so swapping the option away lets old caches age normally. An orb
 whose team has no data or is disbanded pays nothing and despawns normally.
@@ -285,6 +317,11 @@ whose team has no data or is disbanded pays nothing and despawns normally.
 `ores_since_rung` (default 0), `forged` (default false), `imprint` (default none), `echoes` (default empty).
 The spec's `version` key is renamed `data_version`. Nothing has been written yet, so this rename costs no
 migration. `orevault:attuned` is a marker; its id is save data from the first release.
+
+`orevault:cache_tier` is an int, 1 or 2, stamped on an `orevault:wanderers_cache` item when it drops: the
+dropping team's Wanderer's Cache tier at that moment (Manager's ruling, round 1). Opening reads the
+stamp, not the opener's team, so a cache keeps the tier it dropped at. A cache item with no stamp opens at
+tier 1.
 
 ## Consequences
 
@@ -301,31 +338,34 @@ migration. `orevault:attuned` is a marker; its id is save data from the first re
 
 ## Alternatives rejected
 
-- **A double for the pool.** Exact sums and identical results on every machine matter more than avoiding
+- A double for the pool. Exact sums and identical results on every machine matter more than avoiding
   a unit; a long of thousandths gives both.
-- **A long of whole Resonance**, as the last build had. It silently drops Stone Memory's 0.05 payments.
-- **Storing the current level, points or tiers.** Two sources that disagree (§11; old PR #115). Only
+- A long of whole Resonance, as the last build had. It silently drops Stone Memory's 0.05 payments.
+- Storing the current level, points or tiers. Two sources that disagree (§11; old PR #115). Only
   `level_reached` is stored, on purpose.
-- **One `data_version` for the whole team file.** `PlayerStats` grows on its own schedule; lockstep bumps
+- One `data_version` for the whole team file. `PlayerStats` grows on its own schedule; lockstep bumps
   would be noise and would force migrations for untouched shapes (old PR #111).
-- **A codec built with `RecordCodecBuilder` for team data.** A field that fails to decode fails the whole
+- A codec built with `RecordCodecBuilder` for team data. A field that fails to decode fails the whole
   parse, which `SavedDataStorage` turns into an empty team.
-- **`PlayerStats` on the player attachment, moving with the player.** Q3 chose option (b); and team stats
+- `PlayerStats` on the player attachment, moving with the player. Q3 chose option (b); and team stats
   must be queryable by team while members are offline (§9).
-- **A has-record flag for `deepest_y`** (old #149's fix). S16 settled on absence: one source, no flag to
+- A has-record flag for `deepest_y` (old #149's fix). S16 settled on absence: one source, no flag to
   forget.
-- **Saving the pending vote result, or the Volatile Veins pity counters.** Derived, or reset on logout
+- Saving the pending vote result, or the Volatile Veins pity counters. Derived, or reset on logout
   anyway.
-- **Editing offline players' files on a reset.** Generation tags make the stale entry harmless instead.
-- **The overworld's storage (`ServerLevel#getDataStorage()` on the overworld,
-  `<world>/dimensions/minecraft/overworld/data/`)**, which `CLAUDE.md` rule 6 and §11 named and the last
+- Editing offline players' files on a reset. Generation tags make the stale entry harmless instead.
+- The overworld's storage (`ServerLevel#getDataStorage()` on the overworld,
+  `<world>/dimensions/minecraft/overworld/data/`), which `CLAUDE.md` rule 6 and §11 named and the last
   build used (`overworld.getDataStorage()` in `data/OreVaultTeamData.java` at 1e7cdad). In 26.1 that is the
   overworld's per-level storage, beside its chunk tickets and raids; vanilla moved its own world-wide data,
   command storage and the scoreboard among it, to the server's storage. Team data is world-wide. Nothing
   has been written yet and pre-restart saves are not supported (N1), so choosing now costs nothing, while
   moving after T5 would be a file move with a migration. Settled in the cross-ADR pass of E0-S12;
   `CLAUDE.md` rule 6 is reworded to match.
-- **Wall-clock timestamps.** A server stopped for a day would close every window and finish every
+- Refusing writes for a team whose file is unreadable, for the rest of the session (Reviewer, RV-1). It
+  keeps the original bytes as the copy-aside does, but loses a whole session of play with nothing in game
+  saying so, the silent-failure class `docs/LESSONS_LEARNED.md` lists (Manager's ruling, round 1).
+- Wall-clock timestamps. A server stopped for a day would close every window and finish every
   cooldown while nobody could use them.
 
 ## Spec sections changed
@@ -334,17 +374,42 @@ migration. `orevault:attuned` is a marker; its id is save data from the first re
 load rules), §8 Tab 3 ("New `PlayerStats` fields" names the keys, adds `chunks_explored`), §6 Saved state,
 §3.1, §3.2, §3.5, §4.4, §6.1 (Shallow Grace, Calloused Hands, Kindred Rock, Highwater Mark, Wanderer's
 Cache, Vein Discipline, Seam Courier, Tempered, Ascending Edge), §9, §11 Vault Session State and §13 key
-names. The exact edits are in the E0 run's `spec-changes/E0-S8.md` for the Writer to apply. E0-S18's
+names. Applied in the same PR (#160). E0-S18's
 answers (Q1 to Q4, Q14) and E0-S13's (streak, death marker) are already in the spec or in flight; this
 record matches them and only renames their keys.
 
 ## Reviews
 
 Matrix row, system design: developer (buildable), reviewer (rules), qa (testable); ticket adds writer and
-balancer. Each verdict lists what it checked.
+balancer. Round 1, 2026-10-27; rulings are the Manager's triage of round 1.
 
-- developer:
-- reviewer:
-- qa:
-- writer:
-- balancer:
+- developer: request changes. Checked `SavedDataStorage` `get`, `computeIfAbsent`, `readSavedData`, `set`,
+  `scheduleSave`, `encodeUnchecked` and `close`; `SavedDataType` equality by id; the server's storage built
+  with no level; `CompoundTag#getIntOr` and friends; the `AttributeModifier` record. Server storage over
+  overworld storage, the fixed-point pool, the clock and the key convention found buildable. DEV-12 (a
+  truncated file is overwritten with an empty team): fixed in section 2, check for the file, ERROR, copy
+  aside, then create; restore uses the same check. DEV-13 (the raw reader and "save at once"): fixed in the
+  `pending_reset` row, the `data` compound and `saveAndJoin()`. DEV-24a (which tier a cache opens at):
+  fixed, `orevault:cache_tier` in sections 2, 6 and 11.
+- reviewer: block. Checked the E0-S8 criteria, the key convention, one clock, `get` against
+  `computeIfAbsent`, a `data_version` on every shape, additions never bumping, idempotent fall-through
+  migrations, the newer-tag WARN, the §6 load rules in `core.tree`, `PlayerStats` staying with the old team,
+  the pool, frozen registry ids, and §11 SavedData Pattern key for key. RV-1 (corrupt file overwritten):
+  fixed with the copy-aside form in section 2; refusing writes for the session is rejected (Alternatives
+  rejected). RV-2 (palette identity): fixed here as block ids in section 1, the palette in the golden key
+  sets and a never-throw rule in section 7; ADR 0004 holds the rest. RV-8 (team change inside a Vault):
+  fixed in section 9, pointing to ADR 0002's eviction.
+- qa: request changes. Checked the key tables, defaults, versioning and load rules, the S17 test plan and
+  the in-memory list against `SavedDataStorage`. QA-15 (a gametest cannot restart): fixed, the restart
+  checks are the E3-S10 (#200) script compared through the S44 dump, and E1-S3 (#194) records whether NBT
+  loads in JUnit. QA-16 (wrong-type fixtures and the unreadable file): fixed in sections 2 and 6, with the
+  corrupt-file step in the script. QA-17 (unit cases): fixed, listed in section 6.
+- writer: request changes. Checked every table against §11 SavedData Pattern and §8 Tab 3, snake_case, one
+  clock, Q3, Q4, Q14 and the orb. WRITER-8 (the credit rule stated twice): fixed, section 4 points to ADR
+  0004 Amendment 1. WRITER-9 (explored map missing from the version list): fixed. WRITER-10 (orb field):
+  answered, one field, `orb_count`, orbs merged; the Writer fixes §13. `FTBTeamsEvent.TeamCreated` in
+  section 2: fixed. Bolded inline headers: removed. WRITER-1 (pointer to a run-folder file): fixed. DES-2
+  (the cache item id), from the Designer: `orevault:wanderers_cache` added to the frozen ids.
+- balancer: approve with comments. Checked the pool unit, rounding error, overflow, `level_reached`, the
+  clock constants and the stats reset on team change. BAL-7 (round once at pool entry; cumulative
+  thresholds; the bar's target): fixed in section 3.

@@ -38,19 +38,27 @@ Read on 2026-10-27 from the decompiled NeoForge 26.1.2.95 sources (paths inside 
 There are two views of a team's tree, with different readers and different contents. Neither is
 `SavedData`, neither is mutable, and both are rebuilt whole and swapped in by reference.
 
-**`GenSnapshot`** (package `core.gen`, no Minecraft imports) is what the chunk generator reads. It holds
-only what placement reads:
+`GenSnapshot` (package `core.gen`, no Minecraft imports) is what the chunk generator reads. It holds only
+what placement reads:
 
 | Field | Why placement reads it |
 |---|---|
 | Tiers of the owned generation nodes, by skill id (Vein Expansion, Vein Proliferation, Gravel Purge, Guide Vein, Deep Veins, Stone Reduction, Vein Shaping, Ore Attunement, Full Spectrum, Geode Clusters, Ancient Traces, Volatile Veins, Molten Seam) | Vein size and count, extra features, pools |
 | Fork choices of the two generation forks, Vein Shape and Ore Focus | Which option the parent's tier acts through |
 | Applied state of Volatile Veins and Molten Seam | Their generation half acts only while the team's applied state is on (below) |
-| Team level | Required by the ticket and listed by the Architect's T4 line in `docs/TEAM_REQUIREMENTS.md`. No 1.0 generation node reads it today; it is carried so a level-gated generation effect does not need a new field, and it is left out of the stamp (below) |
 | Dimension variant (`orevault:ore_vault` or `orevault:ore_vault_expanded`) | Which bands exist; Ancient Traces and Deep Veins depend on it. The generator is built per variant as well, and asserts the two agree |
 | `vault_generation`, the reset count | Part of every seed (Q2) |
-| The 40% floor clip factor | S13: the floor scales every rarity's vein count by one factor, computed when the snapshot is built from the requested counts by the baseline model of ADR 0009 (E0-S7). If ADR 0009 computes one factor per band, the snapshot holds one per band |
+| Two floor clip factors, one for the stone band and one for the deepslate band | S13: the 40% stone floor scales every rarity's vein count in a band by one factor, so the mix does not shift. Each is computed when the snapshot is built, by ADR 0009's rule: `min(1, 0.60 / densest)`, where `densest` is the highest ore density the team's generation nodes request in any one region of that band (Balancer, round 1) |
 | `stamp`, a long (64-bit) | The chunk records it as `gen_stamp` (ADR 0004); the Survey panel compares it with the current snapshot's (Q13) |
+
+Team level is not in `GenSnapshot`. No 1.0 generation node reads it, and the snapshot is memory only (ADR
+0005 section 8), so a level-gated generation effect added later adds the field then at no migration cost
+(`CLAUDE.md` rule 7's principle: no value without a reader). The E0-S5 ticket listed it; the Manager's round
+1 ruling dropped it and amends the ticket.
+
+The snapshot's collections are built with `Map.copyOf` and `List.copyOf`, so the record is immutable all the
+way down. A `HashMap` handed in and later changed on the main thread would be the race `CLAUDE.md` rule 1
+forbids, even inside a final field.
 
 A tier counts only nodes that are owned and not dormant. A node owned but hidden because its mod or tag is
 missing is dormant (§6 Mod-gated nodes) and is left out. No generation node is mod-gated today; the rule
@@ -58,12 +66,12 @@ is stated so that one added later cannot generate while hidden.
 
 `stamp` is a hash of the generation node tiers, the two generation fork choices and the applied
 generation tradeoffs, in a fixed order (skill ids sorted), with a fixed hash function implemented in
-`core.gen`, never `Object.hashCode` of a collection. It leaves out team level, the clip factor (which
-follows from the tiers), the variant and `vault_generation` (a reset regenerates every chunk anyway), so
-a level-up never marks the player's chunk "not current". A golden JUnit test pins the stamp of a fixed
+`core.gen`, never `Object.hashCode` of a collection. It leaves out the clip factors (which follow from the
+tiers), the variant and `vault_generation` (a reset regenerates every chunk anyway). Team level is not in
+the snapshot at all, so a level-up never marks the player's chunk "not current". A golden JUnit test pins the stamp of a fixed
 snapshot, so a refactor cannot silently mark every chunk out of date.
 
-**`TeamEffects`** (built in `data`, read on the main thread only) is what everything else reads: the drop
+`TeamEffects` (a record in `core.gen`, read on the main thread only) is what everything else reads: the drop
 listener and its pipeline, the wear mixin (ADR 0008's "main-thread team snapshot" is this view), attribute
 recompute, Silent Stone's ticker and the Volatile Veins roll. It holds the owned tier of every skill (dormant
 nodes excluded), every fork choice, the hidden set, the applied generation tradeoffs, team level, team size,
@@ -71,7 +79,25 @@ each online member's active per-player tradeoffs, and the expected ore in a newl
 current generation nodes, the closed form from `OreBaseline` with the clip applied, which the Seismic Sense
 shade reads (ADR 0004 Amendment 1). Those readers read nothing else for tree state: not
 `SavedData`, not the layout, not the hidden set separately. This puts the dormancy, fork and tradeoff rules
-in one place instead of in each consumer, and turns a per-break derivation into a field read.
+in one place instead of in each consumer, and turns a per-break derivation into a field read. It also
+holds whether the team has a pending generation change (the tally differs from the applied state), which
+the empty-Vault check below reads.
+
+### Pure builders, main-thread extraction
+
+Both views are built by pure functions in `core.gen` from plain values: the owned node ids, the fork
+choices, the hidden set, the applied generation tradeoffs, each current member's generation votes, the
+member list and which members are online with their per-player tradeoffs, team level, team size, the
+variant, `vault_generation` and the `TreeLayout`. `data.GenSnapshots` only reads those values out of the
+team's `SavedData` on the main thread and calls the builders. The member list and the online set come from
+the caller as values, read through the team helper by whichever adapter raised the trigger, so `data` never
+imports `team` (ADR 0001, the `data` row). The dormancy, stamp and vote rules are then unit-testable, which
+a builder that reads `SavedData` would not be.
+
+Unit cases, at least: a dormant node is excluded from tiers and stamp; the stamp is unchanged by team level,
+variant and `vault_generation`, and changed by a generation tier, a generation fork choice and an applied
+tradeoff; a refund removes the node from the applied state; the vote passes at 1 of 1, 1 of 2, 2 of 3 and 3
+of 4, and fails at 1 of 3 and 2 of 4; a former member's vote is ignored.
 
 ### Holders and the supplier
 
@@ -93,7 +119,7 @@ Both views are rebuilt on the main thread, from the team's `SavedData` and the l
 
 - a node purchase, a path purchase (once, after the whole path), and a refund;
 - a fork option chosen, swapped or cleared;
-- a level-up;
+- a level-up (`TeamEffects` only, since `GenSnapshot` holds nothing a level changes);
 - a dimension reset (after `vault_generation` + 1 and the variant change, before the new level ticks);
 - restore at server start and Vault load (ADR 0002);
 - server start and `/reload`, after the hidden set is computed (E8a-S7), since dormancy can change;
@@ -103,8 +129,14 @@ Both views are rebuilt on the main thread, from the team's `SavedData` and the l
   the old and the new team, since the vote tally and member set change;
 - Volatile Veins' or Molten Seam's applied state changing (below).
 
-`TeamEffects` is also rebuilt when a member toggles a per-player tradeoff, logs in or logs out, since it
-holds online members' tradeoffs. `GenSnapshot` is not, because no per-player state reaches generation.
+`TeamEffects` is also rebuilt when a member toggles a per-player tradeoff or a generation vote, logs in or
+logs out, since it holds online members' tradeoffs and the pending flag. `GenSnapshot` is not, because no
+per-player state reaches generation.
+
+So that each trigger can be seen to fire before the Survey panel exists (T7), S44's debug commands gain a
+snapshot readout: the team's current `stamp`, applied generation tradeoffs, `vault_generation` and clip
+factors, and the `gen_stamp` of the chunk the player stands in. Each trigger then has a check: do it, run
+the readout, see the stamp change, or for a level-up see it stay the same (QA, round 1).
 
 ### Generation tradeoffs: one team state
 
@@ -119,16 +151,27 @@ team-wide (Nick, 2026-10-27, Q1; §6.1 Volatile Veins):
 - The applied state is saved on the team as `generation_tradeoffs` (ADR 0005). The pending change is not
   saved: it is the difference between the tally and the applied state, both of which are saved, so it is
   derived whenever it is needed.
-- It is applied when the Vault level has no player in it: when the last player leaves (any route ADR 0002
-  watches, logout included), when a vote or a team change moves the tally while the Vault is empty, and at
-  server start for every team before anyone connects. Applying sets `generation_tradeoffs` and rebuilds
-  both views.
+- It is applied when the Vault level has no player in it, by one check at the end of each server tick
+  (package `vault`): for each team whose `TeamEffects` shows a pending change, count the non-spectator
+  players in its Vault level; at zero, apply. A team with no Vault level loaded counts as empty. One rule
+  covers every way out (portal, death and respawn, command, logout) and a vote or team change that moves
+  the tally while the Vault is already empty. A logout listener could not do it: `PlayerList#remove` posts
+  `PlayerLoggedOutEvent` (line 315) before it removes the player from the level (line 334), so the leaving
+  player is still counted (Developer, round 1). The cost is one lookup per team with a pending change per
+  tick.
+- At server start, the pending change is applied for every team before anyone connects, and before ADR
+  0002's restore calls `ensureTeamDimension`, so a restored Vault's first chunks are generated under the
+  applied state rather than the stale one (Reviewer, round 1).
+- Applying sets `generation_tradeoffs`, rebuilds both views, and records a `TreeState` for every online
+  member in `data.SyncOutbox` (ADR 0001), which `network` sends at the end of the tick.
 - The effective state is applied and owned and not dormant. Refunding the node removes it from
   `generation_tradeoffs` at once (its effect stops with the node anyway), so buying it again starts off and
   waits for the next empty Vault rather than switching on under players already inside.
 
-The test for "empty" is the Vault level's player list, which matches Nick's words ("once no one is in the
-ore vault") and also covers a player who left the team while inside.
+The test for "empty" is the Vault level's players that are not spectators, which matches Nick's words
+("once no one is in the ore vault") and also covers a player who left the team while inside. A spectating
+operator does not hold the change back. A dead player stays in the level's list until respawn, so the
+change applies once they respawn outside, not while they are on the death screen.
 
 ### Seeds and per-chunk rolls
 
@@ -143,7 +186,10 @@ then does not shift another feature's stream.
 Every "one per N newly explored chunks" rate is a per-chunk roll from that chunk's seed, never a counter
 carried between chunks: Geode Clusters rolls 1 in 12 (then 1 in 6), Ancient Traces 1 in 4 (then 1 in 2),
 Molten Seam 1 in 2. A counter would depend on the order chunks happen to generate, which differs per
-player and per restart, and it would be state the generator must not keep. The rate is met on average.
+player and per restart, and it would be state the generator must not keep. The rate is met on average, and
+a JUnit test pins how closely: over 10,000 chunk seeds per rate, the count is within three standard errors
+of the expectation (Geode Clusters at 1 in 12: 833 expected, within ±83). A golden test shows that adding a
+salt leaves another feature's stream unchanged.
 
 ### Generator plumbing (old #16)
 
@@ -156,16 +202,17 @@ player and per restart, and it would be state the generator must not keep. The r
 
 S15's static rule is the enforcement: an ArchUnit rule, owned by the Reviewer and shown failing once
 against a planted violation (S43), that no class in `worldgen` or `core.gen` depends on `data`, `team`,
-`net.minecraft.world.level.saveddata`, or any `dev.ftb` type. `GenSnapshot` lives in `core.gen`; the code
-that builds it from team data lives in `data`. ADR 0001 (E0-S3) lists the rule with the others.
+`net.minecraft.world.level.saveddata`, `SavedDataStorage`, or any `dev.ftb` type. `GenSnapshot` and its
+builder live in `core.gen`; the code that reads team data into plain values lives in `data`. ADR 0001
+(E0-S3) lists the rule with the others as its named rule 1, with the same list.
 
 ## Consequences
 
 - A purchase is visible in the next chunk generated after the rebuild. A chunk whose generation started
   before the purchase uses the snapshot it read; that is correct, and the chunk's stamp says so.
-- A level-up, a per-player toggle or a login rebuilds `GenSnapshot` cheaply or not at all, and never
-  changes the stamp.
-- The vote needs the team helper's member list on the main thread; the team helper is still the only
+- A level-up, a per-player toggle or a login does not rebuild `GenSnapshot`, and never changes the stamp.
+- The vote needs the team's member list on the main thread. The adapter that raises the trigger reads it
+  through the team helper and passes it in as values; the team helper is still the only
   `dev.ftb.mods.ftbteams` importer.
 - A team whose applied state is pending at shutdown gets it applied at the next start, before anyone joins.
 - The seed and stamp functions are save data in effect: changing either changes the Vault every existing
@@ -176,35 +223,81 @@ that builds it from team data lives in `data`. ADR 0001 (E0-S3) lists the rule w
 
 ## Alternatives rejected
 
-- **Reading `SavedData` from the generator, even read-only.** A race (`CLAUDE.md` rule 1).
-- **One view for both readers.** The generator needs a small, stable set and a stamp that ignores
+- Reading `SavedData` from the generator, even read-only. A race (`CLAUDE.md` rule 1).
+- One view for both readers. The generator needs a small, stable set and a stamp that ignores
   everything else; the main-thread readers need per-player tradeoffs, the hidden set and team size, which
   change often. One view would either rebuild generation state on every toggle and login or give the
   drop listener less than it needs.
-- **The snapshot as the full owned set** (the last build's `SkillSnapshot`). It changes on purchases that
+- The snapshot as the full owned set (the last build's `SkillSnapshot`). It changes on purchases that
   change nothing in the ground, so it cannot back the Q13 stamp.
-- **Per-player generation tradeoffs feeding a team snapshot**, for example "on if any member has it on".
+- Per-player generation tradeoffs feeding a team snapshot, for example "on if any member has it on".
   Rejected by Nick (Q1, `DESIGN_LOG.md` 2026-10-27); it gave the bigger veins without the risk.
-- **Saving the pending vote result.** It follows from two saved values; saving it as well gives two sources
+- Saving the pending vote result. It follows from two saved values; saving it as well gives two sources
   that can disagree.
-- **A counter for "one per N chunks".** Order-dependent and off-thread state.
-- **Calling the supplier per placement step.** One chunk could straddle a purchase.
+- A counter for "one per N chunks". Order-dependent and off-thread state.
+- Calling the supplier per placement step. One chunk could straddle a purchase.
+- Team level in `GenSnapshot`, as the ticket listed. No 1.0 generation node reads it, and adding it later
+  costs no migration (DEV-8, round 1).
+- Applying the pending change from the logout listener, or from any one exit route. The leaving player is
+  still in the level when logout is posted, and each route would need its own hook (DEV-7, round 1).
+- Building the views inside `data` from `SavedData` directly. Correct on the thread, but the dormancy, stamp
+  and vote rules could then be tested only in a gametest (QA-8, round 1).
 
 ## Spec sections changed
 
 §11 Dynamic Chunk Generator (triggers, one supplier call per chunk, the effects view, the stamp, codec and
 biome), §3.1 seeding (per-feature salts and per-chunk rolls), §6.1 Volatile Veins (current members only;
 applied when the Vault level is empty; refund clears the applied state) and §11 Tool Wear Hook (reads the
-effects view). The exact edits are in the E0 run's `spec-changes/E0-S5.md` for the Writer to apply. E0-S18
-already carries Q1 and Q2 into §3.1, §6.1 and §11; this record matches that text and adds the mechanics.
+effects view). Applied in the same PR. E0-S18 already carries Q1 and Q2 into §3.1, §6.1 and §11; this
+record matches that text and adds the mechanics. The round 1 change to when a pending vote applies ("at the
+end of the tick in which the Vault becomes empty") is the Writer's §6.1 Volatile Veins edit in the same PR.
 
 ## Reviews
 
 Matrix row, system design: developer (buildable), reviewer (rules), qa (testable); ticket adds writer and
 balancer. Each verdict lists what it checked.
 
-- developer:
-- reviewer:
-- qa:
-- writer:
-- balancer:
+Round 1, 2026-10-27. Each objection is marked fixed (what changed here), rebutted (the evidence) or deferred
+(the story that takes it). The record stays proposed until each reviewer confirms in round 2.
+
+- developer: approve with comments (DEV-7, DEV-8). Checked `fillFromNoise` and `codec()`
+  (`ChunkGenerator.java` lines 111, 640); `DerivedLevelData#getGameTime`; `ServerLevel#tickTime` (lines 484
+  to 492, only the overworld advances it); that one supplier call per chunk is implementable because all
+  Ore Vault placement is in `fillFromNoise`.
+  - DEV-7, a logout listener still sees the leaving player: fixed. A pending change applies from an
+    end-of-tick check of each Vault with a pending change, counting non-spectator players.
+  - DEV-8, drop team level from `GenSnapshot`: fixed. The Manager ruled for dropping it (no 1.0 node reads
+    it; the snapshot is memory only) and amends E0-S5 (#186) and E9-S3 (#307).
+- reviewer: approve with comments (RV-13, RV-14). Checked the `GenSnapshot` fields against the AC list;
+  immutability and the `AtomicReference` swap; one supplier call per chunk; every AC trigger, `/reload`,
+  team change and the applied vote among them; dormant nodes excluded; per-chunk rolls from salted seeds;
+  `vault_generation` in the seed; `MapCodec.unit(this)`; empty spawners; the S15 rule; `TeamEffects`
+  main-thread only.
+  - RV-13, collections deeply immutable: fixed. `Map.copyOf` and `List.copyOf`.
+  - RV-14, order at server start and which players count: fixed. Apply first, then `ensureTeamDimension`;
+    only non-spectator players count.
+  - The Reviewer's answer to the Architect's question 1 (keep team level, since the AC lists it): not taken.
+    The Manager ruled for DEV-8 from this record's own table and ADR 0005 section 8, and the ticket is
+    amended instead.
+- qa: approve with comments (QA-7, QA-8, QA-9, QA-10). Checked the snapshot fields, stamp rules and golden
+  test, the one-supplier-call rule, every rebuild trigger, the vote rule, applied-when-empty, seeds and
+  per-chunk rolls.
+  - QA-7, no in-game sign that a trigger fired: fixed. S44 gains the snapshot readout named under Rebuild
+    triggers (the Manager adds it to S44).
+  - QA-8, rules reachable only by gametest: fixed. Both views are built by pure `core.gen` functions from
+    plain values, with QA's unit cases listed.
+  - QA-9, "met on average" needs a tolerance: fixed. 10,000 seeds per rate within three standard errors,
+    and a salt-isolation golden test.
+  - QA-10, the two-client applied-when-empty playtest: deferred to E9-S60 (#364), which carries QA's four
+    steps by an amendment comment.
+- writer: approve with comments (WRITER-1, bolded inline headers). Checked the snapshot fields and triggers
+  against the ticket; the vote rule against §6.1 Volatile Veins and Nick's quote in `DESIGN_LOG.md`; the
+  per-chunk rates against §6.1 Geode Clusters, Ancient Traces and Molten Seam; §11 Dynamic Chunk Generator.
+  - WRITER-1, pointer to a session file: fixed. "Applied in the same PR."
+  - Bolded inline headers in the two views and the rejected list: fixed. Plain lead sentences.
+- balancer: approve with comments (BAL-6). Checked the trigger list, including tradeoff application and
+  `/reload`; one snapshot per chunk; the per-chunk rolls for Geode Clusters (1/12, 1/6), Ancient Traces
+  (1/4, 1/2) and Molten Seam (1/2); `vault_generation` in the seed; the team-wide vote; dormant nodes left
+  out.
+  - BAL-6, "if ADR 0009 computes one factor per band": fixed. Two factors, stone and deepslate, each
+    `min(1, 0.60 / densest)` as BAL-3 set it in ADR 0009.

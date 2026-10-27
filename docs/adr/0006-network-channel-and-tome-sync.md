@@ -75,8 +75,8 @@ registration (so the common side need not hold the client callback described bel
 `PayloadRegistrar#optional()` exists and defaults to required, and what NeoForge does with a payload whose
 decode throws (expected: the connection is closed).
 
-FTB Teams 26.1.2.4 was read on 2026-10-27 (`ftb-teams-reads.md` in the E0 run folder): the personal
-team's id is the player's UUID (`TeamManagerImpl#createPlayerTeam`); `getTeamForPlayerID` reads
+FTB Teams 26.1.2.4 was read on 2026-10-27 (`docs/research/neoforge-26.1-sources.md`, "FTB Teams party
+join and disband"): the personal team's id is the player's UUID (`TeamManagerImpl#createPlayerTeam`); `getTeamForPlayerID` reads
 `knownPlayers`, loaded with the server; `PlayerChangedTeamEvent` fires on every team change, for offline
 players too, while `PlayerJoinedPartyTeamEvent` does not fire for an offline player.
 
@@ -110,13 +110,22 @@ record keeps that as the house rule. A record over six fields is split by meanin
 ### Code layout
 
 - `network`: payload records, codecs, registration and server handlers. Handlers decode, check the sender
-  and call `TomeActions` on the main thread; they hold no rules.
+  and call `TomeActions` on the main thread; they hold no rules. `network` may import `reset` (for
+  `StartReset` and `CastResetVote`) and the vein-index leaf `worldgen.index` (ADR 0001).
+- Outbound sync from packages that may not import `network` (`team`, `mining`, `vault`) goes through the
+  dirty set `data.SyncOutbox` that ADR 0001 defines: those packages mark a team or a player dirty for a payload
+  kind (`TeamProgress`, `TreeState`, `EntryPoints`, `ResetVoteState`), or queue a `VeinOutline` for a
+  player, and `network` drains the set at the end of the server tick and sends. A mark is a flag, so
+  several marks in one tick send once. `reset`, `chunkload` and `debug` may import `network` and send
+  directly.
 - `TomeActions` (in `network`, main thread only): resolves the sender's team through `TeamHelper`, reads
   `OreVaultTeamData`, calls the pure rules, writes, and sends the syncs below. Gametests call it directly
   with a mock player, so the rules are covered without a network round trip.
-- `core.tree`: the pure checks (buy, path, refund connectivity, fork swap, tradeoff and vote eligibility)
-  and the `Refusal` enum, each value holding its lang key. They take booleans such as `insideVault`, never
-  a `ServerPlayer` (old PR #111's `TradeoffToggle` shape).
+- `core.tree`: the pure checks (buy, path, refund connectivity, fork swap, tradeoff and vote eligibility),
+  the `Refusal` enum, each value holding its lang key, and the Outgrown rule per growth node (below). They
+  take booleans such as `insideVault`, never a `ServerPlayer` (old PR #111's `TradeoffToggle` shape). The
+  same package holds the two sync timing rules as plain classes, so they are unit-tested: the per-player
+  rate bucket (below) and the `TeamProgress` coalescer (Triggers). They take tick counts, not a server.
 - `core.layout`: `TreeLayout` and its `canonicalHash()`.
 - `client.net` and `ClientTomeState` under `client/`: clientbound handling and the cached state. Common
   code never names them. As before, `network` holds a `ClientHandler` callback that the
@@ -134,10 +143,13 @@ record keeps that as the house rule. A record over six fields is split by meanin
   the sender's position. A refused mutation changes nothing.
 - Every mutating payload, accepted or refused, ends with a `TreeState` sync to its recipients; a refusal
   also sends `ActionRefused` to the sender. The client never updates a node optimistically: a click shows
-  the node pending until the next `TreeState` (old PR #134).
+  the node pending until the next `TreeState` (old PR #134). If no `TreeState` arrives within 40 ticks
+  of the click, the client clears the pending mark and redraws the last state it has, so a click the
+  rate limit dropped is still visibly answered. The server does not answer a dropped payload with a
+  `TreeState`: that would let a flood buy a full sync per packet, which is what the limit is for.
 - Serverbound mutations are rate limited per player: a bucket of 10, refilled at 10 a second. Over the
   limit the payload is dropped and the sender gets `refusal.orevault.too_fast` at most once a second.
-  `RequestSurvey` is answered at most once per 20 ticks per player.
+  `RequestSurvey` and `RequestTripState` are each answered at most once per 20 ticks per player.
 - Until the client's `LayoutAck` matches, every mutating payload from it is refused with
   `refusal.orevault.layout_unconfirmed`.
 
@@ -159,11 +171,12 @@ allocation. Constants live beside `PROTOCOL_VERSION`:
 | `MAX_MAP_SIDE` | 33 chunks | the Seismic map window, 1,089 cells |
 | `MAX_RUNGS` | 1024 per ladder | Ascension ladder rungs |
 | `MAX_ENTRY_POINTS` | 8 | three slots today (§3.3) |
+| `MAX_RESOURCE_ID` | 256 characters | item and block ids (`namespace:path`), with room for long modded paths |
 
 Strings use `ByteBufCodecs.stringUtf8(max)`. Collections use `ByteBufCodecs.list(max)` or
 `collection(…, max)`. A bitset is a `List<Long>` bounded at 16, and the decoder also refuses a set bit at
-or past the layout's node count. Item ids use a bounded string, not `Identifier.STREAM_CODEC`, which reads
-up to 32767 characters. The serverbound worst case, `BuyPath` at 150 ids of 64 characters, is about 10 KB,
+or past the layout's node count. Item and block ids use `stringUtf8(MAX_RESOURCE_ID)`, not
+`Identifier.STREAM_CODEC`, which reads up to 32767 characters. The serverbound worst case, `BuyPath` at 150 ids of 64 characters, is about 10 KB,
 under 32767; the largest clientbound payload, an outline at 4096 positions, is about 33 KB.
 
 ### The layout hash
@@ -196,8 +209,9 @@ All carry intent only.
 | `SetPin` | `Optional<String> nodeId` (empty clears) | known and visible. Anywhere; a pin has no effect on play | `unknown_node`, `hidden` |
 | `StartReset` | `boolean backup` | sender holds a Tier 4 Sovereign Vault Igniter in their inventory; the team has a Vault; no session open for the team; ADR 0007's further rules | `reset_no_igniter`, `reset_no_vault`, `reset_session_open` |
 | `CastResetVote` | `int sessionId`, `boolean approve` | the session is the sender's team's and still voting | `reset_no_session` |
-| `SelectEntryPoint` | `int slot` (−1 is the team anchor at X=0, Z=0) | slot under the capacity of the best igniter the sender holds (§3.3); the slot is set for the team's current `vault_generation` | `entry_no_capacity`, `entry_empty` |
+| `SelectEntryPoint` | `int slot`; −1 is the team anchor (X=0, Z=0) | slot under the capacity of the best igniter the sender holds (§3.3); the slot is set for the team's current `vault_generation` | `entry_no_capacity`, `entry_empty` |
 | `RequestSurvey` | none | sender is answered with `SurveyState` | none |
+| `RequestTripState` | none | sender is answered with `TripState` | none |
 
 `SetTradeoff` carries the desired state. The old `ToggleTradeoff` had the server flip, so that a replayed
 packet could not force a state; but a flip turns a replayed or duplicated packet into an undo, and the
@@ -211,7 +225,9 @@ opposite: a tradeoff is refused inside the Vault and a vote never is. The member
 confirms it; any field it adds is a protocol bump.
 
 `RequestSurvey` is sent when the Ore Memory tab opens and every 40 ticks while it stays open, so Survey
-data is computed only for a player looking at it.
+data is computed only for a player looking at it. `RequestTripState` follows the same pattern for the
+Tome as a whole: sent when the Tome opens and every 40 ticks while it is open, so the trip counters the
+tooltips show are live to within two seconds and are never sent to a player who is not looking.
 
 ### Clientbound payloads
 
@@ -220,11 +236,12 @@ data is computed only for a player looking at it.
 | `LayoutCheck` | `long layoutHash`, `int nodeCount` | the joining player | `OnDatapackSyncEvent` with a player (each join), first |
 | `ServerFeatures` | `int flags`: bit 0 FTB Ultimine loaded, bit 1 `c:clumps/` filled, bit 2 `c:shards/` filled, bit 3 `c:crystals/` filled | each player | each join and each `/reload` (`OnDatapackSyncEvent`) |
 | `AscensionLadder` | `List<Rung> pickaxes`, `List<Rung> paxels`, each at most `MAX_RUNGS`; `Rung(String item, Optional<String> next, int oresToNext)` | each player | each join and each `/reload` |
-| `TeamProgress` | `ResonanceProgress(long pool, int level, int unspentPoints, long levelStart, long nextThreshold)`; `nextThreshold` is −1 at the cap | every online member | see triggers |
+| `TeamProgress` | `ResonanceProgress(long pool, int level, int unspentPoints, long levelStart, long nextThreshold, long recentBonus)`; `nextThreshold` is −1 at the cap | every online member | see triggers |
 | `TreeState` | six nested records, below | each online member, with that member's own tradeoffs | see triggers |
 | `PlayerContext` | `boolean inVault`, `boolean holdsSovereignIgniter`, `int entryCapacity` | the player | on change |
 | `EntryPoints` | `List<EntryPoint(int slot, BlockPos pos, boolean anchor)>` up to `MAX_ENTRY_POINTS`, `int selected` | the player | join, any change, team change, reset |
 | `SurveyState` | five fields, below | the requester | answer to `RequestSurvey`; once, unrequested, when the chunk stamp changes while the tab is open |
+| `TripState` | three nested records, below | the requester | answer to `RequestTripState` |
 | `VeinOutline` | `int kind` (0 Vein Sight, 1 Prospector's Eye, 2 Chapter's End), `int durationTicks`, `List<Long> positions` packed with `BlockPos#asLong`, at most `MAX_OUTLINE` | the breaking player | when the node fires |
 | `ActionRefused` | `String reasonKey` (at most 128), `Optional<String> nodeId` (the node to flash), `RefusalArgs(List<String> nodeIds, int number, String playerName)` | the sender | each refused mutation, before the corrective `TreeState` |
 | `ResetVoteState` | `int sessionId`, `int phase` (0 none, 1 voting, 2 countdown, 3 passed, 4 failed, 5 cancelled), `VoteTally`, `String initiator`, `boolean backup`, `int secondsLeft` | every online member | open, each vote, each member join, leave or disconnect, each phase change, each second of the countdown, and on join while a session is open |
@@ -236,20 +253,36 @@ data is computed only for a player looking at it.
 |---|---|---|
 | `Ownership` | `List<Long> owned`, `List<Long> hidden` | bitsets in layout order (§6 Layout data). Owned and hidden together is dormant: owned, hidden because its mod or tag is gone, no effect, not counted (§6 Mod-gated nodes). Hidden is the server's view (S25) |
 | `Forks` | `List<ForkChoice(String forkId, String optionId)>`, at most `MAX_FORKS` | forks with no choice are absent |
-| `Marks` | `Optional<Pin(int nodeIndex, int member)>`, `List<Integer> boughtBy`, `List<Member(UUID id, String name)>` | `boughtBy` has one entry per set bit of `owned`, in order: an index into the member table, or −1 for none. The table holds every member a pin or `boughtBy` names, current or former; a name the server's profile cache does not know is sent empty and the Tome says "a former member". The start node's entry is −1 |
-| `PlayerTradeoffs` | `List<Long> active` | this player's `active_tradeoffs` (ADR 0005 `PlayerStats`) as a bitset, which for Volatile Veins and Molten Seam is this player's vote |
+| `Marks` | `Optional<Pin(int nodeIndex, int member)>`, `List<Integer> boughtBy`, `List<Member(UUID id, String name)>` | `boughtBy` has one entry per set bit of `owned`, in order: an index into the member table, or −1 for none. The table holds every member a pin or `boughtBy` names, current or former. Names come from `server.services().nameToIdCache().get(UUID)`, which returns `Optional<NameAndId>` (26.1 has no `GameProfileCache`; `Services.java` line 19, read by the Developer); an empty result is sent as an empty name and the Tome says "a former member". The start node's entry is −1 |
+| `PlayerView` | `List<Long> active`, `List<Long> outgrown` | `active` is this player's `active_tradeoffs` (ADR 0005 `PlayerStats`) as a bitset, which for Volatile Veins and Molten Seam is this player's vote. `outgrown` is a bitset in layout order over every `[GROWTH]` node, owned or not, set when the node's condition can no longer be met for this player (§6 Notation, `[GROWTH]`; §8 Tab 1, class table), so an unowned node can warn before purchase |
 | `GenerationVotes` | `List<GenerationVote(int nodeIndex, int votesOn, int needed, int members, boolean applied, boolean pending)>`, at most 8 | `needed` is the server's threshold (§6.1 Volatile Veins: more than half, or one of two); `pending` means the result differs from `applied` and waits for the Vault to empty. Only nodes the team owns are listed |
 | `Windows` | `int respecSecondsLeft`, `List<UndoEntry(int nodeIndex, int secondsLeft)>`, at most `MAX_PATH` | the free respec window after a reset (§4.4, from the team's `free_respec_until`, ADR 0005) and each node still in its 60-second undo window. The client counts both down itself |
 
 `TeamProgress` carries the level the server's rules use, the unspent points (`5 × level − owned visible
 nodes`, §4.4) and the two thresholds around the pool, so neither the header nor the on-screen bar (§8)
-computes anything from the curve, which depends on server config the client lacks. `pool`, `levelStart`
-and `nextThreshold` are in ADR 0005's unit, thousandths of a Resonance; `level` is the curve's level raised
-to `level_reached` (ADR 0005). Animus is not carried; the Animus epic adds it with a bump (Nd).
+computes anything from the curve, which depends on server config the client lacks. `pool`, `levelStart`,
+`nextThreshold` and `recentBonus` are in ADR 0005's unit, thousandths of a Resonance; `level` is the curve's
+level raised to `level_reached` (ADR 0005). `recentBonus` is the part of the Resonance paid since the
+previous `TeamProgress` that came from bonuses (§11 `ResonanceBonuses`, after team scaling), so the bar
+draws the gain segment (the pool's rise between two payloads) with its bonus share, as §8 On-screen
+Resonance bar and §13 UI ask. It is 0 on the first payload after joining. The field is in the protocol
+from `"1"` (UI-UX, 2026-10-27): nothing is built yet, so adding it now spends no bump. Animus is not
+carried; the Animus epic adds it with a bump (Nd).
+
+The Outgrown rule lives in `core.tree`, one condition per `[GROWTH]` node as §6.1 states it, from plain
+values: team level for the level-bound nodes (Novice's Luck, Salvager's Eye) and the player's own
+`deepest_y` for Shallow Grace (a player whose record is at or below Y=100 stops the bonus whenever they are
+inside, §6.1). Novice's Luck is outgrown at level 30 and Salvager's Eye at level 12. Apprentice's Ledger
+and Guide Vein state no condition that stops being reachable, so their bits stay clear until §6.1 states
+one. The server computes the bitset per recipient; the client never evaluates a growth condition. Which
+nodes are `[GROWTH]` and each one's wording on the tooltip are §6.1's and §8's.
 
 `SurveyState`, five fields: `int chunkStamp` (0 not in a Vault, 1 generated with the team's current
-generation nodes, 2 generated with older ones or with no stamp, §8 Ore Memory, §11 Vein Index; the server
-compares the chunk's `gen_stamp` with the current `GenSnapshot` `stamp`, ADR 0003 and 0004);
+generation nodes, 2 generated with older ones, 3 no stamp, drawn "Generated before this was tracked";
+§8 Ore Memory, §11 Vein Index; the server compares the chunk's `gen_stamp` with the current `GenSnapshot`
+`stamp`, ADR 0003 and 0004). Value 3 is kept apart from 2 because a team that owns no generation node,
+standing in a chunk made before stamps existed, would otherwise be told its chunk is "not current", which
+reads as a fault (UI-UX, 2026-10-27);
 `int vaultVariant` (0 none yet, 1 base, 2 expanded), for the depth gauge's band edges;
 `int guideVeinOreThisTrip` (§6.1 Guide Vein); `Optional<BlockPos> deathMarker`, from `last_vault_death`
 (ADR 0005), sent only when its team and `vault_generation` match the sender's team's current ones (§8 Tab
@@ -262,18 +295,34 @@ centred on the sender's chunk, and the decoder refuses a `side` above 33 or a `c
 `side²`. What "explored" and the shade are read from, and how the compass picks its chunk, are ADR 0004
 Amendment 1's (E0-S12).
 
+`TripState`, three nested records, all about the requesting player (§11 Vault Session State and
+`PlayerStats`):
+
+| Record | Fields | Notes |
+|---|---|---|
+| `Trip` | `boolean inTrip`, `int blocksThisTrip`, `int delveStacks`, `int delveTicksToNext`, `boolean secondWindUsed` | Deep Habit, Long Delve, Second Wind. `delveTicksToNext` is −1 at the stack cap or while the AFK guard holds accrual (no block broken in the last 60 seconds, §6.1 Long Delve). Outside a trip `inTrip` is false and the rest are 0 |
+| `Discipline` | `int streak` | Vein Discipline's `vein_discipline_streak`, which persists across trips |
+| `Kindred` | `int kindredTypes`, `Optional<String> nextOre` (at most `MAX_RESOURCE_ID`), `int nextCount` | Kindred Rock: how many ore types have reached 1,000, and the not-yet-kindred type with the most `ores_mined` with its count, for "progress toward the next" (§8 stats) |
+
+These are the counters `docs/TEAM_REQUIREMENTS.md` (UI-UX) says the tooltips show live. They are sent
+whether or not the team owns the nodes, so a tooltip on an unowned node can show what it would read. A
+counter a later node adds is a field and a bump.
+
 The Vault Keeps It's marker is this same death marker: §8 Tab 3 says there is one marker, with or
 without the node. The client draws it with the node's treatment while the team owns the node, which it
 knows from `Ownership`, so the node needs no field of its own.
 
 `VeinOutline` positions, when more than `MAX_OUTLINE`, are cut nearest-first from the breaking block,
 and the cut is logged at debug. The client drops every outline on a dimension change. Vein Sight's
-duration is 600 ticks and Prospector's Eye's 100 (§6.1); Chapter's End states none, so the Balancer sets
-it. One client renderer draws all three (old #101).
+duration is 600 ticks and Prospector's Eye's 100 (§6.1). Chapter's End's is 600 ticks, 30 seconds: it
+fires once per chunk and must last long enough to tunnel to the nearest vein (Balancer, 2026-10-27,
+unplaytested; the Writer states it in §6.1). The duration travels in `durationTicks`, so a change to any
+of the three is no bump. One client renderer draws all three (old #101).
 
 `ActionRefused` is drawn as `Component.translatable(reasonKey, names, number, playerName)`: argument 1
 is the node names joined, from `node.orevault.<skill id>` through the client's layout, with "and N more"
-past `MAX_REFUSAL_NODES`; argument 2 is the number (a level, points, XP levels or a count), −1 when
+past `MAX_REFUSAL_NODES`; an id the client's layout does not know (`unknown_node`, `unknown_fork`,
+`unknown_option`) is shown as the raw id; argument 2 is the number (a level, points, XP levels or a count), −1 when
 unused; argument 3 a player name. A key the client's lang file lacks shows
 `refusal.orevault.generic` instead of the raw key.
 
@@ -283,22 +332,26 @@ phase 2: every member gets it and the client draws the warning only while `inVau
 the client's, on the first `ResetVoteState` of a new `sessionId` in phase 1 for a member who is not the
 initiator (§3.5, Q16). The clickable chat line is a server system message whose click runs
 `/orevault reset vote`; that command answers its sender with `OpenResetVote`, and the client opens the
-vote screen only then. Nothing opens a screen unasked. Vote rules, timeout and who counts are ADR 0007's.
+vote screen only then. The `/orevault` root and `reset vote` are registered on every server, regardless of
+`[debug].enable_debug_commands`; only the debug subcommands sit behind that flag (§10, §13). Nothing opens a screen unasked. Vote rules, timeout and who counts are ADR 0007's.
 
 ### Triggers
 
 | Trigger | Sends |
 |---|---|
-| `OnDatapackSyncEvent` with a player (each join; posted in `PlayerList#placeNewPlayer` before `PlayerLoggedInEvent`) | to that player, in order: `LayoutCheck`, `ServerFeatures`, `AscensionLadder`, `TeamProgress`, `TreeState`, `PlayerContext`, `EntryPoints`, and `ResetVoteState` if a session is open. The team lookup is safe this early: a party member is in FTB's `knownPlayers` from server start, and a first-ever player's team id is their UUID, which is what FTB's personal team will use |
+| `OnDatapackSyncEvent` with a player (each join; posted in `PlayerList#placeNewPlayer` before `PlayerLoggedInEvent`) | to that player, in order: `LayoutCheck`, `ServerFeatures`, `AscensionLadder`, `TeamProgress`, `TreeState`, `PlayerContext`, `EntryPoints`, and `ResetVoteState` if a session is open. The team lookup is safe this early: a party member is in FTB's `knownPlayers` from server start, and a first-ever player's team id is their UUID, which is what FTB's personal team will use. A first-ever player's team does not exist in FTB yet (`playerLoggedIn` creates it later), so the read path is `SavedDataStorage#get` (ADR 0005): a missing file reads as every field at its default and creates no file, and the unknown team has size 1 (`CLAUDE.md` rule 5) |
 | `OnDatapackSyncEvent` with no player (each `/reload`) | to every online player: `ServerFeatures`, `AscensionLadder`, `TreeState` (the hidden set can change with tags). Not `LayoutCheck`: the layout is in the jar and a reload cannot change it |
-| `FTBTeamsEvent.PlayerChangedTeam` | to the player who moved, if online: `TeamProgress`, `TreeState`, `EntryPoints`, `ResetVoteState` (none, or the new team's); to the online members of the old and the new team: `TreeState` (member table and vote thresholds change) and `ResetVoteState` if a session is open. Listened through the `team` package, the only FTB importer; it fires for offline players too |
+| `FTBTeamsEvent.PlayerChangedTeam` | to the player who moved, if online: `TeamProgress`, `TreeState`, `EntryPoints`, `ResetVoteState` (none, or the new team's); to the online members of the old and the new team: `TreeState` (member table and vote thresholds change) and `ResetVoteState` if a session is open. Listened through the `team` package, the only FTB importer, which marks these in `data.SyncOutbox`; `network` sends them at the end of the tick. It fires for offline players too |
 | Any serverbound mutation accepted | `TreeState` to every online member; `TeamProgress` to every online member when unspent points moved (buy, path, refund); a tradeoff changes only the sender's `TreeState` |
 | Any serverbound mutation refused | `ActionRefused`, then `TreeState`, to the sender only (old PR #134) |
-| Resonance gain | `TeamProgress` to every online member, coalesced: at most once per 10 ticks per team, sent at the end of the tick, and at once on a level-up (old #35). Never a `TreeState` |
-| A pending generation vote applied (the last member leaves the Vault) | `TreeState` to every online member |
+| Resonance gain | `TeamProgress` to every online member, coalesced: at most once per 10 ticks per team, sent at the end of the tick, and at once on a level-up (old #35). `mining` marks the team in `data.SyncOutbox`; the coalescer in `core.tree` decides whether this tick sends. Never a `TreeState`, except as the next row says |
+| A level-up, or a player's `deepest_y` crossing a growth node's line (Shallow Grace, Y=100) | `TreeState` to each online member whose `outgrown` bitset changed. Marked in `data.SyncOutbox` by `mining` (the award and the stat record) |
+| A pending generation vote applied (the last member leaves the Vault) | `TreeState` to every online member, marked in `data.SyncOutbox` by `vault` |
+| A node fires an outline (Vein Sight, Prospector's Eye, Chapter's End) | `VeinOutline` to the breaking player, queued in `data.SyncOutbox` by `mining` and sent at the end of the same tick |
 | Reset completes (respec window opens, `vault_generation` + 1) | `TeamProgress`, `TreeState`, `EntryPoints` to every online member |
 | Dimension change, respawn, and a check every 20 ticks of each player's igniters | `PlayerContext` to that player when any field differs from the last one sent |
 | Seismic Sense, Survey | `SurveyState` on `RequestSurvey` only |
+| Trip counters | `TripState` on `RequestTripState` only |
 
 The level-up toast (§4.3) is the client's, shown when `level` rises between two `TeamProgress` payloads
 in one session, never on the first after joining. "Bought by" and "refunded by" messages to the team (§4.4)
@@ -356,18 +409,34 @@ Disconnect key: `disconnect.orevault.layout_mismatch` (server hash, client hash)
 - One full `TreeState` per mutation per online member, a few hundred bytes for a typical team (two 27-byte
   bitsets, up to 213 `boughtBy` varints, a small member table); about 34 KB in the absurd worst case. Full
   state beats deltas: nothing can drift and a lost payload is repaired by the next one.
-- The packet sent on every orb is `TeamProgress`, about 30 bytes, at most twice a second per team.
+- The packet sent on every orb is `TeamProgress`, about 40 bytes, at most twice a second per team.
+- `TripState` is about 30 bytes plus one block id, every 40 ticks to a player with the Tome open.
 - Adding a node payload in a later story is a protocol bump, so clients and servers from mixed builds
   are refused at negotiation with NeoForge's message, and a layout edit with no id change is caught by the
   hash with Ore Vault's.
 - Gametests cover `TomeActions` directly; `runGameTestServer` after every payload change catches a client
-  class on the common path (`docs/TEAM_REQUIREMENTS.md`, QA, T7). QA's T7 checks: a refused purchase
-  resyncs; `/reload` with a tag change hides or shows the Mekanism-tag nodes on an open Tome; a second dev
-  client (Q10) sees a purchase, a pin and a vote within one second; a mismatched layout disconnects with the
-  message.
-- Ask of QA and the Reviewer: an ArchUnit rule that nothing outside `client` imports `client.net` or
-  `ClientTomeState`, and a unit test that `canonicalHash()` ignores whitespace and changes when an edge
-  changes.
+  class on the common path (`docs/TEAM_REQUIREMENTS.md`, QA, T7).
+- Codec bounds are `StreamCodec`s, which do not load in JUnit, so each bounded field gets one gametest
+  that decodes a hand-built oversize buffer and expects the decode to fail: every bounded string and
+  list in the size-bounds table, plus a bitset with a bit set at the layout's node count and a
+  `SeismicMap` with `side` 34.
+- A golden JUnit test pins the pair (`PROTOCOL_VERSION`, a hash of the layout file's node ids, sorted).
+  A node id renamed or removed without a bump fails it; the fix is to bump and update the pinned pair in
+  the same PR. This makes the third bump rule a test, not the Reviewer's eye.
+- Unit tests in `core.tree` for the timing rules: 11 mutations in one tick accept 10 and drop 1; a second
+  drop within 20 ticks sends no second `too_fast`; the bucket refills at 10 a second; two gains within 10
+  ticks send one `TeamProgress`; a level-up sends at once.
+- `canonicalHash()` unit cases: CRLF line endings and whitespace keep the hash; reordering edges in the
+  file keeps it; adding an edge, moving a node, or reordering nodes in the file changes it (node order is
+  the wire index).
+- QA's T7 checks: a refused purchase resyncs; `/reload` with a tag change hides or shows the
+  Mekanism-tag nodes on an open Tome; a second dev client (Q10) sees a purchase, a pin and a vote within
+  one second; a mismatched layout disconnects with the message, produced by running the client from a
+  build with one node moved in the layout file; the header reads "Waiting for team data", not zeros, on
+  a slow join; no level-up toast on the first `TeamProgress` after joining; a click dropped by the rate
+  limit clears its pending mark within two seconds.
+- No new ArchUnit rule: ADR 0001's rule 5 already forbids any import of `..orevault.client..` outside
+  `client`, which covers `client.net` and `ClientTomeState` (QA and Reviewer, 2026-10-27).
 - `docs/TEAM_REQUIREMENTS.md`'s Architect payload list becomes a pointer to this record (E0-S2).
 - The six-field nesting is a style rule now, not an API limit. If a reviewer finds a payload clearer
   flat, it may go flat up to 12 fields with a bump.
@@ -395,22 +464,67 @@ Disconnect key: `disconnect.orevault.layout_mismatch` (server hash, client hash)
 - Carrying Animus in `TeamProgress` from the start, as the old `SyncTeamProgress` did: zeroes on the wire
   for a post-1.0 system; the epic adds it with a bump.
 - A separate payload for The Vault Keeps It's marker: §8 says it is the same spot as the death marker.
+- Answering a payload dropped by the rate limit with a `TreeState` (UI-UX's second option for UIUX-16): a
+  flood would then buy one full sync per packet, which is what the limit stops. The client-side 40-tick
+  clear answers the click instead.
+- The client evaluating growth conditions for Outgrown: Shallow Grace reads `deepest_y`, which the client
+  does not have, and the rules would exist twice. The server sends the bitset.
+- Pushing trip counters on every change: Deep Habit's count changes on every block. They are sent on
+  request while the Tome is open, as Survey data is.
+- `chunkStamp` 2 covering both "older nodes" and "no stamp" (the first draft): see `SurveyState` above.
 
 ## Spec sections changed
 
-None are edited by this record directly (Architect agents do not edit the spec in this run). The exact
-changes are in `spec-changes/E0-S9.md` in the E0 run folder, for the Writer to apply in the same PR:
+Applied in the same PR:
 
 - §6 Layout data: a layout mismatch disconnects with a message, pointing here.
 - §11: a short "Network and Sync" subsection pointing here.
 - §13 UI: the stale `ModNetwork` checklist line is replaced.
+- §8 Tab 3 and §11 Vein Index: the "Generated before this was tracked" state (`chunkStamp` 3).
+- §8: an unowned node's tooltip shows "Outgrown: <why>" (the `outgrown` bitset), with one purchase
+  confirmation.
+- §10 and §13: only the debug subcommands of `/orevault` are behind `[debug].enable_debug_commands`.
+- §6.1 Chapter's End: the outline lasts 30 seconds.
 
 ## Reviews
 
-To be filled by each matrix reviewer (developer, reviewer, qa, writer), each verdict listing what it
-checked.
+Round 1, 2026-10-27. Matrix reviewers: developer, reviewer, qa, writer; ui-ux reviewed the screen-facing
+part because the Tome draws from these payloads. Rulings are the Manager's triage of the same date.
 
-- Developer:
-- Reviewer:
-- QA:
-- Writer:
+- Developer: approve with comments. Checked the 12 `composite` overloads (`StreamCodec.java`, last at
+  line 554); the `ByteBufCodecs` bounds (lines 168, 251, 267, 407 to 411); the payload caps
+  (`ServerboundCustomPayloadPacket` line 14, `ClientboundCustomPayloadPacket` line 16); the
+  `placeNewPlayer` order (line 189, flushing suspended at 166 and resumed at 224). DEV-14 (name the 26.1
+  profile lookup): fixed, `Marks` names `server.services().nameToIdCache().get(UUID)`. DEV-15 (the
+  `/orevault` root must not sit behind the debug flag): fixed, the root and `reset vote` are always
+  registered.
+- Reviewer: approve with comments. Checked mod-bus registration; intent-only serverbound payloads;
+  `enqueueWork` both ways; full resync after accepted and refused mutations; bounds within vanilla's
+  caps; bump rules; the hash on the parsed form; `SetTradeoff` idempotent and refused inside; the vote
+  payload apart; rate limit; refusal keys; client code only through the installed callback. RV-15 (the
+  join read path on a first-ever player): fixed, `SavedDataStorage#get`, defaults, size 1. RV-16 (import
+  rows): fixed, sends from `team`, `mining` and `vault` go through `data.SyncOutbox`; `network` may
+  import `reset` and `worldgen.index` (ADR 0001).
+- QA: approve with comments. Checked the trust rules, bounds, hash, every payload's checks and keys, the
+  triggers, the lang-key test and the asks of QA. QA-18 (bounds untestable in JUnit): fixed, one gametest
+  per bounded field. QA-19 (id-change bump rests on review): fixed, golden test pinning the version with
+  the node-id hash. QA-20 (timing rules pure; T7 steps; hash cases): fixed, bucket and coalescer in
+  `core.tree` with unit cases, three T7 steps and the `canonicalHash` cases added. QA's answer that ADR
+  0001 rule 5 covers the client import rule is taken; the ArchUnit ask is withdrawn.
+- Writer: request changes. Checked the payload tables and refusal keys against the ticket; bounds against
+  §6.1 Totals and the four forks; §11 Network and Sync against the 10-tick coalescing; the §6 Layout data
+  sentence. WRITER-1 (pointers into the session folder): fixed at the FTB Teams read, which now cites
+  `docs/research/neoforge-26.1-sources.md`, and in Spec sections changed. WRITER-2 (one name for the
+  anchor): fixed, "the team anchor (X=0, Z=0)". WRITER-11 (debug flag): fixed with DEV-15. Comment on
+  unknown ids as refusal argument 1: fixed, the raw id is shown.
+- UI-UX: request changes on what the screen can show. Checked every Tome element in §8 and the UI/UX
+  section against the clientbound payloads. UIUX-11 (stamp 2 conflates "older" and "none"): fixed,
+  `chunkStamp` 3. UIUX-15 (no field for the bar's bonus share): fixed, `recentBonus` in `TeamProgress`
+  from `"1"`. UIUX-16 (a dropped click stays pending): fixed, the client clears pending after 40 ticks;
+  answering a dropped payload with a `TreeState` is not taken, since it would defeat the limit.
+  UIUX-17 with UIUX-10 (trip counters and Outgrown not on the wire): fixed, `PlayerView.outgrown` and
+  `TripState`.
+- Also applied from the triage: Chapter's End outline at 600 ticks (Balancer, answering this record's
+  open question 3).
+
+Round 2 verdicts go here.

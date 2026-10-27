@@ -27,6 +27,11 @@ result of each:
    **unverified**, and you write the playtest steps for Nick (below). Never let "should work" stand in.
    Nick's machine can run the client, so "no display" is not a reason to skip this.
 5. Every acceptance criterion: met (with how you checked), or not met (with the blocker).
+6. On a `neo_version` change, both restart checks below, each reported separately (ADR 0002):
+   - Headless: create a Vault by debug command after the first tick, stop the server, start it, run
+     `execute in orevault:vault_<hex>` from the console before anyone connects, and a mock player breaks a
+     block in it (gametest).
+   - Client, once per bump: log out inside a Vault, restart the server, log back in, still in the Vault.
 
 ## The regression list
 
@@ -57,6 +62,14 @@ breaks.
   and never apply twice on re-entry or relog (old #143).
 - A node id removed from the layout does not crash the load: it is dropped and its point returned (old PR
   #110, §6 Saved state).
+- A block with no ore entry pays nothing: a default rarity would have paid 5 Resonance for stone (old PR
+  #117).
+- The classifier reads trapezoid and `above_bottom` heights, not only uniform ones (old #15).
+- Payloads are registered on the mod bus; on the game bus the symptom is an unknown-channel disconnect, not
+  an error (old PR #126).
+- The sync is sent at login and after a Resonance gain, not only after a purchase (old #35, PR #132).
+- An expanded Vault restores as expanded after a restart, not as the base variant with bedrock at Y=0
+  (old #93).
 
 ## Playtest scripts for Nick
 

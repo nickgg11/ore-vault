@@ -49,21 +49,31 @@ are the UI/UX lead's; these are the rules your art has to serve:
 - A start at the centre, nodes joined by straight edges, stronger nodes further out, faint level rings.
   **Not** a grid, **not** lanes, **not** the hub tree of clusters and anchors that it replaced.
 - Every node is an icon with no text on the page; its name and numbers are in a tooltip (Nick,
-  2026-10-26). Icons are 18, 26 and 36 GUI units for small and travel nodes, notables and keystones (§8),
-  drawn at one texel per GUI unit. Every copy of a skill uses the same icon; each travel stat has its own.
-  No Retro Diffusion unless absolutely necessary (Nick).
+  2026-10-26). Icon sizes in GUI units, drawn at one texel per unit: travel 14; small, growth and fork
+  parent 18; notable 26; pact 26 with keystone-style ornament; keystone 36; fork option petal 12. These are
+  provisional (Manager ruling on DES-3, 2026-10-27; class decides weight, S31) until Nick's yes on the
+  E8-S5 (#283) preview, and §8 carries the same table. Every copy of a skill uses the same icon; each travel
+  stat has its own. No Retro Diffusion unless absolutely necessary (Nick).
 - Each node class is recognisable without hovering: small, travel (smaller and plainer, so paths read as
-  paths), notable, keystone, pact (keystone ornamentation in a colder frame), growth (and its Outgrown
-  greying), fork parent (washed as inert until an option is chosen), fork option petal; plus the tradeoff
-  toggle, the exclusive lock and the level lock with its opening level (§8 States).
+  paths), notable, keystone, pact (keystone ornamentation at notable size in a colder frame, so it differs
+  from a keystone in size and ornament, not only in hue), growth (and its Outgrown treatment), fork parent
+  (inert until an option is chosen), fork option petal; plus the tradeoff toggle, the exclusive lock and the
+  level lock with its opening level (§8 States).
 - Edges meet icon borders, never centres, and never cross another node.
-- A frame around an icon, never a busy fill. State is a tint or a badge shape, never colour alone.
-- Legible at GUI scales 2, 3 and 4, and at the minimum zoom of 0.2x.
+- A frame around an icon, never a busy fill. Every state carries a badge shape or a luminance step that no
+  other state uses; hue is only a second signal, so every state survives greyscale (S33). Out of reach:
+  frame and icon dimmed, no badge. Outgrown: owned frame kept at full luminance, icon desaturated, an
+  Outgrown badge. Inert fork parent: owned frame with a hatched overlay (a pattern, not a colour) and a "no
+  option" badge.
+- Icon art legible from effective scale 1 (zoom times GUI scale) upward; at 0.2x, class (by size and frame
+  silhouette) and owned or not are still told apart. No 16-texel drawing keeps its detail at 3.6 GUI units,
+  so the 0.2x bar is class and ownership, not detail.
 
 Process: the UI/UX lead's layout file says where each node is and what class it has. You supply an icon per
-skill, travel stat, notable and keystone, a frame per class and its state tints, the page, the badges and
-the colour scheme, so that `tools/tree-preview` renders the real art at the real sizes. Nick approves that
-preview before renderer code is written.
+skill, travel stat, notable, pact and keystone, one icon per fork option (drawn at petal size and reused as
+the badge on its parent's nodes once chosen, §8), a frame per class and its state treatments, the page, the
+badges and the colour scheme, so that `tools/tree-preview` renders the real art at the real sizes. Nick
+approves that preview before renderer code is written.
 
 ## What you review in others' work
 
