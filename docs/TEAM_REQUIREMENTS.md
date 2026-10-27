@@ -91,13 +91,40 @@ decisions do; the dated log entry is `DESIGN_LOG.md` 2026-10-26.
 | Nb | Portal cost | Corners optional; one Vault Frame per craft; no nether-style travel logic. | §3.2; T2, T3 |
 | Nc | Art tools | `mc-asset` approved. Nick asked what the preview tool and Retro Diffusion are for before approving them. | T2, T8 |
 | Nd | Animus row | Hidden until Animus is built, behind one switch that is easy to turn back on. | T7 |
-| Ne | Resonance gain display | Nick read it as a second segment inside the Resonance bar showing the extra gain. To confirm with him before T5. | T5, T7 |
+| Ne | Resonance gain display | Nick read it as a second segment inside the Resonance bar showing the extra gain. To confirm with him before T5. **Answered 2026-10-27 (Q11):** both the Tome header bar and an on-screen bar inside the Vault, the on-screen one switchable off by each player; how the bonus share is drawn is settled on the preview. | T5, T7 |
 | Nf | Prospector's Eye | Requires Vein Sight. | T8a |
 | Ng | Silent Stone | Each active member below Y=0 earns 0.30 Resonance a second, raised by that member's counted Resonance bonuses (no penalties), and the pool is team-scaled like ore: sum / teamSize × (1 + 0.1 × (teamSize − 1)). About 1.4x bare ore at any team size (Nick, 2026-10-26, after he asked that it feel fair to both a solo player and a team of five). Which nodes count is in §6.1 Silent Stone. | T9; deepslate ore rate measured at T14 |
 | Nh | Players inside at reset | Sent to the Vault's spawn point, where the portal arrives. Their saved return position may be inside rock that the reset replaced. | §3.5; T11 |
 | Ni | Live Vault cannot unload | Everyone is sent out and the Vault regenerates at the next restart, with a message saying so. | T11 |
 | Nj | Mekanism | Tags only. FTB Materials (in Nick's pack) ships Mekanism-style clumps, shards and crystals under `c:` tags with no Mekanism code, so Ore Doubling's Mekanism tiers resolve through tags; see `docs/research/ftb-materials.md`. | §2, §9; T12 |
 | Nk | Cross-cluster prerequisites | **Retired 2026-10-26.** Nick first ruled out cross-cluster prerequisites, then replaced the hub tree with a Path of Exile style tree (one point per node, adjacency, no anchors or clusters), which makes the rule moot. The spec's §4.3, §4.4, §6 and §8 Tab 1 are rewritten for it; anchor, gate and cluster text elsewhere in this file is superseded. See `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree". | §6.1; T8a, T8 |
+
+## Nick's answers, 2026-10-27
+
+Nick answered the Manager's seventeen questions about the draft tickets on 2026-10-27. These bind every role
+the same way; the dated log entry is `DESIGN_LOG.md` 2026-10-27, and the spec is changed to match. Where he
+left no comment, the recommendation stands and the row says so.
+
+| # | Question | Answer | Work it changes |
+|---|---|---|---|
+| Q1 | Whose switch decides Volatile Veins and Molten Seam, which change generation | A team vote. Each member's switch is their vote; it passes with more than half the team's members, or one of two in a two-member team; the result applies only once nobody is inside the Vault, then holds for every member. Every other tradeoff stays per player. Counting all members, online or not, is the Writer's reading of "majority" and waits on the Manager's confirmation. | §6.1, §11; ADR 0003 (snapshot), ADR 0005 (team field); T9 |
+| Q2 | New vein positions on reset | Yes: the reset count (`vault_generation`) is part of the seed. | §3.1, §3.5, §11; ADR 0003, ADR 0007; T4, T11 |
+| Q3 | Personal progress on a team change | Stays with the old team; the player starts fresh in the new one (option b). Rejoining finds it where it was left. | §9, §11; ADR 0005; T6 |
+| Q4 | Playtest world carried from T5 to 1.0 | No comment; recommendation stands: carry over, added fields read a default, renames migrate. | §11; T6 onward |
+| Q5 | Reference textures | The Designer drafts with `mc-asset` first; Nick reviews and says how to improve. No reference textures needed before T2. | Designer's inputs; T2 |
+| Q6 | Portal frame says why it failed | No. Failure sound only, as with a nether portal. | §3.2 unchanged; T3 |
+| Q7 | FTB Evolution 2 version | No comment; recommendation stands: pin the version current when the dimension path lands (T3), re-check at release. A copy of Nick's instance for QA is unanswered. | T3, T14 |
+| Q8 | Stone Memory T3 and T5 | T3 pays 0.05 Resonance per deepslate block; T5's burst fires on 0.05% of stone. | §4.2, §6.1, §11; T8a constants, T9 |
+| Q9 | Apprentice's Ledger trip | A trip starting within 10 minutes of the end of the last one continues its count. | §6.1, §11 Vault Session State; T9 |
+| Q10 | Team tests | Several temporary dev client sessions on Nick's PC with different dev usernames. No second person is needed, before 1.0 or after. | QA, Playtester; T5, T8, T11 |
+| Q11 | On-screen Resonance bar | Both: the Tome header bar and an on-screen bar inside the Vault, which each player can turn off (client config `hud.show_resonance_bar`). Answers Ne. | §4.1, §8, §10; T7 |
+| Q12 | Tooltip current tier plus "Next:" | Yes. Current tier's effect, then a dimmer "Next:" line, both from the constants; the every-tier list leaves the tooltip. | §8; UI-UX tooltip rules; T8, T9 |
+| Q13 | Show whether the current chunk was generated with current nodes | Yes, in the Ore Memory tab's Survey panel. Generation nodes' tooltips say "Only in chunks generated after you buy it." | §8, §11 Vein Index (chunk stamp); T7, T9 |
+| Q14 | Limit the free respec window after a reset | Yes: a reset opens it only if none opened in the previous 24 hours of server time (`free_respec_opened_at`). | §3.5, §4.4, §11; ADR 0007; T11 |
+| Q15 | Vault Anchor as entry point | Takes one of the player's entry-point slots. | §3.3, §3.4; T10 |
+| Q16 | Reset vote screen opening by itself | No. A toast and a clickable chat line; the vote screen opens from the line. | §3.5, §8; T11 |
+| Q17 | Advancements, guide book, Vault Recall | No advancements and no Vault Recall in 1.0. A guide is decided after the first-ten-minutes playtest; if one is needed, a hover-in-JEI-and-hold-a-key guide is preferred over a book. | §12; T13 |
+| — | Conditional: party join disbands the solo team | No comment; recommendation stands: a party join is exempt, if the FTB Teams source read shows the disband. | T11 |
 
 ## Shared task list
 
@@ -108,7 +135,7 @@ checks before "ready to merge". Every build, test and client result is from Nick
 |---|---|---|---|---|
 | T1 Toolchain, empty mod | Architect (ADR 0001), then Developer | Developer, Reviewer, QA on the ADR; Reviewer, QA on code | `build`, `test --rerun-tasks` with XML counts, `runServer`, `runGameTestServer` with one passing and one deliberately failing gametest, `runClient` to the title screen; no committed `org.gradle.java.installations.paths`; ArchUnit rules each shown failing; `CompoundTag`-in-JUnit result recorded | Versions re-checked (Ultimine 26.1.2.6 in FTB Evolution 2); Writer's mod description; Nick on the CI question |
 | Docs PR | Writer | Balancer, Developer | Every item under "Spec corrections" fixed, or marked with the open question it waits on; log entries for the restart and the 2026-10-26 decisions | Balancer's rare constant and tolerances; the cross-cluster restructure (Nk, retired 2026-10-26) and the ore research (N4) for the items that wait on them |
-| T2 Vault Frame and Crude Igniter | Developer; Designer for textures | Reviewer, QA; UI-UX and QA on art; Nick | Id-aware registration, creative tab, `items/` definitions, pickaxe tag under `data/minecraft/`; gametests for tag, drop and recipe; Nick sees both in creative and JEI and approves the contact sheet | Nick's liked textures and art tool approvals; portal cost answer; Writer's lang |
+| T2 Vault Frame and Crude Igniter | Developer; Designer for textures | Reviewer, QA; UI-UX and QA on art; Nick | Id-aware registration, creative tab, `items/` definitions, pickaxe tag under `data/minecraft/`; gametests for tag, drop and recipe; Nick sees both in creative and JEI and approves the contact sheet | Designer's `mc-asset` drafts for Nick to review (Q5); art tool approvals; portal cost answer; Writer's lang |
 | T3 Dimension path | Architect (ADR 0002), then Developer | Matrix design row; Reviewer, QA, Architect on code; Designer, UI-UX on the portal texture | S14 and S19 hold; lazy create only through `findOrCreate`; one world-map insert that calls `markWorldsDirty()`; restore survives a bad folder; return position saved after success; scripted restart passes; level-unload spike result written down; Nick confirms logout-inside once | Designer's portal strip and four tints; Playtester's arrival checks |
 | T4 Generator, classifier, baseline | Architect (ADR 0003 snapshot, ADR 0004 vein extents), then Developer | Matrix design row; Reviewer, QA, Architect, Balancer on code | S12 and S13 tests; seeding determinism; `Variant` against `dimension_type` JSON; density command within tolerance; Nick mines ten minutes in a fresh Vault and answers the T4 question | Balancer's tolerances (S12); QA's density procedure |
 | T8a Node data model | Architect, then Developer | Balancer, Reviewer, QA, Writer | Tests pin 354, the gates in S6, 12 points per level, every fork option covering every parent tier, each gate reachable from the clusters above it. **Amended 2026-10-26:** 354, the gates, 12 a level and Nk are retired with the PoE tree; the tests are now the layout tests in spec §6 and 5 points a level (§4.3); see `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree" | Balancer's node list; N4 and Nf |
@@ -118,10 +145,10 @@ checks before "ready to merge". Every build, test and client result is from Nick
 | T8 Tree layout and renderer | UI-UX (structure, views, geometry tests); Designer (style, frames, washes, badges); Developer (`TreeLayout` port, renderer) | Designer, Developer, Playtester; then Nick | Nick's yes on the preview set; golden files match `TreeLayout`; geometry proofs pass, also with random widths; renderer holds no placement code; client matches the preview (S33) at scales 2, 3 and 4; first node bought through the Tome | Final node list and gates from T8a; Writer's names and every line a box can draw; Nick's preview approval |
 | T9 Node effects | Developer, cluster by cluster in §13 order | Reviewer, QA, Balancer, Writer; UI-UX if it shows in the Tome | Balancer's stacking review before the cluster's tickets open; per-tier pure tests; gametest where a block or drop is touched; Fortune-before-Quantity test; every node answers "how does the player know it worked"; descriptions pass the lang test | T5 pacing inside its band; N5 to N7; UI-UX mockups for Tome-visible effects |
 | T10 Chunk loading | Developer | Reviewer, QA, Architect, Balancer | `TicketController` on the mod bus; tickets validated on load; the ceiling has a reader; Anchor only inside the Vault; igniter returned as a crafting remainder; S21 holds | Designer's Anchor texture; Writer's messages |
-| T11 Reset and disband | Architect (ADR 0007), Developer; UI-UX for screens | Matrix rows; Nick | Pure vote machine tested at 1, 2 and 3+ online; scripted reset with backup on and off, region files checked on disk; S19 holds; repeated resets do not reopen the respec window | N3, N8, Nh and Ni; T3's spike result |
+| T11 Reset and disband | Architect (ADR 0007), Developer; UI-UX for screens | Matrix rows; Nick | Pure vote machine tested at 1, 2 and 3+ online; scripted reset with backup on and off, region files checked on disk; S19 holds; a reset within 24 h of the last free window opens none (Q14); the reset count changes the seed (Q2); other members get a toast and chat line, never a forced screen (Q16) | N3, N8, Nh and Ni; T3's spike result |
 | T12 Integrations | Developer | Reviewer, QA, Architect | Dedicated server boots with no soft dependencies, with Ultimine only, with Mekanism; import greps pass; Broad Cut absent without Ultimine | Nick on Mekanism; Balancer on Mekanism-only tiers |
 | T13 Content | Developer, Designer, Writer | Matrix rows; Nick on art | Datagen recipes, loot, tags, blockstates; full `en_us.json`; lang coverage and PNG size tests; every texture batch approved on a contact sheet | N2 sets the PNG test's scope |
-| T14 Release | Manager, with QA, Playtester, Balancer | All | Load test in FTB Evolution 2 on Nick's PC; debug block removed; `KNOWN_ISSUES.md`; §12 and §13 match what merged; full playtest against the milestone table; curve re-derived if measured rates are outside band | Every role |
+| T14 Release | Manager, with QA, Playtester, Balancer | All | Load test in FTB Evolution 2 on Nick's PC, on the version pinned at T3 and re-checked (Q7); debug block removed; `KNOWN_ISSUES.md`; §12 and §13 match what merged; full playtest against the milestone table; curve re-derived if measured rates are outside band | Every role |
 
 Order rules. The playable loop comes first: no world-facing task T(n+1) opens until Nick has seen T(n) in a
 client. Pure-logic work for later tasks (curve, classifier, node data, layout maths) may proceed while a
@@ -157,7 +184,7 @@ machine-broken as in S21, and add that a machine-finished vein fires no completi
 (Nh); the unload fallback per Ni.
 
 §4.2. Rare "10–15" becomes the Balancer's one value. Stone row: Stone Memory T3 pays 0.5 on deepslate, not
-stone. Vault Echo burst "25–40" becomes 25/35/50. Delete "configurable as multipliers": no such key exists.
+stone (0.05 since Q8, 2026-10-27). Vault Echo burst "25–40" becomes 25/35/50. Delete "configurable as multipliers": no such key exists.
 
 §4.4. "A full 225-point respec is ~675 levels" becomes 354 points, 1,062 levels.
 
@@ -369,15 +396,15 @@ it; removed node ids are reserved.
 
 | Data | Where | Fields |
 |---|---|---|
-| Team | `SavedData` `orevault_team_<uuid>`, overworld storage, created on first write (S18) | `data_version`, `resonance_pool` (long), `level_reached` (monotonic), `nodes` {id: tier}, `forks` {parent: option}, `vault_variant`, `vault_generation` (+1 per reset), `free_respec_until`, `disbanded_at` (absent unless disbanded), `player_stats` |
-| PlayerStats | nested in team data, own `data_version` | `ores_mined` {ore: count}, `stone_broken`, `blocks_broken`, `deepest_y` (absent = never entered), `vault_ticks`, `active_tradeoffs`, `veins_completed`, `vein_discipline_streak`, `deaths_in_vault` |
+| Team | `SavedData` `orevault_team_<uuid>`, overworld storage, created on first write (S18) | `data_version`, `resonance_pool` (long), `level_reached` (monotonic), `nodes` {id: tier}, `forks` {parent: option}, `vault_variant`, `vault_generation` (+1 per reset, part of the generation seed, Q2), `free_respec_until`, `free_respec_opened_at` (Q14), `generation_tradeoffs` (applied state of Volatile Veins and Molten Seam, Q1), `disbanded_at` (absent unless disbanded), `player_stats` |
+| PlayerStats | nested in team data, own `data_version`; stays in the old team's data on a team change (Q3) | `ores_mined` {ore: count}, `stone_broken`, `blocks_broken`, `deepest_y` (absent = never entered), `vault_ticks`, `active_tradeoffs`, `veins_completed`, `vein_discipline_streak`, `deaths_in_vault` |
 | Player | NeoForge attachment `orevault:player`, `copyOnDeath` | `data_version`, `return_pos` {dim, x, y, z}, `entry_points` [{team, generation, pos}] up to 3, `homeward` {team, generation, pos}, `in_vault`, `tome_granted` |
 | Vein index | chunk attachment `orevault:vein_index` | `v`, veins [{local id, ore id, packed positions, remaining}], `chapter_fired` |
 | Chunk tickets | NeoForge `TicketController` storage, validated on load against the Anchor | none of ours; the team's count is derived |
 | Attuned ore | item data component `orevault:attuned` | marker; its id is save data from the first release |
 
 Derived, never stored: available points, team deepest Y (minimum over members), the ticket count, a chunk's
-completed veins. In memory only: generation snapshots, trip state (§11), the vote, the classifier table,
+completed veins. In memory only: generation snapshots, trip state (§11) including Apprentice's Ledger's kept count for 10 minutes after a trip (Q9), the vote, the classifier table,
 the curve array, Volatile Veins' pity. A stored position whose `vault_generation` is behind the team's
 counts as cleared by a reset, so offline players' files never need editing.
 
@@ -592,8 +619,8 @@ dimension fix with no restart test.
 Nick sees what no test can: textures, creative and JEI, the portal overlay, lighting, the Tome at each GUI
 scale, whether the tree reads, how mining feels. Each such PR carries a numbered script of at most fifteen
 steps, written with the Playtester. Pacing sessions are measured (S11); I provide the log line format and a
-parser that turns `latest.log` into the Balancer's table, and a procedure for a two-client team session on
-one machine. Bugs become tickets and regression items; design feedback goes to the Playtester and Writer.
+parser that turns `latest.log` into the Balancer's table, and a procedure for a team session with several
+temporary dev client sessions on Nick's PC, each with its own dev username (Q10); no second person is needed. Bugs become tickets and regression items; design feedback goes to the Playtester and Writer.
 
 ### Conflicts I expect
 
@@ -646,11 +673,11 @@ T8. `SkillTree` pure, `NodeClass` an enum, gates derived from fractions, the ren
 placement, the golden layout test present.
 
 T9. One `BlockDropsEvent` listener; numbers from the constants; Resonance through `ResonanceBonuses`; trip
-counters in session state; tradeoff state on `PlayerStats`; snapshot refreshed on purchase; stacked risks
+counters in session state; tradeoff state on `PlayerStats`, the applied Volatile Veins and Molten Seam state on the team (Q1); snapshot refreshed on purchase; stacked risks
 checked.
 
 T10 to T14. `TicketController` on the mod bus, ceiling with a reader, Anchor inside the Vault only. Reset:
-evacuation before deletion, online votes only, no respec reopening, a gametest or scripted run. Every soft
+evacuation before deletion, online votes only, the free respec window at most once per 24 h (Q14), a gametest or scripted run. Every soft
 path gated; Ultimine types only in classes loaded after the check; no `mekanism` imports; `c:` tags.
 Attuned ore's component id treated as save data. Debug block and `VaultDiag` removed at release.
 
@@ -702,7 +729,7 @@ look. So I prove the art on a preview at real size, get Nick's yes, and hand the
 
 | Input | From | Form | By when |
 |---|---|---|---|
-| Two or more liked textures per material, with why | Nick, via the Manager | Links or a resource pack | Before T2 art |
+| Review of my `mc-asset` drafts, saying what to improve (Q5: I draft first, no reference textures) | Nick, via the Manager | Comments on a contact sheet | Each texture batch, from T2 |
 | The accepted Tome top bar | Developer, from the old `TomeScreen` | PNG at scales 2 and 3 | Before T7 |
 | Node list with classes and marks | Balancer, via T8a | `NodeDefs` export | Before T8 |
 | Layout output and named views | UI-UX | Golden JSON and view list | Before T8 preview |
@@ -808,8 +835,9 @@ accepted top bar, with the interaction model below; no tree drawing until T8's p
 structure file, the preview set and the geometry tests. T9: Tome-visible effects (inert parent, Outgrown,
 toggles disabled in the Vault, Seismic Sense, Stratified's bands, the death marker, trip counters); Vein
 Sight outlines checked against stone and deepslate. T10: an action-bar message naming the limit when an
-Anchor is refused. T11: reset button, initiator confirmation with the backup checkbox, vote screen,
-countdown. T12: Broad Cut hidden whole on the server's flag; Ore Working draws pips only for tiers the pack
+Anchor is refused. T11: reset button, initiator confirmation with the backup checkbox, vote screen
+opened from a toast and chat line (Q16), countdown. T7: the on-screen Resonance bar inside the Vault and its
+client toggle, on a preview first (Q11); the Survey panel's current-chunk line (Q13). T12: Broad Cut hidden whole on the server's flag; Ore Working draws pips only for tiers the pack
 has. T13 and T14: text fit with the Writer; a UI section, by view and scale, in every playtest script.
 
 ### Screen inventory for 1.0
@@ -851,7 +879,7 @@ Trip counters (Deep Habit, Long Delve, Vein Discipline, Kindred Rock, Second Win
 
 ### Tooltip rules
 
-Per S32. Order: name; class and marks; effect with every tier's number and the current tier highlighted;
+Per S32. Order: name; class and marks; the effect at the owned tier, then a dimmer "Next:" line with the next tier's effect, both filled from the constants (Q12, replacing every tier's number with the current one highlighted); for a generation node, "Only in chunks generated after you buy it" (Q13); for Volatile Veins and Molten Seam, the vote count, threshold and any pending change (Q1);
 state; next tier's cost and level; prerequisites with tier and cluster, each met or unmet; the lock reason
 naming the node, number or level in the way; last, the available action. Shown beside the node, flipped to
 stay on screen. Never a raw key; a non-English name over the cap is cut with an ellipsis on the box and
@@ -934,8 +962,9 @@ playtest notes, log entries, release notes, `KNOWN_ISSUES.md`, §12 and §13 in 
 2. No description contains a banned word (S38).
 3. Every number in a description equals the constant, per tier.
 4. No description copies rationale; the node's text is the description and the notes are not.
-5. Every tradeoff and fork-option description says it can only be changed outside the Vault; Molten
-   Seam's says switching off leaves existing pools.
+5. Every tradeoff and fork-option description says it can only be changed outside the Vault, except
+   Volatile Veins and Molten Seam, whose say they are team-voted and change only once nobody is inside
+   (Q1); Molten Seam's says voting it off leaves existing pools.
 6. A behaviour change has its spec change in the same PR, and every `§N` cited in code exists and says
    what the code claims.
 7. A PR body opens with the spec reference, says why before what, quotes QA's counts, names what was not
@@ -989,8 +1018,8 @@ T8a. I pin 354 and the gates, and test that each gate is reachable from the clus
 
 T9. A stacking review per cluster before its tickets, and pure tests for every per-tier value.
 
-T10: Vault Presence's 4/12/28 under the ceiling of 32, Far Reach included. T11: repeated resets must not
-reopen the respec window (worth 1,062 XP levels of refunds at 354 points). T12: Volatile Veins under
+T10: Vault Presence's 4/12/28 under the ceiling of 32, Far Reach included. T11: repeated resets open the
+respec window at most once per 24 h of server time (Q14). T12: Volatile Veins under
 Ultimine; Mekanism tiers hidden without it. T14: the measurements, then a re-derived curve.
 
 ### Tree cost and gates
@@ -1025,7 +1054,8 @@ Deep Harvest needs Vault Expansion in Mastery, so its real gate is 160 points pl
 - Calloused Hands' cap arrives at (e^(0.4/0.07) − 1) × 10,000, about 3.0 million blocks at tier 3.
 - Silent Stone's 3 a second is 14.1 times solo (0.213 a second); at that rate levels 25 to 30, 62 hours on the
   curve, take 4.1.
-- Stone Memory T5's 0.5% burst pays about 1,745 Resonance an hour, about 2.3 times the curve's rate.
+- Stone Memory T5's 0.5% burst paid about 1,745 Resonance an hour, about 2.3 times the curve's rate. Lowered
+  to 0.05%, and T3 to 0.05 per deepslate block, about a fifth of each band's ore rate (Q8).
 - Every value pinned on 2026-09-09 is unplaytested.
 
 ### Stacking that I think breaks something
@@ -1087,7 +1117,7 @@ iron.
 The player spawns holding the Tome. They open it and see the Resonance tab: level 0, no points, an empty
 bar, Prospecting lit, everything else dark, and the empty-state line telling them to mine in a Vault. They
 craft Vault Frames and a Crude Igniter from JEI, build a frame and right-click it. If the frame is wrong,
-§3.2 plays a failure sound and nothing else, which says that something failed and not what. They step in,
+§3.2 plays a failure sound and nothing else, as a nether portal does (Nick, Q6). They step in,
 the screen wobbles for four seconds, and they arrive at X=0, Z=0 on grass under full daylight with the
 return portal behind them. No mobs. It should feel theirs, and safe.
 
@@ -1097,7 +1127,7 @@ look different from vanilla XP. Around minute 9 a toast announces level 1 and 12
 hover a Prospecting node, read what it does with its numbers, buy it, and see the effect on the next block.
 
 What would bore them: level 1 at 25 minutes instead of 9. What would confuse them: a portal that fails
-silently; Resonance with no readout outside the Tome; a first node whose effect cannot be seen; 12 points
+silently; Resonance with no readout outside the Tome (the on-screen bar, Q11, answers it); a first node whose effect cannot be seen; 12 points
 against 9 buyable nodes, so 3 sit banked with every remaining node saying "needs level 2".
 
 ### Per task
@@ -1109,7 +1139,7 @@ on my checklist. T6: log out inside the Vault, log back in, open the Tome; nothi
 empty-state line, the Tome reaching solo players, every disabled control saying why on the control itself.
 T8: can Nick find the next thing to buy in a few seconds, and at 0.2x find a named cluster and zoom back in
 one gesture? The answer to "is the loop playable" comes here, from the first node bought through the Tome.
-T9: every node ticket answers "how does the player know this worked?" T11: two players, one votes; the vote,
+T9: every node ticket answers "how does the player know this worked?" T11: two temporary dev sessions on Nick's PC (Q10), one votes; the vote,
 countdown and respec window must reach players who did not press the button. T12: on a pack without
 Ultimine, does anything mention it? T14: the full playtest against the milestone table.
 
