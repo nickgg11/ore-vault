@@ -14,6 +14,67 @@ Newest first.
 
 ---
 
+## 2026-10-27 — Nick's answers to the ticket questions
+
+**Where this came from.** Drafting the tickets for the rebuilt plan turned up seventeen questions only Nick
+could answer, sent by the Manager on 2026-10-26 with context and a recommendation each
+(`questions-for-nick.md` in the tickets folder). Nick answered on 2026-10-27 in his "Nick Input" lines;
+`nick-answers-2026-10-27.md` in the same folder holds them. Where he left no comment, the recommendation
+stands. The spec was changed to match in §3.1 to §3.5, §4.1, §4.2, §4.4, §6, §6.1 (Stone Memory,
+Apprentice's Ledger, Volatile Veins, Molten Seam, Ultimine Gambit), §8, §9, §10, §11, §12 and §13, and
+`docs/TEAM_REQUIREMENTS.md` gained the table "Nick's answers, 2026-10-27".
+
+**Decisions.**
+
+| Decision | Reasoning |
+|---|---|
+| **Volatile Veins and Molten Seam are switched by a team vote** (Q1). Each member's switch is their vote; it passes with more than half the team's members, or one of two; the result applies only once nobody is inside the Vault, and then holds for every member | Nick: "Make it a vote system to enable where you need a majority (50% works if there are only 2 people), the change only takes effect once no one is in the ore vault." The terrain is the team's and is generated with no player involved, so a per-player switch let one player keep the bigger veins while others carried none of the vanishing risk. Votes are counted over all members, online or not, because each switch is saved; this reading is the Writer's and is flagged to the Manager. |
+| **The reset count is part of the generation seed** (Q2), so a reset gives fresh vein positions | Nick: "agreed each reset should be fresh and new." Seeded from the team and chunk only, a reset brought back the same veins in the same places. |
+| **Personal records stay with the old team** (Q3, option b). A player who changes team starts fresh in the new one | Nick: "I am fine with the player losing progress when he swaps teams." The team recommended (a), records move with the player; the Reviewer preferred (b) as simpler to build, and Nick chose it. |
+| **Nick's playtest world carries over from T5 to 1.0** (Q4) | No comment from Nick; the recommendation stands. A world that restarts every build never reaches mid-game. |
+| **The Designer drafts textures with `mc-asset` first and Nick reviews them** (Q5) | Nick: "I'd prefer you try making textures via MC-Asset then I review them and tell you how to improve them." Replaces the request for two or more reference textures per material before T2. |
+| **A wrong portal frame plays the failure sound and nothing else** (Q6) | Nick: "it's the same a nether portal, I don't think it needs to be intricate like that." §3.2 already said so; the action-bar line naming the problem was declined. |
+| **The FTB Evolution 2 version is pinned when the dimension path lands (T3) and re-checked at release** (Q7) | No comment from Nick; the recommendation stands. Whether QA gets a copy of his instance is unanswered. |
+| **Stone Memory tier 3 pays 0.05 Resonance per deepslate block, and tier 5's 50-Resonance burst fires on 0.05% of stone** (Q8) | Recommendation taken. Both numbers were pinned on 2026-09-09 without being measured: 0.5 per deepslate block paid about twice the deepslate band's ore, and the 0.5% burst about 2.3 times the stone band's, so every build without Stone Memory was about three times slower. At the new values each pays about a fifth of its band's ore rate. Derived, unplaytested. |
+| **Apprentice's Ledger: a trip that starts within 10 minutes of the end of the last one continues its count** (Q9) | Recommendation taken. Nick: "I don't think anyone will cheese it like that because it's a pain." Without it, stepping out and back every 100 ore keeps the double Resonance on for good. |
+| **Team tests use several temporary dev client sessions on Nick's PC**, with different dev usernames, and no second person (Q10) | Nick: "I'd prefer running temp dev sessions to test with if that's possible." The recommendation's extra session with a real second player before 1.0 is dropped. |
+| **Both Resonance bars ship: the Tome header bar and an on-screen bar inside the Vault**, which each player can turn off in a client config (Q11) | Nick: "I like both and make the non-tome one toggleable." With the Tome closed while mining, a bonus such as Ore Focus or Silent Stone showed nothing. Its drawing, including the bonus segment Nick described on 2026-10-26 (Ne), is settled on a rendered preview. |
+| **Tooltips show the current tier and a dimmer "Next:" line**, both filled from the constants (Q12) | Nick: yes. Old #147 asked for it. |
+| **The Ore Memory tab shows whether the current chunk was generated with the team's current nodes** (Q13) | Recommendation taken. Generation nodes bought at level 1 change nothing near the arrival point, whose chunks already exist; the 2026-10-26 rule that generated chunks never change is not reopened. Generation nodes' tooltips also say "Only in chunks generated after you buy it." |
+| **A reset opens the free respec window only if none opened in the previous 24 hours of server time** (Q14) | Recommendation taken. Nothing limited how often a team resets, so a solo player could refund a keystone free and buy it back, which the 30-level keystone price exists to stop. §3.5 and the team requirements had disagreed (unlimited against never reopening). |
+| **A Vault Anchor set as an entry point takes one of the player's entry-point slots** (Q15) | Nick: yes. Old #30. The Tier 2 igniter's one slot stays one. |
+| **The reset vote reaches other members as a toast and a clickable chat line; no screen opens by itself** (Q16) | Nick: "Yeah a toast would be good." A screen opening unasked takes control from someone mid-swing in the Vault, and a missed toast can be reopened from the chat line. |
+| **1.0 ships no advancements and no Vault Recall item. A guide is decided after the first-ten-minutes playtest, preferring a hover-in-JEI-and-hold-a-key guide over a book** (Q17) | Nick: "A guide book might be good, depends on how much needs to be explained like how to make the portal. I know some mods you can hover an item in JEI and hold a key and then a guide opens up which might be better than a book. I don't really care about advancements." He did not ask for Vault Recall (old #74). |
+| **If joining a party disbands the player's solo team, the party join is exempt from archiving** (conditional) | No comment from Nick; the recommendation stands and applies only if the FTB Teams source read (E1-S5) shows the disband. |
+
+**What this supersedes.**
+
+- The 2026-09-09 rule that multi-tier descriptions list every tier's value, for the tooltip. The
+  every-tier table stays in the spec, and the Writer still traces every number to a constant.
+- Stone Memory's 2026-09-09 numbers for tiers 3 and 5 (0.5 per deepslate block, 0.5% burst chance),
+  which were never measured.
+- §4.1's "displayed only within the Tome", and the open question Ne (2026-10-26 "Still open"), now
+  answered by Q11.
+- The per-player switch for Volatile Veins and Molten Seam. Every other tradeoff stays per player and
+  outside-only.
+- §3.5's vote screen opening for every online member.
+- The Balancer's requirement that repeated resets never reopen the respec window, replaced by once per
+  24 hours.
+
+**Rejected.**
+
+- **One team switch that nobody can change while anyone is inside** (Q1 option a, the recommendation).
+  Nick chose a vote, which keeps the same rule that nothing changes while someone is in the Vault.
+- **"On if any member has it on", and "the generation part always on once bought"** (Q1 b and c). Either
+  gives the bigger veins without the vanishing risk.
+- **Personal records moving with the player** (Q3 a). Nick accepted the loss.
+- **An action-bar line naming why a portal frame failed** (Q6).
+- **A real second player for a team test before 1.0** (Q10). Temporary dev sessions instead.
+- **A short advancement chain as the cheap fix for a lost new player** (Q17's recommendation). Nick does
+  not care about advancements; a JEI-style guide is the fallback if the playtest shows one is needed.
+
+---
+
 ## 2026-10-26 — The Resonance tree becomes a Path of Exile tree
 
 **Where this came from.** Nick compared a clickable prototype of two free-tree ideas with the Diablo 4
