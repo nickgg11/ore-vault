@@ -174,8 +174,8 @@ type:
 So away from the floor a player mines no diamond, gold or redstone. A player who wants diamonds
 strip-mines the stone band's lowest 16 layers, or the deepslate band of an expanded Vault: the floor is
 where those items are, though not where more ore is, since density and Resonance an hour are the same at
-every height. Nick chose A on this consequence. E4-S1 (#234) writes the pick, and Nick's T4 ten-minute mine is the
-first look at it in play.
+every height. Nick chose A on this consequence. E4-S1 (#234) writes the pick, and Nick's T4 ten-minute
+mine is the first look at it in play.
 
 An ore's weight is its expected blocks a chunk in the overworld × the share of the overworld's
 `possibleBiomes()` that list the feature, summed over its features. An all-biome feature (step 3) counts at
@@ -184,9 +184,9 @@ An ore's weight is its expected blocks a chunk in the overworld × the share of 
 counted every chunk as a mountain and made 55% of rare blocks emerald (Balancer, BAL-2). With it, emerald
 is about 18% of the band-wide rare mix, its weight over the sum of the rare weights. That is not its share
 of rare veins: height decides the pick, so in the base type emerald is every rare vein above Y=16 and about
-93.5% of all rare veins. The share changes only the weight used to pick an ore; the §4.2 rule classifies on the unweighted expected blocks of
-step 8. On vanilla the common weights are unchanged, coal 1,108, iron 646 and copper 134, the figures §6.1
-Salvager's Eye cites.
+93.5% of all rare veins. The share changes only the weight used to pick an ore; the §4.2 rule classifies
+on the unweighted expected blocks of step 8. On vanilla the common weights are unchanged, coal 1,108,
+iron 646 and copper 134, the figures §6.1 Salvager's Eye cites.
 
 ### Publication to the generator threads
 
@@ -308,7 +308,8 @@ cannot come back through a default.
 - Identity unit cases in `core.ore`, for Nick's answer to question 4 (option A): the base type's below-Y=1
   mass lands in the identity profile of the lowest 16 stone layers (QA-29's band-floor case); a bin where
   a rarity has no ore mass draws from the nearest bin with mass, the lower on a tie; and on the golden
-  fixture's profiles, a base-type rare pick at any bin above Y=16 is emerald with probability 1.
+  fixture's profiles, a base-type rare pick at any layer above Y=16 (Y17..245) is emerald with
+  probability 1.
 - The placer count above, the clip test above, and a test that a block with no entry pays 0.
 - On a dedicated server, `/orevault density` over at least 81 generated chunks checks S12's tolerances
   and the per-slab rule against blocks the generator really wrote. The pure tests cannot catch a generator
@@ -393,7 +394,7 @@ evenly through each band's height and the profile picks only which ore a vein is
 `DESIGN_LOG.md` entry.
 
 Round 2 (2026-10-31, the Writer, WP-R2-5): §3.1's per-slab sentence says slabs are counted up from each
-band's floor (BAL-15); §3.1 "Where each ore sits" and `DESIGN_LOG.md` row 43 take the interim text: the
+band's floor (BAL-15); §3.1 "Where each ore sits" and `DESIGN_LOG.md` row 43 took interim text: the
 density rule as Nick chose it, which ore a vein is reopened pending question 4, the measured consequence of
 the rule as first written, and the 18% emerald figure as a share of the band-wide rare mix; the "If Nick
 chooses vanilla's profile" sentence is removed (WRITER-19).
@@ -422,9 +423,10 @@ record holds the baseline's numbers. Rulings are the Manager's triage of the sam
   can be right from the wrong features): fixed, the gametest asserts expected blocks and the features
   used. QA-28 (tests stop at the pure placer): fixed, `/orevault density` over 81 chunks on a dedicated
   server is in Tests. QA-29 (unit cases for the roll, the clamp, the empty bin): fixed for option A; the
-  band-floor case is the per-slab check, written for Nick's answer of 2026-10-27 (same density at every
-  height). Round 2 reopened the identity half (question 4), which Nick answered A on 2026-10-31; the
-  band-floor case is now written for it (Tests).
+  density half of the band-floor case is the per-slab check, written for Nick's answer of 2026-10-27 (same
+  density at every height). Round 2 reopened the identity half (question 4), which Nick answered A on
+  2026-10-31; its case, the base type's below-Y=1 mass landing in the lowest 16 stone layers, is in Tests
+  as QA-29's band-floor case.
 - Writer: request changes. Checked counts, sizes and band heights against §3.1; the height map and the
   16-layer clamp against §3.1 "Where each ore sits"; §4.3 step 4; the research doc's numbering note.
   WRITER-7 (§4.2's "every overworld feature" is the rule this record rejects): fixed in Context. WRITER-1

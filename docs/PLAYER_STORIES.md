@@ -331,7 +331,8 @@ bought (§3.1 baseline; T4 done-when). They should see a first vein in the tunne
 minute, break into one within about two, and mine about 36 ore in ten minutes at the derived 218.9 an hour
 (§4.3; ADR 0009). Commons are most of it. Ore is as dense at every height, and which ore a vein is follows
 its vanilla height, so diamond, gold and redstone turn up only in the 16 layers above bedrock, and above
-them rare ore is emerald and uncommon ore almost all lapis (§3.1 Where each ore sits). Nick chose the density
+them rare ore is emerald and uncommon ore almost all lapis (§3.1 Where each ore sits). A player after
+diamonds strip-mines that floor, but it holds no more ore than any other height. Nick chose the density
 on 2026-10-27 and the ore type by height on 2026-10-31 (question 4).
 Gravel and clay appear as blobs in the stone (§3.1).
 
@@ -343,7 +344,8 @@ Should feel: rich enough to come back to, lean enough that the tree has somethin
 Boring: long stretches of bare stone, or ore so common it is no longer an event.
 
 Session focus: After ten minutes at zero points, does the Vault feel rich enough to come back to and lean
-enough that the tree has something to sell? How many ore did you count, and how long before the first vein?
+enough that the tree has something to sell? How many ore did you count, which kinds at which heights, and
+how long before the first vein?
 
 ### T5: The Resonance loop
 
