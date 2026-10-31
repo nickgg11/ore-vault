@@ -219,7 +219,8 @@ Named rules, which hold whatever the rows say:
    (Reviewer gate 2; `CLAUDE.md` rule 2; the details are ADR 0002's).
 8. Classes in `mixin` depend on nothing of Ore Vault's except `core.wear` (ADR 0008).
 
-S43 stands as settled: at T1 each rule is shown failing once against a planted violation, because ArchUnit
+S43 stands as settled: at T1 each rule is shown failing once against a planted violation, except named
+rule 7, which lands with E3-S6a (#237) where its classes exist and is shown failing there, because ArchUnit
 fails a rule that matches nothing unless told not to, and a vacuous pass is not evidence. This record adds
 how: each rule is an entry in `ArchitectureRules` the main test runs over the main classes, and a second test runs every rule over
 a fixture set of planted violations under `src/test/java` (a `worldgen` class importing a `data` class, a

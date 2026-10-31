@@ -1,5 +1,7 @@
 package com.orevault.orevault.arch;
 
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
@@ -9,6 +11,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.EvaluationResult;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 
 /**
@@ -30,5 +33,21 @@ class ArchitectureFixtureTest {
                 assertTrue(report.contains(planted), "no mention of " + planted + " in " + report);
             }
         }));
+    }
+
+    /** {@link ArchitectureTest} leaves a rule to its fixture by scope, so a mistyped scope would retire the rule. */
+    @TestFactory
+    Stream<DynamicTest> everyScopeMatchesAClass() {
+        return ArchitectureRules.all().stream().filter(rule -> rule.scope() != null).map(rule -> dynamicTest(rule.name(),
+                () -> assertFalse(FIXTURES.that(resideInAPackage(rule.scope())).isEmpty(), rule.scope())));
+    }
+
+    /** Holding a {@code ServerLevel} reaches {@code SavedDataStorage} only through Minecraft's own classes. */
+    @Test
+    void ruleOneAllowsAGeneratorThatHoldsALevel() {
+        ArchitectureRules.Rule ruleOne = ArchitectureRules.all().stream()
+                .filter(rule -> rule.name().startsWith("1: worldgen")).findFirst().orElseThrow();
+        String report = ruleOne.rule().evaluate(FIXTURES).getFailureReport().toString();
+        assertFalse(report.contains("AllowedWorldgenHoldsLevel"), report);
     }
 }

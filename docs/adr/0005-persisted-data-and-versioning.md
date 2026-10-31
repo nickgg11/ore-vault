@@ -301,9 +301,10 @@ death marker without editing offline players' files (ADR 0007).
   is not a string or names no registered block. Pure unit cases: 20 payments of 0.05 sum to exactly 1,000
   thousandths; a `curve_divisor` raise keeps `level_reached` and its points; a reset 1,727,999 ticks after
   `free_respec_opened_at` opens no window and one at 1,728,000 opens one; a team-scoped position from an
-  older generation reads absent. These run in JUnit through `CompoundTag`: Minecraft's NBT classes load in the
-  unit source set, shown by `CompoundTagLoadsTest` round-tripping a tag through `NbtIo` (E1-S3, #194, also in
-  `CLAUDE.md` Tests).
+  older generation reads absent. Those on a tag run in JUnit: `CompoundTag` and `NbtIo` load in the unit source
+  set, shown by `CompoundTagLoadsTest` (E1-S3, #194, also in `CLAUDE.md` Tests). That holds only for read,
+  write and migrate code in plain classes: nothing shows a `SavedData` subclass loads there. The case that
+  needs a registry, a palette entry naming no registered block, is a gametest.
 - A gametest is one server lifetime and `SavedDataStorage#get` cannot drop a cached entry, so the restart
   checks are a scripted dedicated-server stop and start (E3-S10, #200), comparing named fields from the S44
   debug dump before and after: team `SavedData`, the explored map, and the chunk attachment across unload

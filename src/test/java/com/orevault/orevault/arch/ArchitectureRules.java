@@ -8,10 +8,18 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.Dependency;
 import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
@@ -72,6 +80,7 @@ final class ArchitectureRules {
     private static List<Rule> adapterRows() {
         String[] sharedRow = {CORE, DATA, ORE, TEAM, VAULT, WORLDGEN, INDEX, REGISTRY, NETWORK};
         return List.of(
+                // The ADR narrows integration to each package's entry class; that rule comes with the classes at T12.
                 row(BASE, "Root", withMc(CORE, DATA, ORE, TEAM, VAULT, WORLDGEN, INDEX, REGISTRY, MINING, NETWORK,
                         BASE + ".mixin", BASE + ".chunkload", BASE + ".reset", BASE + ".config", BASE + ".debug",
                         BASE + ".integration..")),
@@ -89,6 +98,7 @@ final class ArchitectureRules {
                 row(BASE + ".reset", "Reset", withMc(sharedRow)),
                 row(BASE + ".config", "Config", withMc(sharedRow)),
                 row(BASE + ".debug", "Debug", withMc(sharedRow)),
+                // FTB Library here is the ADR's "to confirm at T12".
                 row(BASE + ".integration.ultimine", "IntegrationUltimine",
                         withMc("dev.ftb.mods.ftbultimine..", "dev.ftb.mods.ftblibrary..", CORE, DATA, MINING)),
                 row(BASE + ".integration.processing", "IntegrationProcessing", withMc(CORE)));
@@ -98,16 +108,16 @@ final class ArchitectureRules {
         DescribedPredicate<JavaClass> savedDataAccess = resideInAnyPackage(
                 BASE + ".data..", BASE + ".team..", "net.minecraft.world.level.saveddata..", "dev.ftb..")
                 .or(name("net.minecraft.world.level.storage.SavedDataStorage")
-                        .forSubtype())
-                .as("team data or SavedData");
+                        .forSubtype());
         return List.of(
                 new Rule("1: worldgen reaches no team data or SavedData", BASE + ".worldgen..",
-                        noClasses().that().resideInAPackage(BASE + ".worldgen..")
-                                .should().transitivelyDependOnClassesThat(savedDataAccess),
-                        List.of("PlantedWorldgenImportsData", "PlantedWorldgenTransitive", "PlantedIndexImportsStorage")),
+                        classes().that().resideInAPackage(BASE + ".worldgen..")
+                                .should(neverReachThroughOwnClasses(savedDataAccess)),
+                        List.of("PlantedWorldgenImportsData", "PlantedWorldgenTransitive", "PlantedIndexImportsStorage",
+                                "PlantedWorldgenImportsTeam", "PlantedWorldgenImportsFtb")),
                 new Rule("1: core.gen reaches no team data or SavedData", BASE + ".core.gen..",
-                        noClasses().that().resideInAPackage(BASE + ".core.gen..")
-                                .should().transitivelyDependOnClassesThat(savedDataAccess),
+                        classes().that().resideInAPackage(BASE + ".core.gen..")
+                                .should(neverReachThroughOwnClasses(savedDataAccess)),
                         List.of("PlantedGenImportsSavedData")),
                 new Rule("2: only team imports FTB Teams", null,
                         noClasses().that().resideOutsideOfPackage(TEAM)
@@ -141,6 +151,33 @@ final class ArchitectureRules {
                                         .and(DescribedPredicate.not(resideInAnyPackage(core("wear"), BASE + ".mixin")))
                                         .as("an Ore Vault class outside core.wear")),
                         List.of("PlantedMixinReachesData")));
+    }
+
+    /**
+     * Named rule 1 says "through Ore Vault's own classes", so the walk stops at anything else. ArchUnit's
+     * {@code transitivelyDependOnClassesThat} follows Minecraft's classes too, and would fail a generator for
+     * naming {@code ServerLevel}, which reaches {@code SavedDataStorage}.
+     */
+    private static ArchCondition<JavaClass> neverReachThroughOwnClasses(DescribedPredicate<JavaClass> forbidden) {
+        return new ArchCondition<>("never reach team data or SavedData through Ore Vault's classes") {
+            @Override
+            public void check(JavaClass origin, ConditionEvents events) {
+                Set<JavaClass> seen = new HashSet<>();
+                Deque<JavaClass> toVisit = new ArrayDeque<>(List.of(origin));
+                while (!toVisit.isEmpty()) {
+                    JavaClass current = toVisit.pop();
+                    for (Dependency dependency : current.getDirectDependenciesFromSelf()) {
+                        JavaClass target = dependency.getTargetClass().getBaseComponentType();
+                        if (forbidden.test(target)) {
+                            events.add(SimpleConditionEvent.violated(origin,
+                                    origin.getName() + " reaches " + target.getName() + " through " + current.getName()));
+                        } else if (target.getName().startsWith(BASE + ".") && seen.add(target)) {
+                            toVisit.push(target);
+                        }
+                    }
+                }
+            }
+        };
     }
 
     private static String core(String name) {
