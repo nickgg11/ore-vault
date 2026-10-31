@@ -502,7 +502,7 @@ The Resonance tree is a Path of Exile style passive tree (Nick, 2026-10-26; `DES
 | **[NOTABLE]** | A single node granting a *distinct mechanic* rather than a bigger number, usually at the centre of a wheel. Always pure upside. |
 | **[KEYSTONE]** | Build-defining and **always carries a real downside**. A keystone should change how you mine, not just how fast. Keystones sit at rings 18 to 26, at the far ends of the tree. |
 | **[PACT]** | Build-defining and carrying a real downside, like a keystone, but at a low ring (6 or 13). Pacts exist because some of the tree's sharpest choices are only interesting while they are cheap: Greedy Seams undercutting Ore Doubling is a decision at level 6 and nothing at level 26. |
-| **[GROWTH]** | Strong immediately; **its reward stops mattering as the team grows**, because the bonus is a flat number or a hard level cutoff. A growth node never switches off (Nick, 2026-10-26). The point stays spent. That is the price of an easier start, and refunding it once it stops mattering would make all five free picks. The Tome greys the node and labels it **Outgrown** once its condition can no longer be met; no chat message announces it. |
+| **[GROWTH]** | Strong immediately; **its reward stops mattering as the team grows**, because the bonus is a flat number or a hard level cutoff. A growth node never switches off (Nick, 2026-10-26). The point stays spent. That is the price of an easier start, and refunding it once it stops mattering would make all five free picks. The Tome greys the node and labels it **Outgrown** once its condition can no longer be met for the viewing player (§8 Tab 1, Tooltip); no chat message announces it. |
 | **[FORK PARENT: name]** | A skill whose nodes **do nothing until an option is chosen**. Its tier, the count of its nodes owned, acts through whichever option is chosen. |
 | **[FORK OPTION: name]** | A petal, not a node. **Costs nothing**, can be picked once the team owns a node of its parent, and decides what the parent's tiers do. One option at a time; swapping is free and allowed **only while outside the Vault.** |
 
@@ -1738,7 +1738,7 @@ The Tome shows a running total per stat (§8).
 |---|---|---|
 | 1 (single node) | 400 FE per hand-mined Vault ore, split evenly across carried items in `orevault:dynamo_targets` that have energy storage | 8 |
 
-> Default tag: `#c:tools`, armour and optional `justdirethings:pocket_generator`. Energy goes through `Capabilities.Energy.ITEM`. Only the main inventory, armour and offhand are read; accessory slots added by other mods are not, since reading them needs that mod's API (`CLAUDE.md` rule 5). Hidden when no registered item has energy storage, checked once at server start. 220 ore an hour is 88,000 FE an hour, about 1 FE a tick: it keeps a jetpack and a pocket generator topped up and is never a power source (§3.4).
+> Default tag: `#c:tools`, armour and optional `justdirethings:pocket_generator`. Energy goes through `Capabilities.Energy.ITEM`. Only the main inventory, armour and offhand are read; accessory slots added by other mods are not, since reading them needs that mod's API (`CLAUDE.md` rule 5). Hidden when no registered item has energy storage, checked once at server start. 219 ore an hour is about 87,600 FE an hour, about 1 FE a tick: it keeps a jetpack and a pocket generator topped up and is never a power source (§3.4).
 
 ---
 
@@ -1919,13 +1919,13 @@ The Tome shows a running total per stat (§8).
 >
 > **Ores per rung** depend on the rung being reached: `N = durability × sqrt(speed / 4)`, rounded to the nearest ore, where 4 is stone's speed. Durability enters linearly and speed under a square root, so durability counts for more. A rung with infinite durability takes its count from the data map; with no entry, `N` uses twice the highest finite durability among the candidates, so an unbreakable pick is always the dearest rung on its ladder, because it removes durability as a cost for good. Vanilla figures, to be checked against the decompiled 26.1 `ToolMaterial`:
 >
-> | Rung | Durability / speed | Ores to reach | Hours at 220 ore an hour |
+> | Rung | Durability / speed | Ores to reach | Hours at 219 ore an hour |
 > |---|---|---|---|
 > | Wood | 59 / 2 | start only | |
 > | Stone | 131 / 4 | 131 | 0.6 |
 > | Copper | 190 / 5 | 212 | 1.0 |
 > | Iron | 250 / 6 | 306 | 1.4 |
-> | Diamond | 1,561 / 8 | 2,208 | 10.0 |
+> | Diamond | 1,561 / 8 | 2,208 | 10.1 |
 > | Netherite | 2,031 / 9 | 3,047 | 13.9 |
 >
 > Wood to netherite is 5,904 ores, 27 hours of mining; iron to netherite, what a team holds at level 18, is 24 hours. A modded 2,500-durability pick at speed 9 or 10 costs 3,750 or 3,953 ores. Each member's tool climbs separately.
@@ -2007,13 +2007,13 @@ The Tome shows a running total per stat (§8).
 >
 > **No penalty applies to the rate**, including Resonant Symbiosis's −40% alone. The penalties in §11 are priced against ore Resonance, and Silent Stone has already taken all of it; charging them again would double the cost, and it would undo the stated intent that Silent Stone makes Greedy Seams a pure upside. Greedy Seams, Vault Fever and Full Spectrum therefore cost a Silent Stone team nothing in progression; what they still trade is materials and speed, which is the side of the game this keystone frees. Resonant Overload stays a choice against Greedy Seams: +100% rate for half the ore. With no penalty the floor at zero (§11, Nick's N6) can never be reached; it is stated so the code applies it anyway.
 >
-> **Derived, unplaytested.** Curve figures are the §4.3 solo derivation in the stone band, 220 ore an hour at 3.485 Resonance, 0.213 a second; a team of five all mining earns 0.298. Levels 25 to 30 cost about 47,600 Resonance, 62 hours at 0.213. "Ore, same nodes" counts the same bonuses plus the ore-only ones a build has by then (Kindred Rock +15%, Last Ore about +13% spread over a vein; in the maximum case Clean Cut +50% on every vein), and leaves out the bursts. The typical level-24 build has Deep Habit +25%, Calloused Hands tier 2 at about 200,000 blocks +15%, Vein Discipline +20%, Vault's Purity +20% and Frontier Bonus +20% averaged over half the time, so +100%, and +150% for five with Resonant Symbiosis; no Resonant Overload and no Bedrock Communion, which needs level 26. The maximum adds Resonant Overload, Bedrock Communion at Y=−63 and every counted bonus at its cap: +381% solo, +431% for five. These figures leave out travel Resonance gain, which counts (above): it adds the same points to both columns, +10% for a typical level-24 team holding half of it and +20% at most, so the typical solo rate becomes 0.63 a second against 0.51 for ore and every ratio in the table moves by under 0.05.
+> **Derived, unplaytested.** Curve figures are the §4.3 solo derivation in the stone band, about 219 ore an hour (218.9) at 3.485 Resonance, 0.212 a second; a team of five all mining earns 0.297. Levels 25 to 30 cost about 47,400 Resonance, 62 hours at 0.212. "Ore, same nodes" counts the same bonuses plus the ore-only ones a build has by then (Kindred Rock +15%, Last Ore about +13% spread over a vein; in the maximum case Clean Cut +50% on every vein), and leaves out the bursts. The typical level-24 build has Deep Habit +25%, Calloused Hands tier 2 at about 200,000 blocks +15%, Vein Discipline +20%, Vault's Purity +20% and Frontier Bonus +20% averaged over half the time, so +100%, and +150% for five with Resonant Symbiosis; no Resonant Overload and no Bedrock Communion, which needs level 26. The maximum adds Resonant Overload, Bedrock Communion at Y=−63 and every counted bonus at its cap: +381% solo, +431% for five. These figures leave out travel Resonance gain, which counts (above): it adds the same points to both columns, +10% for a typical level-24 team holding half of it and +20% at most, so the typical solo rate becomes 0.63 a second against 0.50 for ore and every ratio in the table moves by under 0.05.
 >
 > | Build | Silent Stone, solo | Ore, same nodes, solo | Silent Stone, five active | Ore, same nodes, five | Levels 25–30 (solo SS / solo ore) |
 > |---|---|---|---|---|---|
-> | No bonuses | 0.30 /s | 0.213 /s (1.41×) | 0.42 /s | 0.298 /s (1.41×) | 44 h / 62 h |
-> | Typical level 24 | 0.60 /s | 0.49 /s (1.24×) | 1.05 /s | 0.83 /s (1.27×) | 22 h / 27 h |
-> | Maximum counted | 1.44 /s | 1.19 /s (1.21×) | 2.23 /s | 1.82 /s (1.23×) | 9 h / 11 h |
+> | No bonuses | 0.30 /s | 0.212 /s (1.42×) | 0.42 /s | 0.297 /s (1.42×) | 44 h / 62 h |
+> | Typical level 24 | 0.60 /s | 0.48 /s (1.24×) | 1.05 /s | 0.82 /s (1.27×) | 22 h / 27 h |
+> | Maximum counted | 1.44 /s | 1.18 /s (1.22×) | 2.23 /s | 1.81 /s (1.23×) | 9 h / 11 h |
 >
 > **No cap.** Silent Stone takes 1.4 times the base and a subset of the bonuses an ore build takes, so it cannot pass about 1.4 times an ore build with the same nodes and no penalties, and the more ore-only bonuses a build owns, the closer it falls to 1.0. The maximum is 1.2 times. Against an ore build that holds Greedy Seams, Vault Fever and Full Spectrum (×0.3 together) it is about 4.7 times, which is the pure upside described above, not a stacking accident.
 >
@@ -2130,19 +2130,19 @@ The Tome shows a running total per stat (§8).
 >
 > **With Ascending Edge.** Both roll per ore and neither pays Resonance. An ascending pick keeps its component patch (above), so its `orevault:vault_tool` echo counts and its raised levels climb with it; the new item does not change any cap, which is per enchantment, not per material.
 >
-> **Derived, unplaytested.** Echoes depend on ores mined, not on ore rate, since the roll is per ore. Hours are at 220 / 500 / 1,000 ore an hour. Typical level-22 pick: Efficiency V, Unbreaking III, Fortune III, Mending, headroom 6.
+> **Derived, unplaytested.** Echoes depend on ores mined, not on ore rate, since the roll is per ore. Hours are at 219 / 500 / 1,000 ore an hour. Typical level-22 pick: Efficiency V, Unbreaking III, Fortune III, Mending, headroom 6.
 >
-> | On one item | Ores | Hours at 220 / 500 / 1,000 |
+> | On one item | Ores | Hours at 219 / 500 / 1,000 |
 > |---|---|---|
-> | First echo anywhere in the kit | 1,000 | 4.5 / 2 / 1 |
+> | First echo anywhere in the kit | 1,000 | 4.6 / 2 / 1 |
 > | Pick, 1st echo (half the rolls) | 2,000 | 9 / 4 / 2 |
 > | Pick, 3rd | 9,000 | 41 / 18 / 9 |
 > | Pick, 6th: full at Efficiency VII, Unbreaking V, Fortune V | 27,000 | 123 / 54 / 27 |
-> | One armour piece, 1st echo (a tenth of the rolls, with five other items) | 10,000 | 45 / 20 / 10 |
+> | One armour piece, 1st echo (a tenth of the rolls, with five other items) | 10,000 | 46 / 20 / 10 |
 >
 > From level 22 to 30 a solo player mines about 16,000 ores and expects about 4 echoes on the pick and 1 on each armour piece and the sword, 11 in all; a member of a team of five about 3 on the pick and 8 in all, 42 for the team. A typical solo level-30 pick is about Efficiency VI, Fortune IV, Unbreaking IV. Neither keystone slingshots: with Ascending Edge the two together give about one step, a rung or an echo, every 8 to 10 hours of mining after level 22.
 >
-> **Known interaction: Glass Edge and Efficiency VII make ore instant.** A netherite pick at Efficiency VII mines at speed 59. Stone-band ore and deepslate stone need 90 to break in one tick. Glass Edge's +50% gives 88.5, so any one more +10% (a travel node, Long Delve, Ore Imprint) makes them instant; six travel mining-speed nodes alone give 94 without Glass Edge, and Apothic's higher Efficiency caps make it easier. Recommendation: allow it. It needs two echoes on Efficiency, which a typical solo pick does not have by level 30 (above), Nick likes being overpowered, and echoes are per ore, so a faster miner does not echo more per level. It does raise ore an hour above the curve's 220, which shortens the late levels like any speed node (§4.3). The late-game playtest measures ore an hour with an Efficiency VII pick and Glass Edge, then the hour of the first echo.
+> **Known interaction: Glass Edge and Efficiency VII make ore instant.** A netherite pick at Efficiency VII mines at speed 59. Stone-band ore and deepslate stone need 90 to break in one tick. Glass Edge's +50% gives 88.5, so any one more +10% (a travel node, Long Delve, Ore Imprint) makes them instant; six travel mining-speed nodes alone give 94 without Glass Edge, and Apothic's higher Efficiency caps make it easier. Recommendation: allow it. It needs two echoes on Efficiency, which a typical solo pick does not have by level 30 (above), Nick likes being overpowered, and echoes are per ore, so a faster miner does not echo more per level. It does raise ore an hour above the curve's 219, which shortens the late levels like any speed node (§4.3). The late-game playtest measures ore an hour with an Efficiency VII pick and Glass Edge, then the hour of the first echo.
 >
 > **Pure functions with unit tests**, kept out of the event handler: `echoChance(n, r)` pinning 1 in 1,000 at n 0, 1 in 3,500 at n 5 r 1, and never below 1 in 4,000; `chooseTarget(toolEligible, others, rnd)` pinning the half-and-half split and the lost half; `chooseEffect(raisable, addable, rnd)` pinning 1 in 4 new. Item tooltip: "Echoes: 3 of 9. Next: 1 in 2,000."
 

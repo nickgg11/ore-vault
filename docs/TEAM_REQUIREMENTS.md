@@ -596,9 +596,10 @@ block at a given position in it and prints that it is gone, and the E3-S11 spike
 for the key (QA-38). The folder-name and key functions are pure `core` functions with unit cases (round trip,
 upper-case hex, 31 and 33 hex digits, a hyphenated name, `vault_<32 hex>.deleting` not parsing). A restore
 fixture (amended 2026-10-31, the type file in the folder): one good folder, one `vault_zzz`, one whose Vault
-type file is garbage bytes, one with no type file, one whose team file is garbage bytes; pass is two restored
-(the last under its own type, with an ERROR naming the team file), three skipped and logged (WARN for the
-name, ERROR naming each type file), and "restored 2, skipped 3". Login case 1
+type file is garbage bytes, one with no type file, one whose type file names an unknown type
+(`orevault:nonsense`), one whose team file is garbage bytes; pass is two restored (the last under its own
+type, with an ERROR naming the team file), four skipped and logged (WARN for the name, ERROR naming each
+type file), and "restored 2, skipped 4", as ADR 0002 Tests. Login case 1
 is checked by renaming the folder while the server is down. The E3-S11 level-unload spike passes only if
 every check passes on both runs (one per variant order); one failed check, even intermittent, is Result B
 (ADR 0002).
@@ -659,8 +660,8 @@ Case B, damaged Vault type file.
 4. Put the original file back and restart. Pass: the Vault restores under its type.
 
 Case C, new Vault. A team with no Vault enters by portal. Pass: the type file exists with `data_version` 1
-and the base type before any region file is written (check the folder right after entry), and a team data
-file now exists.
+and the base type before any region file is written (check the folder right after entry). Creation writes no team data (S18,
+ADR 0005 section 6); the team's file appears only with its first recorded field.
 
 T7. `runGameTestServer` after every payload or screen change. ADR 0006's checks: a refused purchase
 resyncs; `/reload` with a tag change hides or shows the Mekanism-tag nodes on an open Tome; a second dev
