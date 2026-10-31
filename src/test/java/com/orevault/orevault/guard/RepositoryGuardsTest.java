@@ -28,6 +28,8 @@ class RepositoryGuardsTest {
             "import javax.annotation.Nullable;",
             "@org.jetbrains.annotations.Nullable String name;",
             "Identifier.fromNamespaceAndPath(\"forge\", \"ores\")",
+            "Identifier.parse(\"forge:ores\")",
+            "import org.jetbrains.annotations.*;",
     })
     void javaGuardsCatchThePlantedViolation(String planted) {
         assertFalse(RepositoryGuards.checkJava("A.java", planted).isEmpty());
@@ -56,6 +58,7 @@ class RepositoryGuardsTest {
     void mineableTagInTheModNamespaceIsCaught() {
         assertFalse(RepositoryGuards.checkPath("src/main/resources/data/orevault/tags/block/mineable/pickaxe.json").isEmpty());
         assertFalse(RepositoryGuards.checkPath("src/main/resources/data/orevault/tags/blocks/mineable/pickaxe.json").isEmpty());
+        assertFalse(RepositoryGuards.checkPath("src/main/resources/data/minecraft/tags/blocks/mineable/pickaxe.json").isEmpty());
         assertFalse(RepositoryGuards.checkPath("src/main/resources/data/forge/tags/block/ores.json").isEmpty());
         assertEquals(List.of(), RepositoryGuards.checkPath("src/main/resources/data/minecraft/tags/block/mineable/pickaxe.json"));
     }

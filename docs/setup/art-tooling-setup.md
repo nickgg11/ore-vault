@@ -5,6 +5,8 @@ machine. The reasons for picking them are in `docs/research/art-tooling.md`. Ret
 Blockbench and Excalidraw are not set up; none of them is approved yet.
 
 Set up and checked on 2026-10-26 with Node 24.20.0 and npm 10.8.3.
+Rechecked on 2026-10-31 (E1-S10, #199): mc-asset connected, and `tools/tree-preview` rendered its sample after
+`npm ci`. A fresh checkout has no `node_modules` there, so run `npm run setup` first.
 
 ## mc-asset (texture CLI and MCP server)
 
@@ -30,8 +32,20 @@ npx -y mc-asset@0.5.0 generate veins --size 16 --palette stone --seed 1 --profil
 npx -y mc-asset@0.5.0 validate out/veins.png
 ```
 
-`validate` exits 3 when an asset fails, so it can gate a texture before it is committed. Output is
-deterministic: the same input and seed give the same bytes.
+Output is deterministic: the same input and seed give the same bytes.
+
+`validate` exits 3 when an asset fails, but it does not enforce this mod's texture rules, so it is not the
+gate. `TextureRulesTest` is (E1-S8, #197). Checked on 2026-10-31 through the `validate_asset` tool on planted
+PNGs:
+
+| Planted | Profile | Verdict | Finding |
+|---|---|---|---|
+| 64x64 opaque | `minecraft:block`, `minecraft:item` | pass | none |
+| 16x16, every pixel alpha 128 | `minecraft:block` | pass | warning `PARTIAL_ALPHA_CAUSES_TRANSLUCENT_RENDERING` |
+| 13x7 opaque | `minecraft:block` | pass | warning `NON_STANDARD_RESOLUTION` |
+| 13x7, 18x18, 26x26, 36x36, 248x166, 256x256 opaque | `minecraft:gui` | pass | none, so it accepts any GUI size |
+
+Read its findings as advice. Node 24.20.0 and the pinned mc-asset 0.5.0 were in use.
 
 ## Skill tree preview (`tools/tree-preview`)
 

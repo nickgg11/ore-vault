@@ -12,7 +12,7 @@ import java.util.List;
 final class TextureRules {
     static final int SIZE = 16;
     /** The one texture allowed partial alpha (E3-S3, #181). */
-    static final String PORTAL_STRIP = "assets/orevault/textures/block/ore_vault_portal.png";
+    static final String PORTAL_STRIP = "assets/orevault/textures/block/vault_portal.png";
 
     private TextureRules() {
     }

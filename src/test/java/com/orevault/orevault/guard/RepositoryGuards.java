@@ -17,10 +17,10 @@ final class RepositoryGuards {
             Pattern.compile("(?<![Tt]heme\\.)\\bdrawString\\b"),
             Pattern.compile("hasPermission\\(\\s*2\\s*\\)"));
     private static final Pattern WRONG_NULLABLE = Pattern.compile(
-            "\\b(org\\.jetbrains\\.annotations|javax\\.annotation|net\\.neoforged\\.[\\w.]+)\\.Nullable\\b");
+            "\\b(org\\.jetbrains\\.annotations|javax\\.annotation|net\\.neoforged\\.[\\w.]+)\\.(Nullable\\b|\\*)");
     private static final Pattern FORGE_TAG = Pattern.compile("\"#?forge:");
-    private static final Pattern FORGE_ID = Pattern.compile("fromNamespaceAndPath\\(\\s*\"forge\"");
-    private static final Pattern WRONG_MINEABLE = Pattern.compile("data/orevault/tags/blocks?/mineable");
+    private static final Pattern FORGE_ID = Pattern.compile("\"forge:|fromNamespaceAndPath\\(\\s*\"forge\"");
+    private static final Pattern WRONG_MINEABLE = Pattern.compile("data/orevault/tags/block/mineable|data/[^/]+/tags/blocks/");
     private static final String FORGE_TAG_FOLDER = "data/forge/tags/";
     private static final String JDK_PIN = "org.gradle.java.installations.paths";
 

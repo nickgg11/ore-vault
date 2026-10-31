@@ -3194,7 +3194,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] All crafting recipes, through the data generators — E1-S9 (#198) and the story of each item
 - [ ] `en_us.json` complete against the lang coverage tests — E1-S11 (#203), E13-S3 (#257)
 - [ ] Mod logo as `logoFile` in `neoforge.mods.toml`, not `pack.png` — E13-S2c (#191)
-- [ ] Block and item textures — **16×16, as vanilla** (Nick, 2026-10-26, replacing a 64×64 rule), checked by the texture size test — E1-S8 (#197).
+- [x] Block and item textures — **16×16, as vanilla** (Nick, 2026-10-26, replacing a 64×64 rule), checked by the texture size test — E1-S8 (#197).
       Each texture uses its sixteen pixels to read clearly as what it is at slot size. GUI art is
       drawn at one texel per GUI unit. It applies to anything shipped under
       `assets/orevault/textures/`. It does **not** apply to vanilla sprites the mod borrows — the Resonance orb tints
