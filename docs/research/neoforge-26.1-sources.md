@@ -5,6 +5,22 @@ stories it must land before. Story ids and issue numbers are from the filed tick
 
 ## Provenance
 
+Rechecked at `neo_version=26.1.2.121` on 2026-10-31. Line numbers below are 26.1.2.95's. Each NeoForge source
+file this document cites was compared between the two NeoForge sources jars, and each cited Minecraft class
+between the two patched jars by class bytes. Minecraft is 26.1.2 at both. No conclusion here changes:
+
+- Five cited NeoForge files changed. `ClientNetworkRegistry` adds optional channels and moves lines. `CommonHooks`
+  changes `onPlayerAttackTarget` only. `ResourcePackLoader` guards overlay parsing.
+- `NetworkRegistry` refuses the modded setup payloads serverbound, and `onMinecraftRegister` gains a cap on
+  ad-hoc channels. Registered payloads are unaffected.
+- sponge-mixin moves to 0.17.4 and mixinextras to 0.5.5. `JAVA_25` is still there, so the mixin notes hold.
+- `GenericPacketSplitter` now caps a reassembled packet at NeoForge's `splitPacketMaxSizeLimitMb`, 128 MB by
+  default, and disconnects above it. ADR 0006's bounds are far under that.
+- Of the patched Minecraft classes, 20 differ and one is cited: `EnchantmentHelper` gains a
+  `processEquipmentDropChance` overload, and `processDurabilityChange` and `processBlockExperience` are unchanged.
+
+The Gradle sources jar for 26.1.2.121 is an empty stub, so Minecraft's source text below stays 26.1.2.95's.
+
 Three sources, each for a different job. All were read on Nick's PC on 2026-10-31 unless a section says
 otherwise. Paths below are paths inside the jar, and line numbers are lines of the `.java` file. No jar was
 run; the only tools were `unzip` and `javap`.

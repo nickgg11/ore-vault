@@ -105,7 +105,7 @@ runs. Never report a build or test result that was not produced there.
 neither. `run/server/eula.txt` is untracked and needs `eula=true` for `runServer`.
 
 Versions are pinned in `gradle.properties` and NeoGradle's in the `build.gradle` `plugins` block, with the
-reasons in ADR 0001's pin table: `neo_version=26.1.2.95`,
+reasons in ADR 0001's pin table: `neo_version=26.1.2.121`,
 FTB Teams 26.1.2.4, FTB Library 26.1.2.11, FTB Ultimine 26.1.2.6 (`compileOnly`), NeoGradle
 `net.neoforged.gradle.userdev` 7.1.38. A bump is its own PR, never inside a feature PR. Do **not** pin
 `org.gradle.java.installations.paths` to a machine-local path in a committed file; that broke every other
@@ -200,7 +200,9 @@ or it is invisible or the purple cube. Dimension lighting in 26.1 is set through
 `font.splitIgnoringLanguage`.
 
 Settle any doubt from the decompiled sources, not from memory: NeoGradle puts them in
-`.gradle/repositories/ng_dummy_ng/net/neoforged/neoforge/<neo_version>/neoforge-<neo_version>-sources.jar`. Nullability uses
+`.gradle/repositories/ng_dummy_ng/net/neoforged/neoforge/<neo_version>/neoforge-<neo_version>-sources.jar`, which a
+plain build leaves empty, so 26.1.2.95's is the last filled one. Use `javap` on the jar beside it for the pinned version,
+and NeoForge's own sources jar from its maven. Nullability uses
 JSpecify (`org.jspecify.annotations.Nullable`).
 
 ## Tests
