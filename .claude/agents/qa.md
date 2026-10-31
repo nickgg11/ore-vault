@@ -46,6 +46,9 @@ breaks.
   Overworld sky.
 - A Vault created after the first tick: blocks can be broken without relogging (`markWorldsDirty`).
 - A bounced teleport does not overwrite the saved return position.
+- Compile and every runtime profile use one FTB Library version: without a pin it was 26.1.2.7 at compile and
+  26.1.2.3 at runtime (#394). Check with `dependencies` on `compileClasspath` and each `runtime_profile`.
+- No committed machine-local JDK path: `git grep -n installations.paths -- ':!*.md'` returns nothing.
 - A pickaxe mines the Vault Frame at stone speed and it drops (tool tag namespace).
 - Every block and item: visible in creative, in JEI, with a model and a texture, not the purple cube.
 - Every node: a lang key for its name and description; no raw keys in a tooltip.
