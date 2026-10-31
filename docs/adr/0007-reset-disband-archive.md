@@ -1,7 +1,8 @@
 # 0007. Reset, disband and the archive
 
-Status: proposed, 2026-10-27 (E0-S10, #258). Round 1 reviews are recorded below and their changes applied.
-Accepted once the level-unload spike (E3-S11, #245) is written into ADR 0002's pending section and the
+Status: proposed, 2026-10-27 (E0-S10, #258). Round 1 and round 2 reviews are recorded below and their
+changes applied, round 2 by the Manager's ruling of 2026-10-31 (the Vault's type is kept in its folder, ADR
+0005 section 3a). Accepted once the level-unload spike (E3-S11, #245) is written into ADR 0002's pending section and the
 branch it picks is confirmed below, and the matrix reviewers have signed. Spec: §3.1 Disband, §3.5, §9 FTB
 Teams, §11 FTB Teams Event Hooks; S19, N8, Nh, Ni (`docs/TEAM_REQUIREMENTS.md`); Nick's 2026-10-27 answers
 Q2, Q14 and Q16 (`DESIGN_LOG.md`).
@@ -56,20 +57,21 @@ is finished at the next start the same way.
 
 ### The start-of-server pass
 
-One pass in `vault`, run first in the `ServerStartedEvent` listener, before the classifier and the restore
-(ADR 0002). First it deletes any `vault_<32 hex>.deleting` folder left under `<world>/dimensions/orevault/`
+One pass in `vault`, called first by the root listener (the `ServerStartedEvent` listener in the root
+package, ADR 0001's root row; RV2-2), before the classifier and the restore (ADR 0002 "Restore"). First it deletes any `vault_<32 hex>.deleting` folder left under `<world>/dimensions/orevault/`
 by a delete that was cut short (reset step 8). Then, for each `vault_<hex>` folder and for each team data
 file it finds:
 
-1. Read the team data file as raw NBT, with `SavedDataStorage#readTagFromDisk`, and take its `data`
-   compound (ADR 0005's team reader on a bare `CompoundTag`). Never through `SavedDataStorage#get`, which
-   would cache a `SavedData` for a file this pass then moves, and a later save would write it back at the
-   old path. A file that fails to read is logged at ERROR and left alone; restore finds it unreadable and
-   skips that Vault (ADR 0002 restore step 4).
+1. Read the team data file as raw NBT, with `SavedDataStorage#readTagFromDisk` on the path
+   `data.DataPaths` gives (ADR 0005 section 2), and take its `data` compound (ADR 0005's team reader on a
+   bare `CompoundTag`). Never through `SavedDataStorage#get`, which would cache a `SavedData` for a file
+   this pass then moves, and a later save would write it back at the old path. A file that fails to read is
+   logged at ERROR naming its path and left alone, and the pass does nothing for that team; restore
+   restores the Vault under its type file (ADR 0002 restore step 4).
 2. `disbanded_at` set: move to the archive (below). A failed move is logged at ERROR and left in place;
    restore still skips it.
 3. `pending_reset` set: finish the reset with steps 7 to 9 of the sequence below (backup if asked, delete,
-   then in one write the generation, the variant, the window and the cleared marker), and add the team id
+   then in one write the generation, the window and the cleared marker), and add the team id
    to the list the pass hands to restore. Step 9's write goes through ADR 0005's ordinary team-data
    accessor, since this file is not moved. The pass does not run step 10: building a generator and a
    snapshot before the classifier has run would give them nothing to read (ADR 0009). Restore registers
@@ -128,8 +130,8 @@ When the vote passes, on the server thread:
    already out; send a message to the team's online members that the Vault regenerates at the next restart
    (Ni); keep entry refused; the start-of-server pass does steps 7 to 9 and restore does step 10.
 7. Backup, if the session's flag is set and the folder exists (a folder that is absent was deleted before a
-   crash, and step 8 is then already done; RV-5). Copy the closed folder to
-   `<world>/orevault_backups/<teamUuid>/<timestamp>/` (§3.5). Storage is closed by step 6 or by the stop,
+   crash, and step 8 is then already done; RV-5). Copy the closed folder, its type file with it (ADR 0005
+   section 3a), to `<world>/orevault_backups/<teamUuid>/<timestamp>/` (§3.5). Storage is closed by step 6 or by the stop,
    so a half-flushed region file is never copied (old #96). In the live sequence the copy runs on
    `Util.ioPool()` while the state is `BACKING_UP` and the players stay held, since a large Vault is
    gigabytes; the main thread goes on to step 8 once the copy reports success. The start-of-server pass
@@ -142,13 +144,23 @@ When the vote passes, on the server thread:
    to `vault_<hex>.deleting` in the same directory, then delete that. A folder that is already absent is
    done (RV-5). The rename means a delete cut short never leaves a half-deleted folder under the Vault's
    own name for step 7 to back up or restore to load; the start-of-server pass removes the leftover.
-9. In the team's data, in one write: `vault_generation` + 1; `vault_variant` set to expanded if the team
-   owns Vault Expansion, otherwise base (§3.5 step 5); the respec window (below); `pending_reset` cleared.
-   Save at once with `saveAndJoin()`.
-10. Re-register: `ensureTeamDimension` with the saved variant (ADR 0002), which rebuilds the snapshot with
-    the new `vault_generation`, so the seed changes and the veins are new (Q2, §3.1). No Anchor ticket
+   A failed rename is a failed delete, handled as a failed backup in step 7: nothing is deleted,
+   `pending_reset` is cleared and an ERROR names the team and the folder. Live, the old Vault is
+   re-registered unchanged, entry opens and the initiator is told; in the start-of-server pass the folder,
+   still under its own name, restores as the old Vault. On Windows, Nick's platform, a folder with a handle
+   still open cannot be renamed. Without this rule step 9 would raise `vault_generation` over an old folder
+   that still exists, and the next start would restore the old terrain under a new seed. A rename that
+   succeeds followed by a delete that fails is done: the leftover `.deleting` folder is removed at the next
+   start.
+9. In the team's data, in one write: `vault_generation` + 1; the respec window (below); `pending_reset`
+   cleared. Save at once with `saveAndJoin()`. No variant is written: the Vault's type is in its folder,
+   and step 8 deleted the old one with it.
+10. Re-register: `ensureTeamDimension` (ADR 0002). There is no folder, so its step 2 computes the variant
+    from ownership, expanded if the team owns Vault Expansion and base otherwise (§3.5 step 5), and writes
+    the new folder's type file at once, before the level is registered. It rebuilds the snapshot with the
+    new `vault_generation`, so the seed changes and the veins are new (Q2, §3.1). No Anchor ticket
     survives, since the ticket file went with the folder, and ADR 0002's ticket reactivation (creation step
-    13) finds no file. If a backup failure re-registers the old Vault after a live unload, that Vault's
+    13) finds no file. If a backup failure or a failed rename re-registers the old Vault after a live unload, that Vault's
     Anchor tickets were released by the unload; E10-S3 (#373) decides how a placed Anchor re-adds its
     ticket, and this case is one of its checks.
 11. Players held in step 4 who are still online are sent to the team anchor (X=0, Z=0), where the portal
@@ -208,7 +220,8 @@ On `FTBTeamsEvent.TeamDeleted` for a team (only a party, per the source above):
 The level stays loaded, and empty, until the server stops; the server still ticks it. It is never unloaded
 at run time, whatever the spike shows, and its snapshot holder stays with it (step 5 above).
 
-At the next start, the start-of-server pass moves the Vault folder and the team's data file, with any
+At the next start, the start-of-server pass moves the Vault folder (its type file inside it) and the team's
+data file, with any
 `team_<hex>.dat.unreadable-<gametime>` copies ADR 0005 set aside for it, into
 `<world>/orevault_archive/<teamUuid>/<disbandedAt>/`, where `<disbandedAt>` is the game time written in step
 1. The log line gives the wall-clock time beside it. Reset backups are kept apart, in
@@ -249,9 +262,12 @@ admin manages by hand (§3.5 calls backups a safety net the mod does not use).
   backup beside the first; after 8, step 7 is skipped and the pass writes step 9 and restore registers;
   after 9, the folder is gone and the generation is already raised, so nothing is on the pass's list and
   the Vault is created again on the next portal trip (a player who was offline inside goes to their return
-  position, since login case 1 finds no level). The backup abort is induced by making `orevault_backups` a
-  regular file: the folder stays, `pending_reset` is cleared, the ERROR line names the team and the path,
-  and the old Vault restores with its old generation.
+  position, since login case 1 finds no level). Wherever a new Vault is registered, its folder holds a type
+  file with the variant the team's ownership gives. The backup abort is induced by making `orevault_backups`
+  a regular file: the folder stays, `pending_reset` is cleared, the ERROR line names the team and the path,
+  and the old Vault restores with its old generation. The failed rename is induced by an S44 fault point
+  that makes step 8's rename report failure, live and in the pass: the same expected result as the backup
+  abort, and no `.deleting` folder.
 - Archive: a disbanded party's folder and team file are under `orevault_archive/<uuid>/<time>/` after a
   restart, and restore skipped them; a leftover `vault_<hex>.deleting` is gone after a start.
 - Two dev-client steps for T11, deferred to E11-S8 (#301): B logs out inside, A resets, B logs in and lands
@@ -260,8 +276,18 @@ admin manages by hand (§3.5 calls backups a safety net the mod does not use).
 
 ## Consequences
 
-- A crash at any point of a reset leaves either the old Vault untouched or a `pending_reset` the next start
-  finishes. The Ni fallback is the same code run later. The fault points make this checkable.
+- A reset cut short at any point ends in one of three states: the old Vault untouched (a cut before step
+  3, or a failed backup or rename); a `pending_reset` that the next start finishes (a cut after step 3 and
+  before step 9's write); or, after step 9's write, a complete reset whose Vault is made on the next portal
+  trip. In the third, a player offline inside goes to `return_pos` (ADR 0002 login case 1, since there is
+  no level to place them in), not to the team anchor that §3.5 step 3 names. A trip home is harmless, and it
+  is accepted (RV2-4). A finished live reset always has its new folder, because step 10 writes the type file
+  at once. The Ni fallback is the same code run later. The fault points check each state.
+- An unreadable team file hides `pending_reset` and `disbanded_at` from the pass, which logs ERROR and does
+  nothing for that team: the Vault restores as it is on disk, and for a disbanded party, which has no
+  members, ADR 0002 login case 2 sends anyone inside out. A reset cut between steps 8 and 9 whose team file
+  is then also unreadable makes the next Vault from generation 0's seed; that needs two faults at once and
+  is logged. Both are accepted (ADR 0002 Consequences).
 - If the spike fails, every reset needs a restart to finish, and the team cannot enter its Vault until
   then. That is Nick's answer Ni, and the message says so.
 - Disk grows with archives and backups until an admin purges them. Accepted (N8: disk is cheaper than a
@@ -303,6 +329,11 @@ debug subcommands gated), §11 FTB Teams Event Hooks (disband is a party losing 
 file is archived, not deleted) and §11 SavedData Pattern (the `pending_reset` field, for ADR 0005). Applied
 in the same PR (#160).
 
+Round 2 (2026-10-31), applied by the Writer in the same PR: §3.5 step 3 gains, in a parenthesis, the one
+exception of Consequences (a reset complete before the stop sends a player offline inside to their return
+position), and §3.5 and §11 no longer have a reset write the variant to team data; the new Vault's folder
+gets its type file when it is made (ADR 0002, ADR 0005 section 3a).
+
 ## Reviews
 
 Matrix row "System design before code": developer (buildable), reviewer (rules), qa (testable); the
@@ -335,3 +366,27 @@ change.
 - balancer: approve with comments. Checked the thresholds against §3.5, 24 h as 1,728,000 ticks, 10
   minutes as 12,000, a window at most once per 1,728,000 ticks, the respec-abuse path. BAL-8 (timeout 120
   seconds, a constant): fixed, the vote section.
+
+Round 2, 2026-10-31, settled by the Manager's round-2 triage.
+
+- developer: approve. Checked the `.deleting` rename then delete as plain `Files` work and
+  `readTagFromDisk` as public. DEV2-4 (raised on ADR 0005): pass step 1 now reads the path from
+  `data.DataPaths`.
+- reviewer: approve with comments. Checked the `.deleting` rename against the pass's cleanup, rule 7
+  against `reset` calling `ensureTeamDimension`, and ticket reactivation after step 8 as a no-op. RV2-2:
+  fixed, the pass intro names the root listener. RV2-4 (the after-9 fault point sends an offline-inside
+  player home): fixed with QA's comment, Consequences names the three outcomes and accepts the trip home.
+  The other case the Reviewer named, a finished live reset with no folder written before the stop, no longer
+  exists under the section 1 ruling: step 10 writes the folder's type file at once.
+- qa: approve with comments. Checked the fault points, the backup abort, the vote and window cases. The
+  Consequences comment (the third outcome missing): merged with RV2-4 and fixed.
+- writer: approve. Checked "the team anchor (X=0, Z=0)" at steps 11 and the offline paragraph, and the
+  command gating.
+- balancer: approve. Checked the thresholds, the timeout and the window constants; nothing new.
+- architect: approve with comments. Addition 2 (a), no failure path for the rename: fixed, step 8 and a
+  fault point under Tests. Addition 2 (b) is in ADR 0002's `VaultKeys` cases. Addition 3 (Anchor tickets
+  after a backup-abort re-registration) is carried by the #373 comment (Manager, WP-R2-6); step 10 already
+  names that case.
+- Section 1 ruling (RV2-1, ARCH-R2-1), applied here: pass step 1 no longer has restore skip a Vault whose
+  team file is unreadable, step 9 writes no variant, step 10 writes the new folder's type file, backup and
+  archive carry it with the folder, and Consequences states the accepted residuals.

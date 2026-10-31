@@ -447,10 +447,18 @@ Two dev client sessions on Nick's PC with different dev usernames (Q10), both in
 party's Vault. The owner kicks the other, or the other leaves the party. The player who left is sent at once
 to their saved return position in the Overworld, with a chat line saying why (Manager triage RV-8; §3, a
 Vault belongs to one team). Their personal records stay with the old team (Q3). Ore they break afterwards
-pays only their new team, in their new team's Vault. Logging out inside a Vault of a team they no longer
-belong to and logging back in also puts them outside it. Ticket: E11-S8 (#301).
+pays only their new team, in their new team's Vault. Ticket: E11-S8 (#301).
 
-Confusing: being moved with no message; staying inside and mining for a team they have left.
+The offline case, as a second run: the other player logs out while inside the party's Vault; with them
+offline, the owner removes them from the party (FTB Teams posts `PlayerChangedTeamEvent` for an offline
+player, `docs/research/neoforge-26.1-sources.md` "FTB Teams party join and disband"); then they log back in.
+They arrive outside the Vault, at their saved return position in the Overworld, with the same chat line
+saying why, and not at Vault coordinates in the Overworld sky (ADR 0002 login case 2). A player whose
+team changes while online cannot still be inside to log out, since they are moved at once, so this is the
+only way to log in to a Vault of a team one has left.
+
+Confusing: being moved with no message; staying inside and mining for a team they have left; logging in
+after being removed offline and finding no explanation.
 
 Session focus: When you were moved out, did the message tell you why, and did it feel fair?
 
@@ -467,16 +475,24 @@ For the Manager, from writing these stories:
    without the buyable highlight, its tooltip naming the level that brings the next point; the Writer adds
    it to §8 States, and Nick says yes or no on the E8-S5 (#283) preview.
 2. Shallow Grace bought after it is already outgrown. Should the tooltip of an unowned growth node say
-   Outgrown before purchase? Recommendation: yes; §8 can be read either way. UI/UX.
+   Outgrown before purchase? Recommendation: yes; §8 can be read either way. UI/UX. Ruled 2026-10-27
+   (Manager triage M20): yes. The server sends an `outgrown` bit for every growth node, owned or not
+   (ADR 0006), and §8 Tooltip shows "Outgrown: <why>" on an unowned node, with one purchase confirmation
+   that names it.
 3. Apprentice's Ledger and ore mined before the purchase. Does the trip's count include ore mined before
    the team owned the node? Recommendation: count only ore mined while owned, so buying it at minute 9
-   gives the full 100. Balancer, then the Writer for §6.1 and §11.
+   gives the full 100. Balancer, then the Writer for §6.1 and §11. Ruled 2026-10-27 (Manager triage
+   PT-S17-Q3; Balancer and Writer agree): only ore mined while the team owns the node counts, written into
+   §6.1 and §11 Vault Session State.
 4. Which ring-1 and travel nodes sit at distance 1 from the start. The layout file decides it at T8;
    Salvager's Eye and a mining speed node there would give level 1 two more picks that show at once.
-   UI/UX.
+   UI/UX. Ruled 2026-10-27 (Manager triage PT-S17-Q4): deferred, as UI-UX answered, to the layout story
+   E8a-S3a (#239) and Nick's E8-S5 (#283) preview, with no ticket amendment needed.
 5. Miner's Constitution tier 1 shows nothing in the first ten minutes. Not a change request yet; the
    first-ten-minutes session asks whether Nick noticed it.
 6. Stone Memory and the refund prices. At about 115 stone a minute, tier 1 pays roughly 115 XP a minute and
    tier 5 roughly 575. The refund prices in §4.4 assume XP levels are scarce; at tier 5 the 30 levels of a
    keystone refund (1,395 XP from level 0) take under three minutes of stone. Derived, not measured.
-   Balancer.
+   Balancer. Ruled 2026-10-27 (Manager triage PT-S17-Q6, the Balancer's answer): no change now. The
+   interaction is recorded as a "Still open" line in `DESIGN_LOG.md`, and E9-S11 (#315) and E9-S64 (#367)
+   carry amendments naming a rebuy cooldown as the fix if Nick's play shows refunds are toggled freely.

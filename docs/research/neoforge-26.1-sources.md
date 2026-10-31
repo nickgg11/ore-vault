@@ -572,9 +572,20 @@ Answer: no. A Vault level created after `createLevels`, in `ServerStartingEvent`
 the portal path, is not in `this.levels` when `prepareLevels` runs, so neither its vanilla persistent tickets
 nor NeoForge's forced tickets are reactivated. Restore must do it itself, mirroring the two lines above:
 `level.getDataStorage().get(TicketStorage.TYPE)`, then `activateAllDeactivatedTickets()`, then NeoForge's
-`ForcedChunkManager.activateAllDeactivatedTickets(level, savedTickets)`. Unverified: NeoForge sources not yet read (E1-S5 #195 stays open for these). Must read:
-`net.neoforged.neoforge.common.world.chunk.ForcedChunkManager#activateAllDeactivatedTickets` (is it public)
-and `net.neoforged.neoforge.common.world.chunk.TicketController` (its API, and any reinstate path of its own). `MinecraftServer#markWorldsDirty()` is at line 1899.
+`ForcedChunkManager.activateAllDeactivatedTickets(level, savedTickets)`.
+
+`ForcedChunkManager.activateAllDeactivatedTickets` is public and static, settled from the call site without
+NeoForge's jar (Developer, 2026-10-31, round 2 DEV2-5). `MinecraftServer.java` line 563 calls it as
+`net.neoforged.neoforge.common.world.chunk.ForcedChunkManager.activateAllDeactivatedTickets(level,
+savedTickets)`: through the class name, with no instance, so it is static; and from `MinecraftServer`, in
+package `net.minecraft.server`, on a class in `net.neoforged.neoforge.common.world.chunk`, so the method and
+its class are public. It takes the level and the `TicketStorage`, in that order, as restore will pass
+them.
+
+Unverified: NeoForge sources not yet read (E1-S5 #195 stays open for this). Must read:
+`net.neoforged.neoforge.common.world.chunk.TicketController` (its API, any reinstate path of its own, and
+when a controller's loading validation runs and whether it runs at all for a level added after server
+start). `MinecraftServer#markWorldsDirty()` is at line 1899.
 
 ## Capabilities.Energy.ITEM and the item-handler capability
 
@@ -750,9 +761,11 @@ session cannot do all of them, the ones needed before T3 to T5 go first: items 4
    attachment, and E6-S4 (#209), the carry-over spike.
 5. `RegisterPayloadHandlersEvent` and `PayloadRegistrar`: a client-only handler registration, `optional()`,
    decode failure behaviour. Waiting: ADR 0006. Before E7-S2a (#255).
-6. `ForcedChunkManager.activateAllDeactivatedTickets` (is it public) and `TicketController`'s API, including
-   when a controller's loading validation runs and whether it runs at all for a level added after server
-   start. Waiting: ADR 0002's restore step, ADR 0007's ticket release. Before E3-S6a (#237), the restore,
+6. `TicketController`'s API, including when a controller's loading validation runs and whether it runs at
+   all for a level added after server start. The other half, whether
+   `ForcedChunkManager.activateAllDeactivatedTickets` is public, is settled: public and static, from its
+   call in `MinecraftServer.java` line 563 (section "Chunk ticket API and forced tickets after
+   createLevels"). Waiting: ADR 0002's restore step, ADR 0007's ticket release. Before E3-S6a (#237), the restore,
    and E10-S3 (#373), the Vault Anchor.
 7. Whether MixinExtras ships with NeoForge 26.1.2.95. Not needed: ADR 0008 (section "(c) MixinExtras") uses
    plain Mixin only. A later ticket that wants MixinExtras reads it then.

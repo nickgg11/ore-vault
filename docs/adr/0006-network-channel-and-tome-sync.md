@@ -1,6 +1,10 @@
 # 0006. The network channel and Tome sync
 
-Status: proposed, 2026-10-27, for E0-S9 (#183). Spec: §4.4, §6 Layout data and Saved state, §8, §9 FTB
+Status: accepted 2026-10-31 (E0-S9, #183), after the round 2 verdicts below; proposed 2026-10-27. Owed to
+E1-S5 (#195), read on Nick's PC before E7-S2a (#255): the NeoForge payload registration reads (client-only
+handler registration, `PayloadRegistrar#optional()`, decode failure) and whether registered payloads are
+held to vanilla's payload caps, with the `RegisterConfigurationTasksEvent` task API (sources doc "Still to
+read" items 5 and 16). Every bound below keeps a payload under vanilla's caps whatever that read finds. Spec: §4.4, §6 Layout data and Saved state, §8, §9 FTB
 Teams and FTB Ultimine, §3.5; `docs/TEAM_REQUIREMENTS.md` S25. Persisted shapes are ADR 0005's (E0-S8,
 #225, written in parallel); reset and vote rules are ADR 0007's (E0-S10, #258); the Seismic Sense map's
 storage is the ADR 0004 amendment's (E0-S12, #231). This record fixes only what crosses the wire.
@@ -527,4 +531,30 @@ part because the Tome draws from these payloads. Rulings are the Manager's triag
 - Also applied from the triage: Chapter's End outline at 600 ticks (Balancer, answering this record's
   open question 3).
 
-Round 2 verdicts go here.
+Round 2, 2026-10-31, against HEAD 0c5736c; ruled in the Manager's round 2 triage, with no round 3. Every
+round 1 objection above was reported resolved by the role that raised it.
+
+- Developer: approve. Checked DEV-14 (`nameToIdCache` in `Marks`) and DEV-15 (the `/orevault` root and
+  `reset vote` always registered, with ADR 0007) at their lines.
+- Reviewer: approve. Checked RV-15 (`SavedDataStorage#get`, defaults, size 1 on a first-ever join) and RV-16
+  (answered with RV-9 in ADR 0001), and the outbox drain against "at once on a level-up". ADR 0001 now runs
+  that drain last in one root `ServerTickEvent.Post` listener (DEV2-3), which is what keeps the promise.
+- QA: approve. Checked QA-18 to QA-20 (per-field bound gametests, the version golden test, the pure bucket
+  and coalescer with unit cases, the T7 steps and `canonicalHash` cases).
+- Writer: approve. Checked WRITER-1 (this record cites `docs/research/neoforge-26.1-sources.md`), WRITER-2
+  (the team anchor in `SelectEntryPoint`), WRITER-11 (only debug subcommands gated) and the raw id as
+  refusal argument 1.
+- UI-UX: approve with comments, screen-facing. Checked UIUX-10, 11 and 15 to 17 against `TripState`,
+  `chunkStamp` 3, `recentBonus`, the 40-tick pending clear and `PlayerView.outgrown`.
+  - UIUX-R2-1, Outgrown per viewer here and per team in spec §8: no change here. This record computes the
+    bit for the viewing player from their own `deepest_y`, which matches §6.1 Shallow Grace counting only
+    members inside; the Writer aligns §8 Tooltip and the class table (Manager, round 2).
+  - UIUX-R2-2, holding the last non-zero `recentBonus` segment on screen: deferred to E5-S11 (#281), a
+    client display rule set on the preview. Nothing on the wire changes.
+- Architect (read across ADRs 0001 to 0009): approve; `data.SyncOutbox`, the triggers and `chunkStamp` 3
+  read the same in every record.
+
+Deferred elsewhere and noted here because it would amend this record: PT-R2-2, a "N of 50 new chunks toward
+the next cache" line, needs one int in `TripState`. The Manager deferred it to E9-S33 (#338), whose
+amendment lists the Architect as reviewer of the ADR 0006 amendment that adds the field; adding it before
+release costs a `PROTOCOL_VERSION` bump and no save migration. Not changed now.

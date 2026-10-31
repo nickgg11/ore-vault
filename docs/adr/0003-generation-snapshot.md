@@ -1,6 +1,7 @@
 # 0003. The generation snapshot and the team effects view
 
-Status: proposed, 2026-10-27 (E0-S5, #186). Spec: §3.1 seeding, §6 Mod-gated nodes, §6.1 Volatile Veins and
+Status: accepted 2026-10-31 (E0-S5, #186), after the round 2 verdicts below; proposed 2026-10-27. No check
+is owed to a later story for acceptance; the tests and the S44 readout below land with the code that they test. Spec: §3.1 seeding, §6 Mod-gated nodes, §6.1 Volatile Veins and
 Molten Seam, §11 Dynamic Chunk Generator. `CLAUDE.md` technical rule 1. Settled decisions S13 and S15
 (`docs/TEAM_REQUIREMENTS.md`). Absorbs old #16.
 
@@ -301,3 +302,24 @@ Round 1, 2026-10-27. Each objection is marked fixed (what changed here), rebutte
   out.
   - BAL-6, "if ADR 0009 computes one factor per band": fixed. Two factors, stone and deepslate, each
     `min(1, 0.60 / densest)` as BAL-3 set it in ADR 0009.
+
+Round 2, 2026-10-31, against HEAD 0c5736c; ruled in the Manager's round 2 triage, with no round 3. Every
+round 1 objection above was reported resolved by the role that raised it, and nothing new was raised
+against this record.
+
+- developer: approve. Checked DEV-7 (the end-of-tick check counting non-spectator players, and spec §6.1
+  Volatile Veins) and DEV-8 (team level out of `GenSnapshot`, its table and the paragraph after it).
+- reviewer: approve. Checked RV-13 (`Map.copyOf`, `List.copyOf`) and RV-14 (apply before ADR 0002's
+  restore; only non-spectator players count) at their lines.
+- qa: approve. Checked QA-7 (the S44 snapshot readout), QA-8 (pure `core.gen` builders from plain values)
+  and QA-9 (10,000 seeds, three standard errors, salt isolation).
+- writer: approve. Checked that no bolded inline header or session-folder pointer is left. "Newly
+  explored" here means newly generated, the sense WRITER-21 keeps for "explored", so it stays.
+- balancer: approve. Checked BAL-6 (two factors, stone and deepslate).
+- architect (read across ADRs 0001 to 0009): approve; `GenSnapshot` without team level, `TeamEffects` on the
+  main thread and `data.SyncOutbox` read the same in every record.
+
+One change made elsewhere touches this record without changing it: ADR 0001 now places the two checks
+here (the empty-Vault apply at the end of each tick, the apply for every team at server start) in the root
+`ServerTickEvent.Post` and `ServerStartedEvent` listeners, in the order those listeners state (DEV2-3,
+RV2-2). The end-of-tick check stays in `vault`, as written above.

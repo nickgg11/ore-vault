@@ -1,7 +1,9 @@
 # 0005. Persisted data and versioning
 
-Status: proposed, 2026-10-27 (E0-S8, #225). Round 1 reviews are answered below; accepted once the matrix
-reviewers sign round 2. Spec: §3.2 Teleportation Logic, §4.3, §4.4, §6 Saved state,
+Status: accepted 2026-10-31, after the round 2 verdicts and the Manager's round-2 ruling (recorded under
+Reviews), on condition that the Reviewer, QA, the Developer and the Writer confirm the text of that ruling
+here (sections 2, 3, 3a and 6). If one does not, the record stays proposed on that item alone. Proposed
+2026-10-27 (E0-S8, #225). Spec: §3.2 Teleportation Logic, §4.3, §4.4, §6 Saved state,
 §6.1 (Vein Discipline, Wanderer's Cache, Homeward Seam, The Vault Keeps It, Seam Courier, Hoarder's
 Instinct, Travel stats, Ascending Edge), §8 Tab 3, §9 FTB Teams, §11 SavedData Pattern, Vault Session State
 and Resonance Orb Entity. `CLAUDE.md` technical rule 6. Settled decisions S16, S17, S18 and N1
@@ -80,7 +82,7 @@ Not in the decompiled Minecraft tree and so Unverified: to be read by E1-S5 (#19
   Wall-clock time is never stored.
 - UUIDs are stored as hyphenated strings, as map keys and as values. Node, skill and option ids are
   stored as their layout id strings. Dimension and block ids are stored as `Identifier` strings, the vein
-  index's ore palette among them (ADR 0004).
+  index's ore palette (ADR 0004) and the Vault type file's `variant` (section 3a) among them.
 - A position is `{dim, x, y, z}` where the dimension can vary, and `{x, y, z}` inside a shape that
   already names it.
 
@@ -93,6 +95,7 @@ Not in the decompiled Minecraft tree and so Unverified: to be read by E1-S5 (#19
 | Player data | NeoForge player attachment `orevault:player`, `copyOnDeath` (unverified API, E1-S5) | `data_version` |
 | Vein index and chunk fields | Chunk attachment `orevault:vein_index`, written only for the chunk being generated (ADR 0004 owns its fields, its block-id palette among them) | `data_version` |
 | Explored map | `SavedData` `orevault:explored_map` in the Vault level's own storage (`ServerLevel#getDataStorage()`): `<world>/dimensions/orevault/vault_<hex>/data/orevault/explored_map.dat`. Deleted, backed up and archived with the Vault folder (ADR 0004 Amendment 1 owns its fields) | `data_version` |
+| Vault type | Raw NBT file at the top of the Vault folder, outside the level's storage: `<world>/dimensions/orevault/vault_<hex>/orevault_vault.dat`. Written once when the folder is made; deleted, backed up and archived with it (section 3a) | `data_version` |
 | Tool counters | Item component `orevault:vault_tool` | `data_version` |
 | Wanderer's Cache tier | Item component `orevault:cache_tier` on the `orevault:wanderers_cache` item, an int | none (see 11) |
 | Attuned ore | Item component `orevault:attuned`, a marker with no fields | none (see 5) |
@@ -100,9 +103,20 @@ Not in the decompiled Minecraft tree and so Unverified: to be read by E1-S5 (#19
 | Max health | A permanent vanilla attribute modifier with the fixed id `orevault:travel_max_health`, saved by vanilla with the player | none; the id is the contract |
 | Anchor tickets | NeoForge `TicketController` storage, validated on load (§3.4) | none of ours; the count is derived |
 
-Where a `SavedData` goes follows what it describes. Data about a team, which outlives any one Vault, is in
-the server's storage, beside vanilla's other world-wide data. Data about one Vault's terrain is in that
-Vault level's storage, so it goes wherever the folder goes. Data about one chunk is on the chunk.
+Where data goes follows what it describes. Data about a team, which outlives any one Vault, is in the
+server's storage, beside vanilla's other world-wide data. Data about one Vault's terrain is in that Vault's
+folder, so it goes wherever the folder goes: the explored map in the level's storage, the Vault's type in
+the type file beside it. Data about one chunk is on the chunk.
+
+One path helper in `data`, `DataPaths` (final, static methods), gives the team file's path and the Vault
+type file's, so the write accessor, restore (ADR 0002) and ADR 0007's raw read never each rebuild them
+(DEV2-4). `SavedDataStorage#getDataFile` is private (`SavedDataStorage.java` line 65), so the team file is
+built from public parts the same way: `server.getWorldPath(LevelResource.DATA)` (`MinecraftServer.java` line
+2058, `LevelResource.java` line 15), then the id's namespace, then its path plus `.dat`, giving
+`<world>/data/orevault/team_<hex>.dat`. The type file is the Vault folder ADR 0002 names (what
+`DimensionType.getStorageFolder` makes of the key under the world root) plus `orevault_vault.dat`; the world
+root is the parent of the `DATA` path unless E1-S5 (#195) finds a root constant in `LevelResource`. The name
+parts (`team_<hex>`, `vault_<hex>`) come from `core.key.VaultKeys`.
 
 The `SavedData` id uses the team UUID without hyphens, the same form as the dimension key
 `orevault:vault_<teamUuidNoHyphens>`, so one pure function, `core.key.VaultKeys` (ADR 0001), parses both.
@@ -114,8 +128,10 @@ An unreadable team file is never overwritten. `get` returns null both for an abs
 failed to read (Context), so the one write accessor in `data`, when `get` returned null, checks whether the
 data file exists. If it does not, it creates the team as usual. If it does, it logs ERROR with the path,
 copies the file to `team_<hex>.dat.unreadable-<gametime>` beside it, and only then creates. Play goes on
-and the original bytes stay on disk for repair by hand. Restore (ADR 0002) uses the same check to tell an
-absent file from an unreadable one. The explored map gets a WARN and no copy (ADR 0004 Amendment 1).
+and the original bytes stay on disk for repair by hand. Restore (ADR 0002) and ADR 0007's pass use the same
+check to tell an absent file from an unreadable one; they log an unreadable one at ERROR and still restore
+the Vault, because its type is in its folder (section 3a). A damaged team file costs the team's progress,
+never its terrain. The explored map gets a WARN and no copy (ADR 0004 Amendment 1).
 
 ### 3. Team data
 
@@ -132,12 +148,16 @@ absent file from an unreadable one. The explored map gets a WARN and no copy (AD
 | `pinned_node` | node id | no pin | The team's shared pin (§8) |
 | `pinned_by` | UUID string | none | Who set it |
 | `bought_by` | {node id: UUID string} | empty | Who last bought each owned node |
-| `vault_variant` | dimension type id | `orevault:ore_vault` | The type the live Vault was created under. Saved because owning Vault Expansion is not the same as having an expanded Vault: the type changes only at a reset (§3.5). Restore reads it (old #93: restore hard-coded the base type and bedrock came back at Y=0) |
 | `vault_generation` | int | 0 | Reset count, + 1 per reset, part of every chunk seed (Q2, ADR 0003) |
 | `generation_tradeoffs` | list of node ids | empty | Applied state of Volatile Veins and Molten Seam (Q1, ADR 0003) |
 | `disbanded_at` | long, game time | not disbanded | Set by the FTB Teams delete event; the folder moves to the archive at the next start (ADR 0007) |
 | `pending_reset` | {`requested_at` long, game time; `backup` boolean} | no reset under way | Written and saved before a reset deletes anything, cleared in the same write that raises `vault_generation`; a start that finds it finishes the reset (ADR 0007). The start-of-server pass reads it from raw NBT, so the reader for this file must also work on a bare `CompoundTag`: the file's root is `{data: {...}, DataVersion}`, and the reader reads the `data` compound. "Saved at once" is `server.getDataStorage().saveAndJoin()` |
 | `player_stats` | {player UUID string: `PlayerStats`} | empty | One entry per player who has recorded anything for this team |
+
+The Vault's dimension type is not team data. It is in the Vault's folder (section 3a): owning Vault
+Expansion is not the same as having an expanded Vault, and the type changes only when a reset makes a new
+folder (§3.5). Team data had a `vault_variant` key until round 2 (2026-10-31); nothing was built with it,
+so its removal costs no migration.
 
 Nothing derived is stored. Not the current level, unspent points, any skill's tier, distances, the
 ticket count, the team's deepest Y, a chunk's completed veins or the team size. The current level is the
@@ -155,6 +175,34 @@ before scaling, so the double rounding stays within 0.001 (Balancer, round 1). S
 a sum of rounded per-level costs, so no drift builds up by level 30. The Resonance bar shows progress
 toward level `max(curve level, level_reached) + 1`.
 
+### 3a. The Vault type file
+
+One per Vault folder, at `<world>/dimensions/orevault/vault_<hex>/orevault_vault.dat`, outside the level's
+own `SavedDataStorage` (the folder's `data/`), so no `SavedData` holds a second copy. It is raw NBT read and
+written by `data.VaultTypeFile`, not a `SavedData`, so it can be read before the level exists. The root is
+the compound below, with no `data` wrapper.
+
+| Key | Type | Absent reads as | Meaning |
+|---|---|---|---|
+| `data_version` | int | 1 | Shape version (section 6), from the first build that writes the file; `migrate()` from version 1 |
+| `variant` | dimension type id | a refusal, never a default | `orevault:ore_vault` or `orevault:ore_vault_expanded`: the type this folder's Vault was made under (old #93: restore hard-coded the base type and bedrock came back at Y=0) |
+
+- Written once, by ADR 0002 creation step 2, when the folder is made (a team's first entry, or the
+  re-registration after a reset, ADR 0007 step 10), before the level is registered: to `orevault_vault.dat.tmp` in the folder, then
+  renamed onto the name with `Files.move(..., ATOMIC_MOVE)`. Never rewritten, since the type changes only
+  with a new folder.
+- Read before the level exists, by ADR 0002 creation step 2, which restore runs for every folder.
+- A missing file, one that cannot be read, and a `variant` that is absent or names neither type are each a
+  refusal: ERROR naming the path, the Vault is not registered, the portal says why, and nothing writes into
+  the folder (ADR 0002). Unlike every other shape's absent key this has no default, because a wrong guess
+  costs terrain. A folder holding only the temp file is a creation cut short and is treated as no folder.
+- A newer `data_version` loads best-effort with one WARN (section 6); a known `variant` is used.
+- Backed up, deleted and archived with the folder (ADR 0007), so a backup restored by hand comes back with
+  its own type.
+
+Which NBT read and write calls are used (`NbtIo`, or `SavedDataStorage#readTagFromDisk`, which takes a path,
+`SavedDataStorage.java` line 118) is Unverified: to be read by E1-S5 (#195).
+
 ### 4. `PlayerStats`
 
 Nested in the team's data, versioned on its own. Its lifetime: it survives logout, death and server
@@ -171,7 +219,7 @@ changes, so they find their old personal record again (§9).
 | `total_blocks_broken` | int | 0 | Calloused Hands |
 | `deepest_y` | int | never entered (no sentinel, no flag, S16) | Shallow Grace, Highwater Mark, team deepest Y (derived) |
 | `time_in_vault_ticks` | long | 0 | §8 stats |
-| `chunks_explored` | int | 0 | Wanderer's Cache (rule in ADR 0004 Amendment 1) |
+| `chunks_entered` | int | 0 | Wanderer's Cache (rule in ADR 0004 Amendment 1). Named for chunks walked into, since "explored" means generated elsewhere in the spec (§6.1 Seismic Sense; WRITER-21) |
 | `veins_completed` | int | 0 | §8 stats |
 | `vein_discipline_streak` | int | 0 | Vein Discipline (rule below) |
 | `deaths_in_vault` | int | 0 | §8 stats |
@@ -181,7 +229,7 @@ changes, so they find their old personal record again (§9).
 A counter from a machine break never moves (§3.4). The §8 post-1.0 stats (lifetime Resonance, Vault Echo
 triggers, mob kills, Animus) are not written in 1.0; each arrives later as an addition with a default.
 
-Which chunks `chunks_explored` counts, and which player each is credited to, is ADR 0004 Amendment 1's
+Which chunks `chunks_entered` counts, and which player each is credited to, is ADR 0004 Amendment 1's
 rule (chunks entered, Nick's answer of 2026-10-27); this record owns only the key.
 
 Vein Discipline (settled, E0-S13). The streak is `vein_discipline_streak` on `PlayerStats`, so it
@@ -215,8 +263,8 @@ death marker without editing offline players' files (ADR 0007).
 ### 6. Versioning rules
 
 - Each shape has its own `data_version`, and they move independently (old PR #111): team data,
-  `PlayerStats`, the player attachment, the chunk attachment, the explored map, `orevault:vault_tool` and
-  the orb entity. `orevault:attuned` has no fields and `orevault:cache_tier` is a bare int; if either ever
+  `PlayerStats`, the player attachment, the chunk attachment, the explored map, the Vault type file,
+  `orevault:vault_tool` and the orb entity. `orevault:attuned` has no fields and `orevault:cache_tier` is a bare int; if either ever
   gains a field, it becomes a record whose codec also reads the old form.
 - Every shape starts at 1. A tag with no `data_version` reads as 1: no build writes one without it,
   and pre-restart saves are not supported (N1). The last build's version 0 for unversioned tags is not
@@ -242,12 +290,12 @@ death marker without editing offline players' files (ADR 0007).
   `orevault:vein_index`, `orevault:vault_tool`, `orevault:attuned`, `orevault:cache_tier`, the dimension
   types `orevault:ore_vault` and `orevault:ore_vault_expanded`, the dimension key and `SavedData` id
   patterns, the `SavedData` id `orevault:explored_map`, the biome `orevault:vault`, the `TicketController` id, `orevault:travel_max_health`, and every
-  node, skill and option id in the layout (with the §6.1 reserved ids never reused). All of them are
-  string constants in one pure class (`core` has no Minecraft imports) that registration reads, pinned by a
-  golden JUnit test. Renaming a block or item id needs NeoForge's alias mechanism (unverified API, E1-S5);
+  node, skill and option id in the layout (with the §6.1 reserved ids never reused), and the Vault type
+  file's name `orevault_vault.dat`. All of them are string constants in one pure class (`core` has no
+  Minecraft imports) that registration reads, pinned by a golden JUnit test. Renaming a block or item id needs NeoForge's alias mechanism (unverified API, E1-S5);
   renaming any other id needs a migration.
 - Tests (S17). A golden key-set test per shape, the chunk attachment's including its `ores` palette of
-  block id strings (ADR 0004); a fixture of each shape at each version that loads; and an absent-field test
+  block id strings (ADR 0004) and the Vault type file's `{data_version, variant}`; a fixture of each shape at each version that loads; and an absent-field test
   per field reading its default. Wrong-type fixtures per key load to the default without throwing, at
   least `resonance_pool` as a string, `owned` as an int, `player_stats` as a list, and a palette entry that
   is not a string or names no registered block. Pure unit cases: 20 payments of 0.05 sum to exactly 1,000
@@ -259,9 +307,31 @@ death marker without editing offline players' files (ADR 0007).
 - A gametest is one server lifetime and `SavedDataStorage#get` cannot drop a cached entry, so the restart
   checks are a scripted dedicated-server stop and start (E3-S10, #200), comparing named fields from the S44
   debug dump before and after: team `SavedData`, the explored map, and the chunk attachment across unload
-  and restart. The same script covers the corrupt file: write garbage bytes to a team file, start, mine one
-  ore, and the original bytes are still on disk under the `.unreadable-` name. The player attachment across
-  death is a gametest if the test player respawns through `PlayerList#respawn`, otherwise a playtest step.
+  and restart. The player attachment across death is a gametest if the test player respawns through
+  `PlayerList#respawn`, otherwise a playtest step.
+- Damaged files, in the same script (QA's steps, Manager's round-2 ruling; a correct build passes them).
+  Case A needs an expanded Vault: use the S44 debug path if it can make one under the expanded type; until it
+  or a reset exists, case A runs on a base Vault and A4 and A6's deepslate checks are listed as unverified.
+  - Case A, a damaged team file: play goes on and the terrain is kept. (1) Make a team with an expanded
+    Vault, mine some ore, stop; note the team's level and the type file's content. (2) Overwrite
+    `<world>/data/orevault/team_<hex>.dat` with garbage bytes and record its SHA-256. (3) Start. Pass: one
+    ERROR naming the team file's path; the restore log lists this Vault restored under the expanded type; no
+    `.unreadable-` copy exists yet. (4) Log in and `/execute in orevault:vault_<hex> run tp @s 0 -30 0`.
+    Pass: deepslate there, not void. (5) Mine one ore. Pass: `team_<hex>.dat.unreadable-<gametime>` exists
+    with the recorded SHA-256; an ERROR names the path; the dump shows the team at level 0. (6) Back in the
+    Overworld, toggle a tradeoff or pin a node (a team write from outside the Vault). Stop, start. Pass: no
+    ERROR for the team file; restore lists the Vault under the expanded type; Y=-30 is still deepslate; the
+    ore mined in step 1 below Y=0 is still gone (the same chunks, not regenerated). Fail: any start restores
+    the Vault under the base type, or the original bytes are not on disk.
+  - Case B, a damaged Vault type file. (1) Stop; overwrite the type file with garbage bytes (and, as a
+    second run, delete it). (2) Start. Pass: an ERROR naming the type file; the Vault is not registered; a
+    player who logged out inside is placed at `return_pos` with a log line (ADR 0002 login case 1); the
+    portal refuses with the lang message; the folder's file list is unchanged. (3) Restart. Pass: the same,
+    nothing written. (4) Put the original file back and restart. Pass: the Vault restores under its type.
+  - Case C, a new Vault. A team with no Vault enters by portal. Pass: the type file exists, with
+    `data_version` 1 and the base type, before any region file is written (check the folder right after
+    entry). Creation itself writes no team data (S18); the team's file appears with its first recorded
+    field.
 
 ### 7. Load rules for the tree (§6)
 
@@ -325,6 +395,8 @@ tier 1.
 
 ## Consequences
 
+- A damaged team file costs the team's progress, never its terrain; a damaged Vault type file refuses that
+  Vault until an admin restores it (ADR 0002 Consequences, with the accepted residuals).
 - One table per shape is the contract the golden tests pin. A PR that changes one changes the table in
   §11, the fixture and the test together.
 - The pool's unit is thousandths: debug output and `/orevault` readouts divide by 1,000; an NBT editor
@@ -362,6 +434,16 @@ tier 1.
   has been written yet and pre-restart saves are not supported (N1), so choosing now costs nothing, while
   moving after T5 would be a file move with a migration. Settled in the cross-ADR pass of E0-S12;
   `CLAUDE.md` rule 6 is reworded to match.
+- The Vault's type as a team data key (`vault_variant`, the design until the round-2 ruling). After the
+  copy-aside a fresh team file has no variant, so at the next start an expanded Vault read as base and lost
+  its deepslate band (RV2-1, ARCH-R2-1). `CLAUDE.md` rule 6 puts a fact about one Vault's terrain in that
+  Vault's folder.
+- The type file as a `SavedData` in the Vault level's own storage. It must be read before the level, and so
+  its storage, exists, and a `SavedData` there would be a second holder of the same fact.
+- A default for an absent or unknown type. Every other absent key has one; this one does not, because base
+  read for an expanded Vault deletes its deepslate band as chunks load and save.
+- Dropping every write for a team whose file is unreadable (RV2-1's form). With no admin action the team is
+  locked out at every start, on its most-written file; the silent-failure class M2 refused, made permanent.
 - Refusing writes for a team whose file is unreadable, for the rest of the session (Reviewer, RV-1). It
   keeps the original bytes as the copy-aside does, but loses a whole session of play with nothing in game
   saying so, the silent-failure class `docs/LESSONS_LEARNED.md` lists (Manager's ruling, round 1).
@@ -371,12 +453,18 @@ tier 1.
 ## Spec sections changed
 
 §11 SavedData Pattern (the sketch becomes the key tables above; the key convention, the clock and the
-load rules), §8 Tab 3 ("New `PlayerStats` fields" names the keys, adds `chunks_explored`), §6 Saved state,
+load rules), §8 Tab 3 ("New `PlayerStats` fields" names the keys, adds `chunks_entered`), §6 Saved state,
 §3.1, §3.2, §3.5, §4.4, §6.1 (Shallow Grace, Calloused Hands, Kindred Rock, Highwater Mark, Wanderer's
 Cache, Vein Discipline, Seam Courier, Tempered, Ascending Edge), §9, §11 Vault Session State and §13 key
 names. Applied in the same PR (#160). E0-S18's
 answers (Q1 to Q4, Q14) and E0-S13's (streak, death marker) are already in the spec or in flight; this
 record matches them and only renames their keys.
+
+Round 2 (2026-10-31), applied by the Writer in the same PR: §11 SavedData Pattern (the team-data table
+loses `vault_variant`; the Vault type file is listed under per-Vault data with its two keys; "Loading never
+throws" gains the sentence that a damaged team file costs progress, never terrain), §11 Dimension-per-Team
+Registration (as ADR 0002 lists), §13 (the team data shell and the type file), and `chunks_explored`
+renamed `chunks_entered` in §6.1, §8 Tab 3 and §11.
 
 ## Reviews
 
@@ -413,3 +501,26 @@ balancer. Round 1, 2026-10-27; rulings are the Manager's triage of round 1.
 - balancer: approve with comments. Checked the pool unit, rounding error, overflow, `level_reached`, the
   clock constants and the stats reset on team change. BAL-7 (round once at pool entry; cumulative
   thresholds; the bar's target): fixed in section 3.
+
+Round 2, 2026-10-31, settled by the Manager's round-2 triage. Its section 1 ruling: the Vault's type moves
+into the Vault's folder and play goes on (option b of three; the spec's "play goes on" kept, `CLAUDE.md` rule
+6 as the source).
+
+- reviewer: block, on RV2-1 only. Checked round 1's RV-1 and RV-2 at their lines and the palette golden
+  test and wrong-type fixtures against section 6. RV2-1 (the copy-aside wrote a team file with no
+  `vault_variant`, so the next start opened an expanded Vault as base): answered by the ruling, not by the
+  change asked for (dropping every write for the team, now under Alternatives rejected). Team data loses
+  `vault_variant` (section 3), the type is in the folder (sections 2 and 3a), and case A step 6 of section
+  6 is the Reviewer's scenario. The Reviewer confirms the new text closes the overwrite across restarts.
+- developer: approve with comments. Checked `SavedDataStorage` `get`, `computeIfAbsent`, `saveAndJoin` and
+  `readTagFromDisk` as public. DEV2-4 (the team file's path is private to `SavedDataStorage`): fixed in
+  section 2, `data.DataPaths`, used by the accessor, restore and ADR 0007's raw read.
+- qa: request changes. Checked the corrupt-file step against ADR 0002's round-1 refusal. QA-39 (the step
+  failed on a correct build): merged in the ruling; section 6's damaged-file cases A, B and C replace it,
+  case C being new. QA confirms the steps.
+- writer: approve with comments. WRITER-21 (one word, two counts): fixed, the key is `chunks_entered` in
+  sections 4 and "Spec sections changed"; the Writer renames it in the spec and the log. WRITER-20 (raised
+  on ADR 0002): ruled in section 1; the Writer confirms the §11 text matches sections 2, 3 and 3a.
+- balancer: approve. Checked the pool unit and BAL-7 at its lines; nothing new.
+- architect: approve; consistent with ADRs 0001, 0003, 0006 and 0008 on every name checked. ARCH-R2-1
+  (raised on ADR 0002) is the source of section 3a.

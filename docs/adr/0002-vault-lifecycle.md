@@ -1,7 +1,8 @@
 # 0002. The Vault lifecycle: create, restore, unload and remove
 
-Status: proposed, 2026-10-27 (E0-S4, #223). Round 1 reviews are recorded below and their changes applied.
-Accepted once the level-unload spike (E3-S11, #245) is written into the pending section below and the
+Status: proposed, 2026-10-27 (E0-S4, #223). Round 1 and round 2 reviews are recorded below and their
+changes applied, round 2 by the Manager's ruling of 2026-10-31 (the Vault's type moves into the Vault's
+folder). Accepted once the level-unload spike (E3-S11, #245) is written into the pending section below and the
 matrix reviewers have signed. Spec: §3.1, §3.2 Teleportation Logic, §3.5, §11 Dimension-per-Team
 Registration; S14, S19 (`docs/TEAM_REQUIREMENTS.md`).
 
@@ -109,14 +110,18 @@ Two classes in `vault` (ADR 0001's package table) own the lifecycle.
   `markWorldsDirty()` (old #93: without it a stale cached array keeps ticking a removed level). Both run on
   the server thread. The Reviewer's ArchUnit set gains a rule that no other class calls either method.
 - `VaultDimensions` holds `findOrCreate(teamId)` (the portal path, and the only creator of a new Vault),
-  `restoreAll(server, resetTeamIds)` (start), `unload(teamId, reason)` (removal, below), the in-memory maps
-  keyed by team (dimension key, variant, generator), and the session's set of teams whose data file was
-  unreadable at restore. Snapshot holders belong to ADR 0003; this class asks for them and clears them.
+  `restoreAll(server, resetTeamIds)` (start), `unload(teamId, reason)` (removal, below) and the in-memory maps
+  keyed by team (dimension key, variant, generator). It holds no per-session list of refused teams: whether a
+  Vault can open is read from its folder each time (creation step 2). Snapshot holders belong to ADR 0003;
+  this class asks for them and clears them. The Vault type file is read and written by `data.VaultTypeFile`
+  (ADR 0005 section 3a), at the path `data.DataPaths` gives (ADR 0005 section 2).
 
 The key and folder-name functions are pure and live in `core.key.VaultKeys` (ADR 0001), the one function
 that parses both the Vault dimension key and the team save-file id (ADR 0005): `dimensionPath(UUID)` gives
-`vault_<32 hex>`, and `teamIdFromDirectoryName(String)` gives the UUID or nothing. Unit cases (QA-5): a round trip; upper-case hex
-rejected; 31 and 33 hex digits rejected; a hyphenated name rejected.
+`vault_<32 hex>`, and `teamIdFromDirectoryName(String)` gives the UUID or nothing. Unit cases (QA-5): a
+round trip; upper-case hex rejected; 31 and 33 hex digits rejected; a hyphenated name rejected;
+`vault_<32 hex>.deleting` rejected, since a leftover of ADR 0007 step 8 is the one name restore must never
+register.
 
 ### Dimension key and folder, frozen as save data
 
@@ -129,6 +134,11 @@ store the key in `Dimension`, `return_pos` and entry points store it (ADR 0005),
 the folder. The scheme never changes without a migration that renames folders. For a solo player the hex
 is the player's own UUID, since FTB Teams uses it as the personal team id.
 
+The folder also holds the Vault's type: `orevault_vault.dat`, `{data_version, variant}`, written once when
+the folder is made and never rewritten (ADR 0005 section 3a). It sits at the folder's top level, outside the
+level's own `data/` storage, and goes wherever the folder goes: backup, delete and archive (ADR 0007). The
+file name is save data, frozen with the key.
+
 Restore maps a folder back to a team by matching `^vault_[0-9a-f]{32}$` and re-inserting hyphens at 8, 12,
 16 and 20 before `UUID.fromString`, as `VaultDimensions#teamIdFromDirectoryName` did at 9e9d8ae. A name that
 matches always parses. A name that does not match is not ours: logged at WARN and skipped.
@@ -139,10 +149,24 @@ On the server thread, in this order. Steps marked (aa431c6) worked in the first 
 the other marks say where they came from.
 
 1. If `server.getLevel(key)` is present, record it and return (idempotent).
-2. On the portal path only: if the team is in the session's unreadable set (restore, step 4), refuse entry
-   with a message and log at ERROR (below). Then read the team's `vault_variant` (ADR 0005), base when
-   absent. On a new Vault, write `vault_variant` to the team's data now, so every Vault on disk has team
-   data to restore from.
+2. Take the variant from the Vault's folder (round 2 ruling; `CLAUDE.md` rule 6: the type is a fact about
+   the Vault's terrain).
+   - No folder (a team's first entry, or the re-registration after a reset deleted the old folder, ADR 0007
+     step 10, live or through restore's `resetTeamIds`): the variant is expanded if the team owns Vault
+     Expansion and base otherwise (§3.5 step 5), read through ADR 0005's read path, so a team with no data,
+     or an unreadable file, owns nothing and gets base. Create the folder and write the type file there, a
+     temp file renamed into place, before any later step, so no Vault folder exists without one. Creation
+     writes no team data (S18 holds).
+   - A folder that holds nothing but a leftover temp file of that write: a creation cut short before the
+     rename, which wrote no chunk. It is treated as no folder: the temp file is deleted and the type file
+     written.
+   - The folder exists: read the type file and use its `variant`. If the file is missing, cannot be read, or
+     names neither `orevault:ore_vault` nor `orevault:ore_vault_expanded`, log at ERROR naming the path,
+     register nothing and return. On the portal path the player is refused entry with a message (a lang
+     key, the Writer's). Nothing writes into that folder and nothing guesses a type, because the file is the
+     only record of it. Nothing is cached either: each attempt reads the file again, so an admin who puts
+     the file back has the Vault at the next attempt.
+   A failed write of the type file is logged at ERROR with the path and refuses entry the same way.
 3. Fill the team's generation snapshot holder and the main-thread effects view (ADR 0003) from the team
    data, before the generator is built. The old code did this as its first act
    (`refreshSkillSnapshot(server, teamId)` in `ensureTeamDimension`, 1e7cdad).
@@ -175,21 +199,28 @@ the other marks say where they came from.
     `saved.activateAllDeactivatedTickets()`, then
     `ForcedChunkManager.activateAllDeactivatedTickets(level, saved)`. On restore this brings back
     `/forceload` chunks and the mod's Vault Anchor tickets; on a new Vault or the re-registration after a
-    reset there is no ticket file and it does nothing. Unverified: to be read by E1-S5 (#195), before
-    E3-S6a (#237) and E10-S3 (#373): whether `ForcedChunkManager.activateAllDeactivatedTickets` is public,
-    and when NeoForge runs a `TicketController`'s validation callback for a level added after start (at
-    `readStoredTickets` during the `ServerLevel` constructor, at activation, or never). If it never runs
-    for such a level, the Vault Anchor's own validation (§3.4) is called from this step.
+    reset there is no ticket file and it does nothing. `ForcedChunkManager.activateAllDeactivatedTickets`
+    is public and static: `MinecraftServer#prepareLevels` calls it from `net.minecraft.server`
+    (`MinecraftServer.java` line 563) on a class in `net.neoforged.neoforge.common.world.chunk` (DEV2-5).
+    Unverified: to be read by E1-S5 (#195), before E3-S6a (#237) and E10-S3 (#373): when NeoForge runs a
+    `TicketController`'s validation callback for a level added after start (at `readStoredTickets` during
+    the `ServerLevel` constructor, at activation, or never). If it never runs for such a level, the Vault
+    Anchor's own validation (§3.4) is called from this step.
 14. Record key, variant and generator in the team maps; log the key, the dimension type, the Y range, the
     team and the server tick (aa431c6 logged the same; the tick is what found #89).
 
 ### Restore (`restoreAll`, in `ServerStartedEvent`)
 
 `ServerStartedEvent` returns before the tick loop runs, so before any login is placed (read above). The
-listener runs, in order: the start-of-server pass of ADR 0007 (archive moves and the deferred resets), the
-ore classifier, the pending generation-tradeoff changes of ADR 0003 (applied first, so the snapshot that
-restore fills reads the applied state), then the restore. ADR 0007's pass hands the restore the list of
-team ids whose reset it finished at this start (`resetTeamIds`).
+root listener (the `ServerStartedEvent` listener in the root package, ADR 0001's root row; RV2-2) calls, in
+order: the start-of-server pass of ADR 0007 (`vault`: archive moves and the deferred resets), the ore
+classifier (`ore`), the pending generation-tradeoff changes of ADR 0003 (applied first, so the snapshot that
+restore fills reads the applied state), then the restore (`vault`). It sits in the root package because
+`vault` does not import `ore`. ADR 0007's pass hands the restore the list of team ids whose reset it
+finished at this start (`resetTeamIds`).
+
+A Vault's type comes from its own folder, never from team data. Team data is read only for `disbanded_at`,
+and a team file that is absent or unreadable does not stop a Vault from being restored.
 
 1. Collect the team ids to restore: every directory under `<world>/dimensions/orevault/` whose name
    parses (above; a name that does not is logged at WARN and skipped), together with every id in
@@ -198,22 +229,24 @@ team ids whose reset it finished at this start (`resetTeamIds`).
    at the team anchor (login case 3), not sent home. If there is no folder and the list is empty, there
    is nothing to restore.
 2. For each team id, in its own `try`/`catch` so one failure never stops the others (9e9d8ae): read the
-   team's data for `vault_variant` and `disbanded_at` through `SavedDataStorage#get` (ADR 0005's read
-   path, never `computeIfAbsent`). The pass of ADR 0007 has already finished with any file it moves.
-3. Team data absent (`get` returned `null` and `<world>/data/orevault/team_<hex>.dat` does not exist):
-   restore under the base variant. That is a Vault entered before any write; step 2 of creation makes it
-   rare.
-4. Team data unreadable (`get` returned `null` and the file exists; M2): log at ERROR with the folder and
-   the file path, skip, and add the team to the session's unreadable set. The folder is not touched. A
-   player inside it is caught by the login check below. Creation step 2 refuses the team's portal entry
-   for the rest of the session, rather than build the level under a guessed variant: an expanded Vault
-   opened as base has no Y range below 0 for its deepslate. The copy-aside of ADR 0005 keeps the original
-   bytes; an admin who restores the file and restarts gets the Vault back.
+   team's data for `disbanded_at` only, through `SavedDataStorage#get` (ADR 0005's read path, never
+   `computeIfAbsent`). The pass of ADR 0007 has already finished with any file it moves.
+3. Team data absent (`get` returned `null` and the file at `data.DataPaths`' team path does not exist): not
+   disbanded. That is a Vault entered before the team recorded anything; it restores like any other.
+4. Team data unreadable (`get` returned `null` and the file exists; M2): log at ERROR naming the file's
+   path, and go on: the Vault is restored under its own type file (step 6). The team file is not touched
+   here; ADR 0005's copy-aside keeps its bytes at the team's first write. The team's progress in that file
+   is lost to play until it is repaired by hand; the terrain is not.
 5. `disbanded_at` set: skip (S19). ADR 0007's pass has normally moved it already; this is the guard for a
    move that failed.
-6. Otherwise `ensureTeamDimension(server, teamId, variant)`, which fills the snapshot holder (creation step
-   3) before the level exists and so before it ticks, and reactivates its tickets (creation step 13).
-7. Log the count restored and the count skipped.
+6. Otherwise `ensureTeamDimension(server, teamId)`. Its step 2 reads the type from the folder's type file,
+   read raw before the level exists; for an id on `resetTeamIds` with no folder it computes the variant
+   from ownership and writes the new folder's type file. It fills the snapshot holder (creation step 3)
+   before the level exists and so before it ticks, and reactivates the level's tickets (creation step 13).
+   A type file that is missing, unreadable or names an unknown type is logged at ERROR naming its path
+   (creation step 2); the Vault is not registered and counts as skipped, and a player who logged out inside
+   it is caught by login case 1.
+7. Log the count restored and the count skipped, and the reason for each skip.
 
 A solo player who is in a party keeps their solo Vault on disk and it is restored like any other: its team
 id is still the player's personal team, which FTB Teams never deletes. The cost is one `ServerLevel` per
@@ -329,8 +362,12 @@ accepted. Disband never unloads at run time in either branch (S19, §3.1).
 with two lines in QA's regression list, both required on any PR that changes `neo_version`:
 
 - Headless, scripted on a dedicated dev server (E3-S10, #200): create a Vault by debug command after the
-  first tick, stop, start, run `/execute in orevault:vault_<hex>` from the console before anyone connects,
-  and a gametest mock player breaks a block in it.
+  first tick, stop, start, and run `/execute in orevault:vault_<hex>` from the console before anyone
+  connects. Then an S44 debug command breaks a block at a given position in the Vault through a fake
+  `ServerPlayer`'s `gameMode.destroyBlock` and prints whether the block is gone, and the level's tick logger
+  (the E3-S11 spike's `LevelTickEvent` listener) logs lines for the key (QA-38). That a Vault created after
+  the first tick ticks at all stays a gametest (QA T3): a gametest is one server lifetime and cannot act in
+  the restarted server.
 - In a client, once per bump: log out inside a Vault, restart the server, log in, and land where you
   logged out (S14).
 
@@ -338,10 +375,17 @@ with two lines in QA's regression list, both required on any PR that changes `ne
 
 - `VaultKeys` unit cases (above).
 - A restore fixture for T3, a scripted dedicated-server start (E3-S10, #200) against a prepared world with
-  one good Vault folder, one `vault_zzz` and one whose team file is garbage bytes. Pass: one restored; the
-  log has a WARN naming `vault_zzz`, an ERROR naming the garbage file's folder and path, and "restored 1,
-  skipped 2"; the garbage file's bytes are unchanged on disk. A second case adds a team id to
-  `resetTeamIds` with no folder and expects that Vault registered.
+  six folders: (a) a base Vault with its type file and team file; (b) an expanded Vault with its type file
+  and a team file of garbage bytes; (c) `vault_zzz`; (d) a Vault whose type file is garbage bytes; (e) a
+  Vault with region files and no type file; (f) a Vault whose type file names `orevault:nonsense`. Pass: (a)
+  and (b) restored, (b) under the expanded type; a WARN naming `vault_zzz`; one ERROR naming (b)'s team file
+  path; one ERROR naming the type file path of each of (d), (e) and (f); "restored 2, skipped 4" with a
+  reason per skip; the bytes of (b)'s team file and of (d) and (f)'s type files unchanged, and the file
+  lists of (d), (e) and (f) unchanged. Second case: a team id on `resetTeamIds` with no folder is
+  registered, and its new folder holds a type file with `data_version` 1 and the variant its ownership
+  gives. Third case: a folder holding only the type file's temp file is restored as a new Vault, the temp
+  file gone and the type file written. The end-to-end cases (a damaged team file across two restarts, a
+  damaged type file, a new Vault) are ADR 0005 section 6's.
 - Login case 1 is checked by renaming a Vault folder while the server is down and logging in. Case 2 is a
   T11 step: two dev clients, one leaves the party while inside (E11-S8, #301). Case 3 is ADR 0007's T11
   step (QA-24).
@@ -359,10 +403,17 @@ with two lines in QA's regression list, both required on any PR that changes `ne
   wrong either way, the failure is a compile error or a stray AT line at one place, never a runtime one.
 - The login check makes every restore failure recoverable, so restore can skip a bad folder instead of
   failing the start.
-- A team whose data file is unreadable at start cannot enter its Vault that session. It is told so, and
-  the log names the file. Opening the Vault under a guessed variant could lose terrain, which is worse.
-- Writing `vault_variant` at creation makes the first portal trip a team's first data write (S18 still
-  holds: nothing is written at team creation).
+- A damaged team file costs the team's progress, never its terrain; a damaged Vault type file refuses that
+  Vault until an admin restores it. The type file is written once and never rewritten, so a cut autosave,
+  the usual cause of a damaged team file, cannot reach it.
+- Accepted residuals of an unreadable team file, all logged at ERROR. ADR 0007's start-of-server pass cannot
+  see its `pending_reset` or `disbanded_at` and does nothing for that team, so the Vault restores as it is
+  on disk; a disbanded party has no members, so login case 2 sends anyone inside out. A reset cut between
+  ADR 0007 steps 8 and 9 whose team file is then also unreadable makes the next Vault from generation 0's
+  seed; that needs two faults at once. After the copy-aside the team's `vault_generation` reads 0, so chunks
+  generated from then on are seeded as generation 0, while the chunks on disk are unchanged.
+- Creation writes no team data, so S18 holds (nothing is written at team creation) and a team that enters
+  and never records anything has a Vault folder and no team file. Restore needs none.
 - Removal exists in code only if the spike passes. If it fails, the reset path loses its live branch, and
   nothing else changes.
 - Restored Vaults keep their forced chunks across a restart, which §3.4 promises for Vault Anchors.
@@ -383,8 +434,17 @@ with two lines in QA's regression list, both required on any PR that changes `ne
   ids of later entries would shift.
 - Draining the chunk map in a loop inside one tick, as `stopServer` does after its tick loop: it blocks the
   server, or cannot wait for the next tick at all (DEV-5).
-- Restoring a Vault whose team file is unreadable under the base variant: wrong for an expanded Vault, and
-  the cost lands on the terrain.
+- Restoring a Vault whose type file is missing or unreadable under the base variant, or any guessed one:
+  wrong for an expanded Vault, and the cost lands on the terrain.
+- The variant in team data (`vault_variant`, the round 1 design). After ADR 0005's copy-aside the fresh team
+  file has no variant, so at the next start an expanded Vault reads as base and loses its deepslate band
+  (RV2-1, ARCH-R2-1). The type is a fact about the terrain, and `CLAUDE.md` rule 6 puts that in the Vault's
+  folder.
+- Refusing a team's Vault for the session when its team file is unreadable (the round 1 fix, removed in round
+  2). It held for one session only, since any write from outside the Vault recreated the team file, and it
+  contradicted §11 "Loading never throws" and `DESIGN_LOG.md` ("play goes on"). Dropping every write for such
+  a team (RV2-1's form) was rejected too: it locks the team out at every start until an admin acts, on the
+  file most exposed to a power cut.
 - Letting a player who changed team stay in the old team's Vault with only a message: their breaks would
   pay a team they are not in, or none (§3, §9 Q3).
 - Archiving a solo Vault when its player joins a party (the conditional in DESIGN_LOG 2026-10-27): FTB Teams
@@ -399,6 +459,14 @@ removed), §3.4 (forced tickets persist across restarts because restore reactiva
 pays only that Vault's team), §13 Chunk Loading (ticket reactivation, E10-S3), §3.1, §3.5 and §11 (the team
 anchor (X=0, Z=0) as the one name for the arrival point) and §9 FTB Teams (the solo Vault in a party).
 Applied in the same PR (#160).
+
+Round 2 (2026-10-31), applied by the Writer in the same PR from this record and ADR 0005: §11 SavedData
+Pattern (team data loses `vault_variant`; the Vault type file under per-Vault data; "Loading never throws"
+says a damaged team file costs progress, never terrain), §11 Dimension-per-Team Registration (Eager restore
+reads the type from the Vault's folder and `disbanded_at` from team data, and a folder whose type file is
+missing or unreadable is logged and skipped with the portal saying why; the sentence on restoring under the
+base type and creation writing `vault_variant` is removed), §13 (the team data shell and the Vault type
+file), and the lang key for the refusal.
 
 ## Reviews
 
@@ -431,3 +499,33 @@ ticket adds writer. Round 1, 2026-10-27, settled by the Manager's triage. Round 
   PR". WRITER-2: fixed, "the team anchor (X=0, Z=0)" in login case 3. WRITER-3: fixed, one level (WARN) for
   a name that does not match, and the "does not parse" branch is gone from restore.
 - architect (E0-S2 review, ARCH-3, the same finding as RV-6): fixed with RV-6.
+
+Round 2, 2026-10-31, settled by the Manager's round-2 triage (section 1 ruling and section 2), every item
+answered by a fix in this record unless named otherwise.
+
+- developer: approve with comments. Checked removal steps 2 to 4 against the tree (`chunkMap`, `hasWork`,
+  `deactivateTicketsOnClosing`, `TicketStorage.TYPE`), the `SavedDataStorage` public methods and the
+  `.deleting` rename as plain `Files` work. DEV2-4 (the team file's path is private to `SavedDataStorage`):
+  fixed in ADR 0005 section 2, `data.DataPaths`, used here by restore step 3. DEV2-5
+  (`ForcedChunkManager.activateAllDeactivatedTickets` is public): fixed, creation step 13 keeps
+  "unverified" for the validation timing only.
+- reviewer: approve with comments. Checked round 1's RV-3, RV-6, RV-7, RV-8 and RV-14 at their lines, and
+  ticket reactivation against the reset path. RV2-1 (raised on ADR 0005; an unreadable team's fresh file
+  reopened the expanded-as-base loss at the next start): answered by the Manager's section 1 ruling, a
+  different fix from the one asked for. The variant is in the Vault's folder (folder section, creation step
+  2), restore reads team data only for `disbanded_at` (restore steps 2 to 4), and the unreadable set is
+  gone; the Reviewer confirms against case A step 6 of ADR 0005 section 6. RV2-2 (the start listener
+  cannot be in `vault`): fixed, the restore intro names the root listener.
+- qa: approve with comments. Checked the spike's pass/fail rules, the two regression lines, the
+  `VaultKeys` cases, the restore fixture and the ticket check. QA-38 (a gametest player cannot act in the
+  restarted server): fixed in "NeoForge bumps", the S44 break command and the tick logger; `qa.md` takes the
+  same wording (Manager, WP-R2-6). QA-39 (raised on ADR 0005): merged in section 1; the restore fixture
+  under Tests now covers each type-file state.
+- writer: request changes. Checked the unreadable-file behaviour against §11 "Loading never throws",
+  Eager restore and `DESIGN_LOG.md` row 32. WRITER-20 (spec and record disagree; no lang key): ruled in
+  section 1. The record now says play goes on; the one remaining refusal (a missing or unreadable type
+  file, creation step 2) takes a lang key worded by the Writer, and the §11 lines are listed under "Spec
+  sections changed".
+- architect: request changes. ARCH-R2-1 (the session unreadable set held for one session only): fixed, by
+  the design proposed there and ruled in section 1. Addition 2 (b): fixed, the `.deleting` `VaultKeys`
+  case.

@@ -348,3 +348,20 @@ changed here).
   - WRITER-1, pointer to a session file: fixed. "Applied in the same PR."
   - Status read "accepted" with an empty Reviews block: fixed. The status now says accepted after these
     verdicts, the rule ADRs 0002, 0004 and 0007 state.
+
+Round 2, 2026-10-31, against HEAD 0c5736c, as the confirmation round 1 asked for; ruled in the Manager's
+round 2 triage, with no round 3. Status unchanged: accepted 2026-10-27, with the three first-load checks still
+owed to E9-S7 (#311).
+
+- developer: approve. Checked DEV-18 (`EventPriority.LOWEST`, cancelled events skipped) and DEV-19 (the
+  survival gametest player) at their lines.
+- reviewer: approve. Checked RV-17 (same change as DEV-18) and RV-18 (`WearScope` cleared on
+  `ServerStoppedEvent`).
+- qa: approve. Checked QA-25 (order pinned in `WearRules` unit tests with a seeded source; three
+  deterministic gametest cases) and QA-26 (the gametest player and its `hasInfiniteMaterials()` assertion).
+- writer: approve. Checked the status line against the Reviews block and the session-folder pointer.
+- architect (read across ADRs 0001 to 0009): approve; `core.wear.WearScope` and ADR 0001 named rule 8 agree.
+
+One change made elsewhere touches this record without changing it: ADR 0001 now runs `WearScope`'s
+end-of-tick clearing and the Kit Care tiers from the root `ServerTickEvent.Post` listener, after the
+`vault` jobs and before the `SyncOutbox` drain (DEV2-3). The mixin and `WearRules` are unaffected.

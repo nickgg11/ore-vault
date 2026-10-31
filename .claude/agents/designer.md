@@ -63,17 +63,21 @@ are the UI/UX lead's; these are the rules your art has to serve:
 - A frame around an icon, never a busy fill. Every state carries a badge shape or a luminance step that no
   other state uses; hue is only a second signal, so every state survives greyscale (S33). Out of reach:
   frame and icon dimmed, no badge. Outgrown: owned frame kept at full luminance, icon desaturated, an
-  Outgrown badge. Inert fork parent: owned frame with a hatched overlay (a pattern, not a colour) and a "no
-  option" badge.
+  Outgrown badge; on an unowned node, the Outgrown badge with no desaturation (DES-R2-4, final on the
+  E8-S5 preview). Buyable and in reach differ only by the buyable outline, one texel outside the frame and
+  brighter than any frame, so that pair is checked in greyscale. Inert fork parent: owned frame with a
+  hatched overlay (a pattern, not a colour) and a "no option" badge.
 - Icon art legible from effective scale 1 (zoom times GUI scale) upward; at 0.2x, class (by size and frame
   silhouette) and owned or not are still told apart. No 16-texel drawing keeps its detail at 3.6 GUI units,
   so the 0.2x bar is class and ownership, not detail.
 
 Process: the UI/UX lead's layout file says where each node is and what class it has. You supply an icon per
-skill, travel stat, notable, pact and keystone, one icon per fork option (drawn at petal size and reused as
-the badge on its parent's nodes once chosen, §8), a frame per class and its state treatments, the page, the
-badges and the colour scheme, so that `tools/tree-preview` renders the real art at the real sizes. Nick
-approves that preview before renderer code is written.
+skill, travel stat, notable, pact and keystone; for each fork option two drawings of the same motif, the
+12-unit petal icon and a 9x9 badge on the badge sheet shown on its parent's nodes once chosen (§8; pixel art
+is not scaled, so the badge is redrawn, not shrunk; ten option badges on the current layout); a frame per
+class, a buyable outline per frame size, the state treatments, the page, the badges and the colour scheme, so
+that `tools/tree-preview` renders the real art at the real sizes. Nick approves that preview before renderer
+code is written.
 
 ## What you review in others' work
 

@@ -1,6 +1,8 @@
 # 0001. Toolchain, package layout and architecture rules
 
-Status: proposed, 2026-10-27, for T1 (E0-S3, #179). Spec: §2; `CLAUDE.md` Build and technical rules 1, 3, 4
+Status: accepted 2026-10-31 (E0-S3, #179), after the round 2 verdicts below; proposed 2026-10-27. One
+check is still owed to T1 (E1-S1, #188): that the pinned ArchUnit release reads Java 25 class files, shown by
+the main architecture test importing more than zero classes (pin table, Architecture rules). Spec: §2; `CLAUDE.md` Build and technical rules 1, 3, 4
 and 5; settled decisions S15, S42 and S43 in `docs/TEAM_REQUIREMENTS.md`.
 
 ## Context
@@ -89,12 +91,12 @@ Minecraft-facing adapters. They hold as little logic as they can and call into `
 
 | Package | Holds | May import |
 |---|---|---|
-| root | `OreVault`, the `@Mod` entry; wires the mod bus and `NeoForge.EVENT_BUS` (rule 3) | MC, core, every adapter except `client`; `integration.*` only through its entry class, after the `isLoaded` check |
+| root | `OreVault`, the `@Mod` entry; wires the mod bus and `NeoForge.EVENT_BUS` (rule 3); the two ordering listeners, `ServerStartedEvent` and `ServerTickEvent.Post` (below) | MC, core, every adapter except `client`; `integration.*` only through its entry class, after the `isLoaded` check |
 | `registry` | `DeferredRegister` holders, data components, attachments, tags, creative tab | MC, core, `vault`, `mining` (the blocks, items and entities it registers) |
 | `team` | `TeamHelper` and the FTB Teams event listeners | MC, `dev.ftb.mods.ftbteams..`, core, `data`, `vault` |
 | `data` | `OreVaultTeamData`, `PlayerStats`, the per-Vault explored map `SavedData` (ADR 0004 Amendment 1), attachment codecs other than the vein index's, migrations; `GenSnapshots`, the holders and the main-thread code that reads team data into plain values and calls `core.gen`'s builders (ADR 0003); `SyncOutbox`, the outbound sync set (below) | MC, core. Never `team`: a rebuild takes the team's member list and online members as values from its caller |
 | `ore` | `OreClassifier`: reads `#c:ores` and the placed features at server start and publishes an immutable `OreTable` (ADR 0009) | MC, core |
-| `vault` | `VaultLevels` (the one world-map insert, with `markWorldsDirty()`), `VaultDimensions` (find-or-create, restore, archive), `VaultFolders` and the start-of-server pass (ADR 0007), the Vault `ChunkEvent.Load` listener (vein index settle, explored map, `chunks_explored` credit; ADR 0004 Amendment 1), the end-of-tick empty-Vault check that applies a pending generation vote (ADR 0003), teleport, the portal and frame blocks, the igniters, the layer config (ADR 0002) | MC, core, `data`, `worldgen`, `worldgen.index`, `team`, `registry` |
+| `vault` | `VaultLevels` (the one world-map insert, with `markWorldsDirty()`), `VaultDimensions` (find-or-create, restore, archive), `VaultFolders` and the start-of-server pass (ADR 0007), the Vault `ChunkEvent.Load` listener (vein index settle, explored map; ADR 0004 Amendment 1), the end-of-tick empty-Vault check that applies a pending generation vote (ADR 0003), the end-of-tick chunk entry check that sets a chunk's `entered` flag and credits `chunks_entered` (ADR 0004 Amendment 1, Nick 2026-10-27), teleport, the portal and frame blocks, the igniters, the layer config (ADR 0002) | MC, core, `data`, `worldgen`, `worldgen.index`, `team`, `registry` |
 | `worldgen` | `VaultChunkGenerator` and its codec | MC, core, `ore`, `worldgen.index`; never `data` or `team` |
 | `worldgen.index` | The `orevault:vein_index` chunk attachment: its record, its codec and its `AttachmentType` holder in its own `DeferredRegister`, registered on the mod bus from the `@Mod` constructor (ADR 0004 "The attachment"). A leaf, so the generator can call `setData` on the `ProtoChunk` without reaching `registry`, which reaches `data` through `vault`. The same leaf holds the map value type if ADR 0004 takes its Result B | MC, `core.vein` |
 | `mining` | The single `BlockDropsEvent` listener (§11 Drop Pipeline), the orb entity, the award, stat recording, vein index updates, filling `core.wear.WearScope` | MC, core, `data`, `ore`, `team`, `registry`, `worldgen.index` |
@@ -112,7 +114,7 @@ Outbound sync goes through one pattern. `team`, `mining` and `vault` never impor
 them changes something a client shows, it records what changed in `data.SyncOutbox`, a main-thread set of
 entries keyed by team or player and payload kind (a team's `TreeState`, `TeamProgress` or `ResetVoteState`
 is stale, a player's `EntryPoints` is stale, a player has a `VeinOutline` waiting with its positions), and returns.
-`network` drains the outbox at the end of the server tick, builds each payload once from the current state
+`network` drains the outbox at the end of the server tick, last in the root tick listener (below), builds each payload once from the current state
 and sends it (ADR 0006 Triggers). The triggers that use it are the ones raised outside `network`: a member's
 team change (`team`), Resonance gain, a level-up and a vein outline (`mining`), and a pending generation
 vote applied in an empty Vault (`vault`). A level-up's `TeamProgress` still reaches the client in the tick
@@ -120,6 +122,21 @@ it happens, so ADR 0006's "at once on a level-up" holds. `reset`, `chunkload`, `
 `network` directly, as their row allows; mutations `network` itself accepts or refuses resync in the
 handler. Several changes in one tick then cost one payload, which is also what the 10-tick coalescing of
 `TeamProgress` needs.
+
+Two listeners in the root package fix an order that no single adapter can, because each calls jobs in
+more than one package. The root row may import every adapter except `client`, so neither widens another
+row (Reviewer RV2-2, Developer DEV2-3, round 2).
+
+- The `ServerStartedEvent` listener calls, in order: the start-of-server pass (`vault`, ADR 0007), the ore
+  classifier (`ore`, ADR 0009), the pending generation-tradeoff changes (ADR 0003), then the restore
+  (`vault`, ADR 0002). `vault` does not import `ore`; the order lives here.
+- One `ServerTickEvent.Post` listener calls, in order: the unload drain (`vault`, ADR 0002), the empty-Vault
+  vote apply (`vault`, ADR 0003), the chunk entry credit (`vault`, ADR 0004 Amendment 1), `WearScope`
+  clearing and Kit Care tiers (`mining`, ADR 0008), then the `data.SyncOutbox` drain (`network`) last. The
+  drain runs last so that every change made in the tick, a level-up's `TeamProgress` and an applied vote's
+  `TreeState` among them, is sent in that tick. No adapter registers its own `ServerTickEvent.Post`
+  listener for these jobs; each exposes a method the root listener calls. Where another record says a job
+  runs from a `ServerTickEvent.Post` listener (ADR 0002's unload drain), this is that listener.
 
 Blocks, items and entities live in the package of the system that owns their behaviour: the frame, portal
 and igniters in `vault`, the orb entity in `mining`. `registry` only holds the registers. Where the Tome item
@@ -138,7 +155,7 @@ implementations, no service layer, no mod-internal event bus.
 player UUID, of the wear inputs `WearRules` needs (whether the hand-breaking flag is set, the summed care
 chance, Tempered, Unyielding Edge, Glass Edge and Galvanic Seam multipliers, Kit Care's tier). `mining`
 fills an entry when a hand break passes `BreakBlockEvent` and clears it when the break ends and at the end
-of the tick; at the end of each tick it sets each online real player's Kit Care tier from the effects view
+of the tick (the root tick listener); at the end of each tick it sets each online real player's Kit Care tier from the effects view
 (ADR 0003), 0 inside a Vault, and removes it at logout. The mixin checks that the entity is the
 `ServerPlayer` the player list holds for its UUID, looks up the entry and passes the scope and the amount
 to `WearRules`; an absent entry means vanilla wear. ADR 0008 (accepted by E0-S11, #226) has the details.
@@ -292,3 +309,36 @@ round 2.
   Infrastructure against the record; the rarity rule quoted in `core.ore` against §4.2.
   - WRITER-1, "Spec sections changed" pointed at a session file outside the repo: fixed. The section now
     names the §13 line and says it was applied in the same PR.
+
+Round 2, 2026-10-31, against HEAD 0c5736c; every item ruled in the Manager's round 2 triage (section 2), and
+there is no round 3: each role that raised an item confirms its line landed. Every round 1 objection above
+was reported resolved by the role that raised it.
+
+- developer: request changes (DEV2-1, DEV2-3). Checked each round 1 fix at its line (the `worldgen.index`
+  row and rule 1, the `network` and `data` rows, `core.key`, the Gson pin) and the end-of-tick jobs the other
+  records add across four packages.
+  - DEV2-1, the `vault` row still credited the Wanderer's Cache count from `ChunkEvent.Load`, the rule Nick
+    rejected on 2026-10-27: fixed as ruled. The credit is the end-of-tick chunk entry check in the `vault`
+    row; the `ChunkEvent.Load` listener keeps the vein index settle and the explored map only.
+  - DEV2-3, five end-of-tick jobs with no stated order: fixed as ruled. One root `ServerTickEvent.Post`
+    listener calls them in a stated order with the `SyncOutbox` drain last, so the level-up promise in the
+    outbound sync paragraph holds.
+- reviewer: approve with comments (RV2-2). Checked named rule 1 against the `worldgen.index` leaf and the
+  `worldgen` to `ore` import (no path to `data`, `team` or `saveddata`), rule 7 against `reset` calling
+  `ensureTeamDimension`, and the `SyncOutbox` drain against ADR 0006's "at once on a level-up".
+  - RV2-2, the `vault` row cannot run the classifier ADR 0002 orders inside its `ServerStartedEvent`
+    listener: fixed as ruled. The listener is in the root package and calls `vault`, `ore`, the tradeoff
+    apply and `vault` in that order; the `vault` row does not gain `ore`. ADR 0002's restore intro and ADR
+    0007's pass intro name the root listener (WP-R2-1).
+- qa: approve. Checked QA-1 and QA-2 at their lines (the failure report names the planted class; `git grep`
+  empty; the non-empty import as the Java 25 check).
+- writer: approve with comments (WRITER-22, merged into DEV2-1; WRITER-21). Checked the round 1 pointer fix
+  and the `vault` row against spec §6.1 Wanderer's Cache.
+  - WRITER-22: fixed with DEV2-1.
+  - WRITER-21, one name for two counts: fixed as ruled. The saved count is `chunks_entered`; "explored"
+    in this record now means generated chunks only (the explored map).
+- architect (read across ADRs 0001 to 0009): approve; consistent on every name checked (`core.key`,
+  `data.SyncOutbox`, `worldgen.index`).
+
+Accepted on these verdicts and the Manager's rulings. The ArchUnit check on Java 25 class files is owed to
+T1 and is not a condition of acceptance, since nothing can be compiled before T1 exists.

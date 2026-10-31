@@ -1,9 +1,10 @@
 # 0004. Vein extents and the per-chunk vein index
 
-Status: proposed, 2026-10-27 (E0-S6, #224); Amendment 1 (E0-S12, #231) at the end. Round 1 reviews are
-answered below. Accepted once the carry-over spike (E6-S4, #209) and the size measurement (E4-S1, #234) are
-written into the pending sections below, Nick has answered the Wanderer's Cache question (Amendment 1), and
-the matrix reviewers have signed round 2. Spec: §3.1, §3.4, §11 Vein Index; S20
+Status: proposed, 2026-10-27 (E0-S6, #224); Amendment 1 (E0-S12, #231) at the end, proposed with it.
+Round 1 and round 2 reviews are answered below. Accepted once the carry-over spike (E6-S4, #209) and the
+size measurement (E4-S1, #234) are written into the pending sections below. Two earlier conditions are met:
+Nick answered the Wanderer's Cache question on 2026-10-27 (Amendment 1), and the matrix reviewers gave their
+round 2 verdicts on 2026-10-31 (Reviews). Spec: §3.1, §3.4, §11 Vein Index; S20
 (`docs/TEAM_REQUIREMENTS.md`); `docs/research/vanilla-ore-generation.md` §5.
 
 Source facts are from the decompiled, NeoForge-patched Minecraft sources of `neoforge-26.1.2.95`, read on
@@ -65,7 +66,16 @@ same values. Nothing reads the world to find a vein.
 
 The shape is vanilla's (`core.gen.VeinShape`, the port in `docs/research/vanilla-ore/orefeature.py`),
 rolled about its origin. The placer takes the rolled shape's actual bounding box and places the origin
-uniformly where that box fits inside the chunk's 16 by 16 columns and the band's Y range.
+uniformly where that box fits inside the chunk's 16 by 16 columns. Vertically the box may overhang its
+band's floor or top: for a box `h` layers tall in a band of `H` layers, its lowest layer is drawn uniformly
+from the `H + h − 1` positions that leave at least one layer inside the band. Only the positions inside the
+vein's own band are placed and indexed; the rest are left out of the world and of the bitset, so a vein
+never writes bedrock, the dirt band or the other ore band. The extent's box is the rolled box cut to the
+band, so a header never points outside it. With every box inside the band (round 1 text) the outermost
+layers were covered by fewer boxes: about 38% of the band density at Y=1 and Y=245, 89% at Y=2 and Y=244
+(Balancer, BAL-15). With the overhang every layer of the band is covered by exactly `h` of the allowed
+positions. The blocks that fall over the edge are made up by the count, which ADR 0009 scales by the band's
+edge factor, so the closed form and the curve do not change.
 
 The bound, asserted in code: a vein of configured size `s` spreads at most `s/8` from its origin along its
 axis, plus a sphere radius of at most `s/16 + 1/2`, so its horizontal span after flooring is at most
@@ -116,6 +126,16 @@ Encoding, chosen for size (measurement below):
 - The chunk fields listed below.
 
 A golden test pins the palette's encoding (a list of strings, in first-use order) beside the header layout.
+
+The attachment's value is immutable. Every change on the main thread (a bit cleared, a flag set,
+`generated_at`, `entered`, `pathfinder_claimed`, `chapter_completed`, `chapter_fired`, a Twin Veins copy) is
+a `setData` of a new value that `core.vein` builds from the old one, never an edit of the value `getData`
+returned. `ChunkAccess#setData` calls `markUnsaved()` (Context, lines 511 to 521); a value changed in place
+does not, so the chunk would stay clean, the change would be lost at unload, and a chunk could credit a
+second cache or pay Pathfinder's Claim twice (Architect, ARCH-R2-4). The record's arrays are copied when it
+is built and never handed out for writing. The cost is one copy of the chunk's arrays per change, at most
+about 36 KB at the full stack (below), at the rate a player breaks ore. A gametest sets `entered` on a
+loaded chunk, unloads it, reloads it and reads the flag back; it does the same for one cleared bit.
 
 The remaining count is the bitset's population count: derived, not stored (ADR 0005's rule). Completion is
 the step that empties it.
@@ -183,7 +203,10 @@ step, since Ultimine is `compileOnly`.
   completion stage in its fixed order (§11 Drop Pipeline): vein ordinal, ore (the palette's block id), last
   position, breaker kind, `clean_cut_broken`, whether it is a guide vein, and the chunk's completed count
   after it, or `VANISHED`. No lookups and no mod-internal event bus. The outcome type is in `core.vein`,
-  which `core.mining` may import (ADR 0001).
+  which `core.mining` may import (ADR 0001). A consumer that compares two veins' ores (a same-ore streak, a
+  count per ore) compares them through the current `OreTable` grouping, never by string equality of the
+  palette ids: a mod added later can give new veins of the same ore a different group id from the stored
+  ones (ADR 0009, "The ore group's id"; Reviewer, RV2-3).
 - The standing-ore count of a vein, after reconciliation, for abandoning (Vein Discipline). Which veins a
   player has started is the in-memory trip record's (§11 Vault Session State), as references (chunk, ordinal).
 - Clean Cut's flag: when a player breaks a non-ore block inside a started, unfinished vein's box, the
@@ -215,12 +238,12 @@ step, since Ultimine is `compileOnly`.
   recomputed. ADR 0003 defines it: a fixed hash in `core.gen` over the generation tiers, the two generation
   fork choices and the applied generation tradeoffs, sorted by id, never `Object.hashCode` or a set's
   iteration order; the clip factor, the variant and the reset count are left out. The Survey panel compares
-  it with the current snapshot's (Q13; ADR 0006 sends the flag). A chunk with no attachment reads as not
-  current.
+  it with the current snapshot's (Q13; ADR 0006 sends the flag). A chunk with no attachment reads as no
+  stamp (`chunkStamp` 3, ADR 0006).
 
 A chunk generated before the index existed has no attachment: its veins never complete, it pays no
-Pathfinder's Claim and no Frontier Bonus, it counts for no Wanderer's Cache, and it reads as not current
-(§11, S20).
+Pathfinder's Claim and no Frontier Bonus, it counts for no Wanderer's Cache, and it reads as no stamp
+(`chunkStamp` 3, ADR 0006; §11, S20).
 
 ### Twin Veins
 
@@ -325,7 +348,8 @@ performance roles are deferred (Nick, 2026-10-26), so this is the only size gate
 
 §11 Vein Index (the encoding, the block-id palette, the removal table, reconciliation, reserved ordinals,
 the chunk fields and the size bound) and §3.1 (the in-chunk size bound of 37 and the split). Applied in the
-same PR (#160).
+same PR (#160). Round 2 (2026-10-31): §3.1's per-slab sentence says slabs are counted up from each band's
+floor, which the overhang placement above makes true at the band edges (BAL-15; the Writer, WP-R2-5).
 
 ## Reviews
 
@@ -366,11 +390,50 @@ Amendment 1, which were reviewed together. Rulings are the Manager's triage of r
   here: Pathfinder's Claim flag set whether or not the node is owned; a vanished vein closes silently; Last
   Ore pays on completion by the vein's own collateral.
 
+Round 2, 2026-10-31, this record and Amendment 1 together. Every role reported its round 1 items resolved
+or its rebuttal accepted; the new items below were ruled by the Manager's round 2 triage (two rounds done,
+so no round 3; each role confirms its named lines after this pass).
+
+- developer: request changes. Checked the round 1 fixes (the leaf package, the reconcile order, the clean
+  stop), the credit against ADR 0001's `vault` row, and the hooks against ADR 0002. DEV2-1 (the credit
+  written twice, and stale "until he answers" text): fixed, Amendment 1 states Nick's answer in the past
+  tense and says the `ChunkEvent.Load` listener credits nobody; ADR 0001's row is WP-R2-4's. DEV2-2 (the
+  hook marked unverified): fixed, step 1 names `ServerTickEvent.Post` and the root listener's order (DEV2-3,
+  ADR 0001), and drops the mark.
+- reviewer: approve with comments. Checked the round 1 block (RV-2 palette identity, now resolved) and the
+  palette against ADR 0009's group id. RV2-3 (two veins of one ore can carry different palette ids): fixed,
+  one sentence under "What consumers get": compare through the current `OreTable` grouping.
+- qa: approve with comments. Checked QA-11 to QA-14 against the spike halves, the comparator and the pure
+  rules. QA-14 (compass and cell cases not listed): fixed, Amendment 1 lists the cell cases and the compass
+  cases, the margin read as a fraction of the reference.
+- writer: approve with comments. Checked the record against §6.1 Wanderer's Cache, §8 Tab 3 and §11, and
+  grepped for open-question wording. WRITER-19 (stale conditional): fixed with DEV2-1. WRITER-21 (one word,
+  two counts): fixed, the key is `chunks_entered` in Amendment 1; ADR 0005, the spec and the log are
+  WP-R2-1's and WP-R2-5's.
+- balancer: approve with comments. Checked the 37 cap again and derived the compass margin. COMPASS_MARGIN:
+  applied as set, 0.10 of the reference rounded up, with the base and expanded figures, the reason a
+  fraction beats a fixed count, and the check against the 81-chunk placer test's deviation. BAL-15 (b)
+  (the band edges thin because every box had to fit inside the band): fixed, a box may overhang its band
+  by up to its own height less one, only positions inside the band are placed and indexed, and ADR 0009
+  scales the count by the edge factor; the Balancer confirms the scaling line.
+- architect (cross-read of all records): approve with comments. ARCH-R2-2 (a chunk with no attachment read
+  as "not current", against ADR 0006's `chunkStamp` 3): fixed in both places. ARCH-R2-3: merged into
+  DEV2-2. ARCH-R2-4 (in-place edits skip `markUnsaved()`): fixed, the value is immutable, every change is a
+  `setData` of a new value, with a gametest that unloads and reloads a chunk. ARCH-R2-5: merged into
+  WRITER-19.
+- playtester (outside the matrix): accepted Nick's credit rule, which supersedes its round 1 answer.
+  PT-R2-2 (the cache shows no progress) is deferred to E9-S33 (#338) by amendment, and
+  PT-R2-4 (drawing tier 2 from `entered`) to E9-S32b (#337); neither changes this record now.
+
+Still owed before acceptance: the E6-S4 (#209) spike result and the E4-S1 (#234) size measurement, written
+into their pending sections.
+
 ## Amendment 1 (E0-S12, #231): explored chunks and the Seismic Sense map
 
-Status: proposed, 2026-10-27 (E0-S12, #231). The Wanderer's Cache rule below is Nick's answer of
-2026-10-27 (chunks walked into, 50 each). Spec: §6.1 Seismic Sense, Wanderer's Cache, Frontier Bonus and Pathfinder's Claim; §8 Tab 3;
-§11 Vein Index and SavedData Pattern. Builds on this record, ADR 0005 (the `chunks_explored` field) and ADR
+Status: proposed, 2026-10-27 (E0-S12, #231), and stays proposed with the record above (E6-S4 #209, E4-S1
+#234). The Wanderer's Cache rule below is Nick's answer of 2026-10-27 (chunks walked into, 50 each), so that
+condition is met; round 2 changes are listed in the record's Reviews block. Spec: §6.1 Seismic Sense, Wanderer's Cache, Frontier Bonus and Pathfinder's Claim; §8 Tab 3;
+§11 Vein Index and SavedData Pattern. Builds on this record, ADR 0005 (the `chunks_entered` field) and ADR
 0006 (`SurveyState`, `MAX_MAP_SIDE`).
 
 ### Context
@@ -429,7 +492,7 @@ Wanderer's Cache does not count explored chunks; it counts chunks entered (below
 Per chunk: the `entered` flag on the attachment (record above). Explored is the
 attachment's presence and `generated_at`; density is the sum of the population counts of its vein bitsets.
 
-Per team: nothing new in team data. The per-player count is ADR 0005's `chunks_explored` on `PlayerStats`.
+Per team: nothing new in team data. The per-player count is ADR 0005's `chunks_entered` on `PlayerStats`.
 
 Per Vault: one `SavedData` in the Vault level's own storage, id `orevault:explored_map`, file
 `<world>/dimensions/orevault/vault_<hex>/data/orevault/explored_map.dat`. It is the only place the state of
@@ -483,7 +546,18 @@ team's generator and so the pending map if Result B (ADR 0002), and may import `
 and the leaf `worldgen.index` (ADR 0001). The bit-clear updates are in `mining`, beside the other vein index
 updates, reaching the attachment through `worldgen.index`. The pure parts are in `core.vein`: cell
 encoding, the window cut, the compass choice, the shade and the entry credit (below), unit-tested without
-Minecraft.
+Minecraft. The entry credit's cases are listed with it. The cell and compass cases, with the margin read as
+the fraction of the reference (below), at least:
+
+- Cells: `n` = 0 gives 1; `n` = 65,533 gives 65,534; any `n` above 65,533 saturates at 65,534; a chunk of
+  unknown density gives 65,535; a chunk not explored gives 0.
+- Compass: no candidate clears the margin, and both fields name the requester's own chunk; a candidate one
+  block short of the margin is not named and one at the margin is; cells of unknown density are never
+  candidates, however high the stored value; a kept target is kept while it still clears the margin, even
+  when another candidate is higher by less than the margin; the target switches only when another beats the
+  kept target by at least the margin; a kept target that no longer clears the margin is dropped and a new
+  one chosen; ties go to the nearer chunk, then the lower z, then the lower x; the margin at a reference of
+  1,911 is 192 and at 2,915 is 292 (the rounding up).
 
 #### Unloaded chunk attachments are never read from disk on demand
 
@@ -514,35 +588,49 @@ what it holds:
 - The compass, every tier, reads explored chunks only: predicting ore in a chunk not yet generated would
   need the snapshot it will be generated with, which can change before then (kept in round 1 by the
   Balancer and the Playtester). Candidates are the explored chunks in the window other than the
-  requester's own, excluding chunks of unknown density. The compass names a candidate only when its `n`
-  exceeds the requester's own chunk's `n` by at least `COMPASS_MARGIN` blocks. Among those, it keeps the
-  target it named for this player last time while that target is still a candidate that clears the margin,
-  and moves to another only when that one's `n` exceeds the kept target's by at least `COMPASS_MARGIN`. A
-  new target is chosen by the highest `n`, ties broken by the nearer chunk, then the lower z, then the lower
-  x. The last target is held per player in memory, never saved, and dropped when the player leaves the
-  Vault. When no candidate clears the margin, both fields name the requester's own chunk, which the client
-  draws as no denser rock nearby, in words. The margin stops the needle swinging between neighbours whose
-  counts differ by roll luck on every 40-tick refresh (Playtester, round 1). `COMPASS_MARGIN` is a constant
-  in `core.vein`; its value is the Balancer's, was not given in round 1, and is set before E9-S32a (#336),
-  which checks the compass in play.
+  requester's own, excluding chunks of unknown density. The margin, in blocks, is `COMPASS_MARGIN` of the
+  reference, `ceil(COMPASS_MARGIN × fresh)`, with `fresh` the shade's reference above. The compass names a
+  candidate only when its `n` exceeds the requester's own chunk's `n` by at least the margin. Among those,
+  it keeps the target it named for this player last time while that target is still a candidate that
+  clears the margin, and moves to another only when that one's `n` exceeds the kept target's by at least
+  the margin. A new target is chosen by the highest `n`, ties broken by the nearer chunk, then the lower z,
+  then the lower x. The last target is held per player in memory, never saved, and dropped when the player
+  leaves the Vault. When no candidate clears the margin, both fields name the requester's own chunk, which
+  the client draws as no denser rock nearby, in words. The margin stops the needle swinging between
+  neighbours whose counts differ by roll luck on every 40-tick refresh (Playtester, round 1).
+- `COMPASS_MARGIN` is 0.10, a constant in `core.vein` (Balancer, round 2). With no generation nodes the
+  margin is 192 blocks in the base type (10% of 1,911) and 292 in the expanded type (10% of 2,915). A fresh
+  chunk's standing ore varies only with vein size, about 1,911 ± 37 and 2,915 ± 46 at one standard
+  deviation, so the margin is 5.1 and 6.3 standard deviations, and roll luck alone names a chunk on about 2
+  to 4% of refreshes in a fully fresh window in the base type and under 0.5% in the expanded type. A
+  fraction of the reference rather than a fixed count keeps it at 5 or more standard deviations under every
+  generation node; a fixed 192 blocks would be 4.2 in the expanded type. Unplaytested; E9-S32a (#336) checks
+  the compass in play. The check that keeps the value honest: ADR 0009's 81-chunk placer test reports the
+  per-chunk standard deviation of standing ore for each type, and the margin stands while 0.10 is at least
+  4.5 times that deviation over the mean. A failure goes back to the Balancer with the numbers.
 
 `SurveyState` is answered at most once per 20 ticks per player (ADR 0006); building it reads at most four
 regions' arrays and 1,089 cells on the main thread.
 
 #### Wanderer's Cache counts chunks entered (Nick, 2026-10-27)
 
-This is the recommended option of the Manager's question 2 to Nick, written here as the plan until he
-answers. The count is the chunks a team member is the first of the team to stand in, 50 per cache, about
-800 blocks or 13 minutes of straight tunnel at any view distance (BAL-9).
+Nick chose this on 2026-10-27: it was the recommended option of the Manager's question 2. The count is the
+chunks a team member is the first of the team to stand in, 50 per cache, about 800 blocks or 13 minutes of
+straight tunnel at any view distance (BAL-9). The credit is this end-of-tick check, not a `ChunkEvent.Load`
+listener; the `ChunkEvent.Load` listener above credits nobody.
 
 1. At the end of each server tick, on the main thread, each player in a Vault level whose chunk differs from
-   the last chunk recorded for them (in memory, never saved) is checked, in `vault` beside the end-of-tick
-   empty-Vault check (ADR 0001, ADR 0003). The hook that runs it is Unverified: to be read by E1-S5 (#195).
+   the last chunk recorded for them (in memory, never saved) is checked. The check is in `vault`. It runs
+   from the root package's one `ServerTickEvent.Post` listener on the game bus (ADR 0001), the event ADR
+   0002's unload drain already uses, which calls in order the unload drain, the empty-Vault vote apply (ADR
+   0003), this entry credit, `WearScope` clearing and Kit Care (ADR 0008), and the `SyncOutbox` drain last,
+   so a credit made in the tick is sent in that tick. If the event's name is wrong, T3 fails to compile
+   before this check exists, so it is not an E1-S5 item.
 2. Candidates are current members of the Vault's team (through the team helper) who are not spectators. A
    non-member in the level (a player who left the party while inside, an operator) and a spectator credit
    nothing and set nothing.
 3. If the chunk has a vein index attachment and its `entered` flag is false, the flag is set and the player's
-   `PlayerStats` `chunks_explored` in the Vault's team rises by one; Wanderer's Cache checks for a multiple
+   `PlayerStats` `chunks_entered` in the Vault's team rises by one; Wanderer's Cache checks for a multiple
    of 50 there. A chunk with no attachment (generated before the index) credits nobody.
 4. Players are taken in UUID order within a tick, so when two members enter the same new chunk in one tick
    the lower UUID is credited. A chunk credits one player once for the team, so a team walking together
@@ -615,7 +703,11 @@ machine, a command, generation at server start) it is credited to nobody.
 margin), §6.1 Wanderer's Cache (the entry credit), §6.1 Pathfinder's Claim (the flag
 is set whether or not the node is owned), §8 Tab 3 (the readout appears inside the Vault), §11 Vein Index
 (one bullet for the per-Vault map) and §11 SavedData Pattern (the map's file and version). Applied in the
-same PR (#160); the Wanderer's Cache text follows Nick's answer.
+same PR (#160); the Wanderer's Cache text follows Nick's answer. Round 2 (2026-10-31, the Writer, WP-R2-5):
+§6.1 Seismic Sense states the margin as 10% of the reference with the base and expanded figures (192 and
+292 blocks with no nodes) and "unplaytested; E9-S32a (#336) confirms it"; the per-player count is
+`chunks_entered` in §6.1 Wanderer's Cache, §8 Tab 3 and §11, with "explored" kept for generated chunks in
+player text; §6.1 Wanderer's Cache drops its "If Nick chooses generated chunks" sentence.
 
 ### Reviews
 
@@ -623,3 +715,7 @@ Round 1 reviewed this amendment with the record above; the verdicts and answers 
 Reviews block. Comments from roles outside the matrix: the Playtester found the credit rule fair and asked
 for a compass margin (applied); UI-UX accepted the shade reference; the Designer's map cell size is UI-UX's
 and the Designer's, with no change to the wire.
+
+Round 2 (2026-10-31) is in the record's Reviews block, which covers this amendment: COMPASS_MARGIN set,
+the compass and cell cases listed (QA-14), the credit's hook named (DEV2-2), the stale conditional removed
+(DEV2-1, WRITER-19) and the key renamed `chunks_entered` (WRITER-21).

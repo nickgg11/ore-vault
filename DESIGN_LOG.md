@@ -14,6 +14,48 @@ Newest first.
 
 ---
 
+## 2026-10-31 — What the Epic 0 review changed, round 2
+
+**Where this came from.** The same roles reviewed the round-1 fixes, and the Manager ruled on every new
+item from the documents (two rounds, then the Manager). Most rulings fix wording or add a test. The rows
+below are the ones that change a decision, each with what it replaced. One question goes back to Nick
+(question 4, below). The spec was changed in §3.1, §3.5, §4.2, §4.3, §6.1, §8, §11 and §13.
+
+**Decisions.**
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| A Vault's dimension type is stored in a file in its own folder, `orevault_vault.dat`, `{data_version, variant}`, written once when the folder is made and never rewritten; it is backed up, deleted and archived with the folder. A missing or unreadable type file, or an unknown type, refuses that Vault with a message and an ERROR naming the path, and nothing is written into the folder. A team file that cannot be read no longer affects restore: the Vault is restored under its own type and play goes on | `vault_variant` in team data, and the round-1 fix that refused a team's Vault for the session when its team file was unreadable at restore | `CLAUDE.md` rule 6: data about one Vault's terrain goes in that Vault's folder, and the type is exactly that, changing only when a reset makes a new folder. With the variant in team data, a damaged team file reopened the expanded-as-base loss at the next start: any write from outside the Vault ran the copy-aside and made a fresh team file with no variant, so an expanded Vault opened as base and lost its deepslate band (RV2-1, ARCH-R2-1). The session refusal also contradicted "play goes on" (§11, 2026-10-27 above). Now a damaged team file costs the team's progress, never its terrain, and the one remaining refusal is honest: the only file holding the fact is gone. Nothing was built, so no migration (`docs/adr/0002-vault-lifecycle.md`, `docs/adr/0005-persisted-data-and-versioning.md` section 3a, `docs/adr/0007-reset-disband-archive.md`). |
+| The `PlayerStats` key Wanderer's Cache reads is `chunks_entered`. In player text "explored" means only generated chunks (the Seismic Sense map); the stat reads "Chunks first walked into" | `chunks_explored` | §6.1 Seismic Sense defines an explored chunk as a generated one, and Nick's answer of 2026-10-27 made the cache count chunks walked into, so one word named two counts (WRITER-21, PT-R2-3). The key is save data from T5, so the rename costs nothing only now. The 2026-10-27 rows that named `chunks_explored` are in the same unmerged PR and were edited, not superseded. |
+| `COMPASS_MARGIN` is 0.10 of the reference, the standing ore a newly generated chunk would hold under the team's current generation nodes, rounded up to a whole block: 192 blocks in the base type and 292 in the expanded type with no nodes. A constant in `core.vein` | No value ("Still open", 2026-10-27) | 10% is 5.1 standard deviations of a fresh chunk's roll luck in the base type and 6.3 in the expanded type, so on luck alone the needle names a chunk on about 2 to 4% of refreshes in a fully fresh window (base) and under 0.5% (expanded). A margin in proportion to the reference stays at or above 5 standard deviations under every generation node; a fixed 192 blocks would be 4.2 in the expanded type, where luck names a chunk on about 14% of refreshes. The needle moves once the viewer's chunk has lost about a tenth of its ore, or toward ground generated after a generation purchase. The 81-chunk placer test reports the per-chunk standard deviation, and the margin stands while 0.10 is at least 4.5 times that deviation over the mean. Derived, unplaytested; E9-S32a (#336) confirms it. |
+| Which ore a vein is by height is reopened and asked of Nick again, as question 4. The density half of his 2026-10-27 answer stands: the same density at every height | Nick's 2026-10-27 answer "ore type still by height", given on the consequence, as he was told it, that some gold or redstone would appear high up | The Balancer's run of the repo's port of vanilla's `OreFeature` shows the written rule does the opposite. In the base type rare veins above Y=16 are about 93.5% emerald and uncommon veins above about Y=40 about 95% lapis, and diamond, gold and redstone sit only in the stone band's lowest 16 layers (or in deepslate in an expanded Vault). A player wanting diamonds would strip-mine the floor, the treasure layer question 1 was meant to remove. Nick chose on a consequence that was stated wrongly, and the choice changes what the player finds, so it goes back to him (BAL-16, WRITER-24). Resonance and the curve do not move under any option. The options: A, as written; B (recommended), half of each vein's pick by height and half by vanilla's band-wide mix, so diamond is still richest low and every ore turns up at every height; C, height ignored. Until he answers, §3.1 and ADR 0009 carry interim text, and ADR 0009, E0-S7 (#182) and E4-S1 (#234) wait. |
+
+**What this supersedes.**
+
+- In "What the Epic 0 review changed" (2026-10-27) below: the emerald row's "about 18%" is restated as a
+  share of the band-wide rare mix; the bullet on Nick's question 1 answer stands for density, and its
+  "which ore a vein is still set by height" is reopened by question 4; the "Still open" compass margin line
+  is closed by the row above. The decision row on an unreadable team file (copied aside, play goes on)
+  stands, and with the type in the Vault's folder it now holds across a restart.
+
+**Rejected.**
+
+- **Refusing a team's Vault for the session when its team file is unreadable** (the round-1 fix in ADR
+  0002). It held for one session only, since any write from outside the Vault recreated the team file, and
+  it contradicted "play goes on".
+- **Dropping every write for a team whose file is unreadable** (RV2-1's form). With no admin action the
+  team is locked out of its Vault at every start, indefinitely, and the team file is the file most exposed
+  to a power cut, since it is saved on every autosave. Both this and the session refusal lock a team out on
+  its most-written file.
+- **A default for a missing or unknown Vault type.** Every other absent key has one; this one does not,
+  because base read for an expanded Vault deletes its deepslate band as chunks load and save.
+- **The type file as a `SavedData` in the Vault level's own storage.** It must be read before the level,
+  and so its storage, exists, and a `SavedData` there would be a second holder of the same fact.
+- **A fixed block count for `COMPASS_MARGIN`.** It falls to 4.2 standard deviations in the expanded type and
+  shrinks further as generation nodes raise the ore a chunk holds.
+
+---
+
 ## 2026-10-27 — What the Epic 0 review changed
 
 **Where this came from.** Nine roles reviewed the Epic 0 records in round 1 (the architecture records in
@@ -40,7 +82,7 @@ was changed in §3.1, §3.4, §3.5, §4.2, §4.3, §6.1, §8, §10, §11 and §1
 | Apprentice's Ledger counts only ore mined by hand while the team owns the node | Unstated: ore mined earlier on the trip could use up the 100 | The difference at level 1 is up to about 33 doubled ore, a whole level; the generous reading is also the simpler rule. |
 | A vein Volatile Veins vanishes closes silently: no streak step or −3, no Chapter's End count, no Last Ore or Clean Cut. Last Ore pays when a hand break completes the vein through its own collateral, such as Brittle Stone's | Unstated | Counting a vanished vein as completed lets a 3% roll finish veins for the streak; counting it as abandoned charges twice for a risk already paid. Without the collateral rule Brittle Stone switches Last Ore off in most compact veins. |
 | The 40% floor's factor is `min(1, 0.60 / densest)`, over the densest region the nodes create in a band (Deep Veins' layers, a Vein Singularity chunk), one factor per band | One factor per band computed on the band's average | On the average, a Singularity chunk under a clipped band still came out near 100% ore. |
-| An ore's weight when picking which ore a vein is includes the share of overworld biomes that place it | Expected blocks a chunk counted as if every chunk were every biome | Emerald, a mountain-only ore, came out as 55% of all rare ore; weighted by biome share it is about 18%. |
+| An ore's weight when picking which ore a vein is includes the share of overworld biomes that place it | Expected blocks a chunk counted as if every chunk were every biome | Emerald, a mountain-only ore, came out as 55% of all rare ore; weighted by biome share it is about 18% of the band-wide rare mix (its weight over the sum of the rare weights). That is its share of rare veins only where height does not decide the pick; which ore a vein is by height was reopened on 2026-10-31, pending Nick's question 4 (above). |
 | Wanderer's Cache is the item `orevault:wanderers_cache`; its tier is stamped on it at the drop as `orevault:cache_tier`; its repair picks the damageable hotbar item with the highest damage fraction, ties to the lower slot; its tier 2 book is a second loot table, `orevault:chests/wanderers_cache_book`, with `random_chance` 0.2 | An unnamed "supply cache"; tier, target and book chance unstated or in code | The id is save data from T5 and decides the texture story. A loot table lets a pack retune the book like the rest of the cache. |
 | A reveal by Chapter's End lasts 30 seconds (600 ticks) | No duration | It fires once per chunk, so it must last long enough to tunnel about 30 blocks to the nearest vein it shows. Unplaytested. |
 | A chunk with no generation stamp reads "Generated before this was tracked" on the Survey panel, apart from "generated with older nodes" | Both read as "not current" | A team with no generation nodes in a chunk made before stamps existed was told its chunk was out of date. |
@@ -94,9 +136,8 @@ was changed in §3.1, §3.4, §3.5, §4.2, §4.3, §6.1, §8, §10, §11 and §1
   likes being overpowered. If his sessions show him toggling, the fix is a rebuy cooldown on a refunded
   keystone or pact (one 24-hour game-time window), not dearer XP, which would also punish honest reroutes.
   Recorded for the T9 Stone Memory and keystone batch, E9-S11 (#315) and E9-S64 (#367).
-- Seismic Sense's compass margin: the needle points at a denser chunk only when it beats the viewer's own
-  by a margin, and holds its target until another beats it by the same margin, the constant `COMPASS_MARGIN`.
-  The Balancer sets its value before E9-S32a (#336).
+- Seismic Sense's compass margin. Closed 2026-10-31: the Balancer set `COMPASS_MARGIN` to 10% of the
+  reference (above, 2026-10-31).
 
 ---
 
@@ -118,7 +159,7 @@ fields from the same file (E0-S1, #222). The spec was changed in §3.1, §3.2, �
 | The Resonance pool is stored as a long of thousandths of a Resonance | A long of whole Resonance, as the last build had; a double was also considered | Whole units silently drop Stone Memory's 0.05 payments (2026-10-27, Q8). A double gives sums that can differ between machines. For the Balancer to confirm. |
 | Every saved time is overworld game time in ticks: the respec window, its 24-hour limit, `disbanded_at`, the Homeward Seam cooldown, the Frontier timestamp | No clock stated | Wall-clock times would close a window or finish a cooldown while the server was stopped. Game time advances only while the server runs, which is what "24 hours of server time" (Q14) means. |
 | A party join never disbands the player's solo team. In FTB Teams the personal team's id is the player's UUID and is never deleted; disband is `TeamDeleted`, posted only when a party's last member leaves. A team change is seen through `PlayerChangedTeam`, which fires for offline players too | The conditional "a party join is exempt from archiving if it disbands the solo team" (Q-conditional, above) | Read from `ftb-teams-26.1.2.4-sources.jar`. A solo Vault stays on disk while its player is in a party and is theirs again when they leave. `PlayerJoinedPartyTeam` is not posted for an offline player, so team-change work cannot listen to it. |
-| A newly generated chunk counts toward `chunks_explored` of the member of the Vault's team in that Vault nearest it in chunks, within the server's view distance, ties to the lower UUID; a chunk with nobody in range counts for nobody | "Which player a chunk is credited to is settled by ADR 0005" (Wanderer's Cache, 2026-10-27) | Generation runs off-thread with no player attached (`CLAUDE.md` rule 1); the first load on the main thread is where a player can be found. Chunks loaded by an Anchor or a machine pay no exploration. |
+| A newly generated chunk counts toward `chunks_entered` of the member of the Vault's team in that Vault nearest it in chunks, within the server's view distance, ties to the lower UUID; a chunk with nobody in range counts for nobody | "Which player a chunk is credited to is settled by ADR 0005" (Wanderer's Cache, 2026-10-27) | Generation runs off-thread with no player attached (`CLAUDE.md` rule 1); the first load on the main thread is where a player can be found. Chunks loaded by an Anchor or a machine pay no exploration. |
 | Every "one per N chunks" rate (Geode Clusters, Ancient Traces, Molten Seam's 50%) is a 1-in-N roll per chunk from that chunk's seed, and each feature has its own salt | Unstated; a counter carried between chunks was the obvious reading | Chunks generate in whatever order players reach them, so a counter would give a different Vault for the same seed. In a short run of chunks the count now varies. For the Balancer. |
 | The 40% stone floor scales every rarity's vein count in a band by one factor, computed on the main thread and carried in the snapshot | "Enforced", with no method | Cutting one rarity first would shift the mix the level curve is derived from (§4.3). |
 | A block that is not a classified ore pays no Resonance; there is no default rarity | An unclassified block fell to a default rarity | The old default of Uncommon paid 5 Resonance for stone (old PR #117). |
@@ -160,7 +201,7 @@ own numbers for tiers 3 and 5 were set by Nick earlier the same day (Q8, below).
 | Stone Memory tier 4's "raw common ore nugget" is an existing nugget: a common metal's item from `c:nuggets/<material>`, picked by the common ores' baseline shares. Coal has no nugget and is never picked; on vanilla it is iron or copper | No new item means no texture, model or lang work for a 2% stone drop, and a pack's own common metals take part through their tags. Whether 26.1's `c:nuggets/copper` holds the copper nugget is unverified, to be read by E1-S5 (#195). |
 | Guide Vein's metal is copper or iron per vein, 50/50, from the chunk's seeded random | Generation runs off the main thread with no player involved (`CLAUDE.md` rule 1), so nothing a player chose can reach it, and a chunk must come out the same whenever it is first visited (§3.1). |
 | Salvager's Eye drops the raw form of a common ore, picked by the common ores' baseline shares from `c:raw_materials/<material>`, or one coal where the ore has no raw form. The player does not choose | A choice would need a screen and saved state for a growth node that retires at level 12. Weighting by the baseline gives the same mix of common ore the Vault's own veins give. |
-| Wanderer's Cache is an item dropped at the player every 50 of that player's `chunks_explored` on `PlayerStats`; opening it rolls `orevault:chests/wanderers_cache` and repairs | The text already said "drops" and "opener". The count is per player and saved, so it survives restarts and resets; which player a new chunk is credited to is left to ADR 0005 (E0-S8). |
+| Wanderer's Cache is an item dropped at the player every 50 of that player's `chunks_entered` on `PlayerStats`; opening it rolls `orevault:chests/wanderers_cache` and repairs | The text already said "drops" and "opener". The count is per player and saved, so it survives restarts and resets; which player a new chunk is credited to is left to ADR 0005 (E0-S8). |
 
 **Rejected.**
 

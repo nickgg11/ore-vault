@@ -28,9 +28,13 @@ result of each:
    Nick's machine can run the client, so "no display" is not a reason to skip this.
 5. Every acceptance criterion: met (with how you checked), or not met (with the blocker).
 6. On a `neo_version` change, both restart checks below, each reported separately (ADR 0002):
-   - Headless: create a Vault by debug command after the first tick, stop the server, start it, run
-     `execute in orevault:vault_<hex>` from the console before anyone connects, and a mock player breaks a
-     block in it (gametest).
+   - Headless, on a scripted dedicated dev server: create a Vault by debug command after the first tick,
+     stop the server, start it, run `execute in orevault:vault_<hex>` from the console before anyone
+     connects, then the S44 break command breaks a block at a given position in the Vault through a fake
+     `ServerPlayer`'s `gameMode.destroyBlock` and prints whether it is gone, and the level's tick logger
+     (the E3-S11 spike's) shows lines for the key. A gametest player cannot do this step: it exists only
+     inside one `GameTestServer` lifetime. "A Vault created after the first tick ticks" stays a gametest,
+     before the restart.
    - Client, once per bump: log out inside a Vault, restart the server, log back in, still in the Vault.
 
 ## The regression list
