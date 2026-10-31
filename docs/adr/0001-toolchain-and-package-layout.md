@@ -79,6 +79,14 @@ The rules for a new gametest (E1-S2, #193):
 - There is no namespace filter: nothing in NeoForge 26.1.2.95 reads `neoforge.enabledGameTestNamespaces`, so the
   build does not set it. `--tests` is the vanilla selector.
 
+### Data generators
+
+The data providers live in their own source set, `src/datagen/java`, package `com.orevault.orevault.datagen`,
+added to the `clientData` run. As with gametests, none of it reaches the jar or the ArchUnit import, so the
+Reviewer reads it by eye. Output goes to `src/generated/resources` and is committed. `check` runs
+`runClientData` and then `checkGeneratedResources`, which fails if `git status` shows any change under
+`src/generated` (E1-S9, #198). So a build fails until generated files are committed.
+
 ### Mixins
 
 ADR 0008's mixin is the only one. Its classes live in `com.orevault.orevault.mixin`; its config is

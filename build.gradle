@@ -30,9 +30,17 @@ repositories {
     }
 }
 
-// Gametests sit in their own source set so they never ship in the jar.
+// Gametests and data generators sit in their own source sets so they never ship in the jar.
 sourceSets {
+    main.resources {
+        srcDir 'src/generated/resources'
+        exclude '.cache/**'
+    }
     gametest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+    datagen {
         compileClasspath += sourceSets.main.output
         runtimeClasspath += sourceSets.main.output
     }
@@ -52,6 +60,13 @@ runs {
     gameTestServer {
         modSource project.sourceSets.gametest
     }
+
+    clientData {
+        modSource project.sourceSets.datagen
+        arguments.addAll '--mod', project.mod_id, '--all',
+                '--output', file('src/generated/resources/').absolutePath,
+                '--existing', file('src/main/resources/').absolutePath
+    }
 }
 
 configurations {
@@ -59,6 +74,8 @@ configurations {
     gametestImplementation.extendsFrom implementation
     gametestCompileOnly.extendsFrom compileOnly
     gametestRuntimeOnly.extendsFrom localRuntime
+    datagenImplementation.extendsFrom implementation
+    datagenCompileOnly.extendsFrom compileOnly
 }
 
 def runtimeProfile = project.findProperty('runtime_profile') ?: 'none'
@@ -95,12 +112,36 @@ tasks.named('test', Test) {
     // Declared so a change to these reruns the guards rather than taking a cached result.
     inputs.dir('src/main').withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir('src/gametest').withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir('src/datagen').withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir('src/generated').withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.files('gradle.properties', 'build.gradle', 'settings.gradle', 'gradle/wrapper/gradle-wrapper.properties')
             .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
+// Fails when the data generators write anything that differs from what is committed (E1-S9, #198).
+abstract class CheckGeneratedResources extends DefaultTask {
+    @Inject
+    abstract ExecOperations getExecOperations()
+
+    @TaskAction
+    void check() {
+        def status = new ByteArrayOutputStream()
+        execOperations.exec {
+            commandLine 'git', 'status', '--porcelain', '--', 'src/generated'
+            standardOutput = status
+        }
+        if (!status.toString().isBlank()) {
+            throw new GradleException("Generated resources differ from the committed ones; run runClientData and commit: ${status}")
+        }
+    }
+}
+
+def checkGeneratedResources = tasks.register('checkGeneratedResources', CheckGeneratedResources) {
+    dependsOn tasks.named('runClientData')
+}
+
 tasks.named('check') {
-    dependsOn tasks.named('compileGametestJava')
+    dependsOn tasks.named('compileGametestJava'), checkGeneratedResources
 }
 
 tasks.withType(ProcessResources).configureEach {
