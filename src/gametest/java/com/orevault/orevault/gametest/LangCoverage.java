@@ -36,7 +36,7 @@ final class LangCoverage {
         JsonObject lang = readLang();
         Set<String> missing = new TreeSet<>();
         for (String key : registeredKeys()) {
-            if (!lang.has(key)) {
+            if (!lang.has(key) || lang.get(key).getAsString().isBlank()) {
                 missing.add(key);
             }
         }

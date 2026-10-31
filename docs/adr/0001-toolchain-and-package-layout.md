@@ -86,7 +86,7 @@ The rules for a new gametest (E1-S2, #193):
 
 The data providers live in their own source set, `src/datagen/java`, package `com.orevault.orevault.datagen`,
 added to the `clientData` run. As with gametests, none of it reaches the jar or the ArchUnit import, so the
-Reviewer reads it by eye. Output goes to `src/generated/resources` and is committed. `check` runs
+Reviewer reads it by eye. Output goes to `src/generated/resources` and is committed. `check` clears the generators' hash cache, runs
 `runClientData` and then `checkGeneratedResources`, which fails if `git status` shows any change under
 `src/generated` (E1-S9, #198). So a build fails until generated files are committed.
 

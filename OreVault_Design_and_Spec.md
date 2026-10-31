@@ -3201,7 +3201,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
       and re-sizing a vanilla sprite is not ours to do
 - [ ] Tome node art — craggly, stained-paper frames per node class, readable at every GUI scale, the paper a frame and a wash, never a busy fill behind text; one icon per skill and per travel stat (§8) — E8-S2 (#256) and the icon stories under UI
 - [ ] Translucent portal strip, one near-white animated texture, tinted per tier in four colours (§3.2) — E3-S3 (#181)
-- [ ] Blockstate and model JSONs, through the data generators — E1-S9 (#198)
+- [ ] Blockstate and model JSONs, through the data generators — E1-S9 (#198) and the story of each block and item
 - [ ] In-game guide, only if the first-ten-minutes playtest shows one is needed, preferring a hover-in-JEI-and-hold-a-key guide to a book (§12) — E9-S59 (#363) decides, E13-S7 (#377)
 
 ### Not in 1.0
