@@ -2885,7 +2885,7 @@ The mixin config `orevault.mixins.json` is declared by a `[[mixins]]` entry in `
 
 ## 12. Suggested Build Order
 
-The repo was restarted on 2026-10-25 and nothing is built yet. Tasks are T1 to T14, defined with owners, reviewers and gates in `docs/TEAM_REQUIREMENTS.md` "Shared task list"; this table is the summary.
+The repo was restarted on 2026-10-25 and is being rebuilt. Tasks are T1 to T14, defined with owners, reviewers and gates in `docs/TEAM_REQUIREMENTS.md` "Shared task list"; this table is the summary.
 
 **The playable loop comes first.** Toolchain and an empty mod that runs; one block and one item seen in game; the dimension path complete and survived a logout inside it; the ore baseline at its real density and mined for ten minutes; Resonance and a level curve derived from that density; persisted data versioned; then the Tome, then nodes. No world-facing task opens until Nick has seen the one before it in a client. Pure logic for later tasks (curve, classifier, node data, layout maths) may proceed while a client gate waits. The first build did the reverse and shipped a Vault with almost no ore in it for a month.
 
@@ -2917,7 +2917,7 @@ The repo was restarted on 2026-10-25 and nothing is built yet. Tasks are T1 to T
 
 Use this to track progress. Tick a line only when the work has merged and been seen working; never from memory. Every feat PR ticks its own lines.
 
-**Everything is unticked since the restart.** The code these lines once described was removed on 2026-10-25. Each line now names a current behaviour and the filed story that builds it, as `E3-S4 (#229)`: the draft id and the issue in the current tracker. A line with more than one story is ticked when the last of them merges. A pre-restart issue is written "old #N" and is history only; its commits are in `git log` before the restart, and `docs/research/issue-harvest.md` holds what it said.
+**Everything was unticked at the restart.** The code these lines once described was removed on 2026-10-25. Each line now names a current behaviour and the filed story that builds it, as `E3-S4 (#229)`: the draft id and the issue in the current tracker. A line with more than one story is ticked when the last of them merges. A pre-restart issue is written "old #N" and is history only; its commits are in `git log` before the restart, and `docs/research/issue-harvest.md` holds what it said.
 
 ### Infrastructure
 - [x] NeoForge 26.1 project scaffold (`build.gradle`, `settings.gradle`, `gradle.properties` pins, `neoforge.mods.toml`) — E1-S1 (#188)
