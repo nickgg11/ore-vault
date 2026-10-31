@@ -193,8 +193,12 @@ JSpecify (`org.jspecify.annotations.Nullable`).
 
 ## Tests
 
-JUnit 5 under `src/test/java`, pure logic only: Minecraft classes do not load in this source set. Anything
-touching `Level`, registries or NBT belongs in a gametest or a playtest. Keep logic in plain classes so it
+JUnit 5 under `src/test/java`, pure logic only: Minecraft's game classes do not load in this source set,
+with one exception. `CompoundTag` and `NbtIo` do (`CompoundTagLoadsTest`, ADR 0005), so save-shape key-set,
+default and migrate tests are unit tests as long as read, write and migrate sit in plain classes. Nothing
+shows a `SavedData` subclass loads. Anything touching `Level` or registries belongs in a gametest or a
+playtest. `SavedData` and chunk attachments across a restart are the scripted stop and start in E3-S10
+(#200), because a gametest is one server lifetime. Keep logic in plain classes so it
 can be tested; do not ask for unit tests on code that cannot have them. Expect them on new pure logic,
 especially skill-tree maths, the level curve and ore classification. Use
 `superpowers:test-driven-development`, not another TDD skill.

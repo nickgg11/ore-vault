@@ -1,8 +1,7 @@
 # 0001. Toolchain, package layout and architecture rules
 
-Status: accepted 2026-10-31 (E0-S3, #179), after the round 2 verdicts below; proposed 2026-10-27. One
-check is still owed to T1 (E1-S3, #194): that the pinned ArchUnit release reads Java 25 class files, shown by
-the main architecture test importing more than zero classes (pin table, Architecture rules). Spec: §2; `CLAUDE.md` Build and technical rules 1, 3, 4
+Status: accepted 2026-10-31 (E0-S3, #179), after the round 2 verdicts below; proposed 2026-10-27. The
+check owed to T1, that the pinned ArchUnit release reads Java 25 class files, was met by E1-S3 (#194). Spec: §2; `CLAUDE.md` Build and technical rules 1, 3, 4
 and 5; settled decisions S15, S42 and S43 in `docs/TEAM_REQUIREMENTS.md`.
 
 ## Context
@@ -45,8 +44,8 @@ of `build.gradle`, and the Gradle version, which is in `gradle/wrapper/gradle-wr
 | FTB Materials | `ftb_materials_version=26.1.2.6`, artifact `dev.ftb.mods:ftb-materials` | `gradle.properties`, `localRuntime` | Only in the `materials` runtime profile. `ftb-materials-neoforge` holds the 21.1 line only. |
 | JSpecify | `jspecify_version=1.0.0` | `gradle.properties`, `compileOnly`, `testCompileOnly` | |
 | JUnit 5 | `junit_version=5.12.2` | `gradle.properties`, `testImplementation` | |
-| ArchUnit (`archunit-junit5`) | chosen in E1-S3 (#194), then pinned | `gradle.properties`, `testImplementation` | T1 confirms the chosen ArchUnit release reads Java 25 class files: the main architecture test asserts it imported more than zero classes, and an unreadable class file fails that import rather than a rule (below). |
-| Gson (`com.google.code.gson:gson`) | the version Minecraft 26.1 ships, read at T1 from the dependency tree | `gradle.properties`, `testImplementation` | Declared at T1 so `core.layout`'s tests do not depend on what NeoGradle happens to put on the unit test classpath (Developer, round 1). |
+| ArchUnit (`archunit-junit5`) | `archunit_version=1.5.1` | `gradle.properties`, `testImplementation` | Reads Java 25 class files: the main architecture test asserts it imported more than zero classes, and an unreadable class file fails that import rather than a rule (below). |
+| Gson (`com.google.code.gson:gson`) | `gson_version=2.13.2`, the version Minecraft 26.1 ships, read from the dependency tree | `gradle.properties`, `testImplementation` | Declared at T1 so `core.layout`'s tests do not depend on what NeoGradle happens to put on the unit test classpath (Developer, round 1). |
 
 Each version is re-checked once, at T1, then pinned. A bump of any of them is its own PR that changes
 nothing else and repeats T1's checks on Nick's PC (`build`, `test --rerun-tasks` with XML counts,
@@ -220,12 +219,13 @@ Named rules, which hold whatever the rows say:
    (Reviewer gate 2; `CLAUDE.md` rule 2; the details are ADR 0002's).
 8. Classes in `mixin` depend on nothing of Ore Vault's except `core.wear` (ADR 0008).
 
-S43 stands as settled: at T1 each rule is shown failing once against a planted violation, because ArchUnit
-fails a rule that matches nothing unless told not to, and a vacuous pass is not evidence. This record adds
-how: each rule is a field the main test runs over the main classes, and a second test runs every rule over
+S43 stands as settled: at T1 each rule is shown failing once against a planted violation, because
+ArchUnit fails a rule that matches nothing unless told not to, and a vacuous pass is not evidence. This record adds
+how: each rule is an entry in `ArchitectureRules` the main test runs over the main classes, and a second test runs every rule over
 a fixture set of planted violations under `src/test/java` (a `worldgen` class importing a `data` class, a
 `core` class importing a Minecraft class, and so on) and asserts that each one fails. That keeps the
-evidence permanent rather than a one-off screenshot. No rule is weakened with `allowEmptyShould(true)`; a
+evidence permanent rather than a one-off screenshot. Named rule 7 is the one exception to T1: it lands with E3-S6a
+(#237), where its classes exist, and is shown failing there. No rule is weakened with `allowEmptyShould(true)`; a
 rule over a package that has no classes yet runs only against its fixture until the package's first class
 lands, in the same PR.
 

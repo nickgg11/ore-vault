@@ -2923,7 +2923,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [x] NeoForge 26.1 project scaffold (`build.gradle`, `settings.gradle`, `gradle.properties` pins, `neoforge.mods.toml`) — E1-S1 (#188)
 - [x] FTB Teams declared as a mandatory dependency and the mod boots with it; FTB Ultimine `compileOnly` and optional — E1-S1 (#188)
 - [x] Gametest harness, one passing and one deliberately failing gametest — E1-S2 (#193)
-- [ ] Package structure created as `docs/adr/0001-toolchain-and-package-layout.md` lays it out: pure `core.*` packages with no Minecraft imports, Minecraft-facing adapters around them, and an ArchUnit test with one rule per package plus the named rules, each shown failing against a planted violation (S43) — E1-S3 (#194)
+- [x] Package structure created as `docs/adr/0001-toolchain-and-package-layout.md` lays it out: pure `core.*` packages with no Minecraft imports, Minecraft-facing adapters around them, and an ArchUnit test with one rule per package plus the named rules, each shown failing against a planted violation (S43), with named rule 7 to land with E3-S6a (#237); a package appears with its first class — E1-S3 (#194)
 - [x] Main mod class taking the `modEventBus` — E1-S1 (#188)
 - [ ] Data generators for blockstates, models, recipes, tags and loot, with a check that committed output matches — E1-S9 (#198)
 - [ ] Command root `/orevault`, always registered, with only its debug subcommands behind `[debug].enable_debug_commands`; `/orevault reset vote` and `/orevault archive` are registered whatever the flag (§10); and the config screen — E3-S1 (#205)
