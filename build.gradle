@@ -30,6 +30,14 @@ repositories {
     }
 }
 
+// Gametests sit in their own source set so they never ship in the jar.
+sourceSets {
+    gametest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
 runs {
     configureEach {
         systemProperty 'forge.logging.console.level', 'debug'
@@ -37,22 +45,20 @@ runs {
         modSource project.sourceSets.main
     }
 
-    client {
-        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-    }
-
     server {
-        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         argument '--nogui'
     }
 
     gameTestServer {
-        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        modSource project.sourceSets.gametest
     }
 }
 
 configurations {
     runtimeClasspath.extendsFrom localRuntime
+    gametestImplementation.extendsFrom implementation
+    gametestCompileOnly.extendsFrom compileOnly
+    gametestRuntimeOnly.extendsFrom localRuntime
 }
 
 def runtimeProfile = project.findProperty('runtime_profile') ?: 'none'
@@ -82,6 +88,10 @@ dependencies {
 
 tasks.named('test', Test) {
     useJUnitPlatform()
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('compileGametestJava')
 }
 
 tasks.withType(ProcessResources).configureEach {
