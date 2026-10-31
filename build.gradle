@@ -83,6 +83,8 @@ dependencies {
     }
 
     testImplementation "org.junit.jupiter:junit-jupiter:${junit_version}"
+    testImplementation "com.tngtech.archunit:archunit-junit5:${archunit_version}"
+    testImplementation "com.google.code.gson:gson:${gson_version}"
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
