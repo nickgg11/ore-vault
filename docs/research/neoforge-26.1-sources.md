@@ -264,8 +264,9 @@ return net.neoforged.neoforge.event.EventHooks.getPotentialSpawns(level, mobCate
 
 `ChunkGenerator#getMobsAt` is public and not final
 (`net/minecraft/world/level/chunk/ChunkGenerator.java` lines 449 to 471), so a Vault generator override returning
-an empty list stops every biome-modifier spawn at this call. The one path that skips it is
-`NaturalSpawner.java` line 352, `biome.value().getMobSettings()`, which is the chunk-generation mob pass; that runs
+an empty list stops every biome-modifier spawn at this call. Two paths skip it. One is the fortress
+branch at `NaturalSpawner.java` lines 312 to 316, which needs a fortress structure, and the Vault has none. The
+other is `NaturalSpawner.java` line 352, `biome.value().getMobSettings()`, which is the chunk-generation mob pass; that runs
 through `generator.spawnOriginalMobs` (`ChunkStatusTasks.java` line 167), which the Vault generator also controls.
 The last call that can still add to the list is `LevelEvent.PotentialSpawns`
 (`net/neoforged/neoforge/event/level/LevelEvent.java` line 122), which a mod would have to target on purpose. A
@@ -546,8 +547,8 @@ Points that bite at T3 and T6:
   `parsingResult.orElseThrow(() -> buildException("read"))` (lines 215 to 216), and
   `AttachmentHolder#deserializeAttachments` (lines 159 to 163) catches that, logs "Failed to deserialize data
   attachment {}. Skipping.", and leaves the type absent. For `orevault:player`, a required field missing from an
-  older tag would therefore reset `return_pos` on load with one log line. Every field has to be optional in the
-  codec, or `orevault:player` has to use its own `IAttachmentSerializer`, so that `migrate()` sees the tag before
+  older tag would therefore reset `return_pos` on load with one log line. `orevault:player` therefore uses ADR 0005
+  section 6's hand-written reader, so that `migrate()` sees the tag before
   anything decodes (ADR 0005). An attachment id with no registered type is also logged and skipped (lines 153 to
   157), so a rename needs the registry alias (item 12) or the data is gone at the next save.
 
@@ -684,7 +685,7 @@ to 126 encode the packet and, if it is over `CompressionDecoder.MAXIMUM_UNCOMPRE
 compressor or `MAXIMUM_COMPRESSED_LENGTH` (2097152) without, send it in `SplitPacketPayload` parts. It applies
 only to a compatible remote (`isRemoteCompatible`, line 183).
 
-ADR 0006's own bounds (about 10 KB up, about 33 KB down) stay under every number here, so nothing changes. Vanilla's
+ADR 0006's own bounds (about 10 KB up, about 1.07 MB down) stay under both split limits, so nothing changes. Vanilla's
 caps stop being a rule from the transport; the ADR's bounds stay as our own limits, and they are what protects
 the decoder.
 
@@ -1290,4 +1291,5 @@ because ADRs and tickets cite them.
 Unverified, because a read of the source cannot settle it, each with the story that checks it in a running game:
 whether an attachment written on a `ProtoChunk` survives both halves of the spike (E6-S4, #209); the JSON form of the
 data-component ingredient at load (E9-S28, #332); a Vault Anchor callback reading its block during restore (E10-S3,
-#373); the mixin config at first load (E9-S7, #311).
+#373); the mixin config at first load (E9-S7, #311); the `assumeMapUnsafe(CompoundTag.CODEC.xmap(...))` wrapper on
+`orevault:player`, first run by #237's gametest (E3-S6a).

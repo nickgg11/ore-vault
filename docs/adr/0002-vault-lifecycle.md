@@ -9,9 +9,10 @@ Registration; S14, S19 (`docs/TEAM_REQUIREMENTS.md`).
 The 26.1 facts below were read on 2026-10-27 from the decompiled, NeoForge-patched Minecraft sources of
 `neoforge-26.1.2.95` (E1-S5, #195) and from `ftb-teams-26.1.2.4-sources.jar` (E1-S5's FTB Teams read). Paths
 are inside those jars. NeoForge's own classes (`net.neoforged.neoforge.*`, such as `AttachmentInternals`,
-`ForcedChunkManager` and `TicketController`) were not in the unpacked set; where this record depends on one
-it says so. That tree was also recompiled with the old build's access transformers applied, so a member it
-shows as public is not evidence that it is public in 26.1.2.95 (see `storageSource` below).
+`ForcedChunkManager` and `TicketController`) were not in that set; they were read on 2026-10-31 from
+NeoForge's sources jar (`docs/research/neoforge-26.1-sources.md`), and the facts below that rest on them say
+so. That tree also carries the old build's access transformers, so a member's visibility is taken from
+`javap -p` on the compiled jar, not from the tree (same file, Provenance).
 
 ## Context
 
@@ -48,13 +49,12 @@ What the 26.1.2.95 sources say about the machinery this rests on:
   `(MinecraftServer, Executor, LevelStorageSource.LevelStorageAccess, ServerLevelData, ResourceKey<Level>,
   LevelStem, boolean isDebug, long biomeZoomSeed, List<CustomSpawner>, boolean tickTime)`. It reads
   `levelStem.seedOverride()` first (a NeoForge addition).
-- `MinecraftServer.storageSource` reads `public final LevelStorageSource.LevelStorageAccess storageSource;`
-  (line 218) in the tree read, but that is not evidence. The five members the old build's
-  `accesstransformer.cfg` widened (`git show 1e7cdad:src/main/resources/META-INF/accesstransformer.cfg`:
-  `CountPlacement.count`, `HeightRangePlacement.height`, `UniformHeight.minInclusive`,
-  `UniformHeight.maxInclusive`, `MinecraftServer.storageSource`) all read public there, while
-  `RarityFilter.chance`, never transformed, reads private. ADR 0009 draws the same conclusion for its
-  fields. Unverified: to be read by E1-S5 (#195): the field's visibility in a clean 26.1.2.95 decompile.
+- `MinecraftServer.storageSource` is `protected final` in 26.1.2.95 (`javap -p` on the compiled jar and on
+  Mojang's `client.jar`; the sources doc, "The five members, in a clean 26.1.2.95"). The tree read shows it
+  public only because it carries the old build's transformer, one of the five lines of
+  `git show 1e7cdad:src/main/resources/META-INF/accesstransformer.cfg`. NeoForge does not widen it, and
+  `MinecraftServer` has no getter for the object: `getWorldPath(LevelResource)` returns a `Path`, and the
+  `ServerLevel` constructor needs the `LevelStorageAccess` itself.
 - `MappedRegistry#register` (`net/minecraft/core/MappedRegistry.java` lines 92 to 131) throws
   `IllegalStateException("Adding duplicate key ...")` when the key is present, and the class has no
   removal method. `unfreeze(boolean clearTags)` (line 285) only clears `frozen`; `freeze()` (line 294)
@@ -187,9 +187,8 @@ the other marks say where they came from.
 9. `new ServerLevel(server, Util.backgroundExecutor(), server.storageSource, derivedLevelData, key, stem,
    false, BiomeManager.obfuscateSeed(server.overworld().getSeed()), List.of(), false)`, through the public
    constructor (aa431c6). `Util.backgroundExecutor()` is what `createLevels` passes (`this.executor`,
-   assigned at `MinecraftServer` line 354). `server.storageSource` keeps the old build's access transformer
-   (old #14) with its ticket comment, until a clean decompile (E1-S5, #195) shows the field is public; if
-   it is, the AT line is removed in that PR and the call site's comment says why.
+   assigned at `MinecraftServer` line 354). `server.storageSource` is protected with no getter (Context), so
+   the old build's access transformer line stays (old #14), with its ticket comment.
 10. `VaultLevels.register(key, level)`: the map insert and `markWorldsDirty()` (9ded125).
 11. `level.getWorldBorder().setAbsoluteMaxSize(server.getAbsoluteMaxWorldSize())` and
     `server.getPlayerList().addWorldborderListener(level)`, as `createLevels` does.
@@ -200,12 +199,15 @@ the other marks say where they came from.
     `ForcedChunkManager.activateAllDeactivatedTickets(level, saved)`. On restore this brings back
     `/forceload` chunks and the mod's Vault Anchor tickets; on a new Vault or the re-registration after a
     reset there is no ticket file and it does nothing. `ForcedChunkManager.activateAllDeactivatedTickets`
-    is public and static: `MinecraftServer#prepareLevels` calls it from `net.minecraft.server`
-    (`MinecraftServer.java` line 563) on a class in `net.neoforged.neoforge.common.world.chunk` (DEV2-5).
-    Unverified: to be read by E1-S5 (#195), before E3-S6a (#237) and E10-S3 (#373): when NeoForge runs a
-    `TicketController`'s validation callback for a level added after start (at `readStoredTickets` during
-    the `ServerLevel` constructor, at activation, or never). If it never runs for such a level, the Vault
-    Anchor's own validation (§3.4) is called from this step.
+    is public, static and `@ApiStatus.Internal` (`ForcedChunkManager.java` lines 107 and 108). There is no
+    supported alternative, so E3-S6a (#237) calls it with a comment saying so, on the same footing as
+    `forgeGetWorldMap()`. It runs each `TicketController`'s validation callback itself, on the calling
+    thread, with the level in the server's map (step 10) and before any of its forced tickets go live
+    (lines 125 to 137). So the Vault Anchor's validation (§3.4) is the `LoadingValidationCallback` on its
+    controller, and this step makes no separate call. Two limits: a level with no deactivated tickets gets
+    no callback (line 111), and a callback that reads a block from `level` loads that chunk synchronously,
+    once per Anchor. Whether that read works during restore is unverified, because it needs a running game:
+    E10-S3 (#373) checks it across a restart.
 14. Record key, variant and generator in the team maps; log the key, the dimension type, the Y range, the
     team and the server tick (aa431c6 logged the same; the tick is what found #89).
 
@@ -303,7 +305,10 @@ reset waits on it.
 1. Precondition: no player in the level. The caller (reset, ADR 0007) has evacuated them; `unload` refuses
    and logs otherwise.
 2. Release the team's Vault Anchor tickets through the mod's `TicketController` (ADR 0007), and call
-   `level.getChunkSource().deactivateTicketsOnClosing()`, as `stopServer` does.
+   `level.getChunkSource().deactivateTicketsOnClosing()`, as `stopServer` does. Outside the validation
+   callback NeoForge has no list-and-remove: `TicketController` only has `forceChunk` with one owner and one
+   chunk, so the release needs each Anchor's owner, chunk and spawning flag from the mod's own data
+   (sources doc, "TicketController, and when validation runs"). Where that lives is open with E10-S3 (#373).
 3. Each following tick, while the level is still in the map and so still ticked by the server, check
    `level.getChunkSource().chunkMap.hasWork()`. When it reports no work, go on to step 4 in that tick. If
    it still has work after 200 ticks (10 seconds; a technical bound, checked by the spike), the unload
@@ -399,8 +404,8 @@ with two lines in QA's regression list, both required on any PR that changes `ne
   every start, including a solo Vault whose player is in a party.
 - The registry keeps one stale `LevelStem` entry per reset until the next start. Bounded by resets per
   session, and gone at restart.
-- The `storageSource` access transformer stays until a clean decompile shows it is not needed. If it is
-  wrong either way, the failure is a compile error or a stray AT line at one place, never a runtime one.
+- The `storageSource` access transformer stays: the field is protected with no getter (Context). If a later
+  version changes that, the failure is a compile error or a stray AT line at one place, never a runtime one.
 - The login check makes every restore failure recoverable, so restore can skip a bad folder instead of
   failing the start.
 - A damaged team file costs the team's progress, never its terrain; a damaged Vault type file refuses that
@@ -529,3 +534,8 @@ answered by a fix in this record unless named otherwise.
 - architect: request changes. ARCH-R2-1 (the session unreadable set held for one session only): fixed, by
   the design proposed there and ruled in section 1. Addition 2 (b): fixed, the `.deleting` `VaultKeys`
   case.
+
+Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md`: `storageSource` is protected
+with no getter, so the AT stays; the activation call is `@ApiStatus.Internal` and runs validation, so step 13
+makes no extra call; removal step 2 needs the mod's own record of each Anchor. The Anchor callback's block read
+stays unverified until E10-S3 (#373). No decision changed.

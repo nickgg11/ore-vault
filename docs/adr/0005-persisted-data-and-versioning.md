@@ -61,9 +61,22 @@ the personal team is never deleted (`TeamManagerImpl#createPlayerTeam`); joining
 personal team at the party and posts `PlayerChangedTeamEvent`, never `TeamDeletedEvent`
 (`PartyTeam#join`); `PlayerChangedTeamEvent` is posted for offline players too (`AbstractTeam#onPlayerChangeTeam`).
 
-Not in the decompiled Minecraft tree and so Unverified: to be read by E1-S5 (#195): NeoForge's
-`AttachmentType` builder and its `copyOnDeath()`, the chunk attachment carry-over from `ProtoChunk` to
-`LevelChunk` (ADR 0004), and NeoForge's registry alias API for a renamed block or item id.
+Read on 2026-10-31 from NeoForge's sources jar (`docs/research/neoforge-26.1-sources.md`, "The builder" and
+"Registry alias for a renamed id"; chunk carry-over is ADR 0004's):
+
+- `AttachmentType.Builder#serialize` takes an `IAttachmentSerializer` or a `MapCodec`, never a `Codec`, and
+  throws if called twice. `copyOnDeath()` and `copyHandler` throw unless `serialize` ran first
+  (`AttachmentType.java` lines 182 to 258).
+- A failed read loses the whole attachment, not one field. The codec read ends in `orElseThrow`, and
+  `AttachmentHolder#deserializeAttachments` (lines 159 to 163) catches that, logs "Failed to deserialize data
+  attachment {}. Skipping." and leaves the type absent. Nothing of ours has seen the tag by then, so a
+  `migrate()` behind a codec never runs, and the next save writes the default. An id with no registered type
+  is logged and skipped the same way (lines 153 to 157).
+- `copyOnDeath()` is real. A death copies only the types that set it; the non-death clone, the return from
+  the End, copies every serializable type (`AttachmentInternals.java` lines 52 to 59). The copy is a fresh value.
+- A renamed id is `DeferredRegister#addAlias(from, to)`, called before `RegisterEvent` fires
+  (`DeferredRegister.java` lines 303 to 305). It is permanent, since a save holding the old id is rewritten only
+  when that chunk or inventory is next saved.
 
 ## Decision
 
@@ -92,7 +105,7 @@ Not in the decompiled Minecraft tree and so Unverified: to be read by E1-S5 (#19
 |---|---|---|
 | Team data | `SavedData`, id `orevault:team_<teamUuidNoHyphens>`, in the server's storage (`MinecraftServer#getDataStorage()`): `<world>/data/orevault/team_<hex>.dat`. Created on first write, never on `FTBTeamsEvent.TeamCreated` (S18) | `data_version` |
 | `PlayerStats` | Nested in team data under `player_stats`, one entry per player UUID | its own `data_version` |
-| Player data | NeoForge player attachment `orevault:player`, `copyOnDeath` (unverified API, E1-S5) | `data_version` |
+| Player data | NeoForge player attachment `orevault:player`, `copyOnDeath` | `data_version` |
 | Vein index and chunk fields | Chunk attachment `orevault:vein_index`, written only for the chunk being generated (ADR 0004 owns its fields, its block-id palette among them) | `data_version` |
 | Explored map | `SavedData` `orevault:explored_map` in the Vault level's own storage (`ServerLevel#getDataStorage()`): `<world>/dimensions/orevault/vault_<hex>/data/orevault/explored_map.dat`. Deleted, backed up and archived with the Vault folder (ADR 0004 Amendment 1 owns its fields) | `data_version` |
 | Vault type | Raw NBT file at the top of the Vault folder, outside the level's storage: `<world>/dimensions/orevault/vault_<hex>/orevault_vault.dat`. Written once when the folder is made; deleted, backed up and archived with it (section 3a) | `data_version` |
@@ -115,7 +128,7 @@ built from public parts the same way: `server.getWorldPath(LevelResource.DATA)` 
 2058, `LevelResource.java` line 15), then the id's namespace, then its path plus `.dat`, giving
 `<world>/data/orevault/team_<hex>.dat`. The type file is the Vault folder ADR 0002 names (what
 `DimensionType.getStorageFolder` makes of the key under the world root) plus `orevault_vault.dat`; the world
-root is the parent of the `DATA` path unless E1-S5 (#195) finds a root constant in `LevelResource`. The name
+root is `server.getWorldPath(LevelResource.ROOT)` (`LevelResource.java` line 16, read 2026-10-31). The name
 parts (`team_<hex>`, `vault_<hex>`) come from `core.key.VaultKeys`.
 
 The `SavedData` id uses the team UUID without hyphens, the same form as the dimension key
@@ -200,8 +213,10 @@ the compound below, with no `data` wrapper.
 - Backed up, deleted and archived with the folder (ADR 0007), so a backup restored by hand comes back with
   its own type.
 
-Which NBT read and write calls are used (`NbtIo`, or `SavedDataStorage#readTagFromDisk`, which takes a path,
-`SavedDataStorage.java` line 118) is Unverified: to be read by E1-S5 (#195).
+The file is read and written with `NbtIo#readCompressed(Path, NbtAccounter)` and `NbtIo#writeCompressed(CompoundTag,
+Path)` (`net/minecraft/nbt/NbtIo.java` lines 31 and 75, read 2026-10-31). `SavedDataStorage#readTagFromDisk` (line
+118) is an instance method with a data-fixer step, and this file is read with no storage in hand. `NbtIo` loads
+in JUnit (section 6), so the read and write are unit-tested.
 
 ### 4. `PlayerStats`
 
@@ -244,7 +259,8 @@ while inside is a leave for the old team's streak.
 ### 5. Player attachment `orevault:player`
 
 `copyOnDeath`, so it survives death; it is the player's own and independent of team data, so it survives
-team changes. Each team-scoped position carries the team and the `vault_generation` it was recorded under.
+team changes. The copy is a fresh value on a new `ServerPlayer`, so nothing holds a reference to the old value
+or the old player across a respawn. Each team-scoped position carries the team and the `vault_generation` it was recorded under.
 One that names another team, or a generation behind that team's current one, reads as absent and is
 removed on the player's next write. That is how a reset "clears" entry points, the Homeward anchor and the
 death marker without editing offline players' files (ADR 0007).
@@ -285,6 +301,13 @@ death marker without editing offline players' files (ADR 0007).
   read throws, for any input. This is not style: `SavedDataStorage#readSavedData` turns a parse error or
   an exception into `null`. A codec cannot cover a file that fails before it runs (truncated or not gzip);
   section 2's copy-aside does.
+- Attachments take the same reader, because a failed attachment read drops the whole attachment before
+  `migrate()` can run (Context): `return_pos` would reset with one log line. `orevault:player` and
+  `orevault:vein_index` register `serialize(MapCodec.assumeMapUnsafe(CompoundTag.CODEC.xmap(read, write)))`, so
+  the plain `read` gets the raw compound, runs `migrate()` and uses `get…Or` defaults, and the decode cannot
+  fail. NeoForge reads a whole `ValueInput` through the same wrapper (`ValueInputExtension#keySet`). This form was
+  read, not run; E3-S6a's (#237) round-trip gametest is its first run. If the wrapper fails there, the same `read`
+  and `write` go in an `IAttachmentSerializer`, with no change to the save shape.
 - Registry ids are save data. Every id below is frozen from T5: block and item ids (the
   `orevault:wanderers_cache` item among them), the orb entity types, `orevault:player`,
   `orevault:vein_index`, `orevault:vault_tool`, `orevault:attuned`, `orevault:cache_tier`, the dimension
@@ -292,8 +315,9 @@ death marker without editing offline players' files (ADR 0007).
   patterns, the `SavedData` id `orevault:explored_map`, the biome `orevault:vault`, the `TicketController` id, `orevault:travel_max_health`, and every
   node, skill and option id in the layout (with the §6.1 reserved ids never reused), and the Vault type
   file's name `orevault_vault.dat`. All of them are string constants in one pure class (`core` has no
-  Minecraft imports) that registration reads, pinned by a golden JUnit test. Renaming a block or item id needs NeoForge's alias mechanism (unverified API, E1-S5);
-  renaming any other id needs a migration.
+  Minecraft imports) that registration reads, pinned by a golden JUnit test. Renaming a block or item id, or an
+  attachment type id, needs `DeferredRegister#addAlias(from, to)` (Context), kept for good, with a golden test;
+  without it the data is gone at the next save. Renaming any other id needs a migration.
 - Tests (S17). A golden key-set test per shape, the chunk attachment's including its `ores` palette of
   block id strings (ADR 0004) and the Vault type file's `{data_version, variant}`; a fixture of each shape at each version that loads; and an absent-field test
   per field reading its default. Wrong-type fixtures per key load to the default without throwing, at
@@ -420,6 +444,10 @@ tier 1.
   would be noise and would force migrations for untouched shapes (old PR #111).
 - A codec built with `RecordCodecBuilder` for team data. A field that fails to decode fails the whole
   parse, which `SavedDataStorage` turns into an empty team.
+- A `RecordCodecBuilder` for an attachment with every field in `optionalFieldOf`. It survives an absent key, but
+  `optionalFieldOf` is strict: a present key of the wrong type is still an error (`OptionalFieldCodec#decode` only
+  swallows it when lenient), which section 6's wrong-type fixtures forbid, and `migrate()` would still run after
+  decode.
 - `PlayerStats` on the player attachment, moving with the player. Q3 chose option (b); and team stats
   must be queryable by team while members are offline (§9).
 - A has-record flag for `deepest_y` (old #149's fix). S16 settled on absence: one source, no flag to
@@ -525,3 +553,9 @@ into the Vault's folder and play goes on (option b of three; the spec's "play go
 - balancer: approve. Checked the pool unit and BAL-7 at its lines; nothing new.
 - architect: approve; consistent with ADRs 0001, 0003, 0006 and 0008 on every name checked. ARCH-R2-1
   (raised on ADR 0002) is the source of section 3a.
+
+Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md` and, for `LevelResource.ROOT`
+and `NbtIo`, the patched sources: `copyOnDeath` and the alias API are confirmed; attachments use the hand-written
+reader of section 6, since a failed read drops the attachment before `migrate()`; the world root and the type
+file's NBT calls are named. Save shapes and keys are unchanged. The "Anchor tickets" row in section 2 is left as
+it was and is open with E10-S3 (#373).

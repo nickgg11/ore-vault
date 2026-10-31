@@ -56,7 +56,10 @@ NeoForge internals.
 Access transformers are in `src/main/resources/META-INF/accesstransformer.cfg`, registered with
 `minecraft.accessTransformers.file`, as the last build did. Every line is preceded by a comment naming the
 ticket that needs it (Reviewer gate 7). T1 commits the file empty or absent; each AT arrives with the code
-that uses it.
+that uses it. In a built jar FML finds the file at that default path with no entry in `neoforge.mods.toml`
+(`ModFile.java` line 45); `[[accessTransformers]]` with a `file` key is only for another path. The first ATs are
+`MinecraftServer.storageSource`, which is protected with no getter (ADR 0002), and, only if ADR 0009's codec
+path fails, its private placement fields (`docs/research/neoforge-26.1-sources.md`, Provenance).
 
 ### Gametests
 
@@ -75,7 +78,7 @@ The rules for a new gametest (E1-S2, #193):
   the Gradle task.
 - A count quoted from the log includes the optional `minecraft:always_pass`, which is not ours, and the PR
   states the total it expects: passing tests log no name, and a test that failed to register exits 0. The
-  total is 2 at E1-S2.
+  total is 3 at E1-S11: `harness/passes`, `lang/coverage` and `minecraft:always_pass`.
 - There is no namespace filter: nothing in NeoForge 26.1.2.95 reads `neoforge.enabledGameTestNamespaces`, so the
   build does not set it. `--tests` is the vanilla selector.
 
@@ -91,10 +94,10 @@ Reviewer reads it by eye. Output goes to `src/generated/resources` and is commit
 
 ADR 0008's mixin is the only one. Its classes live in `com.orevault.orevault.mixin`; its config is
 `src/main/resources/orevault.mixins.json`, declared by a `[[mixins]]` entry in
-`src/main/resources/META-INF/neoforge.mods.toml`. Unverified: to be read by E1-S5 (#195): the exact
-`[[mixins]]` keys NeoForge 26.1.2.95's FML accepts, the mixin config's `compatibilityLevel` for Java 25,
-and whether a refmap is needed (the NeoForge sources tree read for this run holds patched Minecraft only,
-not FML). The mixin config lands with the first mixin class, not at T1.
+`src/main/resources/META-INF/neoforge.mods.toml`. From FML's sources (read 2026-10-31,
+`docs/research/neoforge-26.1-sources.md`, "Mixin entry, compatibility level and refmap"): `config` is the
+required key, `compatibilityLevel` is `JAVA_25`, and no refmap is needed. That config is unverified in a running
+game until E9-S7 (#311) loads it. The mixin config lands with the first mixin class, not at T1.
 
 Any further mixin needs its own ADR, stating why no NeoForge event or extension point serves, the target
 and its signature as read from the sources, and the gametest that pins it.
@@ -380,3 +383,7 @@ Amended 2026-10-31 by E1-S1 (#188), on the Architect's sketch verdict: the pin t
 
 Accepted on these verdicts and the Manager's rulings. The ArchUnit check on Java 25 class files is owed to
 T1 and is not a condition of acceptance, since nothing can be compiled before T1 exists.
+
+Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md`: the three mixin unknowns are
+answered from source, with the first load still E9-S7's (#311), and the AT section names the default path and the
+first lines it will hold. Nothing else changed.

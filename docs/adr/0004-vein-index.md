@@ -9,7 +9,8 @@ round 2 verdicts on 2026-10-31 (Reviews). Spec: §3.1, §3.4, §11 Vein Index; S
 
 Source facts are from the decompiled, NeoForge-patched Minecraft sources of `neoforge-26.1.2.95`, read on
 2026-10-27 (E1-S5, #195); paths are inside that jar. NeoForge's own classes (`AttachmentInternals`,
-`AttachmentHolder`, the explosion event) were not in the unpacked set.
+`AttachmentHolder`, the explosion event) were not in the unpacked set; the attachment classes and `ChunkEvent`
+were read on 2026-10-31 from NeoForge's sources jar (`docs/research/neoforge-26.1-sources.md`).
 
 ## Context
 
@@ -50,8 +51,17 @@ What the 26.1.2.95 sources say about chunk attachments:
   it (`net/minecraft/server/level/ServerPlayerGameMode.java` line 293) before `playerDestroy` reaches
   `BlockDropsEvent` (line 296), as the Developer read in round 1.
 
-The body of `copyChunkAttachmentsOnPromotion`, and so which attachment types it copies, is NeoForge code
-not in the unpacked set. The spike (E6-S4) decides it in play.
+`copyChunkAttachmentsOnPromotion` copies every attachment with a serializer, with no flag to opt in; one with
+no serializer is skipped (`AttachmentInternals.java` lines 25 to 47; `AttachmentType.java` line 56). The
+default copy writes the value out and reads it back through the serializer, once per chunk, on the main
+thread, and `copyAttachments` has no `try`, so a throw there leaves the `LevelChunk` constructor. A value the
+copy handler returns as null is dropped. `orevault:vein_index` has a serializer, so the source says it is
+copied: Result A below is the expected answer. Carry-over stays unverified in a running game until E6-S4
+(#209) reports.
+
+The holder has no lock: a plain map, null until first used (`AttachmentHolder.java` lines 40 to 51), and
+`getData` writes too, putting the default in the map when the type is absent (lines 76 to 80).
+`getExistingDataOrNull` (lines 87 to 93) does not write.
 
 ## Decision
 
@@ -101,9 +111,22 @@ generation the index matches the world exactly.
 
 ### The attachment
 
-One chunk attachment, `orevault:vein_index`, with a codec. Its id is save data from the first release (ADR
-0005). It is written only for the chunk being generated, by the generator for that chunk (or by the main
-thread from the pending map, below), and after that only on the main thread.
+One chunk attachment, `orevault:vein_index`, with a hand-written reader (ADR 0005 section 6). Its id is save
+data from the first release (ADR 0005). It is written only for the chunk being generated, by the generator
+for that chunk (or by the main thread from the pending map, below), and after that only on the main thread.
+
+The type is built with `serialize(...)` and then `copyHandler((value, holder, provider) -> value)`, in that
+order, because `copyHandler` throws unless a serializer is set (`AttachmentType.java` lines 251 to 258). The
+value is immutable (below), so sharing it between the `ProtoChunk` and the `LevelChunk` is correct. Without
+the handler every fresh chunk writes and reads its index on the main thread: at the full stack about 36 KB out
+and 36 KB back, so about 72 KB copied per chunk, or about 32 MB across the 441 chunks of an arrival at view
+distance 10, as garbage, plus the palette's strings. These are estimates, not a measurement. The handler is
+one line, costs one reference, and removes the path that can throw out of the `LevelChunk` constructor. What
+it gives up is that promotion no longer exercises the serializer, so E6-S4 checks the round trip directly.
+
+Main-thread readers use `getExistingDataOrNull`, never `getData`, which would turn a chunk generated before the
+index into a chunk with an empty attachment (Context), and they read `LevelChunk`s only: a `ProtoChunk` reached
+through `getLatestChunk()` may still be a worker's.
 
 The attachment type, its record and its codec live in a leaf package, `worldgen.index`, that imports only
 Minecraft and `core.vein` (ADR 0001). It is registered from the mod constructor on the mod bus. The
@@ -255,13 +278,17 @@ stage, with the next free ordinal from `1 << 16`, and its palette entry is the s
 
 ### Pending E6-S4 (#209): does an attachment written on the `ProtoChunk` reach the `LevelChunk`?
 
-The source says the promotion constructor calls `copyChunkAttachmentsOnPromotion` (above); it does not say
-what that copies. The spike has two halves, both on Nick's PC, and a result rule.
+The source says the promotion constructor calls `copyChunkAttachmentsOnPromotion`, and that it copies every
+attachment with a serializer (Context), so Result A is the expected answer. A read cannot show the rule's two
+halves in a running game, so the spike stays, with two halves, both on Nick's PC, and a result rule.
 
 The gametest half: a test Vault whose generator sets a test attachment of the real type in `fillFromNoise`
-generates at least 81 fresh chunks, and the test checks at `ChunkEvent.Load` (flag true) that every one of
-them carries the attachment and that it is equal to what was set. One chunk without it, or with a
-different value, is a failure.
+generates at least 81 fresh chunks, and the test checks at `ChunkEvent.Load` (`isNewChunk()` true) that every
+one of them carries the attachment and that it is equal to what was set. One chunk without it, or with a
+different value, is a failure. The real type's `copyHandler` shares the value, so that comparison alone cannot
+fail on the serializer: the test also writes each value out and reads it back through the serializer and
+compares the result. It logs the time that takes over the 81 chunks, which is the cost the handler saves
+("The attachment", above).
 
 The restart half: a gametest cannot restart its server, so this is a scripted dedicated-server run (the
 headless restart script of E3-S10, #200). The script starts the server, has a player or a forced load
@@ -271,8 +298,9 @@ saved at a partial status carries its attachments through `SerializableChunkData
 count are written into this section with the result.
 
 Result A, carried over: both halves pass, every chunk. The generator calls `setData` on the `ProtoChunk` it
-is filling, on its worker, which owns that chunk. `generated_at` is added on the main thread at
-`ChunkEvent.Load`. No pending map exists.
+is filling, on its worker, which owns that chunk. The source supports that for the `ProtoChunk` `fillFromNoise`
+was handed and no other: a neighbour's reached through a region is not owned (sources doc, "Writing from the
+generator thread"). `generated_at` is added on the main thread at `ChunkEvent.Load`. No pending map exists.
 
 Result B, not carried over: any failure in either half, including a mixed result where fresh chunks carry
 the attachment and chunks finished after the restart lose it. The generator puts the built index in a
@@ -428,6 +456,12 @@ so no round 3; each role confirms its named lines after this pass).
 Still owed before acceptance: the E6-S4 (#209) spike result and the E4-S1 (#234) size measurement, written
 into their pending sections.
 
+Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md`: promotion copies every
+serializable attachment by a write and a read on the main thread, so the type sets an identity `copyHandler`;
+the reader is hand-written (ADR 0005); main-thread reads use `getExistingDataOrNull`; the flag is
+`isNewChunk()`. Result A is now the expected answer and E6-S4 stays the check in a running game, with a direct
+serializer round trip added. The acceptance condition is unchanged.
+
 ## Amendment 1 (E0-S12, #231): explored chunks and the Seismic Sense map
 
 Status: proposed, 2026-10-27 (E0-S12, #231), and stays proposed with the record above (E6-S4 #209, E4-S1
@@ -472,8 +506,11 @@ Read on 2026-10-27 from the decompiled NeoForge 26.1.2.95 sources (paths inside 
   `CompletableFuture<Optional<CompoundTag>>` (`net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java`
   line 36): a disk read and a decompression per chunk, finished off the main thread.
 
-`ChunkEvent` itself is NeoForge's class, not in the unpacked tree; the accessor name for the flag is
-Unverified: to be read by E1-S5 (#195).
+`ChunkEvent` itself is NeoForge's class, read on 2026-10-31: the flag's accessor is
+`ChunkEvent.Load#isNewChunk()` (`ChunkEvent.java` lines 46 to 63). "New" means newly promoted: a chunk saved at
+a partial status and finished after a restart reads true. The event fires before the chunk is promoted to
+`FULL`, and its javadoc says anything on the level waits for the next tick. The listeners here touch only the
+chunk's own attachment and their own data.
 
 ### Decision
 

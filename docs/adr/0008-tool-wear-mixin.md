@@ -153,8 +153,9 @@ This is a sketch of the shape for E9-S7, not code to copy.
   can optionally include the target method arguments by simply appending them to the handler method
   signature") and `CallbackInfoReturnable#setReturnValue` calling `cancel()`
   (`SpongePowered/Mixin`, `src/main/java/org/spongepowered/asm/mixin/injection/ModifyVariable.java` and
-  `.../callback/CallbackInfoReturnable.java`, master branch, read 2026-10-27). The Mixin build that NeoForge
-  26.1.2.95 ships was not read; it is first-load check 2.
+  `.../callback/CallbackInfoReturnable.java`, master branch, read 2026-10-27). NeoForge 26.1.2.95 ships
+  `sponge-mixin` 0.17.3+mixin.0.8.7 (`ivy-26.1.2.95-ng2.xml` line 152); what that build does with these two
+  forms was not read, and it is first-load check 2.
 
 No `javap` check is needed: nothing reads `newAmount` or any other local, and the argument slots are fixed
 by the signature. The research file's item 9 closes as not needed.
@@ -163,9 +164,9 @@ by the signature. The research file's item 9 closes as not needed.
 
 Not required. `@ModifyExpressionValue` on the `processDurabilityChange` call inside `hurtAndBreak` would
 have done the second injection, but it would see only the `hurtAndBreak` path, not the trident, and the
-`RETURN` injection does the job in plain Mixin. Whether NeoForge 26.1.2.95 bundles MixinExtras no longer
-affects this record; the research file's item 7 closes as not needed. If a later ticket wants MixinExtras,
-it checks presence then.
+`RETURN` injection does the job in plain Mixin. The research file's item 7 closes as not needed. NeoForge's
+dependency list names `mixinextras-neoforge` 0.5.4 (`ivy-26.1.2.95-ng2.xml` line 162), for a later ticket that
+wants it.
 
 ### Scope: `WearScope` and `TeamEffects`
 
@@ -222,7 +223,7 @@ draws from `level.getRandom()` and cannot fix the rolls (QA, round 1).
 {
   "required": true,
   "package": "com.orevault.orevault.mixin",
-  "compatibilityLevel": "<first-load check 1>",
+  "compatibilityLevel": "JAVA_25",
   "mixins": ["ItemStackWearMixin"],
   "injectors": { "defaultRequire": 1 }
 }
@@ -241,14 +242,25 @@ wear vanilla.
 config = "orevault.mixins.json"
 ```
 
+These were read on 2026-10-31 (`docs/research/neoforge-26.1-sources.md`, "Mixin entry, compatibility level and
+refmap"). `config` is the one required key (`ModFileParser.java` lines 61 to 83). `JAVA_25` is a constant of the
+shipped Mixin's `CompatibilityLevel`, and the mod compiles for Java 25. No refmap: 26.1 is not obfuscated, so
+runtime names are compile-time names, and NeoForge's own `neoforge.mixins.json` has no `refmap` key.
+
+One trap: `ModFileParser` catches any exception reading the entry, logs "Failed to load mixin configs from mod
+file" and returns an empty list (lines 80 to 82). A malformed entry loads no mixins and does not crash, and
+`defaultRequire: 1` cannot catch that because nothing runs. The gametest below is the guard.
+
+All of this is read, not run. The mixin config is unverified in a running game until E9-S7 (#311) loads it.
+
 ## Consequences
 
 - This is Ore Vault's first mixin (ADR 0001, Mixins). The config and the `[[mixins]]` entry land with it in
   E9-S7, not at T1.
 - First-load checks E9-S7 runs on Nick's PC before the PR. None of them changes the design; each fails
-  loudly at load if wrong:
-  1. The `[[mixins]]` key FML 26.1.2.95 accepts (`config` is expected), the `compatibilityLevel` value for
-     Java 25, and whether a refmap is needed (ADR 0001 lists the same three as unverified).
+  loudly at load if wrong, except a malformed `[[mixins]]` entry (above), which check 3 and the gametest catch:
+  1. The config loads as written above: the `config` key, `compatibilityLevel` `JAVA_25`, no refmap. All three
+     are answered from source; a read cannot show the first load.
   2. The Mixin build NeoForge 26.1.2.95 ships supports target-argument capture on `@ModifyVariable` and
      `cancellable` on a `RETURN` injection, as upstream Mixin documents. If the first were missing, the
      head handler could not see the entity, and break scope would instead be looked up by the main-hand
@@ -291,8 +303,7 @@ config = "orevault.mixins.json"
   target to keep matched.
 - `@ModifyVariable` on `newAmount` after its store, or any capture by index or ordinal: needs the local slot,
   which was not confirmed and may differ between the dev and production class files.
-- `@ModifyExpressionValue` (MixinExtras): sees only the `hurtAndBreak` call, and adds a dependency whose
-  presence in NeoForge 26.1.2.95 is unverified.
+- `@ModifyExpressionValue` (MixinExtras): sees only the `hurtAndBreak` call, so it would miss the trident.
 - An enchantment `minecraft:item_damage` effect: `Enchantment#modifyDurabilityChange(ServerLevel, int,
   ItemStack, MutableFloat)` (`Enchantment.java` line 235) receives no entity, so it cannot find the team; it
   runs only for an enchantment the item carries, and would show as one on every tool.
@@ -365,3 +376,9 @@ owed to E9-S7 (#311).
 One change made elsewhere touches this record without changing it: ADR 0001 now runs `WearScope`'s
 end-of-tick clearing and the Kit Care tiers from the root `ServerTickEvent.Post` listener, after the
 `vault` jobs and before the `SyncOutbox` drain (DEV2-3). The mixin and `WearRules` are unaffected.
+
+Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md`: the config's `compatibilityLevel`
+is `JAVA_25`, `config` is the right key, and no refmap is needed; a malformed `[[mixins]]` entry loads nothing
+without a crash; MixinExtras is on NeoForge's dependency list and still unused. First-load check 1 stays E9-S7's
+(#311), since the config is unverified until it loads. The research file's open trident question was already
+decided here, by the `RETURN` injection.

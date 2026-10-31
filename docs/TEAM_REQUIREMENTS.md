@@ -483,8 +483,7 @@ definitions, `pack.mcmeta`, the pickaxe tag under `data/minecraft/tags/block/min
 T3. One PR (S14): lazy create in `findOrCreate` only, through the single insert that calls
 `markWorldsDirty()`; eager restore in `ServerStartedEvent`; teleport with the return position saved after
 success, the team anchor (X=0, Z=0) and an idempotent return portal. The `storageSource` AT returns with
-its comment: the sources tree we read had the old build's transformers applied, so its `public` is not
-evidence, and the AT stays the plan until a clean read (E1-S5, #195) says otherwise (ADR 0002). I spike
+its comment: the field is protected (E1-S5, #195; ADR 0002). I spike
 level unload here, because T11 depends on it.
 
 T4. The generator reads team state only through the snapshot supplier. Layer JSON validated against the
@@ -526,8 +525,8 @@ T10. `TicketController` on the mod bus; `max_loaded_chunks_per_team` gets its re
 Vault's saved tickets, Anchor tickets included, load deactivated and only `prepareLevels` reactivates them
 for levels present at start, so restore reactivates them (ADR 0002): `getDataStorage().get(TicketStorage.TYPE)`,
 `activateAllDeactivatedTickets()`, then NeoForge's `ForcedChunkManager.activateAllDeactivatedTickets(level,
-saved)`. That method's visibility, and when the `TicketController` validation callback runs for a level added
-after start, are unverified: E1-S5 (#195) reads them before E3-S6a (#237).
+saved)`. E1-S5 (#195) read that it is `@ApiStatus.Internal` and runs the
+`TicketController` validation, so step 13 needs no extra call.
 
 T11. Vote state machine pure and tested; deletion depends on the spike and on Nick's disband answer (N8).
 Joining a party never disbands the player's own team (FTB Teams 26.1.2.4, read 2026-10-27,
@@ -908,7 +907,7 @@ beside the vanilla font at scales 2, 3 and 4.
 | Seismic map shades | `style.json` | Colours | One hue stepped in luminance, five steps (UI-UX sets the boundaries); unexplored is bare page; explored with unknown density (tier 3) is a two-texel hatch, never a shade. T9 |
 | On-screen Resonance bar (§8, Q11) | `gui/sprites/hud/`, names set at E5-S11 (#281) | Frame and fill, one texel per unit | Includes the bonus-share segment; E5-S11 (#281) preview |
 | Survey panel: depth gauge with band edges, death marker | `gui/sprites/tome/`, names set at E7-S4 (#213) | One texel per unit | The death marker in both treatments, plain and The Vault Keeps It (§8 Tab 3) |
-| Mod logo | `logo.png` at the resources root, named by `logoFile="logo.png"` in `neoforge.mods.toml` | 256x256, drawn at 64x64 and scaled by whole numbers | Not a texture, so not under `textures/`. §13 says `logoFile`, not `pack.png` (E0-S16). Whether `logoBlur` is needed is an E1-S5 (#195) read |
+| Mod logo | `logo.png` at the resources root, named by `logoFile="logo.png"` in `neoforge.mods.toml` | 256x256, drawn at 64x64 and scaled by whole numbers | Not a texture, so not under `textures/`. §13 says `logoFile`, not `pack.png` (E0-S16). `logoBlur=false` is needed, or the Mods screen smooths it (E1-S5, #195) |
 
 About 11 block and item textures, about 8 frames and 6 buyable outlines, the badge and Tome icon sheets
 (the badge sheet holds 19 badges, ten of them fork-option badges), the HUD bar and Survey sprites, and one
