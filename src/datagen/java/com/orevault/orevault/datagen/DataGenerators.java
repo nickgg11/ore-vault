@@ -7,7 +7,9 @@ import java.util.concurrent.CompletableFuture;
 import net.minecraft.client.data.models.BlockModelGenerators;
 import net.minecraft.client.data.models.ItemModelGenerators;
 import net.minecraft.client.data.models.ModelProvider;
+import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.loot.BlockLootSubProvider;
 import net.minecraft.data.loot.LootTableProvider;
@@ -78,7 +80,10 @@ public final class DataGenerators {
 
         @Override
         protected Iterable<Block> getKnownBlocks() {
-            return List.of();
+            return BuiltInRegistries.BLOCK.listElements()
+                    .filter(block -> block.key().identifier().getNamespace().equals(OreVault.MOD_ID))
+                    .<Block>map(Holder::value)
+                    .toList();
         }
     }
 

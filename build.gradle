@@ -136,6 +136,16 @@ abstract class CheckGeneratedResources extends DefaultTask {
     }
 }
 
+// The hash cache skips a file whose output hash it remembers, which would hide a hand edit.
+def clearDataCache = tasks.register('clearDataCache', Delete) {
+    delete 'src/generated/resources/.cache'
+}
+
+// NeoGradle creates the run tasks after this file is evaluated.
+tasks.matching { it.name == 'runClientData' }.configureEach {
+    dependsOn clearDataCache
+}
+
 def checkGeneratedResources = tasks.register('checkGeneratedResources', CheckGeneratedResources) {
     dependsOn tasks.named('runClientData')
 }

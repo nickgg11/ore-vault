@@ -54,7 +54,8 @@ final class LangCoverage {
         ModConfigs.getModConfigs(OreVault.MOD_ID).stream()
                 .map(ModConfig::getSpec)
                 .filter(ModConfigSpec.class::isInstance)
-                .forEach(spec -> addConfigKeys(((ModConfigSpec) spec).getSpec(), keys));
+                .map(ModConfigSpec.class::cast)
+                .forEach(spec -> addConfigKeys(spec, spec.getSpec(), List.of(), keys));
         return keys;
     }
 
@@ -65,14 +66,18 @@ final class LangCoverage {
                 .toList();
     }
 
-    private static void addConfigKeys(UnmodifiableConfig config, List<String> keys) {
+    /** Follows {@code ConfigurationScreen}: a value or section with no key of its own falls back to its name. */
+    private static void addConfigKeys(ModConfigSpec spec, UnmodifiableConfig config, List<String> path, List<String> keys) {
         for (UnmodifiableConfig.Entry entry : config.entrySet()) {
+            String fallback = OreVault.MOD_ID + ".configuration." + entry.getKey();
             if (entry.getValue() instanceof UnmodifiableConfig section) {
-                addConfigKeys(section, keys);
+                List<String> sectionPath = new ArrayList<>(path);
+                sectionPath.add(entry.getKey());
+                String key = spec.getLevelTranslationKey(sectionPath);
+                keys.add(key != null ? key : fallback);
+                addConfigKeys(spec, section, sectionPath, keys);
             } else if (entry.getValue() instanceof ModConfigSpec.ValueSpec value) {
-                keys.add(value.getTranslationKey() != null
-                        ? value.getTranslationKey()
-                        : OreVault.MOD_ID + ".configuration." + entry.getKey());
+                keys.add(value.getTranslationKey() != null ? value.getTranslationKey() : fallback);
             }
         }
     }
