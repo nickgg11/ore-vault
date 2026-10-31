@@ -242,9 +242,9 @@ the art tools are in `.claude/agents/designer.md` and `docs/research/art-tooling
 
 ## Automated PR review
 
-`.github/workflows/claude-code-review.yml` runs a Claude review on every PR. **A green check does not prove
-a review happened**: with no `CLAUDE_CODE_OAUTH_TOKEN` it skips and still reports success. Check that the
-review steps executed before trusting it. `.claude/skills/address-review` pulls unresolved review comments
+`.github/workflows/claude-code-review.yml` runs a Claude review on every PR. With no
+`CLAUDE_CODE_OAUTH_TOKEN` it now fails instead of skipping (#196), so a green check means the review steps ran.
+`.claude/skills/address-review` pulls unresolved review comments
 off a PR, fixes them and replies.
 
 ## Tooling
