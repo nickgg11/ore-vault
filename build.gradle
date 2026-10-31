@@ -90,6 +90,8 @@ dependencies {
 
 tasks.named('test', Test) {
     useJUnitPlatform()
+    // The repository guards read the source tree, and the run directory is not the project.
+    systemProperty 'orevault.projectDir', project.projectDir.absolutePath
 }
 
 tasks.named('check') {
