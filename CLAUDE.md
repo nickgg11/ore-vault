@@ -93,26 +93,28 @@ are, and where he can playtest the same build. A cloud session can read and edit
 to build it: it hands off to a session on Nick's machine (Remote Control) for anything that compiles or
 runs. Never report a build or test result that was not produced there.
 
-The Gradle build was removed with the old code and is rebuilt as the first ticket. Once it exists:
-
 ```
-./gradlew build                      # compile + unit tests
+./gradlew build                      # compile, unit tests, compile the gametests
 ./gradlew test --rerun-tasks         # unit tests, never cached
 ./gradlew runClient                  # dev client
 ./gradlew runServer                  # dev server
-./gradlew runGameTestServer          # dedicated-server boot; catches client classes on common paths
+./gradlew runGameTestServer          # gametests on a dedicated server; catches client classes on common paths
 ```
 
-Versions used last time (pinned 2026-08-26): `neo_version=26.1.2.95`, `ftb_teams_version=26.1.2.4`,
-`ftb_ultimine_version=26.1.2.5` (`compileOnly`), NeoGradle `net.neoforged.gradle.userdev` 7.1.38, FTB maven
-`https://maven.ftb.dev/releases`. Re-check them when the build is rebuilt, then don't bump them inside a
-feature PR. Do **not** pin `org.gradle.java.installations.paths` to a machine-local path in a committed
-file; that broke every other checkout last time.
+`-Pruntime_profile=ultimine` or `-Pruntime_profile=materials` adds that mod to any run; the default `none` has
+neither. `run/server/eula.txt` is untracked and needs `eula=true` for `runServer`.
+
+Versions are pinned in `gradle.properties` and NeoGradle's in the `build.gradle` `plugins` block, with the
+reasons in ADR 0001's pin table: `neo_version=26.1.2.95`,
+FTB Teams 26.1.2.4, FTB Library 26.1.2.11, FTB Ultimine 26.1.2.6 (`compileOnly`), NeoGradle
+`net.neoforged.gradle.userdev` 7.1.38. A bump is its own PR, never inside a feature PR. Do **not** pin
+`org.gradle.java.installations.paths` to a machine-local path in a committed file; that broke every other
+checkout last time.
 
 **Before every PR:** `./gradlew build` and `./gradlew test --rerun-tasks` pass, with counts quoted from
 `build/test-results/test/*.xml` (a cached `BUILD SUCCESSFUL` looks identical to a real one);
-`runGameTestServer` boots; anything visual or worldgen was seen in `runClient` or is listed as unverified
-with playtest steps. Never run `./gradlew clean` in a git worktree; it breaks `:neoFormPatch`.
+`runGameTestServer` passes with its total quoted and the expected total stated (passing tests log no name);
+anything visual or worldgen was seen in `runClient` or is listed as unverified with playtest steps. Never run `./gradlew clean` in a git worktree; it breaks `:neoFormPatch`.
 
 ## Technical rules
 
@@ -181,14 +183,24 @@ Resonance (§3.4). One `BlockDropsEvent` listener with fixed stages (§11).
 | `mouseClicked(MouseButtonEvent, boolean)` | `mouseClicked(double, double, int)` |
 | `mouseDragged(MouseButtonEvent, dx, dy)` | `mouseDragged(double, double, int, double, double)` |
 | `BLOCKS.registerBlock(name, factory, props -> …)` | `new Block(props)` without an id (startup crash) |
+| `Inventory#getNonEquipmentItems()` | `Inventory.items`, private |
+| `InteractionResult.SUCCESS` / `SUCCESS_SERVER` | `InteractionResult.sidedSuccess` |
+| `MinecraftServer#execute(Runnable)`, or `schedule(TickTask)` | `BlockableEventLoop#tell` |
+| `ServerPlayer#sendSystemMessage(message)` / `sendOverlayMessage(message)` | `Player#displayClientMessage` |
+| `Level#getRandom()` | `Level.random`, protected |
+| `ServerPlayer#level()`, or `(ServerLevel) entity.level()` on the server, then `getServer()` | `Entity#getServer()` |
+| `CompoundTag#getInt`, `getString`, `getCompound` return `Optional`; `getIntOr` takes a default | getters returning the value |
+| `CompoundTag#contains(String)` | `contains(String, int)` |
+| `ChunkPos` is a record: `x()`, `z()`, `getMinBlockX()` | `ChunkPos.x`, `ChunkPos.z` as public fields |
+| `getRespawnData().globalPos().pos()` | `getSharedSpawnPos()` |
 
 Also: every item needs an `items/` model definition, a model and a texture, plus creative tab membership,
 or it is invisible or the purple cube. Dimension lighting in 26.1 is set through attributes such as
 `minecraft:visual/ambient_light_color`. Long tooltips do not wrap on their own; use
 `font.splitIgnoringLanguage`.
 
-Settle any doubt from the decompiled sources (NeoGradle puts patched Minecraft sources under
-`.gradle/repositories/ng_dummy_ng/net/neoforged/neoforge/<neo_version>/`), not from memory. Nullability uses
+Settle any doubt from the decompiled sources, not from memory: NeoGradle puts them in
+`.gradle/repositories/ng_dummy_ng/net/neoforged/neoforge/<neo_version>/neoforge-<neo_version>-sources.jar`. Nullability uses
 JSpecify (`org.jspecify.annotations.Nullable`).
 
 ## Tests
@@ -197,7 +209,7 @@ JUnit 5 under `src/test/java`, pure logic only: Minecraft's game classes do not 
 with one exception. `CompoundTag` and `NbtIo` do (`CompoundTagLoadsTest`, ADR 0005), so save-shape key-set,
 default and migrate tests are unit tests as long as read, write and migrate sit in plain classes. Nothing
 shows a `SavedData` subclass loads. Anything touching `Level` or registries belongs in a gametest or a
-playtest. `SavedData` and chunk attachments across a restart are the scripted stop and start in E3-S10
+playtest. Gametests live in `src/gametest/java` and never ship; ADR 0001 has the conventions. `SavedData` and chunk attachments across a restart are the scripted stop and start in E3-S10
 (#200), because a gametest is one server lifetime. Keep logic in plain classes so it
 can be tested; do not ask for unit tests on code that cannot have them. Expect them on new pure logic,
 especially skill-tree maths, the level curve and ore classification. Use
@@ -230,9 +242,9 @@ the art tools are in `.claude/agents/designer.md` and `docs/research/art-tooling
 
 ## Automated PR review
 
-`.github/workflows/claude-code-review.yml` runs a Claude review on every PR. **A green check does not prove
-a review happened**: with no `CLAUDE_CODE_OAUTH_TOKEN` it skips and still reports success. Check that the
-review steps executed before trusting it. `.claude/skills/address-review` pulls unresolved review comments
+`.github/workflows/claude-code-review.yml` runs a Claude review on every PR. With no
+`CLAUDE_CODE_OAUTH_TOKEN` it now fails instead of skipping (#196), so a green check means the review steps ran.
+`.claude/skills/address-review` pulls unresolved review comments
 off a PR, fixes them and replies.
 
 ## Tooling

@@ -19,27 +19,22 @@ jobs:
       issues: write
       id-token: write
     steps:
-      # The secrets context isn't usable in a job-level `if:`, so gate on a step
-      # output instead. Without the token the job succeeds and does nothing,
-      # rather than failing a check on every PR.
-      - id: token
+      # A skipped review once reported success, so every review before 2026-08-29 was a no-op (E1-S7, #196).
+      # The secrets context isn't usable in a job-level `if:`, so this is a step.
+      - name: Fail without the review token
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::CLAUDE_CODE_OAUTH_TOKEN is not set — skipping review. Run 'claude setup-token' and add it as a repository secret to enable automated review."
-          else
-            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN is not set, so no review ran. Run 'claude setup-token' and add it as a repository secret."
+            exit 1
           fi
 
       - uses: actions/checkout@v6
-        if: steps.token.outputs.present == 'true'
         with:
           fetch-depth: 1
 
       - uses: anthropics/claude-code-action@v1
-        if: steps.token.outputs.present == 'true'
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Comments post as github-actions[bot]. Delete this line to have them
