@@ -74,6 +74,9 @@ Roles for modpack compatibility and performance are deferred to later in develop
 | Plan and sequencing | manager | balancer (baseline before modifiers), qa (each step verifiable), architect (foundations first) |
 | Playtest plan and feedback triage | playtester | qa (steps), writer (design log) |
 
+Whatever its row, any PR that adds or changes a lang key, a registry entry, or spec or design-log text
+lists the Writer as a reviewer.
+
 ### Build order
 
 Build the playable loop end to end in a real client first, then layer the tree on it: toolchain and an
@@ -144,8 +147,11 @@ at class load, and no unit test catches it. Server logic that mutates state uses
 - **Mekanism**: no compile-time reference at all. Item tags only, no reflection (§9; Nick, 2026-10-26).
 - **Pufferfish's Skills**: not a dependency. See `docs/research/puffish-skills.md`.
 
-**6. Persistence.** Team data is per-team `SavedData` in the overworld's storage. These are player save
-files. Version the data from the first field (`dataVersion` plus `migrate()`); every rename or removal gets
+**6. Persistence.** Team data is per-team `SavedData` in the server's storage
+(`MinecraftServer#getDataStorage()`, `<world>/data/`), not the overworld's: in 26.1 `ServerLevel#getDataStorage()`
+is a per-level store under `<world>/dimensions/`. Data about one Vault's terrain goes in that Vault level's
+storage, so it is deleted and archived with the folder; data about one chunk goes on the chunk. These are
+player save files. Version the data from the first field (`data_version` plus `migrate()`); every rename or removal gets
 a migration, every added field reads correctly from a tag written without it.
 
 **7. Config.** No config value without a reader. A value read once at start is marked `worldRestart()`.

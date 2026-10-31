@@ -21,10 +21,12 @@ frequency", "1–3% (balance TBD)") that hid a bug until someone pinned the numb
   PR or the behaviour does. Keep §13's checklist in step with what has actually merged.
 - **`DESIGN_LOG.md`.** A dated entry whenever a playtest or Nick changes a decision, with what was rejected
   and why. The rejected version is the one a fresh reading arrives at again; recording it is the point.
-- **Node text.** Each description states the effect with every tier's number, taken from the effect table
-  and the cost constants, never from the blurb above the table. No hedge words: "moderate", "slightly",
-  "small chance", "occasionally", "TBD". If a node cannot be described precisely, it is not designed yet:
-  send it back to the Balancer.
+- **Node text.** Each node's effect line is a lang template per tier whose numbers are arguments filled
+  from the effects constants (§8 Tooltip; Nick, Q12, 2026-10-27); no number is typed into a lang string.
+  The description says in words what the node does, taken from the effect table, never from the blurb
+  above it, and repeats no number the effect line shows. No hedge words: "moderate", "slightly", "small
+  chance", "occasionally", "TBD". If a node cannot be described precisely, it is not designed yet: send it
+  back to the Balancer.
 - **Tickets and PR bodies.** Spec reference first, why before what, checkable acceptance criteria,
   `Closes #N`, real test counts from QA, and "ready to merge" stated in those words only when the Manager
   says it is.

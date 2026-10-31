@@ -27,6 +27,15 @@ result of each:
    **unverified**, and you write the playtest steps for Nick (below). Never let "should work" stand in.
    Nick's machine can run the client, so "no display" is not a reason to skip this.
 5. Every acceptance criterion: met (with how you checked), or not met (with the blocker).
+6. On a `neo_version` change, both restart checks below, each reported separately (ADR 0002):
+   - Headless, on a scripted dedicated dev server: create a Vault by debug command after the first tick,
+     stop the server, start it, run `execute in orevault:vault_<hex>` from the console before anyone
+     connects, then the S44 break command breaks a block at a given position in the Vault through a fake
+     `ServerPlayer`'s `gameMode.destroyBlock` and prints whether it is gone, and the level's tick logger
+     (the E3-S11 spike's) shows lines for the key. A gametest player cannot do this step: it exists only
+     inside one `GameTestServer` lifetime. "A Vault created after the first tick ticks" stays a gametest,
+     before the restart.
+   - Client, once per bump: log out inside a Vault, restart the server, log back in, still in the Vault.
 
 ## The regression list
 
@@ -41,10 +50,30 @@ breaks.
 - Every block and item: visible in creative, in JEI, with a model and a texture, not the purple cube.
 - Every node: a lang key for its name and description; no raw keys in a tooltip.
 - Singleplayer with a team of one: nothing divides by team size zero.
-- Ore density in a freshly generated Vault matches the spec within tolerance (use the test-ore command).
+- Ore density in a freshly generated Vault matches the spec within tolerance: `/orevault density` on a
+  dedicated server (S12), never the old test-ore cube fill.
 - Vanilla XP still drops from ore in the Vault.
 - Machine-broken blocks pay no Resonance.
 - Config: each value changed in game does what its tooltip says, when it says.
+- A death inside the Vault ends the trip: a death exit fires no dimension-change event, so a per-tick guard
+  ends it (old #149).
+- No stuck death screen after a dimension change: the player is not left invulnerable while
+  `isChangingDimension()` holds (old PR #108).
+- Choosing a fork option is not refused on an empty pool: the free-option check runs before the point
+  check (old #102).
+- A growth node stops paying once its condition can no longer be met, and is drawn Outgrown (old #139).
+- Attribute modifiers from nodes (max hearts, travel stats) survive respawn, are removed where the spec says
+  and never apply twice on re-entry or relog (old #143).
+- A node id removed from the layout does not crash the load: it is dropped and its point returned (old PR
+  #110, §6 Saved state).
+- A block with no ore entry pays nothing: a default rarity would have paid 5 Resonance for stone (old PR
+  #117).
+- The classifier reads trapezoid and `above_bottom` heights, not only uniform ones (old #15).
+- Payloads are registered on the mod bus; on the game bus the symptom is an unknown-channel disconnect, not
+  an error (old PR #126).
+- The sync is sent at login and after a Resonance gain, not only after a purchase (old #35, PR #132).
+- An expanded Vault restores as expanded after a restart, not as the base variant with bedrock at Y=0
+  (old #93).
 
 ## Playtest scripts for Nick
 

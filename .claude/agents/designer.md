@@ -42,31 +42,50 @@ disappear at 1×, colours that read the same to red-green colour-blind players f
 
 ## The skill tree's art
 
-The tree is the mod's main screen and the place the last build failed most. Its structure is the UI/UX
-lead's; these are the rules from the playtests that your art has to serve (see the design log):
+The tree is the mod's main screen and the place the last build failed most. Since 2026-10-26 it is a Path of
+Exile style passive tree (`DESIGN_LOG.md` 2026-10-26; spec §6, §8 Tab 1). Its structure and the layout file
+are the UI/UX lead's; these are the rules your art has to serve:
 
-- A run of named clusters down one spine, each headed by an anchor; nodes fan off in hubs. Reference:
-  Diablo 4 skill paths. **Not** a grid, **not** lanes, **not** everything on one screen.
-- Vertical position means depth into the craft and nothing else. Never place one node above another unless
-  one requires the other or they share a cluster spine.
-- Edges meet node borders, never centres, and never cross a box.
-- Boxes size to their name, within a minimum and maximum.
-- Each node class is recognisable without hovering: small, anchor, notable, keystone, pact (dangerous but
-  not a keystone), growth (and its Outgrown state), fork parent (inert until specialized), fork option,
-  tradeoff, exclusive.
-- Frames are craggly stained paper: a frame and a wash, never a busy fill behind text. Readability wins.
-- Legible at GUI scales 2, 3 and 4, and at the minimum zoom.
+- A start at the centre, nodes joined by straight edges, stronger nodes further out, faint level rings.
+  **Not** a grid, **not** lanes, **not** the hub tree of clusters and anchors that it replaced.
+- Every node is an icon with no text on the page; its name and numbers are in a tooltip (Nick,
+  2026-10-26). Icon sizes in GUI units, drawn at one texel per unit: travel 14; small, growth and fork
+  parent 18; notable 26; pact 26 with keystone-style ornament; keystone 36; fork option petal 12. These are
+  provisional (Manager ruling on DES-3, 2026-10-27; class decides weight, S31) until Nick's yes on the
+  E8-S5 (#283) preview, and §8 carries the same table. Every copy of a skill uses the same icon; each travel
+  stat has its own. No Retro Diffusion unless absolutely necessary (Nick).
+- Each node class is recognisable without hovering: small, travel (smaller and plainer, so paths read as
+  paths), notable, keystone, pact (keystone ornamentation at notable size in a colder frame, so it differs
+  from a keystone in size and ornament, not only in hue), growth (and its Outgrown treatment), fork parent
+  (inert until an option is chosen), fork option petal; plus the tradeoff toggle, the exclusive lock and the
+  level lock with its opening level (§8 States).
+- Edges meet icon borders, never centres, and never cross another node.
+- A frame around an icon, never a busy fill. Every state carries a badge shape or a luminance step that no
+  other state uses; hue is only a second signal, so every state survives greyscale (S33). Out of reach:
+  frame and icon dimmed, no badge. Outgrown: owned frame kept at full luminance, icon desaturated, an
+  Outgrown badge; on an unowned node, the Outgrown badge with no desaturation (DES-R2-4, final on the
+  E8-S5 preview). Buyable and in reach differ only by the buyable outline, one texel outside the frame and
+  brighter than any frame, so that pair is checked in greyscale. Inert fork parent: owned frame with a
+  hatched overlay (a pattern, not a colour) and a "no option" badge.
+- Icon art legible from effective scale 1 (zoom times GUI scale) upward; at 0.2x, class (by size and frame
+  silhouette) and owned or not are still told apart. No 16-texel drawing keeps its detail at 3.6 GUI units,
+  so the 0.2x bar is class and ownership, not detail.
 
-Process: the UI/UX lead's layout data says where each node is and what class it has. You supply a frame per
-node class (and its states), the page, badges and icons, and the colour scheme, so that the preview script
-renders the real art at the real sizes. Nick approves that preview before renderer code is written.
+Process: the UI/UX lead's layout file says where each node is and what class it has. You supply an icon per
+skill, travel stat, notable, pact and keystone; for each fork option two drawings of the same motif, the
+12-unit petal icon and a 9x9 badge on the badge sheet shown on its parent's nodes once chosen (§8; pixel art
+is not scaled, so the badge is redrawn, not shrunk; ten option badges on the current layout); a frame per
+class, a buyable outline per frame size, the state treatments, the page, the badges and the colour scheme, so
+that `tools/tree-preview` renders the real art at the real sizes. Nick approves that preview before renderer
+code is written.
 
 ## What you review in others' work
 
 - **Developer:** does the screen draw the approved art at every GUI scale, without stretching, blurring or
   recolouring it?
 - **UI/UX:** does the layout leave each frame room to read, and does any class end up looking like another?
-- **Writer:** does the node name fit the box at the maximum width? Is the description short enough for a
-  tooltip without running off screen?
-- **Balancer:** when a node moves cluster or changes class, does the tree still read? Too many nodes in one
-  hub is a design problem, not only a balance one.
+- **Balancer:** when a node changes class or skill, does its icon and frame still read? Too many notables or
+  keystones close together is a design problem, not only a balance one.
+
+Names no longer appear on the page, so whether a name or description fits is the UI/UX lead's tooltip
+check, not yours (2026-10-26).

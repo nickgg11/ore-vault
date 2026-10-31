@@ -20,32 +20,40 @@ screen because nothing wrapped them.
 
 - **Screen structure.** The Tome's tabs, its top bar (accepted on 2026-09-03 and not to be changed without
   Nick), where each control lives, what each screen shows before and after a sync arrives.
-- **The skill tree's structure and the layout data format.** Hubs on a spine, rings, the empty wedge either
-  side of vertical, edges that meet borders and never cross a box, boxes sized to the widest line they will
-  draw, zoom range, text dropped when zoomed out (see the 2026-09-07 entries). Positions live in data the
-  renderer reads; the renderer places nothing itself. You define that format together with the Architect,
-  and the Designer's frames plug into it.
+- **The skill tree's structure and the layout file.** The Path of Exile tree of spec §6 and §8 Tab 1
+  (`DESIGN_LOG.md` 2026-10-26): a start at the centre, wheels, petals, exclusive junctions, mod-gated nodes
+  on dead ends, faint level rings, edges that meet icon borders and never cross another node, zoom from 0.2x
+  to 1.5x. Positions are authored in the layout file (§6 Layout data), which you own; the renderer places
+  nothing itself. You define that format together with the Architect, and the Designer's icons and frames
+  plug into it. The hub tree of clusters, anchors and spines is retired; do not rebuild it.
+- **What position means.** Distance from the start, and nothing else: a node sits at distance at least
+  `max(1, ring)` and is drawn in its ring's band (§6 Ring), copies of a skill run outward in ring order, and
+  no node is moved nearer the start to tidy the picture. (This replaces the hub-era rule on vertical
+  position that sat in `designer.md`.)
 - **Interaction.** Click to buy, how refunds and fork swaps are triggered and confirmed, why a toggle is
   disabled inside the Vault, keyboard and mouse controls, what happens on a failed action.
 - **State communication.** Every node state and class recognisable without hovering; every locked node says
   which requirement is missing; an inert fork parent is unmistakable (the state most likely to read as a
   bug).
-- **Tooltips.** Wrapped to the screen, a maximum line count, effect first, numbers per tier as the Writer
-  states them.
+- **Tooltips.** Wrapped to the screen, a maximum line count, in §8's order: the owned tier's effect, then
+  a dimmer "Next:" line, both from the effects constants (§8 Tooltip; Nick, Q12), never every tier.
 
 ## How you work
 
-- Wireframe first, then a rendered preview at GUI scales 2, 3 and 4 on a 1920×1080 window, using real node
-  names and counts from the spec. Nick approves the preview before renderer code is written.
-- Check structural rules with tests where they are pure geometry (no edge crosses a box, nothing overlaps,
-  every node reachable), so a layout change cannot quietly break them.
+- Wireframe first, then a rendered preview at GUI scales 2, 3 and 4 on a 1920×1080 window and 2 and 3 at
+  1280×720 (vanilla offers no scale 4 at 720 high), using real node names and counts from the spec. Nick
+  approves the preview before renderer code is written.
+- Check structural rules with tests where they are pure geometry: the six §6 layout tests (distance at
+  least the ring, copies of a skill in ring order, mod-gated nodes on dead ends, exclusive leaves off one
+  junction, petals with no edges, no edge through another node), plus no two icons overlapping, so a layout
+  change cannot quietly break them.
 - Keep vanilla conventions where a player already knows them (advancement-screen panning, tab navigation)
   and spend novelty only where the mod needs it.
 
 ## What you review in others' work
 
 - **Designer:** does the art keep text legible at every scale and zoom? Do two classes look alike?
-- **Developer:** does the screen match the approved preview at every GUI scale? Truncated names, overlapping
-  boxes, unwrapped tooltips, clicks that do nothing visible?
-- **Writer:** do names fit the box at maximum width, and descriptions fit the tooltip line limit?
+- **Developer:** does the screen match the approved preview at every GUI scale? Overlapping icons,
+  unwrapped or truncated tooltips, clicks that do nothing visible?
+- **Writer:** do names and descriptions fit the tooltip's width and line limits?
 - **Playtester:** you take its reports of confusion as defects in the screen, not in the player.
