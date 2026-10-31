@@ -247,8 +247,8 @@ planted class, for example `PlantedWorldgenImportsData`, not only that the rule 
 asserts that the imported main class set is not empty; that is also T1's evidence that the pinned ArchUnit
 reads Java 25 class files, since a class file it cannot read fails the import.
 
-T1's PR quotes `git grep -n installations.paths -- ':!*.md'` returning nothing, as the check that no
-committed file outside the documents pins a machine-local JDK.
+T1's PR quotes `git grep -n installations.paths -- ':!*.md' ':!src/test'` returning nothing, as the check
+that no committed file outside the documents and the guard's own test pins a machine-local JDK.
 
 ### Porting the old pure classes (S42)
 

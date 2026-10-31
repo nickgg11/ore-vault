@@ -26,7 +26,7 @@ otherwise. Paths below are paths inside the jar, and line numbers are lines of t
 run; the only tools were `unzip` and `javap`.
 
 - Patched Minecraft bodies: `.gradle/repositories/ng_dummy_ng/net/neoforged/neoforge/26.1.2.95/neoforge-26.1.2.95-sources.jar`.
-  It matches the pinned `neo_version=26.1.2.95` (`CLAUDE.md` Build). Its `version.json` reads `"id": "26.1.2"`,
+  It matched the pin at the time of the reads, `neo_version=26.1.2.95`. Its `version.json` reads `"id": "26.1.2"`,
   `"world_version": 4790`, `"java_version": 25`. It holds `net/minecraft`, `com/mojang`, `assets/minecraft`
   and `data/minecraft`, and no NeoForge source.
 - Visibility of Minecraft members: `javap -p` on the compiled jar beside it,
