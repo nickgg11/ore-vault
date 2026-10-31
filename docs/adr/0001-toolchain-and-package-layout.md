@@ -32,14 +32,14 @@ of `build.gradle`, and the Gradle version, which is in `gradle/wrapper/gradle-wr
 |---|---|---|---|
 | Java | 25, through `java.toolchain.languageVersion` | `build.gradle` | No `org.gradle.java.installations.paths` in any committed file. Each machine supplies its own JDK 25 through Gradle's auto-detection or its own user-level `~/.gradle/gradle.properties`. |
 | Minecraft | `minecraft_version=26.1`, `minecraft_version_range=[26.1,26.2)` | `gradle.properties` | |
-| NeoForge | `neo_version=26.1.2.95` | `gradle.properties` | The version the decompiled sources were read from (`docs/research/vanilla-ore-generation.md` section 7). |
+| NeoForge | `neo_version=26.1.2.121` | `gradle.properties` | What FTB Evolution 2 runs. The reads were taken at 26.1.2.95 (`docs/research/vanilla-ore-generation.md` section 7) and rechecked at this version (`docs/research/neoforge-26.1-sources.md` Provenance). |
 | FTB Teams | `ftb_teams_version=26.1.2.4` | `gradle.properties` | Hard dependency, `implementation`, mandatory in `neoforge.mods.toml` (§2). |
 | FTB Ultimine | `ftb_ultimine_version=26.1.2.6` | `gradle.properties` | `compileOnly`, and also `localRuntime` in the `ultimine` runtime profile. 26.1.2.6 is what FTB Evolution 2 ships (`docs/research/library-scan.md`) and the latest on the FTB maven; chosen over the last build's 26.1.2.5 in E1-S1 (#188). |
 | NeoGradle | `net.neoforged.gradle.userdev` 7.1.38 | `build.gradle` `plugins` | |
 | FTB maven | `https://maven.ftb.dev/releases`, restricted with `content { includeGroup 'dev.ftb.mods' }` | `build.gradle` `repositories` | As the last build had it. |
 | FTB Library | `ftb_library_version=26.1.2.11` | `gradle.properties`, `implementation` | Comes with FTB Teams at 26.1.2.3, with Ultimine at 26.1.2.7 and with Materials at 26.1.2.8. Declared so compile and every runtime profile use one version: what FTB Evolution 2 ships. |
 | Foojay toolchain resolver | `org.gradle.toolchains.foojay-resolver-convention` 1.0.0 | `settings.gradle` `plugins` | As the last build had it. |
-| JEI | `jei_version=29.22.0.74`, artifact `mezz.jei:jei-26.1.2-neoforge` | `gradle.properties`, `localRuntime` | Dev runtime only, in every profile. Later releases tried (29.34.0.91, 29.43.0.107) require NeoForge 26.1.2.99 or above and refuse to load on the pin. |
+| JEI | `jei_version=29.22.0.74`, artifact `mezz.jei:jei-26.1.2-neoforge` | `gradle.properties`, `localRuntime` | Dev runtime only, in every profile. Chosen under the old NeoForge pin: 29.34.0.91 and 29.43.0.107 need 26.1.2.99 or above. A later JEI can load now; moving it is its own PR. |
 | BlameJared maven | `https://maven.blamejared.com`, restricted with `content { includeGroup 'mezz.jei'; includeGroup 'net.mezzdev.config' }` | `build.gradle` `repositories` | JEI, and its config library. |
 | FTB Materials | `ftb_materials_version=26.1.2.6`, artifact `dev.ftb.mods:ftb-materials` | `gradle.properties`, `localRuntime` | Only in the `materials` runtime profile. `ftb-materials-neoforge` holds the 21.1 line only. |
 | JSpecify | `jspecify_version=1.0.0` | `gradle.properties`, `compileOnly`, `testCompileOnly` | |
@@ -247,8 +247,8 @@ planted class, for example `PlantedWorldgenImportsData`, not only that the rule 
 asserts that the imported main class set is not empty; that is also T1's evidence that the pinned ArchUnit
 reads Java 25 class files, since a class file it cannot read fails the import.
 
-T1's PR quotes `git grep -n installations.paths -- ':!*.md'` returning nothing, as the check that no
-committed file outside the documents pins a machine-local JDK.
+T1's PR quotes `git grep -n installations.paths -- ':!*.md' ':!src/test'` returning nothing, as the check
+that no committed file outside the documents and the guard's own test pins a machine-local JDK.
 
 ### Porting the old pure classes (S42)
 
