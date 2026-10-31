@@ -1,73 +1,115 @@
 # NeoForge 26.1 source reads
 
-E1-S5 (#195). Each section quotes the decompiled source, names the file and lines, says what it settles,
-and names the stories it unblocks. Story ids and issue numbers are from the filed ticket table.
+E1-S5 (#195). Each section quotes the source, names the file and lines, says what it settles, and names the
+stories it must land before. Story ids and issue numbers are from the filed ticket table.
 
 ## Provenance
 
-- Minecraft and NeoForge patches: `neoforge-26.1.2.95-sources.jar`, the pinned `neo_version=26.1.2.95`
-  (`CLAUDE.md` Build). Its `version.json` reads `"id": "26.1.2"`, `"world_version": 4790`,
-  `"java_version": 25`.
-- The jar is the one NeoGradle wrote to `.gradle/repositories/ng_dummy_ng/net/neoforged/neoforge/26.1.2.95/`
-  in Nick's old build folder (`E:\Github\Ore-Vault_2`). It was copied from Nick's PC on 2026-10-27 and read
-  in a cloud session. It was not produced by a fresh E1-S1 build. If E1-S1 re-checks the pin and it moves,
-  these reads are stale.
-- FTB Teams: `ftb-teams-26.1.2.4-sources.jar` from the same Gradle cache, read on 2026-10-27 (copied in
-  below under "FTB Teams party join and disband").
-- Paths below are paths inside the jar. Line numbers are lines of the decompiled `.java` file.
+Three sources, each for a different job. All were read on Nick's PC on 2026-10-31 unless a section says
+otherwise. Paths below are paths inside the jar, and line numbers are lines of the `.java` file. No jar was
+run; the only tools were `unzip` and `javap`.
 
-### The old build's access transformers are applied in this jar
+- Patched Minecraft bodies: `.gradle/repositories/ng_dummy_ng/net/neoforged/neoforge/26.1.2.95/neoforge-26.1.2.95-sources.jar`.
+  It matches the pinned `neo_version=26.1.2.95` (`CLAUDE.md` Build). Its `version.json` reads `"id": "26.1.2"`,
+  `"world_version": 4790`, `"java_version": 25`. It holds `net/minecraft`, `com/mojang`, `assets/minecraft`
+  and `data/minecraft`, and no NeoForge source.
+- Visibility of Minecraft members: `javap -p` on the compiled jar beside it,
+  `.gradle/repositories/ng_dummy_ng/net/neoforged/neoforge/26.1.2.95/neoforge-26.1.2.95.jar`, cross-checked
+  against the unpatched `.gradle/caches/minecraft/versions/26.1.2/client.jar`. NeoForge's own transformers are
+  `ats/accesstransformer.cfg` and `ats/accesstransformergenerated.cfg` inside
+  `~/.gradle/caches/modules-2/files-2.1/net.neoforged/neoforge/26.1.2.95/a6a9bc0fb2039e1643752fd42fbde8743141f784/neoforge-26.1.2.95-userdev.jar`.
+- NeoForge's own classes: `https://maven.neoforged.net/releases/net/neoforged/neoforge/26.1.2.95/neoforge-26.1.2.95-sources.jar`
+  (2,212 files once unpacked), fetched 2026-10-31. FML: `https://maven.neoforged.net/releases/net/neoforged/fancymodloader/loader/11.0.15/loader-11.0.15-sources.jar`,
+  the version in the Gradle cache.
+- FTB Teams: `ftb-teams-26.1.2.4-sources.jar` from the Gradle cache, read on 2026-10-27 (section "FTB Teams
+  party join and disband").
 
-NeoGradle recompiles the `ng_dummy_ng` artifact with the project's access transformers applied, and this jar
-came from the old build's folder. In it, five members read as public: `MinecraftServer.storageSource`
-(`net/minecraft/server/MinecraftServer.java` line 218), `CountPlacement.count`, `HeightRangePlacement.height`,
-`UniformHeight.minInclusive` and `UniformHeight.maxInclusive`. Those are exactly the five lines of the old
-build's `META-INF/accesstransformer.cfg` (`git show 86360a3^:src/main/resources/META-INF/accesstransformer.cfg`,
-the same five as at `aa431c6`), while `RarityFilter.chance`, which the old build never transformed, reads as
-private. ADR 0009 found the same pattern independently. A sixth line, `public net.minecraft.world.food.FoodData
-exhaustionLevel`, was added in `0e0222b` on a branch that is not an ancestor of `86360a3^`; the jar shows that
-field private, so it was built from the five-line file.
+### The sources jar still carries the old transformers; the compiled jar does not
 
-What follows from it: a member that reads public in this jar may not be public in a clean 26.1.2.95
-decompile, so no "public" read here is evidence that an access transformer can be dropped. A member that
-reads private is reliable, because a transformer only widens: `FoodData.exhaustionLevel` and
-`MobEffectInstance.duration` below are private in 26.1. ADR 0002 keeps the `storageSource` line in the AT
-file, with its ticket comment, until a clean read settles it (item 13 under "Still to read"). The same
-caveat ends once the reads are redone from a fresh E1-S1 (#188) build.
+The plan was that #188's build would rewrite the `ng_dummy_ng` sources jar with no project transformers, which
+would have ended the caveat this section used to carry. It did not. The file on disk has the modified time
+2026-08-29 12:04, while the compiled jar beside it is 2026-10-31 13:14, and its contents have not moved:
 
-### What the jar does not contain
+```java
+218    public final LevelStorageSource.LevelStorageAccess storageSource;                       // net/minecraft/server/MinecraftServer.java
+12     public final IntProvider count;                                                         // .../levelgen/placement/CountPlacement.java
+17     public final HeightProvider height;                                                     // .../levelgen/placement/HeightRangePlacement.java
+23     public final VerticalAnchor minInclusive;                                               // .../levelgen/heightproviders/UniformHeight.java
+24     public final VerticalAnchor maxInclusive;
+```
 
-The jar holds 26,874 entries: `net/minecraft`, `com/mojang`, `assets/minecraft` and `data/minecraft`. It is
-the NeoForge-patched Minecraft only. No `net/neoforged/**` source is in it (`unzip -l` lists one entry
-containing "neoforged", the directory `net/`). NeoForge's own API classes, such as `BlockDropsEvent`,
-`Capabilities`, `PayloadRegistrar`, `RegisterPayloadHandlersEvent`, `AttachmentType`,
-`AttachmentInternals`, `ForcedChunkManager`, `TicketController` and the `common.crafting` ingredients, are
-in NeoForge's own jar, which was not copied. The `c:` tags are in that jar too.
+Those are the five lines of the old build's `META-INF/accesstransformer.cfg`
+(`git show 86360a3^:src/main/resources/META-INF/accesstransformer.cfg`). The current tree has no such file, and
+`build.gradle` names none.
 
-Where a read needs one of those classes, this file quotes the patched Minecraft call site, which shows the
-class and method name NeoForge exposes at that point, and marks the rest "Unverified: NeoForge sources not yet read (E1-S5 #195 stays open for these)." with the class and method that must be read. Nothing below is written from memory.
+The caveat is closed all the same, by the compiled jar. `javap -p` on it gives the real answer for the five,
+below, and the same output on Mojang's own `client.jar` agrees. So:
+
+- A Minecraft member's visibility is read with `javap -p` on the compiled jar. A `private` or `protected` read
+  in the sources jar stays reliable, because a transformer only widens.
+- Bodies and line numbers from the sources jar are good. A transformer changes modifiers only, and the five
+  above are the only members the file named.
+- If a later task needs the sources jar itself clean, it has to be regenerated. Nothing here needs that.
+
+### The five members, in a clean 26.1.2.95
+
+`javap -p`, on the compiled jar and on `client.jar`, same result on both:
+
+```
+protected final net.minecraft.world.level.storage.LevelStorageSource$LevelStorageAccess storageSource;   // net.minecraft.server.MinecraftServer
+private final net.minecraft.util.valueproviders.IntProvider count;                                       // ...levelgen.placement.CountPlacement
+private final net.minecraft.world.level.levelgen.heightproviders.HeightProvider height;                  // ...levelgen.placement.HeightRangePlacement
+private final net.minecraft.world.level.levelgen.VerticalAnchor minInclusive;                            // ...levelgen.heightproviders.UniformHeight
+private final net.minecraft.world.level.levelgen.VerticalAnchor maxInclusive;                            // ...levelgen.heightproviders.UniformHeight
+```
+
+NeoForge widens none of them: neither of its two transformer files names `storageSource`, `CountPlacement`,
+`HeightRangePlacement` or `UniformHeight`. `RarityFilter.chance` reads `private final int chance` in both
+jars, as a control.
+
+What each means, for the story that must have it:
+
+- `MinecraftServer.storageSource` is `protected`, so `VaultDimensions` cannot read it from outside a subclass.
+  `MinecraftServer` offers no getter for the object: the only public method on the way is
+  `getWorldPath(LevelResource)`, which returns a `Path`, and the `ServerLevel` constructor needs the
+  `LevelStorageAccess` itself. ADR 0002's access transformer line stays, carrying its ticket comment. Before E3-S6a (#237).
+  In a built jar, `META-INF/accesstransformer.cfg` is found with no entry in `neoforge.mods.toml`: it is FML's
+  default path (`net/neoforged/fml/loading/moddiscovery/ModFile.java` line 45), and `[[accessTransformers]]` with
+  a `file` key is only for another path (`ModFileParser.java` lines 86 to 105).
+- `CountPlacement.count`, `HeightRangePlacement.height`, `UniformHeight.minInclusive` and `maxInclusive` are
+  `private`. ADR 0009's codec path needs no transformer, as it says, and its fallback really would need the
+  four lines of old #15. Needed before E4-S2 (#238) only if the codec path fails.
 
 ## Summary
 
-| Read | Result | Unblocks |
+| Read | Result | Must land before |
 | --- | --- | --- |
+| The five members' clean visibility | Read (`javap`): `storageSource` protected, the other four private | E3-S6a (#237); E4-S2 (#238) only if its codec path fails |
 | `DimensionType` codec fields | Read | E0-S1 (#222), E0-S4 (#223) |
-| `ItemStack#hurtAndBreak`, `processDurabilityChange` | Read; local slots need javap | E0-S11 (#226), E9-S7 (#311) |
-| FTB Teams party join and disband | Read (FTB Teams jar) | E0-S18 (#178), E0-S10 (#258), E0-S4 (#223), E3-S8 (#206) |
-| `ProtoChunk` attachment carry-over | Call sites read; NeoForge copy rule not read | E6-S4 (#209), E0-S6 (#224) |
-| Client payload handler registration | Unverified: NeoForge sources not yet read | E0-S9 (#183) |
-| `BlockDropsEvent` experience accessors | Call sites read; accessors not read | E5-S3 (#264), E9-S9 (#312) |
+| `ItemStack#hurtAndBreak`, `processDurabilityChange` | Read; the `javap` check is not needed (ADR 0008) | E0-S11 (#226), E9-S7 (#311) |
+| FTB Teams party join and disband | Read | E0-S18 (#178), E0-S10 (#258), E0-S4 (#223), E3-S8 (#206) |
+| Attachment copy, builder, `copyOnDeath`, generator-thread writes | Read | E3-S6a (#237), E6-S4 (#209) |
+| `ChunkEvent.Load` new-chunk flag | Read: `isNewChunk()` | E6-S4 (#209) |
+| `TicketController`, when validation runs | Read: at activation, so ADR 0002 step 13 runs it | E3-S6a (#237), E10-S3 (#373) |
+| Forced tickets after `createLevels` | Read | E10-S3 (#373), E0-S4 (#223) |
+| `c:ores` key | Read: `Tags.Blocks.ORES` | E4-S2 (#238) |
+| Biome modifier spawns on `orevault:vault` | Read: yes they can; see the section | E3-S5 (#233) |
+| `BlockDropsEvent` experience accessors | Read | E5-S3 (#264), E9-S9 (#312) |
+| Payload registration, optional, decode failure, size caps, configuration tasks | Read | E7-S2a (#255) |
+| `Capabilities.Energy.ITEM`, item handler | Read | E9-S8 (#313), E9-S45 (#352), E9-S41 (#349), E12-S1 (#217) |
+| Data-component ingredient | Read: `neoforge:components`; JSON not yet loaded in a game | E9-S28 (#332), E12-S1 (#217) |
+| `[[mixins]]` keys, `compatibilityLevel`, refmap | Read | E9-S7 (#311) |
+| Registry alias | Read: `DeferredRegister#addAlias` | The first PR that renames a block or item id |
+| `logoFile`, `logoBlur`, `pack.png` | Read | E13-S2c (#191) |
+| `c:nuggets/copper` | Read | E9-S11 (#315) |
 | GUI sprite nine-slice `.mcmeta` | Read | E7-S4 (#213) |
-| Chunk ticket API; forced tickets after `createLevels` | Read (vanilla and the NeoForge hook call) | E10-S3 (#373), E0-S4 (#223) |
-| `Capabilities.Energy.ITEM`, item-handler capability | Block item capability name read; energy not read | E9-S8 (#313), E9-S45 (#352), E9-S41 (#349), E12-S1 (#217) |
-| Data-component ingredient | Custom-ingredient hook read; the ingredient class not read | E9-S28 (#332), E12-S1 (#217) |
 | `MobEffectInstance` duration access | Read | E9-S35 (#342) |
 | `FoodData.exhaustionLevel` access | Read | E9-S17 (#322), E9-S13 (#317) |
 | Respawn and `PlayerChangedDimensionEvent` | Read | E0-S1 (#222), E9-S5 (#309) |
 
 ## DimensionType codec fields
 
-Unblocks E0-S1 (#222, §3.1 shared attributes and §13 Dimension), E0-S4 (#223).
+Must land before E0-S1 (#222, §3.1 shared attributes and §13 Dimension), E0-S4 (#223).
 
 `net/minecraft/world/level/dimension/DimensionType.java` lines 109 to 135, the full direct codec:
 
@@ -190,12 +232,48 @@ lists do. `data/minecraft/worldgen/biome/the_void.json` shows the empty form, `"
 `"spawners": { "ambient": [], "axolotls": [], "creature": [], "misc": [], "monster": [],
 "underground_water_creature": [], "water_ambient": [], "water_creature": [] }`, and
 `net/minecraft/world/level/biome/MobSpawnSettings.java` lines 35 and 38 read `fieldOf("spawners")` and
-`fieldOf("spawn_costs")`. A NeoForge biome modifier from another mod can still add spawns to our biome; that
-API is in NeoForge's jar. Unverified: NeoForge sources not yet read (E1-S5 #195 stays open for these). Must read: NeoForge's biome modifier registry and the `neoforge:add_spawns` modifier, to know whether one can target `orevault:vault`.
+`fieldOf("spawn_costs")`. That is not the whole story; see the next subsection.
+
+### Whether another mod's biome modifier can add spawns to orevault:vault
+
+Read 2026-10-31. Must land before E3-S5 (#233). Paths starting `net/neoforged` are in NeoForge's sources jar.
+
+Yes, it can. Biome modifiers run once at server start, over every biome in the registry, datapack biomes
+included. `net/neoforged/neoforge/server/ServerLifecycleHooks.java` line 93 calls `runModifiers(server)` from
+`handleServerAboutToStart`, and lines 166 to 171 go through `biomeRegistry.listElements()` calling
+`biome.modifiableBiomeInfo().applyBiomeModifiers(biomeHolder, biomeModifiers, registries)`.
+`Biome#getMobSettings` then returns the modified result
+(`net/minecraft/world/level/biome/Biome.java` lines 105 to 106,
+`return this.modifiableBiomeInfo().get().mobSpawnSettings();`).
+
+`neoforge:add_spawns` (`net/neoforged/neoforge/common/NeoForgeMod.java` line 243) is
+`AddSpawnsBiomeModifier(HolderSet<Biome> biomes, WeightedList<SpawnerData> spawners)`, and it adds its spawns when
+`phase == Phase.ADD && this.biomes.contains(biome)`
+(`net/neoforged/neoforge/common/world/BiomeModifiers.java` lines 148 and 161 to 162). `biomes` is any holder set.
+So `orevault:vault` is hit by a modifier that names it, by one using NeoForge's `neoforge:any` holder set
+(`NeoForgeMod.java` line 332), and by a tag only if our biome is in that tag. The biome should stay out of broad
+tags such as `#minecraft:is_overworld`, which is the form most mods use, but `neoforge:any` still reaches it.
+
+So empty spawner lists keep mobs out by default, and do not prove zero spawning in a pack. The generator can close
+the gap in one method. Natural spawning asks the generator, not the biome:
+`net/minecraft/world/level/NaturalSpawner.java` line 318:
+
+```java
+return net.neoforged.neoforge.event.EventHooks.getPotentialSpawns(level, mobCategory, pos, generator.getMobsAt(biome != null ? biome : level.getBiome(pos), structureManager, mobCategory, pos));
+```
+
+`ChunkGenerator#getMobsAt` is public and not final
+(`net/minecraft/world/level/chunk/ChunkGenerator.java` lines 449 to 471), so a Vault generator override returning
+an empty list stops every biome-modifier spawn at this call. The one path that skips it is
+`NaturalSpawner.java` line 352, `biome.value().getMobSettings()`, which is the chunk-generation mob pass; that runs
+through `generator.spawnOriginalMobs` (`ChunkStatusTasks.java` line 167), which the Vault generator also controls.
+The last call that can still add to the list is `LevelEvent.PotentialSpawns`
+(`net/neoforged/neoforge/event/level/LevelEvent.java` line 122), which a mod would have to target on purpose. A
+listener could cancel it for Vault levels, but that is a second hook for a rare case, and it is the Architect's call.
 
 ## ItemStack#hurtAndBreak and processDurabilityChange
 
-Unblocks E0-S11 (#226, ADR 0008) and E9-S7 (#311).
+Must land before E0-S11 (#226, ADR 0008) and E9-S7 (#311).
 
 `net/minecraft/world/item/ItemStack.java` lines 469 to 534, verbatim:
 
@@ -313,13 +391,13 @@ Injection forms that need no local index avoid the check: a `@ModifyVariable` on
 `HEAD` with `argsOnly = true` for the head multiplier, and for the post-Unbreaking roll either a
 modification of `processDurabilityChange`'s return value at its call in `hurtAndBreak` or an injection at
 `RETURN` of the private `processDurabilityChange(ILnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/LivingEntity;)I`.
-Whether NeoForge 26.1.2.95 bundles MixinExtras (its jar-in-jar list) was not read. ADR 0008 then chose plain
-Mixin with no local by index, so neither that read nor the `javap` check is needed for it (items 7 and 9 under
-"Still to read").
+ADR 0008 chose plain Mixin with no local by index, so the `javap` check is not needed (item 9 under "Still to
+read"). NeoForge's dependency list does name `io.github.llamalad7:mixinextras-neoforge` 0.5.4 (`ivy-26.1.2.95-ng2.xml`
+line 162), for a later ticket that wants it (item 7).
 
 ## FTB Teams party join and disband
 
-Unblocks E0-S18 (#178), E0-S10 (#258), E0-S4 (#223), E3-S8 (#206). Read from
+Must land before E0-S18 (#178), E0-S10 (#258), E0-S4 (#223), E3-S8 (#206). Read from
 `ftb-teams-26.1.2.4-sources.jar` on 2026-10-27; paths are inside that jar. Copied from the read notes.
 
 1. The personal team id is the player's UUID and the personal team is never deleted.
@@ -358,7 +436,7 @@ triggers listen to `PlayerChangedTeam`, which fires for offline players too, not
 
 ## ProtoChunk attachment carry-over
 
-Unblocks E6-S4 (#209, the spike) and E0-S6 (#224, ADR 0004).
+Must land before E6-S4 (#209, the spike) and E0-S6 (#224, ADR 0004).
 
 Chunk attachments live on `ChunkAccess`, so a `ProtoChunk` has them during generation.
 `net/minecraft/world/level/chunk/ChunkAccess.java`:
@@ -388,40 +466,288 @@ as "It will not persist"); the read at line 217 (`chunkData.getCompound(Attachme
 and lines 344 and 345 (`chunk.readAttachmentsFromNBT(level.registryAccess(), this.attachmentData);`), which
 runs before the `ChunkType.LEVELCHUNK` branch, so a proto chunk saved mid-generation keeps its attachments.
 
-Unverified: NeoForge sources not yet read (E1-S5 #195 stays open for these). Must read: `net.neoforged.neoforge.attachment.AttachmentInternals#copyChunkAttachmentsOnPromotion`, which
-decides whether every attachment is copied or only some, and the `AttachmentType` builder for any flag
-that controls it; and `net.neoforged.neoforge.attachment.AttachmentHolder` for whether it is safe to write
-from the generation thread. E6-S4 still has to answer both, by reading that class or by its spike in a running game.
+### What promotion copies
+
+Read 2026-10-31. Must land before E3-S6a (#237), which first stores `return_pos` on the player attachment, and
+E6-S4 (#209), the carry-over spike. Paths in this subsection are in NeoForge's sources jar unless they start
+`net/minecraft`.
+
+`net/neoforged/neoforge/attachment/AttachmentInternals.java` lines 25 to 47, verbatim:
+
+```java
+25    private static <H extends AttachmentHolder> void copyAttachments(HolderLookup.Provider provider, H from, H to, Predicate<AttachmentType<?>> filter) {
+26        if (from.attachments == null) {
+27            return;
+28        }
+29        for (var entry : from.attachments.entrySet()) {
+30            AttachmentType<?> type = entry.getKey();
+31            if (type.serializer == null) {
+32                continue;
+33            }
+34            @SuppressWarnings("unchecked")
+35            var copyHandler = (IAttachmentCopyHandler<Object>) type.copyHandler;
+36            if (filter.test(type)) {
+37                Object copy = copyHandler.copy(entry.getValue(), to.getExposedHolder(), provider);
+38                if (copy != null) {
+39                    to.getAttachmentMap().put(type, copy);
+40                }
+41            }
+42        }
+43    }
+44
+45    public static void copyChunkAttachmentsOnPromotion(HolderLookup.Provider provider, AttachmentHolder.AsField from, AttachmentHolder.AsField to) {
+46        copyAttachments(provider, from, to, type -> true);
+47    }
+```
+
+The rule: every attachment with a serializer is copied, with no flag to opt in. One with no serializer is
+skipped without a log. `AttachmentType.java` line 56 says the same: "Serializable attachments are copied from a
+{@link ProtoChunk} to a {@link LevelChunk} on promotion." `orevault:vein_index` has a codec, so it is copied,
+which is ADR 0004's Result A. E6-S4 still runs, because the ADR's rule needs its two halves in a real game, but
+the expected answer is now read rather than guessed.
+
+The copy is not the same object. The default handler (`AttachmentType.java` lines 76 to 100) writes the value
+out and reads it back through the serializer, once per chunk, on the main thread, because the `LevelChunk`
+constructor runs inside `ChunkStatusTasks#full` on `context.mainThreadExecutor()`
+(`net/minecraft/world/level/chunk/status/ChunkStatusTasks.java` lines 176 to 209). Three consequences:
+
+- The vein index, which is large and immutable (ADR 0004), is encoded and decoded on the main thread for every
+  fresh chunk. `Builder#copyHandler` (lines 251 to 258) replaces that, and for an immutable value
+  `(value, holder, provider) -> value` is correct. E6-S4 should measure the difference.
+- `copyAttachments` has no `try`. A default handler that throws, on a reporter with problems (lines 88 to 90 and
+  95 to 97), throws out of the `LevelChunk` constructor on the main thread. Saving is gentler:
+  `AttachmentHolder#serializeAttachments` (lines 120 to 137) catches and logs.
+- A value that a write refuses is dropped: a serializer returning `false` makes the handler return `null` (lines
+  85 to 87), and line 38 skips it.
+
+### The builder
+
+`AttachmentType.java`, class `Builder<T>`, lines 163 to 310. `AttachmentType.builder(Supplier<T>)` or
+`builder(Function<IAttachmentHolder, T>)` starts one; `serializable(...)` starts one for a `ValueIOSerializable`.
+
+```java
+182    public Builder<T> serialize(IAttachmentSerializer<T> serializer)
+198    public Builder<T> serialize(MapCodec<T> codec)
+210    public Builder<T> serialize(MapCodec<T> codec, Predicate<? super T> shouldSerialize)
+237    public Builder<T> copyOnDeath()
+251    public Builder<T> copyHandler(IAttachmentCopyHandler<T> cloner)
+263    public Builder<T> sync(AttachmentSyncHandler<T> syncHandler)
+274    public Builder<T> sync(StreamCodec<? super RegistryFriendlyByteBuf, T> streamCodec)
+286    public Builder<T> sync(BiPredicate<IAttachmentHolder, ServerPlayer> sendToPlayer, StreamCodec<? super RegistryFriendlyByteBuf, T> streamCodec)
+307    public AttachmentType<T> build()
+```
+
+Points that bite at T3 and T6:
+
+- `serialize` takes a `MapCodec`, not a `Codec`. There is no `Codec` overload.
+- Order matters. `copyOnDeath()` and `copyHandler` throw `IllegalStateException` unless `serialize` was called
+  first (lines 238 to 239, 254 to 255), and `serialize` throws if called twice (lines 184 to 185).
+- A failed read loses the whole attachment, not one field. The codec read is
+  `parsingResult.orElseThrow(() -> buildException("read"))` (lines 215 to 216), and
+  `AttachmentHolder#deserializeAttachments` (lines 159 to 163) catches that, logs "Failed to deserialize data
+  attachment {}. Skipping.", and leaves the type absent. For `orevault:player`, a required field missing from an
+  older tag would therefore reset `return_pos` on load with one log line. Every field has to be optional in the
+  codec, or `orevault:player` has to use its own `IAttachmentSerializer`, so that `migrate()` sees the tag before
+  anything decodes (ADR 0005). An attachment id with no registered type is also logged and skipped (lines 153 to
+  157), so a rename needs the registry alias (item 12) or the data is gone at the next save.
+
+`copyOnDeath()`: `AttachmentInternals.java` lines 52 to 59 run
+`copyAttachments(from.registryAccess(), from, to, isDeath ? type -> type.copyOnDeath : type -> true)` from a
+`PlayerEvent.Clone` listener. `ServerPlayer#restoreFrom` posts that event as
+`EventHooks.onPlayerClone(this, oldPlayer, !restoreAll)` (`net/minecraft/server/level/ServerPlayer.java` line
+1747), called from `PlayerList#respawn` line 409. A death copies only the `copyOnDeath` types; the non-death clone
+(return from the End) copies every serializable type. The copy is a fresh value through the same handler, so
+nothing may hold a reference to the old value across a respawn. ADR 0005's `copyOnDeath` line is confirmed as an
+API.
+
+### Writing from the generator thread
+
+Must land before E6-S4 (#209).
+
+The holder has no synchronisation. `AttachmentHolder.java` lines 40 to 51: a plain `Map` field, null until first
+used, then `new IdentityHashMap<>(4)`, with no lock and no `volatile`. `getData` writes too: lines 76 to 80 put
+the default into the map if the type is absent. So "safe from a worker" depends only on whether another thread
+can reach the same `ProtoChunk`'s map at the time. From the source, it cannot, for a chunk being generated:
+
+- `ChunkAccess#setData` is `markUnsaved()` then the holder (`ChunkAccess.java` lines 511 to 514). `unsaved` is
+  `volatile` (line 65) and `markUnsaved` only sets it (lines 262 to 264).
+- `syncData` does nothing on a `ProtoChunk`: only `LevelChunk` overrides it (`LevelChunk.java` line 752), so the
+  empty default on `IAttachmentHolder` (lines 122 to 124) runs.
+- Saves skip a chunk still in generation. `ChunkMap#saveAllChunks` (lines 425 to 431) and `saveChunkIfNeeded`
+  (lines 721 to 722) only take `ImposterProtoChunk` or `LevelChunk`. The third path, `scheduleUnload` (lines 513
+  to 526), which does save a true `ProtoChunk`, waits on `getSaveSyncFuture()`, and generation adds its own
+  dependency to that future while its ref count is above zero (`GenerationChunkHolder.java` lines 236 to 238). So
+  the partial-status save in ADR 0004's restart half happens after the worker has finished.
+- Promotion is the only other reader, and it is a later step on the main thread. That a step's writes are seen by
+  the next step relies on the `CompletableFuture` chain between them; that is an inference from the steps'
+  structure, not a line that says so.
+
+So ADR 0004's "on its worker, which owns that chunk" holds as written, for `setData` on the `ProtoChunk` that
+`fillFromNoise` was handed. It holds only for that chunk: a neighbour's `ProtoChunk` reached through a region is
+not owned, and `getData` from the main thread on anything reached through `getLatestChunk()` is a race, since it
+can write. `getExistingDataOrNull` (lines 87 to 93) does not write, but still reads an unguarded map. This is a
+read of the code, not a run; the spike's restart half remains the check.
+
+## ChunkEvent.Load new-chunk flag
+
+Read 2026-10-31. Must land before E6-S4 (#209). `net/neoforged/neoforge/event/level/ChunkEvent.java` lines 46 to
+63, in NeoForge's sources jar:
+
+```java
+46    public static class Load extends ChunkEvent<LevelChunk> {
+47        private final boolean newChunk;
+...
+50        public Load(LevelChunk chunk, boolean newChunk) {
+...
+56         * {@return true if this is a newly-generated chunk, instead of one loaded from disk}
+...
+60        public boolean isNewChunk() {
+61            return newChunk;
+62        }
+```
+
+The accessor is `isNewChunk()`. The event is posted on `NeoForge.EVENT_BUS` (`ChunkEvent.java` line 19). The
+javadoc at lines 43 and 44 sets a rule for every listener: the event fires before the `LevelChunk` is promoted to
+`FULL`, and "Interactions with the {@link LevelChunk#getLevel() level} must be delayed until the next game tick to
+prevent deadlocking the game." The chunk's own attachment is fine to touch there, and that is all ADR 0004's
+listener does to the chunk; its explored map write is to the listener's own data.
+
+The flag is the second constructor argument, `!(protoChunk instanceof ImposterProtoChunk)`
+(`net/minecraft/world/level/chunk/status/ChunkStatusTasks.java` line 204). A chunk saved at `FULL` comes back from disk as
+`new ImposterProtoChunk((LevelChunk)chunk, false)`, and one saved at a partial status comes back as a plain
+`ProtoChunk` (`net/minecraft/world/level/chunk/storage/SerializableChunkData.java` lines 289, 306 and 349). So the
+flag is false for the first and true for the second when it finishes after a restart, which ADR 0004's restart
+half relies on: "newly generated" here means newly promoted, as its javadoc does not quite say.
 
 ## Client payload handler registration
 
-Unblocks E0-S9 (#183, ADR 0006).
+Read 2026-10-31. Must land before E7-S2a (#255). Paths are in NeoForge's sources jar unless they start
+`net/minecraft`.
 
-Unverified: NeoForge sources not yet read (E1-S5 #195 stays open for these). Must read: `net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent`,
-`net.neoforged.neoforge.network.registration.PayloadRegistrar` (every `playTo*` method and `optional()`), and
-any client-side registration event in `net.neoforged.neoforge.client.network`. `RegisterPayloadHandlersEvent`, `PayloadRegistrar` and `IPayloadContext`
-are not in the patched Minecraft tree, and no Minecraft class references a client-only registration event.
-What the tree shows is NeoForge's channel negotiation on the client:
-`net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java` lines 167 to 182 route
-`MinecraftRegisterPayload`, `MinecraftUnregisterPayload`, `CommonVersionPayload` and `CommonRegisterPayload`
-to `net.neoforged.neoforge.network.registration.NetworkRegistry`.
+### Registration and threads
 
-The old build's `ModNetwork` compiled against the same pin
-(`git show 86360a3^:src/main/java/com/orevault/orevault/network/ModNetwork.java` lines 228 to 240):
-`PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION);`,
-`registrar.playToServer(PurchaseNode.TYPE, PurchaseNode.CODEC, ModNetwork::onPurchaseNode);`,
-`registrar.playToClient(SyncTeamProgress.TYPE, SyncTeamProgress.CODEC, ModNetwork::onClientPayload);`. That
-is evidence that those calls exist in 26.1.2.95, not a read of the class. Whether a client-only handler
-registration exists, `PayloadRegistrar#optional()`, and what happens on a decode failure stay open for a read
-of NeoForge's jar.
+`RegisterPayloadHandlersEvent` is a mod-bus event (`IModBusEvent`) with one method,
+`registrar(String version)` (`net/neoforged/neoforge/network/event/RegisterPayloadHandlersEvent.java` lines 31 to
+42). `PayloadRegistrar` (`net/neoforged/neoforge/network/registration/PayloadRegistrar.java`) has, for play:
+
+```java
+44    public <T extends CustomPacketPayload> PayloadRegistrar playToClient(CustomPacketPayload.Type<T> type, StreamCodec<? super RegistryFriendlyByteBuf, T> codec, IPayloadHandler<T> handler) {
+52    public <T extends CustomPacketPayload> PayloadRegistrar playToClient(CustomPacketPayload.Type<T> type, StreamCodec<? super RegistryFriendlyByteBuf, T> codec) {
+60    public <T extends CustomPacketPayload> PayloadRegistrar playToServer(CustomPacketPayload.Type<T> type, StreamCodec<? super RegistryFriendlyByteBuf, T> codec, IPayloadHandler<T> handler) {
+70    public <T extends CustomPacketPayload> PayloadRegistrar playBidirectional(...)
+```
+
+with `configuration...` and `common...` twins, and `executesOn(HandlerThread)` (line 180), `versioned(String)`
+(line 196) and `optional()` (line 209), each returning a modified copy.
+
+A client-only handler registration does exist. The two-argument `playToClient` at line 52 registers the payload in
+common code with no handler; its javadoc says "The missing handler must be registered via {@code
+RegisterClientPayloadHandlersEvent}". That event is
+`net/neoforged/neoforge/client/network/event/RegisterClientPayloadHandlersEvent.java`, a mod-bus event with
+`register(type, handler)` (line 32). So a common class never needs to name a client handler. A placeholder handler
+in common code is not needed. The check is loud: `ClientNetworkRegistry.java` lines 71 to 91 throw
+`IllegalStateException("Some clientbound payloads are missing client-side handlers: " ...)` when the client network
+registry is set up, so a forgotten client handler stops the client at start.
+
+Handlers already run on the main thread. `PayloadRegistrar.java` line 29 sets `HandlerThread.MAIN` as the default,
+and lines 224 to 229 wrap each handler in `MainThreadPayloadHandler`, whose whole body is
+`context.enqueueWork(() -> this.handler().handle(payload, context));`
+(`net/neoforged/neoforge/network/handling/MainThreadPayloadHandler.java` line 16). A handler that also calls
+`context.enqueueWork` is harmless and redundant. `RegisterClientPayloadHandlersEvent#register(type, handler)` also
+uses `MAIN` (line 33).
+
+`optional()`: a payload is required unless marked (line 28, `optional = false`). The javadoc at lines 203 to 208:
+"If any non-optional payloads are missing during a connection attempt, the connection will fail." So ADR 0006's
+required default is right: a client without the mod is refused.
+
+### Decode failure
+
+ADR 0006's expectation holds: the connection closes. The registered codec is called from
+`net/minecraft/network/protocol/common/custom/CustomPacketPayload.java`'s `decode`, which rethrows any
+`RuntimeException` as "Failed decoding custom payload" with the payload's id. `PacketDecoder#decode`
+(`net/minecraft/network/PacketDecoder.java`) rethrows it, and `Connection#exceptionCaught` (lines 109 to 135)
+disconnects with "Internal Exception", logging at ERROR for play and configuration. A codec that leaves bytes unread
+is the same failure, as an `IOException` "was larger than I expected" from `PacketDecoder`. So a bad decode kicks
+that one player. An unregistered id logs "No registration for payload {}; refusing to decode."
+(`NetworkRegistry.java` line 252) and falls through to the discarded payload codec.
+
+### Size caps (item 16)
+
+Registered payloads are not held to vanilla's caps. `ClientboundCustomPayloadPacket`'s 1048576 and
+`ServerboundCustomPayloadPacket`'s 32767 are only passed to `DiscardedPayload.codec(id, ...)`, the fallback
+(`ClientboundCustomPayloadPacket.java` line 18, `ServerboundCustomPayloadPacket.java` line 16). `CustomPacketPayload`'s
+`findCodec` asks `NetworkRegistry.getCodec` first and uses the fallback only when that returns null, and a registered
+codec has no such limit.
+
+Above the frame limit NeoForge splits. `net/neoforged/neoforge/network/filters/GenericPacketSplitter.java` lines 96
+to 126 encode the packet and, if it is over `CompressionDecoder.MAXIMUM_UNCOMPRESSED_LENGTH` (8388608) with a
+compressor or `MAXIMUM_COMPRESSED_LENGTH` (2097152) without, send it in `SplitPacketPayload` parts. It applies
+only to a compatible remote (`isRemoteCompatible`, line 183).
+
+ADR 0006's own bounds (about 10 KB up, about 33 KB down) stay under every number here, so nothing changes. Vanilla's
+caps stop being a rule from the transport; the ADR's bounds stay as our own limits, and they are what protects
+the decoder.
+
+### Configuration tasks (item 16)
+
+`RegisterConfigurationTasksEvent` is a mod-bus event, posted once per connecting client from
+`net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java` (the line reading
+`ModLoader.postEventWithReturn(new ...RegisterConfigurationTasksEvent(this))`). It has
+`register(ConfigurationTask task)` and `getListener()`
+(`net/neoforged/neoforge/network/event/RegisterConfigurationTasksEvent.java` lines 38 and 57). The javadoc recommends
+`ICustomConfigurationTask` when a task sends payloads, with one method to write,
+`void run(Consumer<CustomPacketPayload> sender)` (`net/neoforged/neoforge/network/configuration/ICustomConfigurationTask.java`
+line 32). A task ends when something calls `listener.finishCurrentTask(ConfigurationTask.Type)`
+(`IServerConfigurationPacketListenerExtension.java` line 22); `CheckExtensibleEnums.java` is the worked example, ending
+its task from the reply handler through `context.finishCurrentTask(TYPE)` (line 159). So ADR 0006's rejected
+layout check is one task and one `configurationBidirectional` payload pair. E7-S2a can revisit it with that known.
 
 ## BlockDropsEvent experience accessors
 
-Unblocks E5-S3 (#264) and E9-S9 (#312, vanilla XP bonus).
+Must land before E5-S3 (#264) and E9-S9 (#312, vanilla XP bonus).
 
-Unverified: NeoForge sources not yet read (E1-S5 #195 stays open for these). Must read: `net.neoforged.neoforge.event.level.BlockDropsEvent` (its experience getter
-and setter) and `net.neoforged.neoforge.common.CommonHooks#handleBlockDrops` (where the experience is computed
-and the orb popped). The call sites show where XP is decided in 26.1:
+Read 2026-10-31. Must land before E5-S3 (#264) and E9-S9 (#312).
+
+The accessors are as E5-S3 expected. `net/neoforged/neoforge/event/level/BlockDropsEvent.java` lines 57, 113 and
+123:
+
+```java
+57        this.experience = EnchantmentHelper.processBlockExperience(level, tool, state.getExpDrop(level, pos, blockEntity, breaker, tool));
+...
+113    public int getDroppedExperience() {
+...
+123    public void setDroppedExperience(int experience) {
+124        Preconditions.checkArgument(experience >= 0, "May not set a negative experience drop.");
+```
+
+The value is worked out in the event's constructor, before any listener runs, and the setter's javadoc (line 118)
+calls it "the true value, after enchantments have been applied". So Silk Touch has already applied by the time our
+listener sees it: `data/minecraft/enchantment/silk_touch.json` carries a `minecraft:block_experience` effect of
+`{"type": "minecraft:set", "value": 0.0}`, and `EnchantmentHelper#processBlockExperience`
+(`net/minecraft/world/item/enchantment/EnchantmentHelper.java` lines 114 to 118) runs it. Fortune has no effect
+entry at all, so it never touches XP, and the Fortune stage's re-roll of `state.getDrops(...)` (§11) cannot change
+the XP. E5-S3's helper only has to raise the value, on top of the amount already in the event.
+
+`net/neoforged/neoforge/common/CommonHooks.java` lines 574 to 587 is the rest:
+
+```java
+575        BlockDropsEvent event = new BlockDropsEvent(level, pos, state, blockEntity, drops, breaker, tool);
+576        NeoForge.EVENT_BUS.post(event);
+577        if (!event.isCanceled()) {
+578            for (ItemEntity entity : event.getDrops()) {
+579                level.addFreshEntity(entity);
+580            }
+581            // Always pass false for the dropXP (last) param to spawnAfterBreak since we handle XP.
+582            state.spawnAfterBreak((ServerLevel) level, pos, tool, false);
+583            if (event.getDroppedExperience() > 0) {
+584                state.getBlock().popExperience(level, pos, event.getDroppedExperience());
+```
+
+Cancelling the event drops the XP as well (lines 96 to 98 of `BlockDropsEvent.java`). §3.4 says vanilla XP is never
+suppressed, so the listener must never cancel it, even for a stage that consumes the block: clear the list
+instead, as §11's Consume stage says. A consuming stage's empty list still pays XP.
+
+Earlier notes from the Minecraft call sites:
 
 - Drops reach the event through `CommonHooks.handleBlockDrops((ServerLevel)level, pos, state, blockEntity,
   captured, breaker, tool)` (`net/minecraft/world/level/block/Block.java` line 403), from the
@@ -444,14 +770,9 @@ and the orb popped). The call sites show where XP is decided in 26.1:
 - The orb is spawned by `Block#popExperience(ServerLevel, BlockPos, int)` (`Block.java` lines 446 to 450),
   gated on the `BLOCK_DROPS` game rule.
 
-The Minecraft side therefore shows that ore XP comes from `getExpDrop`, not from `spawnAfterBreak`; that the
-event carries that sample is expected but sits in `CommonHooks#handleBlockDrops` and is unverified. The getter and setter names (expected by E5-S3 as `getDroppedExperience` and `setDroppedExperience`) and
-whether the event or `handleBlockDrops` applies Fortune or Silk Touch through
-`EnchantmentHelper.processBlockExperience` remain open.
-
 ## GUI sprite nine-slice .mcmeta format
 
-Unblocks E7-S4 (#213, S28).
+Must land before E7-S4 (#213, S28).
 
 `net/minecraft/client/resources/metadata/gui/GuiMetadataSection.java`: the section is named `gui` and holds
 one optional field, `scaling`, defaulting to stretch:
@@ -505,7 +826,7 @@ the sprite's size in GUI units, which is how one texel per GUI unit (`CLAUDE.md`
 
 ## Chunk ticket API and forced tickets after createLevels
 
-Unblocks E10-S3 (#373) and E0-S4 (#223).
+Must land before E10-S3 (#373) and E0-S4 (#223).
 
 Vanilla ticket types, `net/minecraft/server/level/TicketType.java` lines 10 to 29:
 
@@ -525,9 +846,8 @@ The calls, `net/minecraft/server/level/ServerChunkCache.java` lines 487 to 516:
 radius)` (returns a `CompletableFuture<?>`, throws for a type that does not load or can expire),
 `addTicketWithRadius(TicketType type, ChunkPos pos, int radius)`, `removeTicketWithRadius(...)`,
 `updateChunkForced(ChunkPos pos, boolean forced)`. `ServerLevel#setChunkForced(int chunkX, int chunkZ,
-boolean forced)` (line 1520) wraps the last. NeoForge's `TicketController` is not in the tree and was not
-read; the patched code reaches NeoForge's forced chunks through
-`net.neoforged.neoforge.common.world.chunk.ForcedChunkManager` (below and `ServerLevel.java` line 412).
+boolean forced)` (line 1520) wraps the last. NeoForge's forced chunks go through
+`net.neoforged.neoforge.common.world.chunk.ForcedChunkManager` and `TicketController` (below).
 
 Storage: each level loads its own tickets. `ServerChunkCache.java` line 103,
 `this.ticketStorage = this.savedDataStorage.computeIfAbsent(TicketStorage.TYPE);`, and
@@ -574,56 +894,175 @@ nor NeoForge's forced tickets are reactivated. Restore must do it itself, mirror
 `level.getDataStorage().get(TicketStorage.TYPE)`, then `activateAllDeactivatedTickets()`, then NeoForge's
 `ForcedChunkManager.activateAllDeactivatedTickets(level, savedTickets)`.
 
-`ForcedChunkManager.activateAllDeactivatedTickets` is public and static, settled from the call site without
-NeoForge's jar (Developer, 2026-10-31, round 2 DEV2-5). `MinecraftServer.java` line 563 calls it as
+`ForcedChunkManager.activateAllDeactivatedTickets` is public and static, first settled from the call site
+(Developer, round 2 DEV2-5). `MinecraftServer.java` line 563 calls it as
 `net.neoforged.neoforge.common.world.chunk.ForcedChunkManager.activateAllDeactivatedTickets(level,
 savedTickets)`: through the class name, with no instance, so it is static; and from `MinecraftServer`, in
 package `net.minecraft.server`, on a class in `net.neoforged.neoforge.common.world.chunk`, so the method and
 its class are public. It takes the level and the `TicketStorage`, in that order, as restore will pass
 them.
 
-Unverified: NeoForge sources not yet read (E1-S5 #195 stays open for this). Must read:
-`net.neoforged.neoforge.common.world.chunk.TicketController` (its API, any reinstate path of its own, and
-when a controller's loading validation runs and whether it runs at all for a level added after server
-start). `MinecraftServer#markWorldsDirty()` is at line 1899.
+`ForcedChunkManager.java` confirms that and adds one thing the call site could not show: lines 107 and 108 read
+`@ApiStatus.Internal` then `public static void activateAllDeactivatedTickets(ServerLevel level, TicketStorage
+saveData)`. It is public and marked internal. There is no supported alternative, so E3-S6a calls it with a
+comment saying so, the same footing as `forgeGetWorldMap()` in ADR 0002.
+
+### TicketController, and when validation runs
+
+Read 2026-10-31. Must land before E3-S6a (#237), the restore, and E10-S3 (#373), the Vault Anchor. Paths are in
+NeoForge's sources jar, under `net/neoforged/neoforge/common/world/chunk/`.
+
+`TicketController.java` lines 27 to 69 is a record with three force methods:
+
+```java
+27    public record TicketController(Identifier id, @Nullable LoadingValidationCallback callback) {
+37        public TicketController(Identifier id) {
+47        public boolean forceChunk(ServerLevel level, BlockPos owner, int chunkX, int chunkZ, boolean add, boolean forceNaturalSpawning) {
+57        public boolean forceChunk(ServerLevel level, Entity owner, int chunkX, int chunkZ, boolean add, boolean forceNaturalSpawning) {
+67        public boolean forceChunk(ServerLevel level, UUID owner, int chunkX, int chunkZ, boolean add, boolean ticking) {
+```
+
+Registration is `RegisterTicketControllersEvent#register(TicketController)`, on the mod bus
+(`RegisterTicketControllersEvent.java` lines 12 to 31). `forceChunk` throws `IllegalArgumentException` for a
+controller that was not registered (`ForcedChunkManager.java` lines 85 to 87). With `add` true and a new ticket it
+calls `level.getChunk(chunkX, chunkZ)`, so it is a synchronous load (lines 95 to 98).
+
+Validation runs at activation, not at `readStoredTickets`. `ForcedChunkManager.java` lines 107 to 138:
+
+```java
+111        if (blockForcedChunks.hasNoDeactivatedTickets() && entityForcedChunks.hasNoDeactivatedTickets()) {
+112            //Skip if there are no deactivated tickets at all
+113            return;
+114        }
+...
+125            controllers.forEach((value) -> {
+...
+131                    value.getValue().callback().validateTickets(level, new TicketHelper(saveData, value.getKey(), ownedBlockTickets, ownedEntityTickets));
+...
+136        blockForcedChunks.activateAllDeactivatedSources();
+137        entityForcedChunks.activateAllDeactivatedSources();
+```
+
+NeoForge itself calls that only from `MinecraftServer#prepareLevels`, so it never does this for a level added
+later. But ADR 0002's creation step 13 calls the same method, and that call runs the callback, on the calling
+thread, before any of the level's forced tickets go live, with the level already in the server's map. So ADR 0002
+step 13's third possibility ("or never") does not arise: the Vault Anchor's validation is the
+`LoadingValidationCallback` passed to its controller, and step 13 needs no separate call. Two limits. A level with
+no deactivated tickets gets no callback (line 111). And since the tickets are not live yet, a callback that reads
+the block from `level` loads that chunk synchronously, once per Anchor; `ServerStartedEvent` is on the main thread,
+so this should work, but it is untested here. E10-S3 checks it across a restart.
+
+`readStoredTickets` (lines 213 to 232) makes one check, during the `ServerLevel` constructor: a controller id that
+is not registered is dropped with a WARN, "it will be removed from the level save". `RegistrationEvents.init`
+calls `ForcedChunkManager.init()` (`net/neoforged/neoforge/internal/RegistrationEvents.java` line 20), which posts
+the registration event during mod loading, so a controller registered on the mod bus is known before any Vault's
+ticket file is read. Removing the controller in a later version deletes those tickets at next load.
+
+The `TicketHelper` the callback gets (`TicketHelper.java` lines 36 to 110) has `getBlockTickets()`,
+`getEntityTickets()`, `removeAllTickets(BlockPos | UUID)` and `removeTicket(owner, chunk, forceNaturalSpawning)`.
+
+For ADR 0002's `unload` step 2 ("Release the team's Vault Anchor tickets through the mod's `TicketController`"):
+outside the callback there is no list-and-remove. `TicketController` only has `forceChunk` with one owner and one
+chunk; `ForcedChunkManager.forceChunk` and `TicketOwner` are package-private (lines 83 and 237), and `TicketTracker`
+has no public way to list its sources. So the release needs each Anchor's owner, chunk and spawning flag from the
+mod's own data. E10-S3 stores them.
+
+NeoForge's ticket types (`net/neoforged/neoforge/common/NeoForgeMod.java` lines 396 to 399) are
+`new TicketType(0L, TicketType.FLAG_LOADING | TicketType.FLAG_SIMULATION)`, with no `FLAG_PERSIST` and no
+`FLAG_KEEP_DIMENSION_ACTIVE`. They persist through the `neo_ticket_data` field instead
+(`ForcedChunkManager.java` line 187), and a level stays active through `ForcedChunkManager.hasForcedChunks(this)`
+(`net/minecraft/server/level/ServerLevel.java` line 412).
+
+`MinecraftServer#markWorldsDirty()` is at line 1899.
 
 ## Capabilities.Energy.ITEM and the item-handler capability
 
-Unblocks E9-S8 (#313), E9-S45 (#352), E9-S41 (#349, Seam Courier), E12-S1 (#217) for §9's Unverified list.
+Must land before E9-S8 (#313), E9-S45 (#352), E9-S41 (#349, Seam Courier), E12-S1 (#217) for §9's Unverified list.
 
-`Capabilities.Energy` does not appear anywhere in the patched Minecraft tree. Unverified: NeoForge sources not yet read (E1-S5 #195 stays open for these). Must read:
-`net.neoforged.neoforge.capabilities.Capabilities` (the `Energy.ITEM` field, its type and context type), the
-energy handler interface it returns and its insert method, and the item handler interface behind
-`Capabilities.Item.BLOCK` with its insert method.
+Read 2026-10-31. Paths are in NeoForge's sources jar unless they start `net/minecraft`.
 
-The block item capability does appear. `net/minecraft/world/level/block/entity/HopperBlockEntity.java`
-line 450:
+`net/neoforged/neoforge/capabilities/Capabilities.java` lines 21 to 52:
 
 ```java
-var blockItemHandler = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.Item.BLOCK, pos, state, null, side);
+22        public static final BlockCapability<EnergyHandler, @Nullable Direction> BLOCK = ...
+24        public static final ItemCapability<EnergyHandler, ItemAccess> ITEM = ItemCapability.create(create("energy_handler"), EnergyHandler.class, ItemAccess.class);
+...
+38        public static final BlockCapability<ResourceHandler<ItemResource>, @Nullable Direction> BLOCK = BlockCapability.createSided(create("item_handler"), ResourceHandler.asClass());
+49        public static final ItemCapability<ResourceHandler<ItemResource>, ItemAccess> ITEM = ...
 ```
 
-and insertion goes through NeoForge's transfer API, `net/minecraft/world/level/block/CrafterBlock.java` line
-204:
+So `Capabilities.Energy.ITEM` gives a `net.neoforged.neoforge.transfer.energy.EnergyHandler`, and its context type is
+`net.neoforged.neoforge.transfer.access.ItemAccess`. There is no `IEnergyStorage` and no `IItemHandler` on this path.
+
+`EnergyHandler` (`net/neoforged/neoforge/transfer/energy/EnergyHandler.java`):
 
 ```java
-remaining = net.neoforged.neoforge.transfer.item.ItemUtil.insertItemReturnRemaining(containerOrHandler.itemHandler(), remaining, false, null);
+39    long getAmountAsLong();
+55    default int getAmountAsInt() {
+75    long getCapacityAsLong();
+94    default int getCapacityAsInt() {
+110    int insert(int amount, TransactionContext transaction);
+124    int extract(int amount, TransactionContext transaction);
 ```
 
-So in 26.1.2.95 the block item-handler capability is `Capabilities.Item.BLOCK`, queried with
-`level.getCapability(cap, pos, state, blockEntity, side)`, and the transfer types live in
-`net.neoforged.neoforge.transfer` (`item.ItemResource`, `item.ItemUtil`, `transaction.TransactionContext`
-are referenced). The handler's interface name and its insert signature are in NeoForge's jar. A javadoc at
-`HopperBlockEntity.java` line 398 still says "Use IItemHandler capability instead"; it is a stale comment, and
-the code beside it uses the transfer API.
+`insert` returns the amount taken, and throws `IllegalArgumentException` on a negative amount (lines 103 to 106). It
+takes a transaction: nothing sticks unless the transaction commits. `Transaction.openRoot()`
+(`net/neoforged/neoforge/transfer/transaction/Transaction.java` line 73) in a try-with-resources, then `commit()`.
+
+Getting one for a tool: `IItemStackExtension#getCapability(ItemCapability<T, C> capability, C context)`
+(`net/neoforged/neoforge/common/extensions/IItemStackExtension.java` line 350), or `ItemAccess#getCapability`
+(`ItemAccess.java` line 143). An `ItemAccess` for a slot is `ItemAccess.forPlayerSlot(Player player, int slot)`
+(line 87). `forPlayerInteraction(player, hand)` (line 46) is the hand-held form. A write goes back through the access,
+so a `forStack` access (line 121), which can only change the stack it wraps, is the one to avoid unless the item
+is known not to swap. For Tool charge and Resonant Dynamo, `forPlayerSlot` is right.
+
+Block item handler: `Capabilities.Item.BLOCK` gives `ResourceHandler<ItemResource>`
+(`net/neoforged/neoforge/transfer/ResourceHandler.java`), queried with `level.getCapability(cap, pos, state,
+blockEntity, side)` (`net/minecraft/world/level/block/entity/HopperBlockEntity.java` line 450). Its insert methods:
+
+```java
+161    int insert(int index, T resource, int amount, TransactionContext transaction);
+181    default int insert(T resource, int amount, TransactionContext transaction) {
+```
+
+The helper for Seam Courier, which starts from a stack, is `ItemUtil#insertItemReturnRemaining(handler, stack, simulate,
+transaction)` (`net/neoforged/neoforge/transfer/item/ItemUtil.java` lines 44 to 47), which returns the leftover and opens
+its own root transaction when `transaction` is `null`. `net/minecraft/world/level/block/CrafterBlock.java` line
+204 calls it that way. `HopperBlockEntity.java` line 398's "Use IItemHandler capability instead" is a stale comment.
+
+Must land before E9-S8 (#313), E9-S45 (#352), E9-S41 (#349) and E12-S1 (#217). These names can leave §9's Unverified
+list.
 
 ## Data-component ingredient
 
-Unblocks E9-S28 (#332, the Resonance Crystal recipe) and E12-S1 (#217).
+Must land before E9-S28 (#332, the Resonance Crystal recipe) and E12-S1 (#217).
 
-Unverified: NeoForge sources not yet read (E1-S5 #195 stays open for these). Must read: the `ICustomIngredient` implementations in
-`net.neoforged.neoforge.common.crafting` (the one that matches data components), their codec and JSON `type` id. What the tree shows is the hook a component-matching
-ingredient plugs into. `net/minecraft/world/item/crafting/Ingredient.java`:
+Read 2026-10-31. The class is `net.neoforged.neoforge.common.crafting.DataComponentIngredient`. Its `type` id is
+`neoforge:components` (`net/neoforged/neoforge/common/NeoForgeMod.java` line 359,
+`INGREDIENT_TYPES.register("components", ...)`), and the JSON key that picks a custom ingredient is
+`neoforge:ingredient_type`, not `type` (`common/crafting/IngredientCodecs.java` line 22). The fields are in
+`DataComponentIngredient.java` lines 41 to 43: `items` (a holder set), `components` (a `DataComponentPatch`) and
+`strict`, optional, default false.
+
+So the Resonance Crystal's attuned slot, from those fields:
+
+```json
+{
+  "neoforge:ingredient_type": "neoforge:components",
+  "items": "#c:raw_materials",
+  "components": { "orevault:attuned": {} }
+}
+```
+
+`strict` false is right: `test` (lines 57 to 70) then allows other components on the stack. A patch value is compared
+with `equals` (line 76), so a marker with no fields (ADR 0005) matches any Attuned stack. If `orevault:attuned` ever
+gained a field, the recipe would match only the listed value. `Tags.Items.RAW_MATERIALS` is `c:raw_materials`
+(`Tags.java` line 798). The Java factories take `ItemLike...` (lines 133 onwards), not a tag, so the JSON recipe is the
+simple path. The exact JSON for the marker's value depends on the component's codec, and this form has not been
+loaded in a game: E9-S28's gametest is the check. Must land before E9-S28 (#332) and E12-S1 (#217).
+
+What the patched tree shows is the hook it plugs into.
+`net/minecraft/world/item/crafting/Ingredient.java`:
 
 ```java
 34  public static final Codec<Ingredient> CODEC = net.neoforged.neoforge.common.crafting.IngredientCodecs.codec(ExtraCodecs.nonEmptyHolderSet(NON_AIR_HOLDER_SET_CODEC).xmap(Ingredient::new, i -> i.values));
@@ -636,13 +1075,11 @@ ingredient plugs into. `net/minecraft/world/item/crafting/Ingredient.java`:
 79      return input.is(this.values);
 ```
 
-Vanilla's own ingredient is a `HolderSet<Item>` and matches by item only (line 79). Matching a component on
-any `#c:raw_materials` item therefore needs a NeoForge `ICustomIngredient`; its class name and JSON `type` id
-remain to be read.
+Vanilla's own ingredient is a `HolderSet<Item>` and matches by item only (line 79), so the custom ingredient is needed.
 
 ## MobEffectInstance duration access
 
-Unblocks E9-S35 (#342, "potion durations do not tick down").
+Must land before E9-S35 (#342, "potion durations do not tick down").
 
 `net/minecraft/world/effect/MobEffectInstance.java`: the field is private and has no setter.
 
@@ -680,7 +1117,7 @@ ADR if it is a mixin); the source facts above are what it chooses from.
 
 ## FoodData.exhaustionLevel access
 
-Unblocks E9-S17 (#322, Long Delve) and E9-S13 (#317, hunger reduction built once).
+Must land before E9-S17 (#322, Long Delve) and E9-S13 (#317, hunger reduction built once).
 
 `net/minecraft/world/food/FoodData.java`: the field is private, with no getter or setter.
 
@@ -709,7 +1146,7 @@ AT, but it has no floor at 0, and the rise still has to be read, so the AT stays
 
 ## Respawn and PlayerChangedDimensionEvent
 
-Unblocks E0-S1 (#222, §11 Vault Session State) and E9-S5 (#309); old #149.
+Must land before E0-S1 (#222, §11 Vault Session State) and E9-S5 (#309); old #149.
 
 `PlayerChangedDimensionEvent` is posted in one place, the cross-level branch of `ServerPlayer#teleport`.
 `net/minecraft/server/level/ServerPlayer.java` line 1134 opens
@@ -733,66 +1170,124 @@ trip of any player not in a Vault, keyed by UUID, catches it, as does a `PlayerR
 also that respawn creates a new `ServerPlayer` object, so trip state must not be keyed by the entity
 instance.
 
+## Mixin entry, compatibility level and refmap
+
+Read 2026-10-31. Must land before E9-S7 (#311). This answers ADR 0008's first-load check 1 from source; E9-S7 still
+runs it at first load. Paths are in `loader-11.0.15-sources.jar`.
+
+`net/neoforged/fml/loading/moddiscovery/ModFileParser.java` lines 61 to 83: `[[mixins]]` takes `config` (required;
+"Missing \"config\" in [[mixins]] entry" otherwise), `requiredMods` (a list of mod ids, default empty) and
+`behaviorVersion` (a version string, default FML's, checked in `MixinFacade.java` lines 206 to 228). So ADR 0008's
+`config = "orevault.mixins.json"` is correct. One trap: lines 80 to 82 catch any exception there, log "Failed to load
+mixin configs from mod file" and return an empty list, so a malformed entry loads no mixins with no crash, which
+`defaultRequire: 1` cannot catch because nothing runs. ADR 0008's gametest is the guard.
+
+`compatibilityLevel`: `JAVA_25` exists. `javap -p` on
+`~/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.17.3+mixin.0.8.7/.../sponge-mixin-0.17.3+mixin.0.8.7.jar`, the
+version named in `ivy-26.1.2.95-ng2.xml` line 152, lists `MixinEnvironment$CompatibilityLevel.JAVA_25` as the last
+constant. `FMLMixinService.java` lines 123 to 130 set the minimum to `JAVA_21` and no maximum. NeoForge's own
+`neoforge.mixins.json` sets no level at all. Use `"JAVA_25"`, since the mod compiles for Java 25.
+
+Refmap: not needed. The names at runtime are the names at compile time: Mojang's unmodified
+`.gradle/caches/minecraft/versions/26.1.2/client.jar` already carries `storageSource` and the rest under `javap`, so
+26.1 is not obfuscated and there is nothing for a refmap to map. NeoForge's own `neoforge.mixins.json` has no `refmap`
+key either; it reads `required`, `package`, `mixins`, `client`, `injectors` and `minVersion`.
+
+## Registry alias for a renamed id
+
+Read 2026-10-31. Must land before the first PR that renames a registered block or item id. Paths are in NeoForge's
+sources jar unless they start `net/minecraft`.
+
+`net/neoforged/neoforge/registries/DeferredRegister.java` lines 295 to 307:
+
+```java
+303    public void addAlias(Identifier from, Identifier to) {
+304        if (seenRegisterEvent)
+305            throw new IllegalStateException("Cannot add aliases to DeferredRegister after RegisterEvent has been fired.");
+```
+
+So the call goes in the `@Mod` constructor, or wherever the `DeferredRegister` is set up. The javadoc: "Any registry
+lookups that target the first name will resolve as the second name, if the first name is not present."
+`IRegistryExtension#addAlias` (`IRegistryExtension.java` line 75) is the same on a registry. Chains resolve, and a
+loop throws (`BaseMappedRegistry.java` lines 64 to 87). Lookups go through it:
+`net/minecraft/core/MappedRegistry.java` lines 149, 164, 169, 184 and 216 all call `resolve`. NeoForge's registry
+snapshot carries aliases too (`RegistryManager.java` line 199).
+
+An alias is permanent. A save holding the old id is only rewritten when that chunk or inventory is next saved, so the line
+stays for good, with a golden test as ADR 0005 asks. The attachment type registry is a registry like the others,
+so a renamed attachment id is covered too (see the attachment read above).
+
+## Mod logo keys
+
+Read 2026-10-31. Must land before E13-S2c (#191).
+
+`logoFile` and `logoBlur` are read from the `[[mods]]` entry, falling back to the file's top level
+(`net/neoforged/fml/loading/moddiscovery/ModInfo.java` lines 86 to 91, in the FML jar). `logoBlur` defaults to `true`.
+
+`logoFile` resolves from the root of the mod's pack, so from the jar root, as expected. In NeoForge's sources jar,
+`net/neoforged/neoforge/client/gui/ModListScreen.java` line 399:
+`packResources.getRootResource(logoFile.split("[/\\\\]"))`. `logoFile="logo.png"` with `logo.png` at the resources
+root, as `docs/TEAM_REQUIREMENTS.md` says, is right. A subfolder works too, since the path is split.
+
+`logoBlur`: line 409 reads `var filter = selectedMod.getLogoBlur() ? FilterMode.LINEAR : FilterMode.NEAREST;`. The
+default is linear filtering. For a logo drawn at 64 and scaled up by whole numbers, set `logoBlur=false`, or it is
+smoothed when the Mods screen draws it. This is the one answer the Designer was waiting on.
+
+No per-mod entry appears in the resource pack screen, so `pack.png` would not be used.
+`net/neoforged/neoforge/resource/ResourcePackLoader.java` line 119 computes `isRequired` from
+`modFileInfo.showAsResourcePack()`, and lines 141 to 145 add a mod's pack to the screen only if that is true; otherwise it goes
+in `hiddenPacks`, which line 152 folds into one "Mod Resources" entry. §13's `logoFile`, not `pack.png`, stands.
+
 ## Also found
 
-- §6.1 Stone Memory's tier 4 nugget question (`c:nuggets/copper`): the `c:` tags are in NeoForge's jar. Unverified: NeoForge sources not yet read (E1-S5 #195 stays open for these). Must read: `data/c/tags/item/nuggets/copper.json` in NeoForge's jar.
-  Vanilla 26.1 has the item, `Items.COPPER_NUGGET` (`net/minecraft/world/item/Items.java` line 1906), and
-  `data/minecraft/tags/item/metal_nuggets.json` lists `minecraft:copper_nugget`, `minecraft:iron_nugget` and
-  `minecraft:gold_nugget`.
+- §6.1 Stone Memory's tier 4 nugget question (`c:nuggets/copper`): the tag exists and vanilla fills it. Must land
+  before E9-S11 (#315). `net/neoforged/neoforge/common/Tags.java` line 706,
+  `public static final TagKey<Item> NUGGETS_COPPER = tag("nuggets/copper");`, and NeoForge's
+  `data/c/tags/item/nuggets/copper.json` holds `minecraft:copper_nugget`. `Items.COPPER_NUGGET` is
+  `net/minecraft/world/item/Items.java` line 1906, and `data/minecraft/tags/item/metal_nuggets.json` lists it too.
+- `c:ores`, the block tag. Must land before E4-S2 (#238). `Tags.java` class `Blocks`, line 201:
+  `public static final TagKey<Block> ORES = tag("ores");`, and `tag` is
+  `BlockTags.create(Identifier.fromNamespaceAndPath("c", name))` (lines 330 to 332). So the Java name is
+  `Tags.Blocks.ORES`. There is an item twin, `Tags.Items.ORES` (line 744), which is not the one the classifier
+  wants. NeoForge's `data/c/tags/block/ores.json` lists `#c:ores/coal`, `copper`, `diamond`, `emerald`, `gold`,
+  `iron`, `lapis`, `netherite_scrap`, `redstone` and `quartz`, each of which leans on the vanilla tag
+  (`ores/iron.json` is `#minecraft:iron_ores`). So ancient debris and nether quartz are in `#c:ores`; ADR 0009 and
+  E4-S2 already leave them out by having no overworld feature.
 
-## Still to read, from NeoForge's own jar on Nick's PC
+## Still to read
 
-One Remote Control session with `net.neoforged:neoforge:26.1.2.95`'s classes (or its sources jar) closes
-these. `find ~/.gradle -name 'neoforge-26.1.2.95*'` on Nick's PC lists what NeoGradle downloaded. The session
-runs after E1-S1 (#188) re-checks the pin, from a fresh build, which also ends the access-transformer caveat
-under Provenance. Each item names the record waiting on it and the first story it must land before. If one
-session cannot do all of them, the ones needed before T3 to T5 go first: items 4, 6, 11, 13, 14, 15 and 1.
+Nothing. Every item is read or marked not needed, all on 2026-10-31 from the sources under Provenance. Numbers are kept
+because ADRs and tickets cite them.
 
-1. `BlockDropsEvent`: the experience getter and setter, and where Fortune and Silk Touch apply. Waiting:
-   §11 drop pipeline. Before E5-S3 (#264); also E9-S9 (#312).
-2. `Capabilities.Energy.ITEM`: its context type and the insert method's name and signature; the item
-   handler's interface and insert signature behind `Capabilities.Item.BLOCK`. Waiting: §9's Unverified list.
-   Before E9-S8 (#313), E9-S45 (#352), E9-S41 (#349) and E12-S1 (#217).
-3. The data-component ingredient's class and JSON `type` id. Waiting: §9. Before E9-S28 (#332) and E12-S1
-   (#217).
-4. `AttachmentInternals.copyChunkAttachmentsOnPromotion` and the `AttachmentType` builder: which attachments
-   are copied, thread safety when written from the generator, and `copyOnDeath()`. Waiting: ADR 0004, ADR 0005
-   (the player attachment `orevault:player`). Before E3-S6a (#237), which first stores `return_pos` on that
-   attachment, and E6-S4 (#209), the carry-over spike.
-5. `RegisterPayloadHandlersEvent` and `PayloadRegistrar`: a client-only handler registration, `optional()`,
-   decode failure behaviour. Waiting: ADR 0006. Before E7-S2a (#255).
-6. `TicketController`'s API, including when a controller's loading validation runs and whether it runs at
-   all for a level added after server start. The other half, whether
-   `ForcedChunkManager.activateAllDeactivatedTickets` is public, is settled: public and static, from its
-   call in `MinecraftServer.java` line 563 (section "Chunk ticket API and forced tickets after
-   createLevels"). Waiting: ADR 0002's restore step, ADR 0007's ticket release. Before E3-S6a (#237), the restore,
-   and E10-S3 (#373), the Vault Anchor.
-7. Whether MixinExtras ships with NeoForge 26.1.2.95. Not needed: ADR 0008 (section "(c) MixinExtras") uses
-   plain Mixin only. A later ticket that wants MixinExtras reads it then.
-8. `c:nuggets/copper` in NeoForge's tag data. Waiting: §6.1 Stone Memory tier 4 nugget. Before E9-S11 (#315).
-9. `javap -c -p -l` on `ItemStack#hurtAndBreak`. Not needed: ADR 0008 uses no local by index or ordinal and
-   says no `javap` check is needed.
-10. The `[[mixins]]` keys FML 26.1.2.95 accepts in `neoforge.mods.toml`, the mixin config's
-    `compatibilityLevel` for Java 25, and whether a refmap is needed. Waiting: ADR 0001 (Mixins) and ADR 0008
-    first-load check 1. Before E9-S7 (#311), the first mixin.
-11. The accessor on NeoForge's `ChunkEvent.Load` for the new-chunk flag (the second constructor argument at
-    `ChunkStatusTasks.java` line 204). Waiting: ADR 0004 and its Amendment 1 (vein-index settle,
-    `generated_at`, the explored map and its chunk credit). Before E6-S4 (#209).
-12. NeoForge's registry alias API for a renamed block or item id. Waiting: ADR 0005 (the rename rule).
-    Before the first PR that renames a registered block or item id.
-13. The visibility of `MinecraftServer.storageSource`, `CountPlacement.count`, `HeightRangePlacement.height`,
-    `UniformHeight.minInclusive` and `UniformHeight.maxInclusive` in a clean 26.1.2.95 decompile, with no
-    project access transformers applied (see Provenance). Waiting: ADR 0002 (whether the `storageSource` AT
-    line stays) and ADR 0009 (its AT fallback). Before E3-S6a (#237); for the placement fields, before
-    E4-S2 (#238) only if its codec path fails.
-14. The `c:ores` block tag key in NeoForge's `Tags` class. Waiting: ADR 0009, ADR 0001's `ore` row. Before
-    E4-S2 (#238).
-15. Whether another mod's NeoForge biome modifier (the biome modifier registry and `neoforge:add_spawns`) can
-    add spawns to `orevault:vault`. Waiting: §3.1 (mob spawning). Before E3-S5 (#233).
-16. Whether NeoForge holds registered payloads to vanilla's `MAX_PAYLOAD_SIZE` caps (32767 serverbound,
-    1048576 clientbound) or splits them, and the `RegisterConfigurationTasksEvent` task API. Waiting:
-    ADR 0006 (the bounds and the rejected configuration-phase layout check). Before E7-S2a (#255), which
-    also revisits the configuration-phase check.
-17. The `logoFile` and `logoBlur` keys in `neoforge.mods.toml`, where `logoFile` resolves from (expected: the
-    root of the mod jar), and whether NeoForge 26.1 shows a per-mod entry in the resource pack screen that
-    would use a `pack.png`. Waiting: §13 mod logo line, the Designer's logo row. Before E13-S2c (#191).
+1. `BlockDropsEvent` experience accessors. Read: section "BlockDropsEvent experience accessors". Before E5-S3 (#264)
+   and E9-S9 (#312).
+2. `Capabilities.Energy.ITEM` and the item handler. Read: section "Capabilities.Energy.ITEM and the item-handler
+   capability". Before E9-S8 (#313), E9-S45 (#352), E9-S41 (#349) and E12-S1 (#217).
+3. The data-component ingredient. Read: section "Data-component ingredient". Before E9-S28 (#332) and E12-S1 (#217).
+4. `AttachmentInternals`, the `AttachmentType` builder, `copyOnDeath()`, generator-thread writes. Read: section
+   "ProtoChunk attachment carry-over". Before E3-S6a (#237) and E6-S4 (#209).
+5. `RegisterPayloadHandlersEvent`, `PayloadRegistrar`, client-only registration, `optional()`, decode failure. Read:
+   section "Client payload handler registration". Before E7-S2a (#255).
+6. `TicketController`'s API and validation timing. Read: section "Chunk ticket API and forced tickets after
+   createLevels". Before E3-S6a (#237) and E10-S3 (#373).
+7. MixinExtras. Not needed: ADR 0008 uses plain Mixin only. For a later ticket, it is on NeoForge's dependency list
+   at 0.5.4 (section "Local variables").
+8. `c:nuggets/copper`. Read: section "Also found". Before E9-S11 (#315).
+9. `javap -c -p -l` on `ItemStack#hurtAndBreak`. Not needed: ADR 0008 uses no local by index or ordinal.
+10. `[[mixins]]` keys, `compatibilityLevel`, refmap. Read: section "Mixin entry, compatibility level and refmap".
+    Before E9-S7 (#311).
+11. The `ChunkEvent.Load` new-chunk accessor. Read: section "ChunkEvent.Load new-chunk flag". Before E6-S4 (#209).
+12. The registry alias API. Read: section "Registry alias for a renamed id". Before the first PR that renames a block
+    or item id.
+13. Clean visibility of the five members. Read: Provenance. Before E3-S6a (#237); for the placement fields, before E4-S2
+    (#238) only if its codec path fails.
+14. The `c:ores` key. Read: section "Also found". Before E4-S2 (#238).
+15. Biome modifiers and `orevault:vault`. Read: section "DimensionType codec fields". Before E3-S5 (#233).
+16. Payload size caps and `RegisterConfigurationTasksEvent`. Read: section "Client payload handler registration".
+    Before E7-S2a (#255).
+17. `logoFile`, `logoBlur`, per-mod pack entry. Read: section "Mod logo keys". Before E13-S2c (#191).
+
+Unverified, because a read of the source cannot settle it, each with the story that checks it in a running game:
+whether an attachment written on a `ProtoChunk` survives both halves of the spike (E6-S4, #209); the JSON form of the
+data-component ingredient at load (E9-S28, #332); a Vault Anchor callback reading its block during restore (E10-S3,
+#373); the mixin config at first load (E9-S7, #311).
