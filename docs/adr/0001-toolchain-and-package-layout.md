@@ -1,7 +1,7 @@
 # 0001. Toolchain, package layout and architecture rules
 
 Status: accepted 2026-10-31 (E0-S3, #179), after the round 2 verdicts below; proposed 2026-10-27. One
-check is still owed to T1 (E1-S1, #188): that the pinned ArchUnit release reads Java 25 class files, shown by
+check is still owed to T1 (E1-S3, #194): that the pinned ArchUnit release reads Java 25 class files, shown by
 the main architecture test importing more than zero classes (pin table, Architecture rules). Spec: §2; `CLAUDE.md` Build and technical rules 1, 3, 4
 and 5; settled decisions S15, S42 and S43 in `docs/TEAM_REQUIREMENTS.md`.
 
@@ -35,10 +35,17 @@ of `build.gradle`, and the Gradle version, which is in `gradle/wrapper/gradle-wr
 | Minecraft | `minecraft_version=26.1`, `minecraft_version_range=[26.1,26.2)` | `gradle.properties` | |
 | NeoForge | `neo_version=26.1.2.95` | `gradle.properties` | The version the decompiled sources were read from (`docs/research/vanilla-ore-generation.md` section 7). |
 | FTB Teams | `ftb_teams_version=26.1.2.4` | `gradle.properties` | Hard dependency, `implementation`, mandatory in `neoforge.mods.toml` (§2). |
-| FTB Ultimine | `ftb_ultimine_version=26.1.2.5` | `gradle.properties` | `compileOnly`. Pinned at the last build's 26.1.2.5 and re-checked against 26.1.2.6, the version FTB Evolution 2 ships (`docs/research/library-scan.md`); T1 either keeps 26.1.2.5 or moves to 26.1.2.6 and pins that. |
+| FTB Ultimine | `ftb_ultimine_version=26.1.2.6` | `gradle.properties` | `compileOnly`, and also `localRuntime` in the `ultimine` runtime profile. 26.1.2.6 is what FTB Evolution 2 ships (`docs/research/library-scan.md`) and the latest on the FTB maven; chosen over the last build's 26.1.2.5 in E1-S1 (#188). |
 | NeoGradle | `net.neoforged.gradle.userdev` 7.1.38 | `build.gradle` `plugins` | |
 | FTB maven | `https://maven.ftb.dev/releases`, restricted with `content { includeGroup 'dev.ftb.mods' }` | `build.gradle` `repositories` | As the last build had it. |
-| JUnit 5 and ArchUnit (`archunit-junit5`) | chosen at T1, then pinned | `gradle.properties`, `testImplementation` | T1 confirms the chosen ArchUnit release reads Java 25 class files: the main architecture test asserts it imported more than zero classes, and an unreadable class file fails that import rather than a rule (below). |
+| FTB Library | `ftb_library_version=26.1.2.11` | `gradle.properties`, `implementation` | Comes with FTB Teams at 26.1.2.3, with Ultimine at 26.1.2.7 and with Materials at 26.1.2.8. Declared so compile and every runtime profile use one version: what FTB Evolution 2 ships. |
+| Foojay toolchain resolver | `org.gradle.toolchains.foojay-resolver-convention` 1.0.0 | `settings.gradle` `plugins` | As the last build had it. |
+| JEI | `jei_version=29.22.0.74`, artifact `mezz.jei:jei-26.1.2-neoforge` | `gradle.properties`, `localRuntime` | Dev runtime only, in every profile. Later releases tried (29.34.0.91, 29.43.0.107) require NeoForge 26.1.2.99 or above and refuse to load on the pin. |
+| BlameJared maven | `https://maven.blamejared.com`, restricted with `content { includeGroup 'mezz.jei'; includeGroup 'net.mezzdev.config' }` | `build.gradle` `repositories` | JEI, and its config library. |
+| FTB Materials | `ftb_materials_version=26.1.2.6`, artifact `dev.ftb.mods:ftb-materials` | `gradle.properties`, `localRuntime` | Only in the `materials` runtime profile. `ftb-materials-neoforge` holds the 21.1 line only. |
+| JSpecify | `jspecify_version=1.0.0` | `gradle.properties`, `compileOnly`, `testCompileOnly` | |
+| JUnit 5 | `junit_version=5.12.2` | `gradle.properties`, `testImplementation` | |
+| ArchUnit (`archunit-junit5`) | chosen in E1-S3 (#194), then pinned | `gradle.properties`, `testImplementation` | T1 confirms the chosen ArchUnit release reads Java 25 class files: the main architecture test asserts it imported more than zero classes, and an unreadable class file fails that import rather than a rule (below). |
 | Gson (`com.google.code.gson:gson`) | the version Minecraft 26.1 ships, read at T1 from the dependency tree | `gradle.properties`, `testImplementation` | Declared at T1 so `core.layout`'s tests do not depend on what NeoGradle happens to put on the unit test classpath (Developer, round 1). |
 
 Each version is re-checked once, at T1, then pinned. A bump of any of them is its own PR that changes
@@ -91,7 +98,7 @@ Minecraft-facing adapters. They hold as little logic as they can and call into `
 
 | Package | Holds | May import |
 |---|---|---|
-| root | `OreVault`, the `@Mod` entry; wires the mod bus and `NeoForge.EVENT_BUS` (rule 3); the two ordering listeners, `ServerStartedEvent` and `ServerTickEvent.Post` (below) | MC, core, every adapter except `client`; `integration.*` only through its entry class, after the `isLoaded` check |
+| root | `OreVault`, the `@Mod` entry; wires the mod bus and `NeoForge.EVENT_BUS` (rule 3); the two ordering listeners, `ServerStartedEvent` and `ServerTickEvent.Post` (below) | MC, core, every adapter except `client`; `integration.*` only through its entry class, after the `isLoaded` check. `OreVault.MOD_ID` may be read by any adapter; no other root member may be, and `core` may not read it |
 | `registry` | `DeferredRegister` holders, data components, attachments, tags, creative tab | MC, core, `vault`, `mining` (the blocks, items and entities it registers) |
 | `team` | `TeamHelper` and the FTB Teams event listeners | MC, `dev.ftb.mods.ftbteams..`, core, `data`, `vault` |
 | `data` | `OreVaultTeamData`, `PlayerStats`, the per-Vault explored map `SavedData` (ADR 0004 Amendment 1), attachment codecs other than the vein index's, migrations; `GenSnapshots`, the holders and the main-thread code that reads team data into plain values and calls `core.gen`'s builders (ADR 0003); `SyncOutbox`, the outbound sync set (below) | MC, core. Never `team`: a rebuild takes the team's member list and online members as values from its caller |
@@ -208,8 +215,8 @@ planted class, for example `PlantedWorldgenImportsData`, not only that the rule 
 asserts that the imported main class set is not empty; that is also T1's evidence that the pinned ArchUnit
 reads Java 25 class files, since a class file it cannot read fails the import.
 
-T1's PR quotes `git grep -n installations.paths` returning nothing, as the check that no committed file
-pins a machine-local JDK.
+T1's PR quotes `git grep -n installations.paths -- ':!*.md'` returning nothing, as the check that no
+committed file outside the documents pins a machine-local JDK.
 
 ### Porting the old pure classes (S42)
 
@@ -230,7 +237,7 @@ Nick can overrule S42.
 
 ## Consequences
 
-- T1 lands the package skeleton, the ArchUnit test and its fixture test, `gradle.properties` with the pins
+- T1 lands the ArchUnit rules, their test and its fixtures, `gradle.properties` with the pins
   above and no machine path. Each later ticket adds classes into a package this record names, or amends
   this record first.
 - A new package needs a row here and its rule in the same PR.
@@ -339,6 +346,8 @@ was reported resolved by the role that raised it.
     in this record now means generated chunks only (the explored map).
 - architect (read across ADRs 0001 to 0009): approve; consistent on every name checked (`core.key`,
   `data.SyncOutbox`, `worldgen.index`).
+
+Amended 2026-10-31 by E1-S1 (#188), on the Architect's sketch verdict: the pin table's new rows and Ultimine choice, the check moved from E1-S1 to E1-S3, and the root row's `OreVault.MOD_ID` clause. That clause is the Architect's ruling. ArchUnit cannot enforce it, because javac inlines the constant, so the Reviewer checks it by eye.
 
 Accepted on these verdicts and the Manager's rulings. The ArchUnit check on Java 25 class files is owed to
 T1 and is not a condition of acceptance, since nothing can be compiled before T1 exists.

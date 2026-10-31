@@ -2885,7 +2885,7 @@ The mixin config `orevault.mixins.json` is declared by a `[[mixins]]` entry in `
 
 ## 12. Suggested Build Order
 
-The repo was restarted on 2026-10-25 and nothing is built yet. Tasks are T1 to T14, defined with owners, reviewers and gates in `docs/TEAM_REQUIREMENTS.md` "Shared task list"; this table is the summary.
+The repo was restarted on 2026-10-25 and is being rebuilt. Tasks are T1 to T14, defined with owners, reviewers and gates in `docs/TEAM_REQUIREMENTS.md` "Shared task list"; this table is the summary.
 
 **The playable loop comes first.** Toolchain and an empty mod that runs; one block and one item seen in game; the dimension path complete and survived a logout inside it; the ore baseline at its real density and mined for ten minutes; Resonance and a level curve derived from that density; persisted data versioned; then the Tome, then nodes. No world-facing task opens until Nick has seen the one before it in a client. Pure logic for later tasks (curve, classifier, node data, layout maths) may proceed while a client gate waits. The first build did the reverse and shipped a Vault with almost no ore in it for a month.
 
@@ -2917,14 +2917,14 @@ The repo was restarted on 2026-10-25 and nothing is built yet. Tasks are T1 to T
 
 Use this to track progress. Tick a line only when the work has merged and been seen working; never from memory. Every feat PR ticks its own lines.
 
-**Everything is unticked since the restart.** The code these lines once described was removed on 2026-10-25. Each line now names a current behaviour and the filed story that builds it, as `E3-S4 (#229)`: the draft id and the issue in the current tracker. A line with more than one story is ticked when the last of them merges. A pre-restart issue is written "old #N" and is history only; its commits are in `git log` before the restart, and `docs/research/issue-harvest.md` holds what it said.
+**Everything was unticked at the restart.** The code these lines once described was removed on 2026-10-25. Each line now names a current behaviour and the filed story that builds it, as `E3-S4 (#229)`: the draft id and the issue in the current tracker. A line with more than one story is ticked when the last of them merges. A pre-restart issue is written "old #N" and is history only; its commits are in `git log` before the restart, and `docs/research/issue-harvest.md` holds what it said.
 
 ### Infrastructure
-- [ ] NeoForge 26.1 project scaffold (`build.gradle`, `settings.gradle`, `gradle.properties` pins, `neoforge.mods.toml`) — E1-S1 (#188)
-- [ ] FTB Teams declared as a mandatory dependency and the mod boots with it; FTB Ultimine `compileOnly` and optional — E1-S1 (#188)
+- [x] NeoForge 26.1 project scaffold (`build.gradle`, `settings.gradle`, `gradle.properties` pins, `neoforge.mods.toml`) — E1-S1 (#188)
+- [x] FTB Teams declared as a mandatory dependency and the mod boots with it; FTB Ultimine `compileOnly` and optional — E1-S1 (#188)
 - [ ] Gametest harness, one passing and one deliberately failing gametest — E1-S2 (#193)
 - [ ] Package structure created as `docs/adr/0001-toolchain-and-package-layout.md` lays it out: pure `core.*` packages with no Minecraft imports, Minecraft-facing adapters around them, and an ArchUnit test with one rule per package plus the named rules, each shown failing against a planted violation (S43) — E1-S3 (#194)
-- [ ] Main mod class taking the `modEventBus` — E1-S1 (#188)
+- [x] Main mod class taking the `modEventBus` — E1-S1 (#188)
 - [ ] Data generators for blockstates, models, recipes, tags and loot, with a check that committed output matches — E1-S9 (#198)
 - [ ] Command root `/orevault`, always registered, with only its debug subcommands behind `[debug].enable_debug_commands`; `/orevault reset vote` and `/orevault archive` are registered whatever the flag (§10); and the config screen — E3-S1 (#205)
 - [ ] Tree layout file and `TreeLayout` (§6, §11), with the constants class beside it — E8a-S9 (#189), E8a-S1 (#208), E8a-S4 (#212), E8a-S3a (#239)
