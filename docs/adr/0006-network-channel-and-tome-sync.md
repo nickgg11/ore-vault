@@ -1,10 +1,8 @@
 # 0006. The network channel and Tome sync
 
-Status: accepted 2026-10-31 (E0-S9, #183), after the round 2 verdicts below; proposed 2026-10-27. Owed to
-E1-S5 (#195), read on Nick's PC before E7-S2a (#255): the NeoForge payload registration reads (client-only
-handler registration, `PayloadRegistrar#optional()`, decode failure) and whether registered payloads are
-held to vanilla's payload caps, with the `RegisterConfigurationTasksEvent` task API (sources doc "Still to
-read" items 5 and 16). Every bound below keeps a payload under vanilla's caps whatever that read finds. Spec: §4.4, §6 Layout data and Saved state, §8, §9 FTB
+Status: accepted 2026-10-31 (E0-S9, #183), after the round 2 verdicts below; proposed 2026-10-27. The NeoForge
+payload reads owed to E1-S5 (#195) are done, and this record is corrected to them
+(`docs/research/neoforge-26.1-sources.md`, "Client payload handler registration"). Spec: §4.4, §6 Layout data and Saved state, §8, §9 FTB
 Teams and FTB Ultimine, §3.5; `docs/TEAM_REQUIREMENTS.md` S25. Persisted shapes are ADR 0005's (E0-S8,
 #225, written in parallel); reset and vote rules are ADR 0007's (E0-S10, #258); the Seismic Sense map's
 storage is the ADR 0004 amendment's (E0-S12, #231). This record fixes only what crosses the wire.
@@ -20,8 +18,9 @@ rule 6, Architect role). The pre-restart build had a working channel (`ModNetwor
   the listener never fires and every packet is an unknown-channel disconnect, with no error logged
   (old PR #126; `CLAUDE.md` rule 3). The old `OreVault` constructor did
   `modEventBus.addListener(ModNetwork::register)` (`git show 86360a3^:src/main/java/com/orevault/orevault/OreVault.java`).
-- Serverbound payloads carry intent, never a cost or a result, and handlers run through
-  `IPayloadContext#enqueueWork` because `SavedData` is main-thread-only (old PR #126).
+- Serverbound payloads carry intent, never a cost or a result, and handlers run on the main thread because
+  `SavedData` is main-thread-only (old PR #126, through `IPayloadContext#enqueueWork`; NeoForge's default does
+  that now, Trust rules).
 - The sync packet existed and was never sent (old #35). It must go out on login, after Resonance gain and
   after every purchase.
 - The server syncs after a refused purchase too, and tree state travels in its own packet so the packet
@@ -50,9 +49,11 @@ that source tree, which on Nick's PC is under
   `net/minecraft/core/BlockPos.java` line 39: `BlockPos.STREAM_CODEC`.
 - `net/minecraft/network/protocol/common/ServerboundCustomPayloadPacket.java` line 14:
   `MAX_PAYLOAD_SIZE = 32767`; `ClientboundCustomPayloadPacket.java` line 16: `MAX_PAYLOAD_SIZE = 1048576`.
-  These are vanilla's caps for a payload it does not know (`DiscardedPayload.codec(id, …)`). Whether
-  NeoForge's registered payloads are held to the same numbers or split was not read; every bound below
-  keeps a payload under both anyway.
+  These are vanilla's caps for a payload it does not know: they are passed only to
+  `DiscardedPayload.codec(id, …)`, the fallback. Registered payloads are not held to them, because
+  `CustomPacketPayload`'s `findCodec` asks `NetworkRegistry.getCodec` first and a registered codec has no such
+  limit. Above the frame limit NeoForge splits the packet for a compatible remote: over 8,388,608 bytes with a
+  compressor in the pipeline, over 2,097,152 without (`GenericPacketSplitter.java` lines 96 to 126).
 - `net/minecraft/server/players/PlayerList.java` line 189: in `placeNewPlayer`,
   `NeoForge.EVENT_BUS.post(new OnDatapackSyncEvent(this, player))` runs after the login packet and before
   the player is added to `players`; `EventHooks.firePlayerLoggedIn(player)` is the method's last line.
@@ -68,16 +69,25 @@ that source tree, which on Nick's PC is under
 - `net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java` line 141: NeoForge posts
   `RegisterConfigurationTasksEvent` during the configuration phase (see Rejected alternatives).
 
-NeoForge's own network classes (`RegisterPayloadHandlersEvent`, `PayloadRegistrar`, `IPayloadContext`,
-`PacketDistributor`) are not in the unpacked tree, which holds patched Minecraft only. Their use here
-follows the pre-restart `ModNetwork`, which compiled and ran against the same pin, `neo_version=26.1.2.95`
-(`git show 86360a3^:gradle.properties`): `event.registrar(PROTOCOL_VERSION)`,
-`registrar.playToServer(TYPE, CODEC, handler)`, `registrar.playToClient(...)`,
-`context.enqueueWork(...)`, `context.player()`, `PacketDistributor.sendToPlayer(player, payload)`.
-Unverified: to be read by E1-S5 (#195): whether NeoForge 26.1 offers a client-only payload handler
-registration (so the common side need not hold the client callback described below), whether
-`PayloadRegistrar#optional()` exists and defaults to required, and what NeoForge does with a payload whose
-decode throws (expected: the connection is closed).
+NeoForge's own network classes are not in that tree. They were read on 2026-10-31 from NeoForge's sources jar
+(`docs/research/neoforge-26.1-sources.md`, "Client payload handler registration"):
+
+- `RegisterPayloadHandlersEvent` is a mod-bus event. `PayloadRegistrar#playToClient(type, codec)` (line 52)
+  registers a payload in common code with no handler, and `RegisterClientPayloadHandlersEvent#register(type,
+  handler)` on the mod bus supplies it. A clientbound type left with no handler throws `IllegalStateException`
+  when the client network registry is set up, so the client stops at start
+  (`ClientNetworkRegistry.java` lines 71 to 91).
+- Handlers run on the main thread by default. `PayloadRegistrar` starts at `HandlerThread.MAIN` (line 29) and
+  wraps each handler in `MainThreadPayloadHandler`, whose whole body is `context.enqueueWork(...)`;
+  `RegisterClientPayloadHandlersEvent#register(type, handler)` also uses `MAIN`.
+- `optional()` exists and a payload is required unless marked (lines 28, 203 to 209).
+- A decode that throws closes that player's connection (`CustomPacketPayload#decode`, `PacketDecoder#decode`,
+  `Connection#exceptionCaught`), as does a codec that leaves bytes unread.
+
+The rest of their use here follows the pre-restart `ModNetwork`, which compiled and ran against the same pin,
+`neo_version=26.1.2.95` (`git show 86360a3^:gradle.properties`): `event.registrar(PROTOCOL_VERSION)`,
+`registrar.playToServer(TYPE, CODEC, handler)`, `context.player()`,
+`PacketDistributor.sendToPlayer(player, payload)`.
 
 FTB Teams 26.1.2.4 was read on 2026-10-27 (`docs/research/neoforge-26.1-sources.md`, "FTB Teams party
 join and disband"): the personal team's id is the player's UUID (`TeamManagerImpl#createPlayerTeam`); `getTeamForPlayerID` reads
@@ -132,17 +142,20 @@ record keeps that as the house rule. A record over six fields is split by meanin
   rate bucket (below) and the `TeamProgress` coalescer (Triggers). They take tick counts, not a server.
 - `core.layout`: `TreeLayout` and its `canonicalHash()`.
 - `client.net` and `ClientTomeState` under `client/`: clientbound handling and the cached state. Common
-  code never names them. As before, `network` holds a `ClientHandler` callback that the
-  `@Mod(dist = Dist.CLIENT)` entrypoint installs; a dedicated server registers the clientbound types so
-  the channel matches and never receives one. If E1-S5 finds a client-side registration event, it replaces
-  the callback with no wire change.
+  code never names them. `network` registers each clientbound type with the two-argument
+  `playToClient(type, codec)`, and the `@Mod(dist = Dist.CLIENT)` entrypoint registers its handler through
+  `RegisterClientPayloadHandlersEvent`. A dedicated server registers the types, so the channel matches, and
+  never receives one. There is no callback and no placeholder in common code. Since a missing handler stops
+  the client at start, a PR that adds a clientbound payload adds its client handler too, a no-op under `client/`
+  if the real one lands later, as E7-S2a (#255) does ahead of E7-S1 (#265).
 
 ### Trust rules
 
 - No serverbound payload carries a team id, a player UUID, a cost, a tier, a level, a point count or a
   price. The team is always the sender's, from `context.player()` through `TeamHelper`.
-- Every serverbound handler runs inside `context.enqueueWork(...)`. Clientbound handlers do the same on
-  the client, so `ClientTomeState` is written only on the client main thread.
+- Every handler runs on the main thread, which is NeoForge's default (Context), so `SavedData` is touched only
+  there and `ClientTomeState` is written only on the client main thread. A handler does not call
+  `context.enqueueWork` itself, which would be redundant, and nothing here calls `executesOn`.
 - Every mutation is re-checked in full on the server against its own `OreVaultTeamData`, layout, level and
   the sender's position. A refused mutation changes nothing.
 - Every mutating payload, accepted or refused, ends with a `TreeState` sync to its recipients; a refusal
@@ -160,7 +173,8 @@ record keeps that as the house rule. A record over six fields is split by meanin
 ### Size bounds
 
 Every decoded string and collection is bounded by its codec, so an oversize field fails decode before
-allocation. Constants live beside `PROTOCOL_VERSION`:
+allocation. These are our own limits, not the transport's: a registered payload has no cap (Context), so they
+are what protects the decoder. Constants live beside `PROTOCOL_VERSION`:
 
 | Constant | Value | Why |
 |---|---|---|
@@ -180,8 +194,11 @@ allocation. Constants live beside `PROTOCOL_VERSION`:
 Strings use `ByteBufCodecs.stringUtf8(max)`. Collections use `ByteBufCodecs.list(max)` or
 `collection(…, max)`. A bitset is a `List<Long>` bounded at 16, and the decoder also refuses a set bit at
 or past the layout's node count. Item and block ids use `stringUtf8(MAX_RESOURCE_ID)`, not
-`Identifier.STREAM_CODEC`, which reads up to 32767 characters. The serverbound worst case, `BuyPath` at 150 ids of 64 characters, is about 10 KB,
-under 32767; the largest clientbound payload, an outline at 4096 positions, is about 33 KB.
+`Identifier.STREAM_CODEC`, which reads up to 32767 characters. The serverbound worst case, `BuyPath` at 150 ids of 64 characters, is about 10 KB.
+Clientbound, an outline at 4096 positions is about 33 KB and `TreeState` about 34 KB at its absurd worst. The
+largest at its bound is `AscensionLadder`: two ladders of 1,024 rungs at about 522 bytes each (two ids of 256
+characters, a count) is about 1.07 MB, which is under the 2 MiB where splitting starts. A real ladder is far
+smaller.
 
 ### The layout hash
 
@@ -457,8 +474,10 @@ Disconnect key: `disconnect.orevault.layout_mismatch` (server hash, client hash)
 - Folding the layout hash into `PROTOCOL_VERSION`: the disconnect would carry NeoForge's version text, not
   a message naming the layout, and every layout edit would be a protocol bump.
 - The layout check as a configuration-phase task (`RegisterConfigurationTasksEvent`): it would refuse the
-  player before the world loads, which is better, but needs a configuration-phase payload pair and a task
-  whose API was not read. Worth revisiting after E1-S5; the wire would change by one payload.
+  player before the world loads, which is better, but needs a configuration-phase payload pair and a task. The
+  API is read now: one `ICustomConfigurationTask` and one `configurationBidirectional` pair, ended through
+  `context.finishCurrentTask` (sources doc, "Configuration tasks"). E7-S2a (#255) can revisit it with that known;
+  the wire would change by one payload. The rejection stands until then.
 - The client disconnecting itself on a mismatch: the server log would not say why, and Nick reads the
   server log when two dev sessions disagree.
 - Pushing Survey data on every chunk crossing: it is computed for players who never open the tab.
@@ -558,3 +577,9 @@ Deferred elsewhere and noted here because it would amend this record: PT-R2-2, a
 the next cache" line, needs one int in `TripState`. The Manager deferred it to E9-S33 (#338), whose
 amendment lists the Architect as reviewer of the ADR 0006 amendment that adds the field; adding it before
 release costs a `PROTOCOL_VERSION` bump and no save migration. Not changed now.
+
+Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md`: client handlers register through
+`RegisterClientPayloadHandlersEvent` and the `ClientHandler` callback is gone; handlers run on main by default, so
+the trust rule no longer asks for `enqueueWork`; vanilla's caps do not apply to registered payloads, so the bounds
+are our own, unchanged in value. `AscensionLadder` at its bound, not an outline, is the largest clientbound
+payload. `optional()` and the decode failure read as this record expected. No wire change.

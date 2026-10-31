@@ -271,10 +271,12 @@ its ticket comment (Reviewer gate 7).
 A note on the sources tree read for this record: in it, `CountPlacement.count`, `HeightRangePlacement.height`,
 `UniformHeight.minInclusive`, `UniformHeight.maxInclusive` and `MinecraftServer.storageSource` all read as
 public, which is exactly the five lines of the last build's `accesstransformer.cfg`, while
-`RarityFilter.chance`, never transformed, is private. The tree was probably decompiled with those
-transformers applied, so field visibility cannot be read from it. The codec path does not depend on it.
-Unverified: to be read by E1-S5 (#195): the visibility of those fields in a clean NeoForge 26.1.2.95
-decompile, and the `#c:ores` tag key in NeoForge's `Tags` class (the tree read holds no NeoForge classes).
+`RarityFilter.chance`, never transformed, is private. That tree carries those transformers, so field visibility
+cannot be read from it. `javap -p` on the compiled 26.1.2.95 jar settles it (E1-S5, #195;
+`docs/research/neoforge-26.1-sources.md`, "The five members, in a clean 26.1.2.95"): `count`, `height`,
+`minInclusive` and `maxInclusive` are private, as `chance` is, and NeoForge widens none of them. So the fallback
+above needs its transformers as listed, and the codec path does not depend on them. The `#c:ores` key is
+`Tags.Blocks.ORES` (`Tags.java` line 201), not its item twin `Tags.Items.ORES`.
 
 ### A block that is not a classified ore pays nothing
 
@@ -470,3 +472,6 @@ lines after this pass).
 Question 4, 2026-10-31: Nick answered A, "as written", over the recommended B. The identity section, its
 unit cases (QA-29's band-floor case among them) and the Consequences line are rewritten to that answer,
 BAL-16 is closed by it, and B and C are under Rejected alternatives.
+
+Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md`: the placement fields are private
+in a clean 26.1.2.95, so the fallback's AT lines stand, and the tag key is `Tags.Blocks.ORES`. Nothing else changed.

@@ -29,6 +29,7 @@ public final class GameTests {
 
     private static final ResourceKey<Consumer<GameTestHelper>> PASSES = function("harness/passes");
     private static final ResourceKey<Consumer<GameTestHelper>> DELIBERATE_FAILURE = function("harness/deliberate_failure");
+    private static final ResourceKey<Consumer<GameTestHelper>> LANG_COVERAGE = function("lang/coverage");
 
     private GameTests() {
     }
@@ -46,6 +47,7 @@ public final class GameTests {
         event.register(Registries.TEST_FUNCTION, registry -> {
             registry.register(PASSES, GameTestHelper::succeed);
             registry.register(DELIBERATE_FAILURE, helper -> helper.fail(Component.literal("deliberate failure")));
+            registry.register(LANG_COVERAGE, LangCoverage::everyKeyHasAValue);
         });
     }
 
@@ -53,6 +55,7 @@ public final class GameTests {
     static void registerTests(RegisterGameTestsEvent event) {
         Holder<TestEnvironmentDefinition<?>> environment = event.registerEnvironment(id("default"));
         event.registerTest(PASSES.identifier(), new FunctionGameTestInstance(PASSES, data(environment, false)));
+        event.registerTest(LANG_COVERAGE.identifier(), new FunctionGameTestInstance(LANG_COVERAGE, data(environment, false)));
         event.registerTest(DELIBERATE_FAILURE.identifier(),
                 new FunctionGameTestInstance(DELIBERATE_FAILURE, data(environment, true)));
     }

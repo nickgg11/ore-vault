@@ -79,7 +79,7 @@ class RepositoryGuardsTest {
     void theRepositoryPassesEveryGuard() throws IOException {
         List<String> found = new ArrayList<>();
         List<Path> scanned = new ArrayList<>();
-        for (String tree : List.of("src/main", "src/gametest")) {
+        for (String tree : List.of("src/main", "src/gametest", "src/datagen", "src/generated")) {
             try (Stream<Path> files = Files.walk(ROOT.resolve(tree))) {
                 files.filter(Files::isRegularFile).forEach(scanned::add);
             }

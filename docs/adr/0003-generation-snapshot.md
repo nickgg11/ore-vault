@@ -197,7 +197,19 @@ salt leaves another feature's stream unchanged.
 - `codec()` returns `MapCodec.unit(this)`. The generator is built per team in code (ADR 0002), never parsed
   from a datapack, and an instance-bound unit codec is what the last build shipped on 26.1.
 - The Vault biome, `data/orevault/worldgen/biome/vault.json`, has empty spawner lists and empty
-  `spawn_costs`, which is what disables mob spawning in 26.1 (old #13; E0-S1 corrects §3.1).
+  `spawn_costs`, so nothing spawns by default (old #13; E0-S1 corrects §3.1). That is no guarantee in a pack:
+  biome modifiers run over every biome at server start, and a `neoforge:add_spawns` modifier with the
+  `neoforge:any` holder set reaches `orevault:vault` (`docs/research/neoforge-26.1-sources.md`, "Whether another
+  mod's biome modifier can add spawns"). The biome stays out of broad tags such as `#minecraft:is_overworld`, and
+  the generator closes the rest:
+  - `getMobsAt` returns an empty list for every category. Natural spawning asks the generator, not the biome
+    (`NaturalSpawner.java` line 318).
+  - `spawnOriginalMobs`, abstract on `ChunkGenerator`, does nothing. It is the chunk-generation mob pass, the one
+    path that reads the biome's list directly (`NaturalSpawner.java` line 352, `ChunkStatusTasks.java` line 167).
+  - No `LevelEvent.PotentialSpawns` listener (Architect, 2026-10-31). The event can still add to the empty list,
+    but a mod has to aim at the Vault to do that, and a second hook for that case earns nothing.
+  - A Disturbed Zone (§7) cannot use natural spawning in a Vault, so it spawns through its own block logic.
+  E3-S5's (#233) gametest calls `getMobsAt` for every `MobCategory` and expects an empty list.
 
 ### Enforcement
 
@@ -323,3 +335,7 @@ One change made elsewhere touches this record without changing it: ADR 0001 now 
 here (the empty-Vault apply at the end of each tick, the apply for every team at server start) in the root
 `ServerTickEvent.Post` and `ServerStartedEvent` listeners, in the order those listeners state (DEV2-3,
 RV2-2). The end-of-tick check stays in `vault`, as written above.
+
+Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md`: empty spawner lists are not a
+guarantee in a pack, so the generator overrides `getMobsAt` and leaves `spawnOriginalMobs` empty. Behaviour stays
+no mobs, so this is not a design change.
