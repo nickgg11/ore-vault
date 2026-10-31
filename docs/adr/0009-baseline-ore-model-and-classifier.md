@@ -1,12 +1,12 @@
 # 0009. Baseline ore as vein count, size and height profile, and the sampling classifier
 
-Status: proposed, 2026-10-27, for T4 (E0-S7, #182); stays proposed until Nick answers question 4. The
-height placement below is Nick's answer to question 1 on 2026-10-27: same density at every height. Which ore
-a vein is by height was reopened on 2026-10-31 (BAL-16), because the consequence he was told for it was
-wrong; it is the Manager's question 4 to Nick, and the section on it below is interim text until he answers.
-Accepted once that section states his answer and the matrix reviewers confirm it. Spec: §3.1 Baseline ore
-distribution, §4.2 rarity classification, §4.3 step 4, §11 Ore Rarity Classification. Research:
-`docs/research/vanilla-ore-generation.md` sections 2, 3 and 5.
+Status: accepted 2026-10-31 (E0-S7, #182), after the round 2 verdicts below and Nick's answer to question 4
+the same day; proposed 2026-10-27, for T4. The height placement below is Nick's answer to question 1 on
+2026-10-27: same density at every height. Which ore a vein is by height was reopened on 2026-10-31 (BAL-16),
+because the consequence he was told for it was wrong, and put to him again as question 4. He answered
+option A, the rule as first written, on the corrected consequence; the section on it below states that
+answer. Spec: §3.1 Baseline ore distribution, §4.2 rarity classification, §4.3 step 4, §11 Ore Rarity
+Classification. Research: `docs/research/vanilla-ore-generation.md` sections 2, 3 and 5.
 
 Numbered 0009, not 0008: S47 reserved 0001 to 0007 for the planned records, and commit bf13b82 numbered the
 tool wear record 0008 after them. The research doc's section 5 planned this record as "ADR 0008"; that
@@ -135,30 +135,30 @@ veins in the stone band and about +1.6 to +2.4% in deepslate. The closed form's 
 the shares and the curve do not change; §3.1's vein counts stay the counts the closed form uses. The
 Balancer confirms the factor.
 
-### Which ore a vein is: reopened 2026-10-31 (BAL-16), pending Nick's answer
+### Which ore a vein is: by height, as first written
 
-Question 1 was put to Nick with the consequence that, under the rule below, "some gold or redstone appears
-high up". The Balancer's run of the repo's port of vanilla's `OreFeature` (round 2) shows the rule does the
-opposite, so the question went back to him as question 4 on 2026-10-31. Nick's density answer is not
-reopened, and no option changes the counts, the density, the shares or the curve, since Resonance is paid
-by rarity and a vein's ore is picked after its rarity and its layer. This section is interim text; the
-record is rewritten to his answer and only then accepted.
+Nick's answer to question 4, 2026-10-31: option A, "as written". Question 1 had been put to him with the
+consequence that, under this rule, "some gold or redstone appears high up". The Balancer's run of the
+repo's port of vanilla's `OreFeature` (round 2) showed the rule does the opposite, so the question went back
+to him with the measured consequence below, and he kept the rule. The recommendation was option B; he chose
+A over it. His density answer was not reopened, and the identity rule changes none of the counts, the
+density, the shares or the curve, since Resonance is paid by rarity and a vein's ore is picked after its
+rarity and its layer.
 
-What is settled whichever option he picks: each classified ore carries a block-weighted height profile over
-the overworld's generation range, in 24 bins of 16 layers (Y-64..319), summed over the features the
-classifier uses for it (below), and the profiles are mapped onto the Vault by one linear map: the overworld
+The profiles and the map. Each classified ore carries a block-weighted height profile over the overworld's
+generation range, in 24 bins of 16 layers (Y-64..319), summed over the features the classifier uses for it
+(below), and the profiles are mapped onto the Vault by one linear map: the overworld
 range Y-64..319 onto the expanded type's mineralizable column, Y-63..245, the same map for both dimension
 types, so an ore sits at the same Vault height whichever type a team has. In the base type, whose column
 starts at Y=1, the mass the map puts below Y=1 goes into the stone band's lowest 16 layers. The ore weights
-(below) and the group id are also settled. Under option C the profiles are not read by the generator, but
-the classifier still builds them.
+and the group id are below.
 
-The rule as first written (option A). Once a vein has its rarity and its layer, its ore is drawn from that
-rarity's ores in proportion to each ore's weight × its mapped profile at the layer's bin. Where no ore of
-the rarity has mass at that bin, the draw uses the nearest bin in the band that has some (the lower one on
-a tie).
+The rule. Once a vein has its rarity and its layer, its ore is drawn from that rarity's ores in proportion
+to each ore's weight × its mapped profile at the layer's bin. Where no ore of the rarity has mass at that
+bin, the draw uses the nearest bin in the band that has some (the lower one on a tie). Nothing in the pick
+reads the band-wide mix on its own.
 
-What that rule gives on vanilla, measured by the Balancer (derived, unplaytested), in place of the "some
+What the rule gives on vanilla, measured by the Balancer (derived, unplaytested), in place of the "some
 gold or redstone high up" first stated. The map puts diamond's vanilla range below Vault Y=1.4, redstone's
 below 0.6, gold's below 14 and buried lapis's below 40, while emerald spans Vault Y-24..245. In the base
 type:
@@ -171,31 +171,20 @@ type:
 - Expanded type: deepslate is almost all diamond for rare and mixed for uncommon; its stone band is about
   99% emerald for rare and about 98% lapis for uncommon.
 
-So away from the floor a player mines no diamond, gold or redstone, and the floor becomes the item
-treasure layer question 1 set out to remove.
-
-The options put to Nick (question 4), each unplaytested:
-
-- A, as written above: diamond, gold and redstone only at the floor or in deepslate; emerald and lapis
-  everywhere else.
-- B, recommended by the Balancer and the Manager: half of each vein's ore pick by height, as A, and half
-  by the band-wide vanilla mix (the weights alone). Base type rare comes out about 44% diamond overall, 91%
-  at the floor and 41% above it; uncommon above the floor about 64% lapis, 21% redstone and 15% gold.
-  Diamond still sits low, and every height yields every ore.
-- C: height ignored; the band-wide mix everywhere (rare about 82% diamond, 18% emerald).
-
-Blocked on the answer: the identity unit cases (Tests), QA-29's band-floor case, and E4-S1 (#234), which
-writes the generator's pick. Nothing before T4 picks an ore.
+So away from the floor a player mines no diamond, gold or redstone. A player who wants diamonds
+strip-mines the stone band's lowest 16 layers, or the deepslate band of an expanded Vault: the floor is
+where those items are, though not where more ore is, since density and Resonance an hour are the same at
+every height. Nick chose A on this consequence. E4-S1 (#234) writes the pick, and Nick's T4 ten-minute mine is the
+first look at it in play.
 
 An ore's weight is its expected blocks a chunk in the overworld × the share of the overworld's
 `possibleBiomes()` that list the feature, summed over its features. An all-biome feature (step 3) counts at
 1.0, since the classifier already treats it as everywhere; a biome-only feature counts at its share, about
 0.18 for emerald's mountain feature on vanilla. Without the share, emerald's single mountain feature
 counted every chunk as a mountain and made 55% of rare blocks emerald (Balancer, BAL-2). With it, emerald
-is about 18% of the band-wide rare mix, its weight over the sum of the rare weights. That is the share of
-rare veins only where height does not decide the pick (option C, and the band-wide half of option B); under
-option A emerald's share of rare veins is set by height, about 93.5% above Y=16 in the base type. The share
-changes only the weight used to pick an ore; the §4.2 rule classifies on the unweighted expected blocks of
+is about 18% of the band-wide rare mix, its weight over the sum of the rare weights. That is not its share
+of rare veins: height decides the pick, so in the base type emerald is every rare vein above Y=16 and about
+93.5% of all rare veins. The share changes only the weight used to pick an ore; the §4.2 rule classifies on the unweighted expected blocks of
 step 8. On vanilla the common weights are unchanged, coal 1,108, iron 646 and copper 134, the figures §6.1
 Salvager's Eye cites.
 
@@ -316,10 +305,10 @@ cannot come back through a default.
   are included. For a box of height `h`, every layer of the band is covered by exactly `h` of the allowed
   positions, and no position outside the band is placed or indexed; the edge factor at `h` = 1 is 1. The
   group id is the stone-band block, and the deepslate one for a group with none.
-- Identity unit cases, written for the option Nick picks in question 4. Under A they are: the base type's
-  below-Y=1 mass lands in the identity profile of the lowest 16 stone layers; a bin where a rarity has no
-  ore mass draws from the nearest bin with mass, the lower on a tie. Under B or C they are restated in the
-  same PR as his answer.
+- Identity unit cases in `core.ore`, for Nick's answer to question 4 (option A): the base type's below-Y=1
+  mass lands in the identity profile of the lowest 16 stone layers (QA-29's band-floor case); a bin where
+  a rarity has no ore mass draws from the nearest bin with mass, the lower on a tie; and on the golden
+  fixture's profiles, a base-type rare pick at any bin above Y=16 is emerald with probability 1.
 - The placer count above, the clip test above, and a test that a block with no entry pays 0.
 - On a dedicated server, `/orevault density` over at least 81 generated chunks checks S12's tolerances
   and the per-slab rule against blocks the generator really wrote. The pure tests cannot catch a generator
@@ -336,10 +325,10 @@ cannot come back through a default.
 - Node effects that change generation (T9) express themselves as changes to counts and sizes per rarity
   and band, or a region of the band they concentrate into, so the clip factor can be computed for them. A
   node that cannot be written that way needs this record amended first.
-- Which ore a vein is by height waits on question 4. Under the rule as first written, the Balancer's
-  model gives the figures in that section: diamond, gold and redstone only in the base type's lowest 16
-  stone layers or in deepslate, emerald and lapis almost everywhere else. Whichever option Nick picks,
-  Nick's T4 ten-minute mine looks at the mix by height.
+- Which ore a vein is follows height (Nick, question 4, 2026-10-31). The Balancer's model gives the
+  figures in that section: diamond, gold and redstone only in the base type's lowest 16 stone layers or in
+  deepslate, emerald and lapis almost everywhere else. A player who wants diamonds strip-mines the floor,
+  though the curve pays no more there. Nick's T4 ten-minute mine looks at the mix by height.
 - Veins at a band's edge are partly cut, and the count is about 0.4 to 2.4% higher than §3.1's figures to
   make up the cut blocks; placed blocks match the closed form.
 - A pack whose ores are placed by a feature type that is not `OreConfiguration`-based (Mekanism's custom
@@ -356,6 +345,17 @@ Rejected by Nick's answer to question 1 (2026-10-27):
   layers against 1.7 to 2.7% above, so floor-mining levels about 7.5 times faster than the curve and the
   100 hours become about 13. Pricing the curve on the richest slab instead makes everyone who does not mine
   at the floor about 7 times slower.
+
+Rejected by Nick's answer to question 4 (2026-10-31), "as written", each figure the Balancer's, derived and
+unplaytested:
+
+- Half of each vein's ore pick by height and half by the band-wide vanilla mix (question 4 option B,
+  recommended by the Balancer and the Manager). Base type rare would come out about 44% diamond overall,
+  91% at the floor and 41% above it; uncommon above the floor about 64% lapis, 21% redstone and 15% gold.
+  It was recommended because it keeps diamonds deeper without making the floor the only place worth
+  mining for them (Manager's round-2 triage, section 3). Nick chose A over the recommendation.
+- Height ignored, the band-wide vanilla mix everywhere (option C): rare about 82% diamond and 18% emerald
+  at every height. It drops "diamonds are deeper" altogether, which B was put forward to keep.
 
 Rejected:
 
@@ -396,8 +396,12 @@ Round 2 (2026-10-31, the Writer, WP-R2-5): §3.1's per-slab sentence says slabs 
 band's floor (BAL-15); §3.1 "Where each ore sits" and `DESIGN_LOG.md` row 43 take the interim text: the
 density rule as Nick chose it, which ore a vein is reopened pending question 4, the measured consequence of
 the rule as first written, and the 18% emerald figure as a share of the band-wide rare mix; the "If Nick
-chooses vanilla's profile" sentence is removed (WRITER-19). When Nick answers question 4, §3.1 and the log
-take his answer in the same PR as this record.
+chooses vanilla's profile" sentence is removed (WRITER-19).
+
+After Nick's answer to question 4 (2026-10-31, the Writer): §3.1 "Where each ore sits" states the identity
+rule as first written, with its consequence for the player, in place of the interim text; `DESIGN_LOG.md`'s
+2026-10-27 emerald row and the 2026-10-31 question 4 row record the answer, with options B and C rejected.
+Same PR as this record.
 
 ## Reviews
 
@@ -419,7 +423,8 @@ record holds the baseline's numbers. Rulings are the Manager's triage of the sam
   used. QA-28 (tests stop at the pure placer): fixed, `/orevault density` over 81 chunks on a dedicated
   server is in Tests. QA-29 (unit cases for the roll, the clamp, the empty bin): fixed for option A; the
   band-floor case is the per-slab check, written for Nick's answer of 2026-10-27 (same density at every
-  height). Round 2 reopened the identity half (question 4).
+  height). Round 2 reopened the identity half (question 4), which Nick answered A on 2026-10-31; the
+  band-floor case is now written for it (Tests).
 - Writer: request changes. Checked counts, sizes and band heights against §3.1; the height map and the
   16-layer clamp against §3.1 "Where each ore sits"; §4.3 step 4; the research doc's numbering note.
   WRITER-7 (§4.2's "every overworld feature" is the rule this record rejects): fixed in Context. WRITER-1
@@ -451,14 +456,15 @@ lines after this pass).
   wording. WRITER-19 (stale "waiting for Nick" text at Spec sections changed and in two review lines):
   fixed in the past tense with the date; the identity half points to question 4. WRITER-23 (two meanings
   of "all-biome") is spec text, the Writer's; step 3 here is the definition it points to. WRITER-24 (a
-  consequence stated wrongly in three documents): merged into BAL-16; the interim text replaces it here.
+  consequence stated wrongly in three documents): merged into BAL-16; the measured consequence replaces it here.
 - Balancer: request changes. Checked the counts, sizes, weights and the 1.0 all-biome weight (confirmed)
   and ran the port by height. BAL-15 (a) and (b): fixed, the per-slab test counts from each band's floor,
   and the placer's overhang with the edge factor keeps every layer flat; the Balancer confirms the scaling
   line. BAL-16 (ore identity by height leaves the stone band almost without diamond, gold and redstone): to
-  Nick as question 4 (Manager's triage section 3); the interim text above states his density answer, the
-  reopened identity question, the measured consequence and the options.
+  Nick as question 4 (Manager's triage section 3), answered A on 2026-10-31; the identity section above
+  states his answer and the measured consequence, and B and C are under Rejected alternatives.
 - Architect (cross-read): approve with comments. ARCH-R2-5 (stale line): fixed with WRITER-19.
 
-Still owed before acceptance: Nick's answer to question 4, the identity section and its unit cases
-rewritten to it, and the matrix reviewers' confirmation of that text.
+Question 4, 2026-10-31: Nick answered A, "as written", over the recommended B. The identity section, its
+unit cases (QA-29's band-floor case among them) and the Consequences line are rewritten to that answer,
+BAL-16 is closed by it, and B and C are under Rejected alternatives.

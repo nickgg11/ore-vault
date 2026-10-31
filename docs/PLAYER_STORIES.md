@@ -330,8 +330,9 @@ The player arrives, digs through four blocks of dirt into stone, and mines for t
 bought (§3.1 baseline; T4 done-when). They should see a first vein in the tunnel wall within about a
 minute, break into one within about two, and mine about 36 ore in ten minutes at the derived 218.9 an hour
 (§4.3; ADR 0009). Commons are most of it. Ore is as dense at every height, and which ore a vein is follows
-its vanilla height, so diamond is found low and emerald high (§3.1 Where each ore sits). Nick chose
-this on 2026-10-27.
+its vanilla height, so diamond, gold and redstone turn up only in the 16 layers above bedrock, and above
+them rare ore is emerald and uncommon ore almost all lapis (§3.1 Where each ore sits). Nick chose the density
+on 2026-10-27 and the ore type by height on 2026-10-31 (question 4).
 Gravel and clay appear as blobs in the stone (§3.1).
 
 Not yet there: Resonance and orbs (T5). Vanilla XP drops as in the Overworld (§3.4).
