@@ -13,12 +13,15 @@ final class RepositoryGuards {
     private static final List<Pattern> OLD_NAMES = List.of(
             Pattern.compile("\\bResourceLocation\\b"),
             Pattern.compile("\\bGuiGraphics\\b"),
-            Pattern.compile("\\bdrawString\\b"),
+            // FTB Library's Theme has a drawString of its own, and the Tome uses that toolkit.
+            Pattern.compile("(?<![Tt]heme\\.)\\bdrawString\\b"),
             Pattern.compile("hasPermission\\(\\s*2\\s*\\)"));
-    private static final Pattern WRONG_NULLABLE =
-            Pattern.compile("import\\s+(org\\.jetbrains\\.annotations|net\\.neoforged\\.[\\w.]+)\\.Nullable\\s*;");
+    private static final Pattern WRONG_NULLABLE = Pattern.compile(
+            "\\b(org\\.jetbrains\\.annotations|javax\\.annotation|net\\.neoforged\\.[\\w.]+)\\.Nullable\\b");
     private static final Pattern FORGE_TAG = Pattern.compile("\"#?forge:");
-    private static final String WRONG_MINEABLE = "data/orevault/tags/block/mineable";
+    private static final Pattern FORGE_ID = Pattern.compile("fromNamespaceAndPath\\(\\s*\"forge\"");
+    private static final Pattern WRONG_MINEABLE = Pattern.compile("data/orevault/tags/blocks?/mineable");
+    private static final String FORGE_TAG_FOLDER = "data/forge/tags/";
     private static final String JDK_PIN = "org.gradle.java.installations.paths";
 
     private RepositoryGuards() {
@@ -34,6 +37,9 @@ final class RepositoryGuards {
         if (WRONG_NULLABLE.matcher(text).find()) {
             found.add(path + ": @Nullable that is not JSpecify's");
         }
+        if (FORGE_ID.matcher(text).find()) {
+            found.add(path + ": forge: tag, use c:");
+        }
         return found;
     }
 
@@ -42,7 +48,14 @@ final class RepositoryGuards {
     }
 
     static List<String> checkPath(String path) {
-        return path.contains(WRONG_MINEABLE) ? List.of(path + ": tool tags go in data/minecraft") : List.of();
+        List<String> found = new ArrayList<>();
+        if (WRONG_MINEABLE.matcher(path).find()) {
+            found.add(path + ": tool tags go in data/minecraft");
+        }
+        if (path.contains(FORGE_TAG_FOLDER)) {
+            found.add(path + ": forge: tag, use c:");
+        }
+        return found;
     }
 
     static List<String> checkBuildFile(String path, String text) {

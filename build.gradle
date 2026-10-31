@@ -92,6 +92,11 @@ tasks.named('test', Test) {
     useJUnitPlatform()
     // The repository guards read the source tree, and the run directory is not the project.
     systemProperty 'orevault.projectDir', project.projectDir.absolutePath
+    // Declared so a change to these reruns the guards rather than taking a cached result.
+    inputs.dir('src/main').withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir('src/gametest').withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files('gradle.properties', 'build.gradle', 'settings.gradle', 'gradle/wrapper/gradle-wrapper.properties')
+            .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 tasks.named('check') {
