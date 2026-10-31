@@ -67,14 +67,16 @@ import, so it has no package row. `check` compiles it.
 
 The rules for a new gametest (E1-S2, #193):
 
-- It is registered in the `gametest` package: its function under `RegisterEvent` for `Registries.TEST_FUNCTION`
+- It is registered in `GameTests`, the one class listening for these events: its function under `RegisterEvent` for `Registries.TEST_FUNCTION`
   and its instance under `RegisterGameTestsEvent` (mod bus). No `test_instance` JSON.
 - Namespace `orevault`, id `<area>/<name>`, where the area is the system under test: `harness/passes`.
 - 26.1 forms batches from test environments, so a batch is an environment. Every test uses `orevault:default`
   unless it needs a setup of its own (weather, time of day), which gets its own environment named for it.
 - A test is `required`. `runGameTestServer` exits with the number of required failures, so one failure fails
   the Gradle task.
-- A count quoted from the log includes the optional `minecraft:always_pass`, which is not ours.
+- A count quoted from the log includes the optional `minecraft:always_pass`, which is not ours, and the PR
+  states the total it expects: passing tests log no name, and a test that failed to register exits 0. The
+  total is 2 at E1-S2.
 - There is no namespace filter: nothing in NeoForge 26.1.2.95 reads `neoforge.enabledGameTestNamespaces`, so the
   build does not set it. `--tests` is the vanilla selector.
 
