@@ -1,2 +1,12 @@
 {
+  "block.orevault.vault_frame": "Vault Frame",
+  "item.orevault.worn_signet": "Worn Signet",
+  "itemGroup.orevault": "Ore Vault",
+  "tooltip.orevault.signet.entry_point": "Right-click a block in your Vault to set your entry point",
+  "tooltip.orevault.signet.entry_points": "Right-click blocks in your Vault to set up to %s entry points",
+  "tooltip.orevault.signet.instant_travel": "Instant travel: no portal wait and no re-entry cooldown",
+  "tooltip.orevault.signet.opens_portal": "Right-click a finished portal frame to open it",
+  "tooltip.orevault.signet.purpose": "Opens a Vault Frame portal to your team's Vault",
+  "tooltip.orevault.signet.reset_vault": "Unlocks the Vault Reset button in the Tome",
+  "tooltip.orevault.signet.upgrade": "Craft it into the next tier to add a new ability"
 }

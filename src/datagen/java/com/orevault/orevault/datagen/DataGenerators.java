@@ -1,23 +1,36 @@
 package com.orevault.orevault.datagen;
 
 import com.orevault.orevault.OreVault;
+import com.orevault.orevault.core.frame.FrameNeighbours;
+import com.orevault.orevault.core.frame.FrameNeighbours.Face;
+import com.orevault.orevault.registry.ModBlocks;
+import com.orevault.orevault.registry.ModItems;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.client.data.models.BlockModelGenerators;
 import net.minecraft.client.data.models.ItemModelGenerators;
 import net.minecraft.client.data.models.ModelProvider;
+import net.minecraft.client.data.models.blockstates.ConditionBuilder;
+import net.minecraft.client.data.models.blockstates.MultiPartGenerator;
+import net.minecraft.client.data.models.model.ModelTemplates;
+import net.minecraft.client.data.models.model.TextureMapping;
+import net.minecraft.client.data.models.model.TextureSlot;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.loot.BlockLootSubProvider;
 import net.minecraft.data.loot.LootTableProvider;
+import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -52,9 +65,41 @@ public final class DataGenerators {
             super(output, OreVault.MOD_ID);
         }
 
+        /** One cube model per block state; six properties is one more than a {@code PropertyDispatch} takes. */
+        private static void frame(BlockModelGenerators blockModels) {
+            Block frame = ModBlocks.VAULT_FRAME.get();
+            MultiPartGenerator states = MultiPartGenerator.multiPart(frame);
+            for (FrameNeighbours neighbours : FrameNeighbours.all()) {
+                Identifier model = ModelTemplates.CUBE.createWithSuffix(frame, neighbours.modelSuffix(),
+                        frameTextures(frame, neighbours), blockModels.modelOutput);
+                states.with(new ConditionBuilder()
+                                .term(BlockStateProperties.NORTH, neighbours.north())
+                                .term(BlockStateProperties.EAST, neighbours.east())
+                                .term(BlockStateProperties.SOUTH, neighbours.south())
+                                .term(BlockStateProperties.WEST, neighbours.west())
+                                .term(BlockStateProperties.UP, neighbours.up())
+                                .term(BlockStateProperties.DOWN, neighbours.down()),
+                        BlockModelGenerators.plainVariant(model));
+            }
+            blockModels.blockStateOutput.accept(states);
+        }
+
+        private static TextureMapping frameTextures(Block frame, FrameNeighbours neighbours) {
+            return new TextureMapping()
+                    .put(TextureSlot.PARTICLE, TextureMapping.getBlockTexture(frame))
+                    .put(TextureSlot.NORTH, TextureMapping.getBlockTexture(frame, neighbours.textureSuffix(Face.NORTH)))
+                    .put(TextureSlot.SOUTH, TextureMapping.getBlockTexture(frame, neighbours.textureSuffix(Face.SOUTH)))
+                    .put(TextureSlot.EAST, TextureMapping.getBlockTexture(frame, neighbours.textureSuffix(Face.EAST)))
+                    .put(TextureSlot.WEST, TextureMapping.getBlockTexture(frame, neighbours.textureSuffix(Face.WEST)))
+                    .put(TextureSlot.UP, TextureMapping.getBlockTexture(frame, neighbours.textureSuffix(Face.UP)))
+                    .put(TextureSlot.DOWN, TextureMapping.getBlockTexture(frame, neighbours.textureSuffix(Face.DOWN)));
+        }
+
         // The super method generates vanilla's models and then fails on Ore Vault's id filter.
         @Override
         protected void registerModels(BlockModelGenerators blockModels, ItemModelGenerators itemModels) {
+            frame(blockModels);
+            itemModels.generateFlatItem(ModItems.WORN_SIGNET.get(), ModelTemplates.FLAT_ITEM);
         }
     }
 
@@ -65,7 +110,7 @@ public final class DataGenerators {
 
         @Override
         protected void addTags(HolderLookup.Provider provider) {
-            tag(BlockTags.MINEABLE_WITH_PICKAXE);
+            tag(BlockTags.MINEABLE_WITH_PICKAXE).add(ModBlocks.VAULT_FRAME.get());
         }
     }
 
@@ -76,6 +121,7 @@ public final class DataGenerators {
 
         @Override
         protected void generate() {
+            dropSelf(ModBlocks.VAULT_FRAME.get());
         }
 
         @Override
@@ -94,6 +140,17 @@ public final class DataGenerators {
 
         @Override
         protected void buildRecipes() {
+            shapeless(RecipeCategory.BUILDING_BLOCKS, ModBlocks.VAULT_FRAME.get())
+                    .requires(Items.STONE_BRICKS, 8)
+                    .requires(Items.LAPIS_LAZULI)
+                    .unlockedBy("has_stone_bricks", has(Items.STONE_BRICKS))
+                    .save(output);
+            shaped(RecipeCategory.TOOLS, ModItems.WORN_SIGNET.get())
+                    .define('I', Items.IRON_INGOT)
+                    .define('R', Items.REDSTONE)
+                    .pattern("IR")
+                    .unlockedBy("has_iron_ingot", has(Items.IRON_INGOT))
+                    .save(output);
         }
 
         static final class Runner extends RecipeProvider.Runner {

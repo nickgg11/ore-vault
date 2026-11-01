@@ -228,9 +228,9 @@ All carry intent only.
 | `SetTradeoff` | `String nodeId`, `boolean on` | known; a `[TRADEOFF]` node; owned and visible; not Volatile Veins or Molten Seam; sender outside every Vault. Idempotent: `on` is the desired state, so a replayed packet repeats the same state | `unknown_node`, `not_a_tradeoff`, `not_owned`, `tradeoff_is_voted`, `inside_vault` |
 | `SetGenerationVote` | `String nodeId`, `boolean on` | Volatile Veins or Molten Seam; owned and visible. Allowed anywhere, since nothing applies until the Vault is empty (§6.1 Volatile Veins). Idempotent | `unknown_node`, `not_voted_tradeoff`, `not_owned` |
 | `SetPin` | `Optional<String> nodeId` (empty clears) | known and visible. Anywhere; a pin has no effect on play | `unknown_node`, `hidden` |
-| `StartReset` | `boolean backup` | sender holds a Tier 4 Sovereign Vault Igniter in their inventory; the team has a Vault; no session open for the team; ADR 0007's further rules | `reset_no_igniter`, `reset_no_vault`, `reset_session_open` |
+| `StartReset` | `boolean backup` | sender holds a Tier 4 Primordial Signet in their inventory; the team has a Vault; no session open for the team; ADR 0007's further rules | `reset_no_signet`, `reset_no_vault`, `reset_session_open` |
 | `CastResetVote` | `int sessionId`, `boolean approve` | the session is the sender's team's and still voting | `reset_no_session` |
-| `SelectEntryPoint` | `int slot`; −1 is the team anchor (X=0, Z=0) | slot under the capacity of the best igniter the sender holds (§3.3); the slot is set for the team's current `vault_generation` | `entry_no_capacity`, `entry_empty` |
+| `SelectEntryPoint` | `int slot`; −1 is the team anchor (X=0, Z=0) | slot under the capacity of the best Signet the sender holds (§3.3); the slot is set for the team's current `vault_generation` | `entry_no_capacity`, `entry_empty` |
 | `RequestSurvey` | none | sender is answered with `SurveyState` | none |
 | `RequestTripState` | none | sender is answered with `TripState` | none |
 
@@ -259,7 +259,7 @@ tooltips show are live to within two seconds and are never sent to a player who 
 | `AscensionLadder` | `List<Rung> pickaxes`, `List<Rung> paxels`, each at most `MAX_RUNGS`; `Rung(String item, Optional<String> next, int oresToNext)` | each player | each join and each `/reload` |
 | `TeamProgress` | `ResonanceProgress(long pool, int level, int unspentPoints, long levelStart, long nextThreshold, long recentBonus)`; `nextThreshold` is −1 at the cap | every online member | see triggers |
 | `TreeState` | six nested records, below | each online member, with that member's own tradeoffs | see triggers |
-| `PlayerContext` | `boolean inVault`, `boolean holdsSovereignIgniter`, `int entryCapacity` | the player | on change |
+| `PlayerContext` | `boolean inVault`, `boolean holdsPrimordialSignet`, `int entryCapacity` | the player | on change |
 | `EntryPoints` | `List<EntryPoint(int slot, BlockPos pos, boolean anchor)>` up to `MAX_ENTRY_POINTS`, `int selected` | the player | join, any change, team change, reset |
 | `SurveyState` | five fields, below | the requester | answer to `RequestSurvey`; once, unrequested, when the chunk stamp changes while the tab is open |
 | `TripState` | three nested records, below | the requester | answer to `RequestTripState` |
@@ -370,7 +370,7 @@ vote screen only then. The `/orevault` root and `reset vote` are registered on e
 | A pending generation vote applied (the last member leaves the Vault) | `TreeState` to every online member, marked in `data.SyncOutbox` by `vault` |
 | A node fires an outline (Vein Sight, Prospector's Eye, Chapter's End) | `VeinOutline` to the breaking player, queued in `data.SyncOutbox` by `mining` and sent at the end of the same tick |
 | Reset completes (respec window opens, `vault_generation` + 1) | `TeamProgress`, `TreeState`, `EntryPoints` to every online member |
-| Dimension change, respawn, and a check every 20 ticks of each player's igniters | `PlayerContext` to that player when any field differs from the last one sent |
+| Dimension change, respawn, and a check every 20 ticks of each player's Signets | `PlayerContext` to that player when any field differs from the last one sent |
 | Seismic Sense, Survey | `SurveyState` on `RequestSurvey` only |
 | Trip counters | `TripState` on `RequestTripState` only |
 
@@ -411,11 +411,11 @@ Every key is `refusal.orevault.<reason>`, owned in text by the Writer and E7-S8;
 | `not_a_tradeoff` | `SetTradeoff` on a non-tradeoff | node |
 | `tradeoff_is_voted` | `SetTradeoff` on Volatile Veins or Molten Seam | node |
 | `not_voted_tradeoff` | `SetGenerationVote` on another node | node |
-| `reset_no_igniter` | no Tier 4 igniter in the inventory | none |
+| `reset_no_signet` | no Tier 4 Signet in the inventory | none |
 | `reset_no_vault` | the team has no Vault yet | none |
 | `reset_session_open` | a reset session is already open | initiator |
 | `reset_no_session` | vote for a closed or another team's session | none |
-| `entry_no_capacity` | slot past the held igniter's capacity | capacity |
+| `entry_no_capacity` | slot past the held Signet's capacity | capacity |
 | `entry_empty` | no entry point in that slot | slot |
 | `layout_unconfirmed` | mutation before a matching `LayoutAck` | none |
 | `too_fast` | rate limit | none |

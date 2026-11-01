@@ -74,7 +74,9 @@ final class ArchitectureRules {
                 pureRow("session", "CoreSession"),
                 pureRow("reset", "CoreReset"),
                 pureRow("wear", "CoreWear", core("tree")),
-                pureRow("key", "CoreKey"));
+                pureRow("key", "CoreKey"),
+                pureRow("signet", "CoreSignet"),
+                pureRow("frame", "CoreFrame"));
     }
 
     private static List<Rule> adapterRows() {

@@ -48,18 +48,18 @@ What the player should take away: there is a tree, it costs points, and points c
 Vault. The Tome says nothing about how to build the portal. Whether anything should is the Q17 guide
 question, below.
 
-### Iron, frame and igniter
+### Stone, frame and signet
 
 The player needs 10 Vault Frames for the smallest portal: a 2 by 3 interior with corners left empty, as a
-nether portal allows (§3.2 VaultPortalShape Scanner; Nb). One frame is 8 iron ingots round 1 redstone dust,
-one frame per craft (§3.2 Vault Frame Block). The Crude Vault Igniter is one iron ingot and one redstone
-dust (§3.3). That is 81 iron and 11 redstone before the mod does anything. The recipes are in JEI; the
+nether portal allows (§3.2 VaultPortalShape Scanner; Nb). One frame is 8 stone bricks and 1 lapis lazuli,
+one frame per craft (§3.2 Vault Frame Block). The Worn Signet is one iron ingot and one redstone
+dust (§3.3). That is 80 stone bricks, 10 lapis, 1 iron and 1 redstone before the mod does anything. The recipes are in JEI; the
 frame's shape is not.
 
-They build the frame and right-click it with the igniter. A valid frame fills with the green portal of the
+They build the frame and right-click it with the signet. A valid frame fills with the green portal of the
 common tier (§3.2 Ore Vault Portal Block). An invalid one plays a failure sound and nothing else: nothing
 says which side is wrong, the same as a nether portal (§3.2; Nick, Q6). The frame needs a pickaxe to drop,
-so a player who punches out a misplaced frame by hand loses 8 iron (§3.2: "Requires correct tool to drop").
+so a player who punches out a misplaced frame by hand loses 8 stone bricks and a lapis (§3.2: "Requires correct tool to drop").
 
 ### Arrival
 
@@ -218,7 +218,7 @@ already outgrown; a refund refused with no reason.
   switchable off per player (§4.1, §8, §10). In these minutes the on-screen bar is what makes Apprentice's
   Ledger and Shallow Grace visible at all.
 - Q16. The reset vote reaches other members as a toast and a clickable chat line, and no screen opens by
-  itself (§3.5, §8 Vault Reset Button). A reset needs a Tier 4 igniter (§3.3), so it never happens in the
+  itself (§3.5, §8 Vault Reset Button). A reset needs a Tier 4 signet (§3.3), so it never happens in the
   first ten minutes, but the same rule holds for everything that does: the level-up toast and the "bought
   by" notices never take the screen from a player mid-swing.
 - Q17. 1.0 ships no advancements and no Vault Recall item. Whether it ships a guide is decided after the
@@ -239,12 +239,12 @@ Build: <commit>, mods: vanilla plus FTB Teams and JEI, team size: 1
 Kind: first ten minutes (buy freely)
 Focus: 1. At which step would a new player have needed to be told something, and what?
        2. Which nodes did you buy at level 1, why, and how did you know each worked?
-Setup: fresh world, iron and redstone for 10 frames and an igniter in a chest, stone pickaxe or better
+Setup: fresh world, stone bricks and lapis for 10 frames and iron and redstone for a signet in a chest, stone pickaxe or better
 Steps (QA's, QA-34):
         1. Log in; the Tome is in the inventory.
         2. Open it: level 0, the empty-state line.
         3. Hover a ring-0 node; the tooltip says why it cannot be bought.
-        4. Craft 10 frames and an igniter.
+        4. Craft 10 frames and a signet.
         5. Build the frame and light it; the green portal fills it.
         6. Enter; arrive at X=0, Z=0 on grass with the return portal there.
         7. Dig to stone; note the time of the first ore broken.
@@ -276,29 +276,29 @@ The task names are the shared task list in `docs/TEAM_REQUIREMENTS.md`. Each wor
 Nick in a client before the next opens (§12). Each story says what Nick will not see yet, so a missing
 later feature is not reported as a bug.
 
-### T2: Vault Frame and Crude Igniter
+### T2: Vault Frame and Worn Signet
 
-The player finds both items in the creative tab and in JEI, with recipes: 8 iron round 1 redstone for one
-frame, iron and redstone in a row for the igniter (§3.2, §3.3). At slot size the frame reads as a metal
-frame block and the igniter as a tool, not as blobs (`CLAUDE.md` Textures; Designer's `mc-asset` drafts,
-Q5). Placed, the frame mines at stone speed with a pickaxe and sounds like metal, and drops nothing without
+The player finds both items in the creative tab and in JEI, with recipes: 8 stone bricks and 1 lapis for one
+frame, iron and redstone in a row for the signet (§3.2, §3.3). At slot size the frame reads as a carved stone
+frame block and the signet as a ring, not as blobs (`CLAUDE.md` Textures; Designer's `mc-asset` drafts,
+Q5). Placed, the frame mines at stone speed with a pickaxe and sounds like stone, and drops nothing without
 one (§3.2).
 
-Not yet there: right-clicking a frame with the igniter does nothing until T3.
+Not yet there: right-clicking a frame with the signet does nothing until T3.
 
 Confusing: a purple cube or an invisible item; an item missing from JEI; a frame that drops nothing when
-broken by hand, with no hint why (vanilla's iron blocks behave the same way, so this is watched, not
+broken by hand, with no hint why (vanilla's stone blocks behave the same way, so this is watched, not
 changed).
 
 How the player knows it worked: the items appear, craft as JEI shows, and the frame drops itself when mined
 with a pickaxe.
 
-Session focus: How long did the iron for 10 frames and an igniter take, and did 81 iron feel like a fair
+Session focus: How long did 10 frames and a signet take, and did 80 stone bricks and 10 lapis feel like a fair
 price of entry? Can you tell both items apart from vanilla ones at slot size?
 
 ### T3: The dimension path
 
-The player builds a frame, lights it with the igniter, and sees the green portal fill it (§3.2). A wrong
+The player builds a frame, presses the signet into it, and sees the green portal fill it (§3.2). A wrong
 frame plays the failure sound only (Q6). They step in, wait four seconds through the wobble, and arrive on
 grass at X=0, Z=0 with the return portal on the same spot (§3.1, §3.2). Stepping back through the return
 portal puts them just outside the Overworld portal they used, walked out far enough that it does not fire
@@ -396,7 +396,7 @@ was tracked" for a chunk with no stamp (ADR 0006 `chunkStamp`; §11 Vein Index).
 carried-over world: every chunk generated before the stamp existed reads "Generated before this was tracked".
 Only a chunk generated after the stamp is written reads as current, since no generation node is owned yet. If
 the stamp has not landed by T7 (§13 lists the line under E7-S7, #295, and E9-S3, #307), every chunk reads
-"Generated before this was tracked". Neither is a bug. The reset button is absent without a Tier 4 igniter
+"Generated before this was tracked". Neither is a bug. The reset button is absent without a Tier 4 signet
 (§3.5).
 
 Inside the Vault the on-screen bar shows level and progress while mining, and turning

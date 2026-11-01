@@ -74,7 +74,7 @@ The top bar you accepted on 2026-09-03 stays as it is either way.
 
 - A small Ore Memory tab in 1.0, holding a "Survey" panel (depth gauge with band edges, death marker,
   Seismic Sense's readouts) and the reset button bottom right, shown only to a player holding a Tier 4
-  igniter. The stats panels stay deferred.
+  signet. The stats panels stay deferred.
 - The same tab, also showing the counters nodes read that a player cannot otherwise see (deepest Y, veins
   completed, Vein Discipline streak, Kindred Rock progress).
 - The reset button in the Tome's header, Tier 4 only. Changes the accepted top bar and still leaves the
@@ -112,7 +112,7 @@ Vein needs a new effect or removal).
 Blocks: T9's Prospecting cluster, and the §6 wording.
 
 Growth nodes are meant to be strong early and retire on their own. Apprentice's Ledger (first 100 ore of
-each trip pay double) resets every trip, so it never retires; a Tier 3 igniter makes trips free, so it
+each trip pay double) resets every trip, so it never retires; a Tier 3 signet makes trips free, so it
 stays a permanent bonus. Shallow Grace (+50% while your deepest Y is above 100) reads each player's depth
 but pays the team, so one member who stays shallow keeps it on for everyone. Separately, a retired node
 currently says so only by greying out in the Tome.

@@ -78,7 +78,9 @@ The rules for a new gametest (E1-S2, #193):
   the Gradle task.
 - A count quoted from the log includes the optional `minecraft:always_pass`, which is not ours, and the PR
   states the total it expects: passing tests log no name, and a test that failed to register exits 0. The
-  total is 3 at E1-S11: `harness/passes`, `lang/coverage` and `minecraft:always_pass`.
+  total is 10 at E2-S2's connected frame: `harness/passes`, `lang/coverage`, `vault/frame_pickaxe_drop`, `vault/frame_hand_no_drop`,
+  `vault/frame_recipe`, `vault/frame_properties`, `vault/frame_connects`, `vault/signet_recipe`, `vault/signet_stack_size` and
+  `minecraft:always_pass`.
 - There is no namespace filter: nothing in NeoForge 26.1.2.95 reads `neoforge.enabledGameTestNamespaces`, so the
   build does not set it. `--tests` is the vanilla selector.
 
@@ -123,6 +125,8 @@ Pure packages. None imports Minecraft, NeoForge or Mojang classes, so all of it 
 | `core.session` | The trip record (§11 Vault Session State), including Apprentice's Ledger's 10-minute continuation (Q9) | nothing |
 | `core.reset` | The reset vote state machine (ADR 0007) | nothing |
 | `core.wear` | `WearRules` (ADR 0008) and `WearScope`, the per-player wear inputs the mixin reads | `core.tree` |
+| `core.signet` | `SignetTier`: the §3.3 capabilities of all four tiers, and the tooltip lines built from them | nothing |
+| `core.frame` | `FrameNeighbours`: from the Vault Frames around a block to the texture each face shows (§3.2) | nothing |
 | `core.key` | `VaultKeys`: the one function pair between a team UUID and the lower-case hex form used by the dimension path `vault_<teamUuidNoHyphens>` and the team `SavedData` id (ADR 0002, ADR 0005 "one function parses both"), so any adapter can tell whether a level is a Vault and whose without importing `vault` | nothing |
 
 Minecraft-facing adapters. They hold as little logic as they can and call into `core`.
@@ -134,7 +138,7 @@ Minecraft-facing adapters. They hold as little logic as they can and call into `
 | `team` | `TeamHelper` and the FTB Teams event listeners | MC, `dev.ftb.mods.ftbteams..`, core, `data`, `vault` |
 | `data` | `OreVaultTeamData`, `PlayerStats`, the per-Vault explored map `SavedData` (ADR 0004 Amendment 1), attachment codecs other than the vein index's, migrations; `GenSnapshots`, the holders and the main-thread code that reads team data into plain values and calls `core.gen`'s builders (ADR 0003); `SyncOutbox`, the outbound sync set (below) | MC, core. Never `team`: a rebuild takes the team's member list and online members as values from its caller |
 | `ore` | `OreClassifier`: reads `#c:ores` and the placed features at server start and publishes an immutable `OreTable` (ADR 0009) | MC, core |
-| `vault` | `VaultLevels` (the one world-map insert, with `markWorldsDirty()`), `VaultDimensions` (find-or-create, restore, archive), `VaultFolders` and the start-of-server pass (ADR 0007), the Vault `ChunkEvent.Load` listener (vein index settle, explored map; ADR 0004 Amendment 1), the end-of-tick empty-Vault check that applies a pending generation vote (ADR 0003), the end-of-tick chunk entry check that sets a chunk's `entered` flag and credits `chunks_entered` (ADR 0004 Amendment 1, Nick 2026-10-27), teleport, the portal and frame blocks, the igniters, the layer config (ADR 0002) | MC, core, `data`, `worldgen`, `worldgen.index`, `team`, `registry` |
+| `vault` | `VaultLevels` (the one world-map insert, with `markWorldsDirty()`), `VaultDimensions` (find-or-create, restore, archive), `VaultFolders` and the start-of-server pass (ADR 0007), the Vault `ChunkEvent.Load` listener (vein index settle, explored map; ADR 0004 Amendment 1), the end-of-tick empty-Vault check that applies a pending generation vote (ADR 0003), the end-of-tick chunk entry check that sets a chunk's `entered` flag and credits `chunks_entered` (ADR 0004 Amendment 1, Nick 2026-10-27), teleport, the portal and frame blocks, the Signets, the layer config (ADR 0002) | MC, core, `data`, `worldgen`, `worldgen.index`, `team`, `registry` |
 | `worldgen` | `VaultChunkGenerator` and its codec | MC, core, `ore`, `worldgen.index`; never `data` or `team` |
 | `worldgen.index` | The `orevault:vein_index` chunk attachment: its record, its codec and its `AttachmentType` holder in its own `DeferredRegister`, registered on the mod bus from the `@Mod` constructor (ADR 0004 "The attachment"). A leaf, so the generator can call `setData` on the `ProtoChunk` without reaching `registry`, which reaches `data` through `vault`. The same leaf holds the map value type if ADR 0004 takes its Result B | MC, `core.vein` |
 | `mining` | The single `BlockDropsEvent` listener (§11 Drop Pipeline), the orb entity, the award, stat recording, vein index updates, filling `core.wear.WearScope` | MC, core, `data`, `ore`, `team`, `registry`, `worldgen.index` |
@@ -177,7 +181,7 @@ row (Reviewer RV2-2, Developer DEV2-3, round 2).
   runs from a `ServerTickEvent.Post` listener (ADR 0002's unload drain), this is that listener.
 
 Blocks, items and entities live in the package of the system that owns their behaviour: the frame, portal
-and igniters in `vault`, the orb entity in `mining`. `registry` only holds the registers. Where the Tome item
+and Signets in `vault`, the orb entity in `mining`. `registry` only holds the registers. Where the Tome item
 sits is decided by ADR 0006, with its screen-opening path.
 
 `integration.mekanism` in the Architect's table is renamed `integration.processing`. Mekanism has no code
@@ -387,3 +391,9 @@ T1 and is not a condition of acceptance, since nothing can be compiled before T1
 Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md`: the three mixin unknowns are
 answered from source, with the first load still E9-S7's (#311), and the AT section names the default path and the
 first lines it will hold. Nothing else changed.
+
+Amended 2026-10-31 by E2-S3 (#219): the `core.signet` row, its rule and its fixture, because the tier capabilities
+are pure logic and the adapter rows hold as little logic as they can. The signet item stays in `vault`. Named `core.signet` by Nick on 2026-11-01, after `core.igniter`.
+
+Amended 2026-11-01 by E2-S2 (#210): the `core.frame` row, its rule and its fixture, for the connected Vault Frame.
+The block stays in `vault`.

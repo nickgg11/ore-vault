@@ -14,6 +14,133 @@ Newest first.
 
 ---
 
+## 2026-11-01 — The frame is connected Woad Interlace; the price of getting in sits on the signet
+
+**Where this came from.** Nick's answers in the E2 thread, on the same day as the entry below, which left the
+frame unchosen. On the frame: "Yeah I take like the connected woad interlace, let's go with that one." On the
+price: "For balance we'll need to decide if the cost comes from the portal blocks, the signet ring, or the
+mining dimension being weak or not having much ore." The answer put to him was the signet, and he did not
+object, so that one is a recommendation he let stand, not his own pick. On the rendered art: "I'd say the rings
+look good and frame mostly looks good, I'd just say for the four corners the dark bezel should be present like
+the rest of the blocks turn its ready for in game testing." The spec was changed in §3.2 and §13. Nothing here
+has been seen in a client, so no §13 line is ticked.
+
+**Decisions.**
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| The Vault Frame is connected Woad Interlace: 16 textures picked per face from the neighbouring frames, so a built ring reads as one carved border. Rounded corners with corner blocks, four separate bars without | "The frame is not chosen" in the entry below, and the gunmetal frame | Nick's words above. It answers his complaint in the entry below that a portal shows where one block ends and the next begins. |
+| The recipe is 8 stone bricks + 1 lapis lazuli, shapeless, one frame per craft. The yield stays at one (Nb) | 8 iron ingots + 1 redstone dust, shapeless, one frame per craft | Portals go up to a 21×21 interior, which is 84 frames, so a price per block punishes the big ones: 672 iron at the old recipe. A first portal of 10 frames drops from about 13 veins of ore to about 3. That counts veins by ore: 84 iron at about 7 a vein plus one redstone vein, against one vein each of iron, redstone and lapis. Both counts are estimates, and neither is a time; lapis is rarer than iron, so the drop in time is smaller. Smelting is unchanged at 84 items, 840 seconds in one furnace and less with more, since 80 stone replaces 80 raw iron. What fell is the ore. A 21×21 portal is still 672 stone to smelt, so it is cheap in material, not free. |
+| The frame's sound and map colour are stone | Metal, both | They follow the material, as the entry below said they would. |
+| The price of getting in sits on the signet. The Worn Signet stays 1 iron ingot + 1 redstone dust for now, and the Vault keeps its full ore density | Nothing; the question was open | Of Nick's three places, the signet is the only one that charges once whatever the portal's size and leaves the mining alone. The E2-S4 playtest (#228) asks whether getting in felt too cheap. If it did, raise the signet's cost, not the frame's. |
+| The Worn Signet is redrawn from Nick's own references, decoded to exact pixels, and the frame's four corner textures get the dark bezel the other blocks have | The ring art that "stands for now" in the entry below; the corners in d9413d5 | Nick's words above. The Designer took `vault_frame_ul`, `_ur`, `_dl` and `_dr` back for the bezel after d9413d5. #218 stays open: it covers Tiers 2 to 4. |
+| The door, #401, stays deferred until the plain portal has passed its playtest | Nothing; the proposal below holds | The door must not hold up the first way into the Vault. It still needs a rendered preview and Nick's yes before any code. |
+
+**The thin edge is gone.** d9413d5 had a 17th texture, plain stone for the inside and outside of a frame one
+block thick, but a block with neighbours only above and below cannot tell its front from those faces, so only the
+bars showed it. Nick saw that in a client: "the corners look good, as for the textures on the inside and outside
+of the block, either have it for all blocks or no blocks." Plain on every block would need a scan of the whole
+ring and more block state, and would still have to guess for a lone column, so every face shows the interlace.
+
+**What this supersedes.**
+
+- In "The Signet replaces the Vault Key; the frame goes back to Nick" below: the row saying the frame is not
+  chosen and §3.2 keeps its numbers, and the row saying the ring art stands for now. Its requirement that a
+  built portal reads as one structure stands.
+
+**Rejected.**
+
+- Pricing the frame blocks. A price per block grows with the portal, so it taxes building a big one, and the
+  iron recipe already did that.
+- A weak Vault, or one with little ore. The ore density is the reward, so making it the cost takes away what
+  the player came for. If a playtest says getting in is too cheap, neither of these is the fix; the signet is.
+
+---
+
+## 2026-11-01 — The Signet replaces the Vault Key; the frame goes back to Nick
+
+**Where this came from.** Nick's answers in the E2 thread, after the Manager offered other names and other
+items. On the item: "I like the signet ring, it makes sense for it to have different abilities like the
+ability to teleport back." and "I think is want the key to be silver in appearance with the gem at top
+changing for the tiers." On the picks: "Let's do age names, the teleport was just an idea we can worry about
+if we want it later." The spec was changed in §1, §3.2, §3.3, §3.4, §3.5, §6, §8, §12 and §13, and only for
+the name, the verb and the gem.
+
+**Decisions.**
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| The portal item is the Signet, a silver signet ring with one gem that changes per tier. It opens a portal, pressed in; it is not unlocked or lit | The Vault Key, and the verb unlock | Nick's words above: a ring makes sense as a thing that carries abilities. Silver is his, and only the gem marks the tier, so the §3.2 ladder now lands on the gem. What each tier does in §3.3 is unchanged. |
+| The tiers are the Worn, Heirloom, Fabled and Primordial Signet, in that order | Crude, Attuned, Resonant and Sovereign. The Tier 4 name that was Sovereign in §3.3, §3.4 and §3.5, and in §8, is now Primordial | Nick chose between two lines the Manager offered, age names or noble titles. |
+| 1.0 still ships no Vault Recall item, and §13's line stands | Nothing; the 2026-10-27 answer holds | Nick: "the teleport was just an idea we can worry about if we want it later". The Signet gets no teleport. |
+| The ring art stands for now and #218 keeps it open | Nothing | Nick: "good enough for now but we will probably want better texture later". |
+| The frame is not chosen, and the gunmetal frame approved on the contact sheet is superseded. A built portal must read as one structure | The frame half of the approval below, and the five frames offered since, none of which Nick picked | Nick: "As for the portal blocks, I feel they look to janky when they're put together as a portal, you can clearly see where one block ends and the next begins. I'd say the textures should either be designed to be connecting textures that change if the same block is adjacent or they should be designed so they naturally flow into each other." The spec names no frame material yet, and §3.2 keeps its numbers until he picks. Any frame that stops being metal changes the sound and the recipe, and the Balancer then prices the first portal again. E2-S1 (#204) carries the new criterion. |
+
+**What this supersedes.**
+
+- In "Contact sheet approved; the Vault Igniter becomes the Vault Key" below: the name and tier rows, the
+  frame half of the approval, and the striker art. The ladder row and the stack-size row stand.
+- In "The locked door over the Vault portal" below: the door is still only proposed, but it has something to
+  press the signet into in place of the lock. Nick: "instead of a lock in the door it looks like something
+  you could press the key into". #401 carries it.
+
+**Rejected.**
+
+- **The key, the tuning fork, the miner's lantern and the dowsing rod.** All four were offered with the ring.
+  The key's other names (Lodekey, Seam Key, Delver's Key, Vault Tumbler) went with it. The Manager recommended
+  staying with a key, because the door's lock depended on it; Nick moved the lock instead.
+- **Noble titles** (Squire's, Knight's, Lord's and Sovereign's Signet).
+- **A teleport back on the Tier 3 ring,** recommended as a 4-second cast from inside the Vault to the return
+  spot. It would have been new, and Nick parked it. Do not add it from his first sentence above.
+
+---
+
+## 2026-11-01 — The locked door over the Vault portal (proposed, not a decision)
+
+**Where this came from.** Nick, in the same message that approved the contact sheet: "Also a neat idea could
+be that when a valid portal is made a big wood door texture with a large central round lock appears then the
+key unlocks the door, when you walk up to the portal the door swings open and shows the portal texture but
+when you're further away the door looks closed."
+
+**Status.** Proposed. Nothing in the spec changes and §3.2 still describes the plain portal. The idea is
+filed as E3-S13 and starts after the T3 playtest, E3-S7 (#253), has passed, so the door cannot hold up the
+first way into the Vault. It needs a rendered preview and Nick's yes before any code. The Manager told Nick
+this the same day. Nothing in this log's rejected lists covers it.
+
+**Unsettled, all for E3-S13.** How one door reads on every interior from 2x3 to 21x21; what shows through it;
+whether the open distance can be per player and client-side only; how entry and the four tier tints work
+with it; whether the return portal has a door.
+
+---
+
+## 2026-11-01 — Contact sheet approved; the Vault Igniter becomes the Vault Key
+
+**Where this came from.** Nick's answer on the E2-S1 contact sheet (#204): "I approve of the everything in
+the contact-sheet, I like the vault igniter being a key, I'd just rename to and change the flavour around it
+to account for it being a key instead of a flint and steel." The sentence gives no new name after "rename
+to". The Manager chose Vault Key and told Nick so in the thread. The spec was changed in §3.2, §3.3 and §13,
+with the rename carried through §1, §3.4, §3.5, §6, §8 and §12.
+
+**Decisions.**
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| The E2-S1 contact sheet is approved whole: the Vault Frame, the Tier 1 item, and the tier ladder | Nothing; it was waiting on Nick's yes | Nick's words above. The sheet is a computed render and nothing on it has been seen in a client, so the §13 lines for the frame and the key stay unticked. The item was described to him as an iron striker with a green bulb and a red ember, and he read it as a key; the art is approved as drawn. |
+| The tier ladder is T1 `#0D7026`, T2 `#316CFF`, T3 `#CB7DFF`, T4 `#FFAE2B`, for the keys, the portal tints and the return portal (§3.2) | The old build's #84 tints, which E3-S3 (#181) names as its start: `#66FF66`, `#5555FF`, `#CC33FF`, `#FF9933` | Each tier is lighter than the one below, so the order survives greyscale and colour blindness. That made T1 much darker than the old green, and Nick was told it may need another look on the translucent portal. E3-S3 (#181) checks T1 at the portal's real alpha and may reopen the ladder. |
+| The Tier 1 to 4 items are the Crude, Attuned, Resonant and Sovereign Vault Key, and the verb is unlock: a key unlocks a portal, it does not light or ignite one | Crude, Attuned, Resonant and Sovereign Vault Igniter; the verb light | Nick asked for the name and the flavour to follow the item being a key instead of a flint and steel. What each tier does in §3.3 is unchanged. The name is the Manager's choice from a gap in Nick's sentence, and he has since said prefixes on Vault Key can work and asked for 3 to 5 other names, so a later pass may change it again. Entries before this date keep "igniter". |
+| Keys stack to 1, every tier | Nothing; §3.3's rule carries over from the igniter | Written down so that the rename does not reopen it. The stack size is checked by gametest. |
+
+**Rejected.**
+
+- **Keeping the name Vault Igniter.** Nick likes the item as a key, and an igniter is the flint and steel he
+  asked to move away from.
+- **UI/UX's lighter purple `#D993FF` for T3.** The Designer kept `#CB7DFF` on the numbers. The T3 to T4 gap in
+  L* would have been 5.5 in greyscale and 2.7 under protanopia, against 11.5 and 8.7 for the approved colour.
+  At 2.7 purple would almost match orange in lightness under protanopia, and the ladder exists to keep the
+  tiers apart by lightness.
+
+---
+
 ## 2026-10-31 — What the Epic 0 review changed, round 2
 
 **Where this came from.** The same roles reviewed the round-1 fixes, and the Manager ruled on every new
