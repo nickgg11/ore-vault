@@ -188,10 +188,12 @@ When an FTB Team is disbanded, nothing kept for the team is deleted: its Vault w
 
 **Connected texture**
 - A built ring reads as one carved border. Each of a block's six faces shows one of 16 textures, picked from which of the block's six neighbours are Vault Frames (`FrameNeighbours`). Any other block beside a frame connects to nothing
-- Six boolean block state properties (`north`, `east`, `south`, `west`, `up`, `down`) hold those neighbours, giving 64 states with one cube model each. They are drawing state only: anything asking whether a block belongs to a frame tests the block, not these values
+- Six boolean block state properties (`north`, `east`, `south`, `west`, `up`, `down`) hold those neighbours, giving 64 states with one model each: a cube, except the 12 rounded corners below. They are drawing state only: anything asking whether a block belongs to a frame tests the block, not these values
 - The textures cover every combination of the face's four edges connecting; the name lists the edges as seen from outside the face (`vault_frame`, `_u`, `_d`, `_l`, `_r`, `_ud`, `_lr`, `_ul`, `_ur`, `_dl`, `_dr`, `_udl`, `_udr`, `_ulr`, `_dlr`, `_udlr`). Left and right swap between opposite faces, so a run stays correct from behind with no mirrored UVs
 - Every face follows that one rule, so the inside and outside of a ring show the interlace on all four sides of it, the same as its front and back. A column cannot tell its front from those faces, so a plain edge on some faces would apply to the bars and not the uprights
 - With its corner blocks in place a ring closes in rounded corners. With its corners empty it shows four separate bars, each ending at its last block
+- A block with exactly two neighbours on two perpendicular axes is a corner, and its outer edge is really rounded: 11 stepped boxes follow the curve of the corner texture (`FrameCorner`, 12 states across the three planes). The curved edge carries the weave round on the `vault_frame_rim_*` textures. A block with any third neighbour stays a cube, so a thick wall keeps its square corners
+- A rounded corner's outline and collision follow the same shape, and a player can walk over it, but mobs do not path through it. Like a stair it does not conduct redstone and does not suffocate. Most attachments that need a full face will not hold on the curve; wall signs and centre-supported blocks still can, as on a stair. A frame is still recognised by its block, never by its shape
 - A lone block, the item and the break particles use the unconnected `vault_frame` texture on every face
 
 **VaultPortalShape Scanner**
@@ -2966,9 +2968,10 @@ Use this to track progress. Tick a line only when the work has merged and been s
 ### Portal and Signet
 - [ ] Vault Frame block: hardness 1.5, blast resistance 6.0, stone sound, stone map colour, drops itself only to a pickaxe, by gametest (§3.2) — E2-S2 (#210)
 - [ ] Connected Vault Frame: six neighbour properties, one model for each of the 64 states, 16 textures picked per face, connecting only to Vault Frames (§3.2) — E2-S2 (#210)
+- [ ] Rounded Vault Frame corners: 12 states of 11 stepped boxes, outline and collision to match, by gametest and seen in a client (§3.2) — E2-S2 (#210)
 - [ ] Vault Frame `minecraft:mineable/pickaxe` tag in the **`minecraft` namespace** — E2-S2 (#210)
 - [ ] Vault Frame shapeless recipe (8 stone bricks + 1 lapis lazuli, one frame) — E2-S2 (#210)
-- [ ] Woad Interlace Vault Frame (16 textures) and Worn Signet textures at 16×16 — E2-S1 (#204)
+- [ ] Woad Interlace Vault Frame (16 face and 4 rim textures) and Worn Signet textures at 16×16 — E2-S1 (#204)
 - [ ] `VaultPortalShape` scanner as pure logic (both axes, 2×3 to 21×21, corners optional) — E3-S2 (#207)
 - [ ] Ore Vault Portal block: no collision, unbreakable, `HORIZONTAL_AXIS`, four tier variants, failure sound only on a wrong frame (§3.2) — E3-S4 (#229)
 - [ ] Whole-frame dissolve when a side block breaks (`updateShape`) — E3-S4 (#229)

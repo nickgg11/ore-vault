@@ -57,6 +57,20 @@ ring and more block state, and would still have to guess for a lone column, so e
 
 ---
 
+## 2026-11-01 — Frame corners are really round
+
+Nick, seeing the frame in game: "in game it looks good but it think it'd look even better if the outside corners also rounded off it that's possible. is it possible to make a some of the block transparent so it looks round? That could be another option." Shown a computed render of three ways, he said: "Let's do smooth."
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| A corner block is 11 stepped boxes following the curve, with outline and collision to match. It applies to a block with exactly two neighbours on perpendicular axes | A full cube with a stone wedge outside the curve | Nick's words above. |
+
+**Rejected.**
+- Transparent pixels. Straight on they match, but at an angle the top and side stay square with a hole under them, and the outline stays square.
+- A coarse 5-box corner. It reads as a staircase and needs the corner art repainted.
+
+**Known weak.** The weave breaks into flecks across the 1-texel steps mid curve. Only the top-left corner on an upright frame has the weave's true phase at both seams; the others reflect it, because a full fix is up to 16 textures against the 4 used. Nick checked this in a client, with the lighting, a block against the curve, the outline and walking over it: "Everything you wanted me to check is good."
+
 ## 2026-11-01 — The Signet replaces the Vault Key; the frame goes back to Nick
 
 **Where this came from.** Nick's answers in the E2 thread, after the Manager offered other names and other

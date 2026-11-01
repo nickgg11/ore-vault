@@ -1,12 +1,465 @@
 {
-  "parent": "minecraft:block/cube",
+  "parent": "minecraft:block/block",
+  "elements": [
+    {
+      "faces": {
+        "east": {
+          "cullface": "east",
+          "texture": "#east"
+        },
+        "north": {
+          "texture": "#riser",
+          "uv": [
+            16.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "up": {
+          "cullface": "up",
+          "rotation": 90,
+          "texture": "#tread",
+          "uv": [
+            13.0,
+            16.0,
+            16.0,
+            0.0
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#west"
+        }
+      },
+      "from": [
+        0,
+        15,
+        13
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "cullface": "east",
+          "texture": "#east"
+        },
+        "north": {
+          "texture": "#riser",
+          "uv": [
+            16.0,
+            1.0,
+            0.0,
+            2.0
+          ]
+        },
+        "up": {
+          "rotation": 90,
+          "texture": "#tread",
+          "uv": [
+            10.0,
+            16.0,
+            16.0,
+            0.0
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#west"
+        }
+      },
+      "from": [
+        0,
+        14,
+        10
+      ],
+      "to": [
+        16,
+        15,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "cullface": "east",
+          "texture": "#east"
+        },
+        "north": {
+          "texture": "#riser",
+          "uv": [
+            16.0,
+            2.0,
+            0.0,
+            3.0
+          ]
+        },
+        "up": {
+          "rotation": 90,
+          "texture": "#tread",
+          "uv": [
+            8.0,
+            16.0,
+            16.0,
+            0.0
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#west"
+        }
+      },
+      "from": [
+        0,
+        13,
+        8
+      ],
+      "to": [
+        16,
+        14,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "cullface": "east",
+          "texture": "#east"
+        },
+        "north": {
+          "texture": "#riser",
+          "uv": [
+            16.0,
+            3.0,
+            0.0,
+            4.0
+          ]
+        },
+        "up": {
+          "rotation": 90,
+          "texture": "#tread",
+          "uv": [
+            7.0,
+            16.0,
+            16.0,
+            0.0
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#west"
+        }
+      },
+      "from": [
+        0,
+        12,
+        7
+      ],
+      "to": [
+        16,
+        13,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "cullface": "east",
+          "texture": "#east"
+        },
+        "north": {
+          "texture": "#riser",
+          "uv": [
+            16.0,
+            4.0,
+            0.0,
+            5.0
+          ]
+        },
+        "up": {
+          "rotation": 90,
+          "texture": "#tread",
+          "uv": [
+            6.0,
+            16.0,
+            16.0,
+            0.0
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#west"
+        }
+      },
+      "from": [
+        0,
+        11,
+        6
+      ],
+      "to": [
+        16,
+        12,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "cullface": "east",
+          "texture": "#east"
+        },
+        "north": {
+          "texture": "#riser",
+          "uv": [
+            16.0,
+            5.0,
+            0.0,
+            6.0
+          ]
+        },
+        "up": {
+          "rotation": 90,
+          "texture": "#tread",
+          "uv": [
+            5.0,
+            16.0,
+            16.0,
+            0.0
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#west"
+        }
+      },
+      "from": [
+        0,
+        10,
+        5
+      ],
+      "to": [
+        16,
+        11,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "cullface": "east",
+          "texture": "#east"
+        },
+        "north": {
+          "texture": "#riser",
+          "uv": [
+            16.0,
+            6.0,
+            0.0,
+            7.0
+          ]
+        },
+        "up": {
+          "rotation": 90,
+          "texture": "#tread",
+          "uv": [
+            4.0,
+            16.0,
+            16.0,
+            0.0
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#west"
+        }
+      },
+      "from": [
+        0,
+        9,
+        4
+      ],
+      "to": [
+        16,
+        10,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "cullface": "east",
+          "texture": "#east"
+        },
+        "north": {
+          "texture": "#riser",
+          "uv": [
+            16.0,
+            7.0,
+            0.0,
+            8.0
+          ]
+        },
+        "up": {
+          "rotation": 90,
+          "texture": "#tread",
+          "uv": [
+            3.0,
+            16.0,
+            16.0,
+            0.0
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#west"
+        }
+      },
+      "from": [
+        0,
+        8,
+        3
+      ],
+      "to": [
+        16,
+        9,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "cullface": "east",
+          "texture": "#east"
+        },
+        "north": {
+          "texture": "#riser",
+          "uv": [
+            16.0,
+            8.0,
+            0.0,
+            10.0
+          ]
+        },
+        "up": {
+          "rotation": 90,
+          "texture": "#tread",
+          "uv": [
+            2.0,
+            16.0,
+            16.0,
+            0.0
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#west"
+        }
+      },
+      "from": [
+        0,
+        6,
+        2
+      ],
+      "to": [
+        16,
+        8,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "cullface": "east",
+          "texture": "#east"
+        },
+        "north": {
+          "texture": "#riser",
+          "uv": [
+            16.0,
+            10.0,
+            0.0,
+            13.0
+          ]
+        },
+        "up": {
+          "rotation": 90,
+          "texture": "#tread",
+          "uv": [
+            1.0,
+            16.0,
+            16.0,
+            0.0
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#west"
+        }
+      },
+      "from": [
+        0,
+        3,
+        1
+      ],
+      "to": [
+        16,
+        6,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "cullface": "east",
+          "texture": "#east"
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#riser",
+          "uv": [
+            16.0,
+            13.0,
+            0.0,
+            16.0
+          ]
+        },
+        "up": {
+          "rotation": 90,
+          "texture": "#tread",
+          "uv": [
+            0.0,
+            16.0,
+            16.0,
+            0.0
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#west"
+        }
+      },
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        3,
+        16
+      ]
+    }
+  ],
   "textures": {
-    "down": "orevault:block/vault_frame_u",
     "east": "orevault:block/vault_frame_dl",
-    "north": "orevault:block/vault_frame_d",
     "particle": "orevault:block/vault_frame",
-    "south": "orevault:block/vault_frame_d",
-    "up": "orevault:block/vault_frame_d",
+    "riser": "orevault:block/vault_frame_rim_riser_mixed",
+    "tread": "orevault:block/vault_frame_rim_tread_mixed",
     "west": "orevault:block/vault_frame_dr"
   }
 }
