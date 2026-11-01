@@ -39,7 +39,7 @@ Issue and ticket numbers written `#N` or `[N]` in §1 to §12 are **pre-restart*
 
 ### What the Mod Is
 
-Ore Vault adds a per-team mining dimension with dramatically increased ore density, zero ambient mob spawning, and full universal brightness. Players build a rectangular portal frame from Vault Frame blocks, unlock it with a Vault Key, and step through into their team's private Vault dimension. Inside, they mine ores, accumulate Resonance, and progress through a shared skill tree that enhances their Vault experience over time.
+Ore Vault adds a per-team mining dimension with dramatically increased ore density, zero ambient mob spawning, and full universal brightness. Players build a rectangular portal frame from Vault Frame blocks, open it with a Signet, and step through into their team's private Vault dimension. Inside, they mine ores, accumulate Resonance, and progress through a shared skill tree that enhances their Vault experience over time.
 
 A secondary system — Disturbed Zones — lets teams opt into mob farming within specific areas of the Vault using a placeable block, progressing a separate Animus-driven skill tree focused on combat rewards.
 
@@ -180,7 +180,7 @@ When an FTB Team is disbanded, nothing kept for the team is deleted: its Vault w
 - Mineable with any pickaxe (`minecraft:mineable/pickaxe` tag; MC 26.1 harvest rules are driven by the item `Tool` component)
 - Requires correct tool to drop
 - Sound: metal
-- Right-clicking with a Vault Key triggers the portal shape scan
+- Right-clicking with a Signet triggers the portal shape scan
 - Breaking any block of the frame's four sides dissolves the whole portal (`updateShape` whole-frame re-validation). Corners are optional (below), so a corner block is not part of the frame and breaking one leaves the portal standing
 
 **VaultPortalShape Scanner**
@@ -189,19 +189,19 @@ When an FTB Team is disbanded, nothing kept for the team is deleted: its Vault w
 - Interior dimensions: minimum 2 wide × 3 tall, maximum 21 wide × 21 tall
 - Interior must be entirely air or existing portal blocks
 - If valid: fills interior with the tier-matched Ore Vault Portal variant, oriented to match the frame axis
-- If invalid: plays a failure sound, no portal created. Nothing says which side is wrong: like a nether portal, the frame either unlocks or it does not (Nick, 2026-10-27, declining an action-bar line naming the problem)
+- If invalid: plays a failure sound, no portal created. Nothing says which side is wrong: like a nether portal, the frame either opens or it does not (Nick, 2026-10-27, declining an action-bar line naming the problem)
 
 **Ore Vault Portal Block**
 - No collision
 - Hardness: -1.0 (unbreakable), blast resistance: 3,600,000
 - Light level: 11
 - Has HORIZONTAL_AXIS block state property for orientation
-- Four variants, one per key tier (#84): common (green), uncommon (blue), rare (purple), legendary (orange) — the key's tier selects which variant fills the frame. All four share one near-white texture tinted client-side via BlockColors (`tintindex`), and everything that recognises "a portal block" uses the `orevault:vault_portals` block tag.
-- Tier colours, shared by the keys, the portal tints and the return portal: T1 `#0D7026`, T2 `#316CFF`, T3 `#CB7DFF`, T4 `#FFAE2B`, each lighter than the tier below (Nick, 2026-11-01, on the E2-S1 contact sheet). E3-S3 (#181) checks T1 at the portal's real alpha and may reopen the ladder
+- Four variants, one per signet tier (#84): common (green), uncommon (blue), rare (purple), legendary (orange) — the signet's tier selects which variant fills the frame. All four share one near-white texture tinted client-side via BlockColors (`tintindex`), and everything that recognises "a portal block" uses the `orevault:vault_portals` block tag.
+- Tier colours, shared by the signets' gems, the portal tints and the return portal: T1 `#0D7026`, T2 `#316CFF`, T3 `#CB7DFF`, T4 `#FFAE2B`, each lighter than the tier below (Nick, 2026-11-01, on the E2-S1 contact sheet). E3-S3 (#181) checks T1 at the portal's real alpha and may reopen the ladder
 - Implements MC 26.1's `Portal` interface: entering starts the vanilla nether-style charge-up — 80 ticks (4 seconds) inside the portal with the wavy "confusion" screen overlay, giving players the chance to step back out — followed by a portal travel sound and the teleport
 - `entityInside()` handles teleportation (players only)
 - `updateShape()` breaks to air if a neighbouring block is neither Vault Frame nor portal block (whole-frame re-validation)
-- Teleport cooldown: 80 ticks (4 seconds) using vanilla `portalCooldown`; Tier 3+ key holders skip the wait and the cooldown entirely (§3.3)
+- Teleport cooldown: 80 ticks (4 seconds) using vanilla `portalCooldown`; Tier 3+ signet holders skip the wait and the cooldown entirely (§3.3)
 
 **No team gate.** FTB Teams auto-creates a single-member team for every player, so there is no such thing as a teamless player at runtime and nothing is gated on team membership. `getTeamForPlayerID` never returns empty on a live server; any check written against it is dead code. Solo players get a solo Vault, exactly as §2 describes.
 
@@ -222,7 +222,7 @@ Else:
 
 The return position is saved **only after the teleport succeeds**. Saving it first means a trip that fails part-way leaves a return position pointing at a trip that never happened.
 
-**The Vault side is fixed; only the Overworld side is remembered.** Every trip into a team's Vault lands on the same block — the team anchor at X=0, Z=0 — regardless of where in the Overworld the portal was. Vault arrival never mirrors, offsets, or otherwise derives from Overworld coordinates. There is no nether-style travel logic on either side: no coordinate scaling and no search for a matching portal. Exactly one return portal exists per Vault, built at that anchor on first entry and idempotent thereafter, and it is tier-coloured to match the highest key tier that has opened the Vault (upgrading, never downgrading).
+**The Vault side is fixed; only the Overworld side is remembered.** Every trip into a team's Vault lands on the same block — the team anchor at X=0, Z=0 — regardless of where in the Overworld the portal was. Vault arrival never mirrors, offsets, or otherwise derives from Overworld coordinates. There is no nether-style travel logic on either side: no coordinate scaling and no search for a matching portal. Exactly one return portal exists per Vault, built at that anchor on first entry and idempotent thereafter, and it is tier-coloured to match the highest signet tier that has opened the Vault (upgrading, never downgrading).
 
 Return position is stored in the player's NeoForge data attachment `orevault:player`, registered with `copyOnDeath`, as `return_pos {dim, x, y, z}`. The same attachment holds `in_vault`, `tome_granted`, the personal entry points, the Homeward Seam anchor and cooldown and the last Vault death (§11 SavedData Pattern). It survives death and dimension changes. The saved spot is walked out along the approach direction past the last portal block, so returning never instantly re-triggers the portal.
 
@@ -232,22 +232,22 @@ Return position is stored in the player's NeoForge data attachment `orevault:pla
 
 ---
 
-### 3.3 Vault Key Tiers
+### 3.3 Signet Tiers
 
-The Vault Key is what opens a Vault portal: the player builds the frame, then unlocks it with the key. Four tiers, each crafted from the previous tier plus additional materials.
+The Signet is a silver signet ring with one gem, and the gem changes per tier. It is what opens a Vault portal: the player builds the frame, then presses the signet into it. Four tiers, each crafted from the previous tier plus additional materials.
 
-**Every tier grants a persistent capability, not a buff.** Earlier drafts gave the tiers short potion effects on arrival (Speed I for 5s, Haste I, Haste II); those were removed. They were cosmetic noise, and the Vault Fever and Miner's Constitution nodes already own the haste and hunger axes far more meaningfully — a 15-second Haste II on entry is worthless next to a node granting it permanently. A key carries access, not stats. Every tier stacks to 1.
+**Every tier grants a persistent capability, not a buff.** Earlier drafts gave the tiers short potion effects on arrival (Speed I for 5s, Haste I, Haste II); those were removed. They were cosmetic noise, and the Vault Fever and Miner's Constitution nodes already own the haste and hunger axes far more meaningfully — a 15-second Haste II on entry is worthless next to a node granting it permanently. A signet carries access, not stats. Every tier stacks to 1.
 
 | Tier | Name | Recipe | Capability |
 |---|---|---|---|
-| 1 | Crude Vault Key | Iron ingot + Redstone dust (shaped, horizontal) | Opens the portal. Nothing else. |
-| 2 | Attuned Vault Key | Tier 1 + Gold ingot + 4 Resonance Crystals | Set and recall **one** personal entry point inside the Vault (right-click a block while holding the key) |
-| 3 | Resonant Vault Key | Tier 2 + Diamond + 8 Resonance Crystals | Instant travel — skips the 4-second portal charge and the re-entry cooldown entirely; personal entry points raised to **3**, selectable as a waypoint list |
-| 4 | Sovereign Vault Key | Tier 3 + Netherite ingot + 16 Resonance Crystals | Unlocks the Vault Reset button in the Tome UI; required (and returned) by the Vault Anchor recipe (§3.4) |
+| 1 | Worn Signet | Iron ingot + Redstone dust (shaped, horizontal) | Opens the portal. Nothing else. |
+| 2 | Heirloom Signet | Tier 1 + Gold ingot + 4 Resonance Crystals | Set and recall **one** personal entry point inside the Vault (right-click a block while holding the signet) |
+| 3 | Fabled Signet | Tier 2 + Diamond + 8 Resonance Crystals | Instant travel — skips the 4-second portal charge and the re-entry cooldown entirely; personal entry points raised to **3**, selectable as a waypoint list |
+| 4 | Primordial Signet | Tier 3 + Netherite ingot + 16 Resonance Crystals | Unlocks the Vault Reset button in the Tome UI; required (and returned) by the Vault Anchor recipe (§3.4) |
 
-Personal entry points are stored per player as `entry_points` on the player attachment `orevault:player` (§11 SavedData Pattern). A Vault Anchor set as an entry point (§3.4) takes one of these slots, so a Tier 2 key's one slot stays one (Nick, 2026-10-27). Without a Tier 4 key the reset button does not appear in the UI, and Vault Anchors cannot be crafted at all.
+Personal entry points are stored per player as `entry_points` on the player attachment `orevault:player` (§11 SavedData Pattern). A Vault Anchor set as an entry point (§3.4) takes one of these slots, so a Tier 2 signet's one slot stays one (Nick, 2026-10-27). Without a Tier 4 signet the reset button does not appear in the UI, and Vault Anchors cannot be crafted at all.
 
-> **Resonance Crystals.** Not craftable from raw materials — the *only* source is Attuned ore, which drops from the Runic Attunement skill (§6.1). Recipe: **4 Attuned raw ore (any type) + 1 Amethyst Shard → 1 Resonance Crystal** (shapeless). This deliberately gates the key ladder behind a skill investment rather than a free recipe, and gives Runic Attunement a concrete purpose — it is the supply line for key upgrades and Vault Anchors. Total cost of a Tier 4 key is 28 Crystals = 112 Attuned ore, which at Runic Attunement Tier 3 (20% attune chance) is roughly 560 ore mined: a genuine but reachable investment.
+> **Resonance Crystals.** Not craftable from raw materials — the *only* source is Attuned ore, which drops from the Runic Attunement skill (§6.1). Recipe: **4 Attuned raw ore (any type) + 1 Amethyst Shard → 1 Resonance Crystal** (shapeless). This deliberately gates the signet ladder behind a skill investment rather than a free recipe, and gives Runic Attunement a concrete purpose — it is the supply line for signet upgrades and Vault Anchors. Total cost of a Tier 4 signet is 28 Crystals = 112 Attuned ore, which at Runic Attunement Tier 3 (20% attune chance) is roughly 560 ore mined: a genuine but reachable investment.
 
 ---
 
@@ -257,12 +257,12 @@ Personal entry points are stored per player as `entry_points` on the player atta
 The mod registers chunk loading tickets through NeoForge's `TicketController`, registered on the mod event bus, for chunks inside the Vault that contain an active Vault Anchor block. Forced tickets are saved with the level, but the server reactivates them only for the levels that exist when it prepares its levels at start (`MinecraftServer#prepareLevels`). A Vault is not one of them: it is registered afterwards, by the restore pass (§11 Dimension-per-Team Registration). So the restore pass reactivates a restored Vault's tickets itself, right after posting `LevelEvent.Load`, mirroring what `prepareLevels` does for the vanilla levels: it reads the level's saved tickets, activates the deactivated ones, then has NeoForge's `ForcedChunkManager` do the same for the mod's forced tickets (`docs/adr/0002-vault-lifecycle.md`). Without this step every Vault Anchor stops loading its chunk after a restart. The NeoForge call runs the `TicketController`'s loading-validation callback itself, before the tickets go live, so the restore pass makes no separate call. A callback that reads its block loads that chunk synchronously during restore, and that is unverified until E10-S3 (#373) checks it across a restart in a running game. A ticket is kept only if its Vault Anchor block is still present and the team is under its ceiling. A ticket is removed when its anchor is.
 
 **Vault Anchor Block**
-- Crafted from Vault Frame blocks + Resonance Crystal + a **Tier 4 Sovereign Vault Key**, which is *not consumed* — it is returned to the crafting grid as a crafting remainder, the same pattern vanilla uses for buckets and water bottles
-- The key is therefore a **recipe gate, not a placement gate.** Gating placement instead would mean the block pops out of the world and back into the player's inventory when they lack the key, which reads as a bug rather than a rule. Gating the recipe means an anchor that exists can always be placed
+- Crafted from Vault Frame blocks + Resonance Crystal + a **Tier 4 Primordial Signet**, which is *not consumed* — it is returned to the crafting grid as a crafting remainder, the same pattern vanilla uses for buckets and water bottles
+- The signet is therefore a **recipe gate, not a placement gate.** Gating placement instead would mean the block pops out of the world and back into the player's inventory when they lack the signet, which reads as a bug rather than a rule. Gating the recipe means an anchor that exists can always be placed
 - Placeable inside the Vault only
 - Registers a chunk loading ticket for its chunk on placement
 - Deregisters on removal
-- Serves dual purpose: chunk loader and personal waypoint (right-click to set as a personal entry point with a Tier 2+ key). An Anchor used as an entry point takes one of the player's entry-point slots (§3.3: one at Tier 2, three at Tier 3); it adds none (Nick, 2026-10-27)
+- Serves dual purpose: chunk loader and personal waypoint (right-click to set as a personal entry point with a Tier 2+ signet). An Anchor used as an entry point takes one of the player's entry-point slots (§3.3: one at Tier 2, three at Tier 3); it adds none (Nick, 2026-10-27)
 - Maximum simultaneous tickets per team determined by Vault Presence skill node (see skill tree)
 - Admin config can set a hard ceiling on max tickets regardless of node level
 
@@ -285,7 +285,7 @@ The places they touch deliberately are Echo Chamber (§6.1), which makes Vault E
 
 ### 3.5 Dimension Reset
 
-**Trigger:** Reset button in the Ore Memory tab of the Tome of the Deep Seam (§8), shown only to a viewing player who holds a Tier 4 Sovereign Vault Key in their own inventory. A client can see only its own inventory, so the button follows the viewer, not the team.
+**Trigger:** Reset button in the Ore Memory tab of the Tome of the Deep Seam (§8), shown only to a viewing player who holds a Tier 4 Primordial Signet in their own inventory. A client can see only its own inventory, so the button follows the viewer, not the team.
 
 **Voting logic:**
 - Count currently online team members
@@ -1169,7 +1169,7 @@ The nodes are listed in this order: the skills carried over from the tiered tree
 
 **Runic Attunement**
 
-> 5% of ore drops come out Attuned, rising to 12%, then 20%. Four Attuned raw ore of any type plus one amethyst shard craft a Resonance Crystal, which every Vault Key upgrade and every Vault Anchor needs.
+> 5% of ore drops come out Attuned, rising to 12%, then 20%. Four Attuned raw ore of any type plus one amethyst shard craft a Resonance Crystal, which every Signet upgrade and every Vault Anchor needs.
 
 | Tier (nodes owned) | Effect | Ring |
 |---|---|---|
@@ -2448,7 +2448,7 @@ count.
 
 ### Vault Reset Button
 
-- Only appears in the UI if the viewing player holds a Tier 4 Sovereign Vault Key in their inventory
+- Only appears in the UI if the viewing player holds a Tier 4 Primordial Signet in their inventory
 - Located in the Ore Memory tab (bottom right corner, clearly separated from stats)
 - Click → the initiator confirms (with the backup checkbox); every other online team member gets a toast and a clickable chat line that opens the vote screen. No screen opens by itself (§3.5; Nick, 2026-10-27)
 - Voting follows the majority rule (see Section 3.5)
@@ -2895,7 +2895,7 @@ The repo was restarted on 2026-10-25 and is being rebuilt. Tasks are T1 to T14, 
 |---|---|---|
 | T1 | Toolchain and an empty mod: build, unit tests, dev client and server, gametest server boot | |
 | — | Docs PR: the spec corrections that must land before T3 | |
-| T2 | Vault Frame and Crude Vault Key, registered the 26.1 way and seen in game | |
+| T2 | Vault Frame and Worn Signet, registered the 26.1 way and seen in game | |
 | T3 | Dimension path: lazy creation, restore at server start, portal, return position, logout inside a Vault | |
 | T4 | Chunk generator, rarity classifier and the §3.1 baseline, measured | |
 | T8a | Node data model and tree layout file: node and skill ids, rings, classes, marks, edges, petals, mod conditions, reserved ids, the layout tests of §6 | |
@@ -2952,16 +2952,16 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Per-chunk vein index in the `orevault:vein_index` chunk attachment, written at generation and kept across unloads and restarts (§11 Vein Index, ADR 0004); carry-over is unverified in a running game until the spike — E6-S4 (#209) spike, E9-S4 (#308)
 - [ ] Vault Expansion: the Vault re-created under the expanded type at the next reset (§3.5) — E11-S7 (#290)
 
-### Portal and Key
+### Portal and Signet
 - [ ] Vault Frame block: hardness 1.5, blast resistance 6.0, metal sound, drops itself only to a pickaxe, by gametest (§3.2) — E2-S2 (#210)
 - [ ] Vault Frame `minecraft:mineable/pickaxe` tag in the **`minecraft` namespace** — E2-S2 (#210)
 - [ ] Vault Frame shapeless recipe (8 iron + 1 redstone, one frame) — E2-S2 (#210)
-- [ ] Vault Frame and Crude Vault Key textures at 16×16 — E2-S1 (#204)
+- [ ] Vault Frame and Worn Signet textures at 16×16 — E2-S1 (#204)
 - [ ] `VaultPortalShape` scanner as pure logic (both axes, 2×3 to 21×21, corners optional) — E3-S2 (#207)
 - [ ] Ore Vault Portal block: no collision, unbreakable, `HORIZONTAL_AXIS`, four tier variants, failure sound only on a wrong frame (§3.2) — E3-S4 (#229)
 - [ ] Whole-frame dissolve when a side block breaks (`updateShape`) — E3-S4 (#229)
-- [ ] Crude Vault Key (Tier 1): capability accessors for all four tiers (`entryPointCapacity`, `hasInstantTravel`, `canResetVault`), tooltip built from them, no tier-number comparison, stacks to 1 (§3.3); right-click arrives with E3-S4 (#229) — E2-S3 (#219)
-- [ ] Attuned, Resonant and Sovereign Vault Keys (Tiers 2 to 4) with their recipes (§3.3) — E10-S1 (#369); textures — E13-S2b (#218)
+- [ ] Worn Signet (Tier 1): capability accessors for all four tiers (`entryPointCapacity`, `hasInstantTravel`, `canResetVault`), tooltip built from them, no tier-number comparison, stacks to 1 (§3.3); right-click arrives with E3-S4 (#229) — E2-S3 (#219)
+- [ ] Heirloom, Fabled and Primordial Signets (Tiers 2 to 4) with their recipes (§3.3) — E10-S1 (#369); textures — E13-S2b (#218)
 - [ ] Tier 2: one personal entry point; Tier 3: three, chosen from a list, and instant travel. Stored as `entry_points` on the player attachment (§11) — E10-S1 (#369); list design — E10-S7 (#293)
 - [ ] Tier 4: the reset button appears only for a viewer holding it (§3.5) — E11-S5 (#298); the Vault Anchor recipe takes it and returns it — E10-S3 (#373)
 - [ ] Resonance Crystal item and recipe (4 Attuned raw ore + 1 Amethyst Shard, §3.3); the attuned slot's `neoforge:components` ingredient JSON is unverified until it loads in a running game — E9-S28 (#332); texture — E13-S2a (#185)
@@ -2973,7 +2973,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Vanilla nether-style charge-up of 80 ticks with the wavy overlay, the travel sound, and an 80-tick re-entry cooldown (§3.2) — E3-S4 (#229)
 - [ ] Fixed team anchor at X=0, Z=0, with safe arrival on the surface; nothing derived from Overworld coordinates (§3.1, §3.2) — E3-S6b (#244)
 - [ ] Exactly one 4×5 return portal per Vault, built at the anchor and idempotent — E3-S6b (#244)
-- [ ] Return portal coloured by the highest key tier that has entered, read back from the placed blocks — E3-S6b (#244)
+- [ ] Return portal coloured by the highest signet tier that has entered, read back from the placed blocks — E3-S6b (#244)
 - [ ] No team gate: nothing is gated on having a team (§3.2, §9) — E3-S8 (#206)
 - [ ] Tier 3+ skips the charge-up and the cooldown — E10-S1 (#369)
 - [ ] The `in_vault` login check: a player whose Vault is gone goes to their return position; one whose Vault was reset while they were offline goes to the team anchor (§11, ADR 0002) — E3-S6a (#237)
@@ -3150,14 +3150,14 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Ore Memory tab, small for 1.0: Survey panel (depth gauge with band edges, the death marker `last_vault_death`, Seismic Sense's slot) and the reset button (§8 Tab 3) — E7-S7 (#295)
 - [ ] Survey panel line: whether the current chunk was generated with the team's current generation nodes (§8 Tab 3) — E7-S7 (#295), E9-S3 (#307)
 - [ ] Seismic Sense ore-density readout, gated on the node — E9-S32a (#336)
-- [ ] Vault reset button, shown only to a viewer holding a Tier 4 key — E11-S5 (#298)
+- [ ] Vault reset button, shown only to a viewer holding a Tier 4 signet — E11-S5 (#298)
 - [ ] Reset vote: toast and clickable chat line for other online members, vote screen opened from the line, never by itself (§3.5) — E11-S2 (#294) design, E11-S5 (#298)
 - [ ] Reset countdown warning — E11-S2 (#294), E11-S5 (#298)
 - [ ] Reset count in the generation seed (`vault_generation`, §3.1) — E3-S5 (#233) seeds from the team, E9-S3 (#307), E11-S3 (#284)
 
 ### Chunk Loading
 - [ ] Vault Anchor block, placeable inside the Vault only — E10-S3 (#373); texture — E10-S2 (#216)
-- [ ] Vault Anchor crafting recipe, returning the Tier 4 key — E10-S3 (#373)
+- [ ] Vault Anchor crafting recipe, returning the Tier 4 signet — E10-S3 (#373)
 - [ ] `TicketController` on the mod bus: ticket on placement, removed on removal, validated on load; the validation callback reading its block during restore is unverified until checked across a restart in a running game — E10-S3 (#373)
 - [ ] A restored Vault's saved tickets reactivated by the restore pass, so an Anchor keeps loading its chunk after a restart (§3.4, ADR 0002); checked by setting an Anchor, restarting with nobody joining, and seeing a furnace in the anchored chunk advance — E10-S3 (#373)
 - [ ] Ticket ceiling per team, the lower of the Vault Presence node and the config — E10-S3 (#373), E10-S4 (#379)

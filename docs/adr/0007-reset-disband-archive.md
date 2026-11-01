@@ -101,7 +101,7 @@ member ids, booleans and tick counts in, a state out.
 - The backup flag rides on the session, set by the initiator, and is forced off when
   `reset.allow_backup_on_reset` (§10) is false.
 
-Who may start one is checked on the server: the sender holds a Tier 4 Vault Key (§3.5), outside or inside
+Who may start one is checked on the server: the sender holds a Tier 4 Signet (§3.5), outside or inside
 the Vault. Other online members get a toast and a clickable chat line, never a screen (Q16). The line runs
 `/orevault reset vote` (ADR 0006). The `/orevault` root and its `reset vote` and `archive` subcommands are
 registered whatever `[debug].enable_debug_commands` says; only the debug subcommands sit behind it (§13).
@@ -185,7 +185,7 @@ becomes "reset, restart, check the folder and the team file".
 The result and its date are copied here from ADR 0002 when that section is filled.
 
 The return portal's tier is held by its placed blocks (PR #109), so after a reset it starts at the tier of
-the next Vault Key that enters and climbs again. Colour only.
+the next Signet that enters and climbs again. Colour only.
 
 Players offline inside the Vault at a reset are not touched. Their file still names the Vault's dimension key; on login
 ADR 0002's check sees a `vault_generation` above the one in their `in_vault` and places them at the team

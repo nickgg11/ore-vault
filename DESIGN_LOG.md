@@ -14,6 +14,44 @@ Newest first.
 
 ---
 
+## 2026-11-01 — The Signet replaces the Vault Key; the frame goes back to Nick
+
+**Where this came from.** Nick's answers in the E2 thread, after the Manager offered other names and other
+items. On the item: "I like the signet ring, it makes sense for it to have different abilities like the
+ability to teleport back." and "I think is want the key to be silver in appearance with the gem at top
+changing for the tiers." On the picks: "Let's do age names, the teleport was just an idea we can worry about
+if we want it later." The spec was changed in §1, §3.2, §3.3, §3.4, §3.5, §6, §8, §12 and §13, and only for
+the name, the verb and the gem.
+
+**Decisions.**
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| The portal item is the Signet, a silver signet ring with one gem that changes per tier. It opens a portal, pressed in; it is not unlocked or lit | The Vault Key, and the verb unlock | Nick's words above: a ring makes sense as a thing that carries abilities. Silver is his, and only the gem marks the tier, so the §3.2 ladder now lands on the gem. What each tier does in §3.3 is unchanged. |
+| The tiers are the Worn, Heirloom, Fabled and Primordial Signet, in that order | Crude, Attuned, Resonant and Sovereign. The Tier 4 name that was Sovereign in §3.3, §3.4 and §3.5, and in §8, is now Primordial | Nick chose between two lines the Manager offered, age names or noble titles. |
+| 1.0 still ships no Vault Recall item, and §13's line stands | Nothing; the 2026-10-27 answer holds | Nick: "the teleport was just an idea we can worry about if we want it later". The Signet gets no teleport. |
+| The ring art stands for now and #218 keeps it open | Nothing | Nick: "good enough for now but we will probably want better texture later". |
+| The frame is not chosen, and the gunmetal frame approved on the contact sheet is superseded. A built portal must read as one structure | The frame half of the approval below, and the five frames offered since, none of which Nick picked | Nick: "As for the portal blocks, I feel they look to janky when they're put together as a portal, you can clearly see where one block ends and the next begins. I'd say the textures should either be designed to be connecting textures that change if the same block is adjacent or they should be designed so they naturally flow into each other." The spec names no frame material yet, and §3.2 keeps its numbers until he picks. Any frame that stops being metal changes the sound and the recipe, and the Balancer then prices the first portal again. E2-S1 (#204) carries the new criterion. |
+
+**What this supersedes.**
+
+- In "Contact sheet approved; the Vault Igniter becomes the Vault Key" below: the name and tier rows, the
+  frame half of the approval, and the striker art. The ladder row and the stack-size row stand.
+- In "The locked door over the Vault portal" below: the door is still only proposed, but it has something to
+  press the signet into in place of the lock. Nick: "instead of a lock in the door it looks like something
+  you could press the key into". #401 carries it.
+
+**Rejected.**
+
+- **The key, the tuning fork, the miner's lantern and the dowsing rod.** All four were offered with the ring.
+  The key's other names (Lodekey, Seam Key, Delver's Key, Vault Tumbler) went with it. The Manager recommended
+  staying with a key, because the door's lock depended on it; Nick moved the lock instead.
+- **Noble titles** (Squire's, Knight's, Lord's and Sovereign's Signet).
+- **A teleport back on the Tier 3 ring,** recommended as a 4-second cast from inside the Vault to the return
+  spot. It would have been new, and Nick parked it. Do not add it from his first sentence above.
+
+---
+
 ## 2026-11-01 — The locked door over the Vault portal (proposed, not a decision)
 
 **Where this came from.** Nick, in the same message that approved the contact sheet: "Also a neat idea could
@@ -46,7 +84,7 @@ with the rename carried through §1, §3.4, §3.5, §6, §8 and §12.
 |---|---|---|
 | The E2-S1 contact sheet is approved whole: the Vault Frame, the Tier 1 item, and the tier ladder | Nothing; it was waiting on Nick's yes | Nick's words above. The sheet is a computed render and nothing on it has been seen in a client, so the §13 lines for the frame and the key stay unticked. The item was described to him as an iron striker with a green bulb and a red ember, and he read it as a key; the art is approved as drawn. |
 | The tier ladder is T1 `#0D7026`, T2 `#316CFF`, T3 `#CB7DFF`, T4 `#FFAE2B`, for the keys, the portal tints and the return portal (§3.2) | The old build's #84 tints, which E3-S3 (#181) names as its start: `#66FF66`, `#5555FF`, `#CC33FF`, `#FF9933` | Each tier is lighter than the one below, so the order survives greyscale and colour blindness. That made T1 much darker than the old green, and Nick was told it may need another look on the translucent portal. E3-S3 (#181) checks T1 at the portal's real alpha and may reopen the ladder. |
-| The Tier 1 to 4 items are the Crude, Attuned, Resonant and Sovereign Vault Key, and the verb is unlock: a key unlocks a portal, it does not light or ignite one | Crude, Attuned, Resonant and Sovereign Vault Igniter; the verb light | Nick asked for the name and the flavour to follow the item being a key instead of a flint and steel. What each tier does in §3.3 is unchanged. The name is the Manager's choice from a gap in Nick's sentence, and he has since said prefixes on Vault Key can work and asked for 3 to 5 other names, so a later pass may change it again. Entries above this date keep "igniter". |
+| The Tier 1 to 4 items are the Crude, Attuned, Resonant and Sovereign Vault Key, and the verb is unlock: a key unlocks a portal, it does not light or ignite one | Crude, Attuned, Resonant and Sovereign Vault Igniter; the verb light | Nick asked for the name and the flavour to follow the item being a key instead of a flint and steel. What each tier does in §3.3 is unchanged. The name is the Manager's choice from a gap in Nick's sentence, and he has since said prefixes on Vault Key can work and asked for 3 to 5 other names, so a later pass may change it again. Entries before this date keep "igniter". |
 | Keys stack to 1, every tier | Nothing; §3.3's rule carries over from the igniter | Written down so that the rename does not reopen it. The stack size is checked by gametest. |
 
 **Rejected.**
