@@ -23,6 +23,10 @@ import net.minecraft.world.level.block.PipeBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.phys.shapes.BooleanOp;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
 
 /**
@@ -87,6 +91,32 @@ final class VaultFrameTests {
         helper.succeed();
     }
 
+    /**
+     * A ring's top-left block rounds off and the end of the bar beside it stays a cube. The shape changes nothing for
+     * the pickaxe: mining goes by the block, not the shape.
+     */
+    static void roundedCornerHasItsShapeAndStillDropsItself(GameTestHelper helper) {
+        BlockPos corner = new BlockPos(3, 2, 3);
+        BlockPos east = corner.east();
+        BlockPos below = corner.below();
+        for (BlockPos pos : List.of(corner, east, below)) {
+            helper.placeBlock(pos, ModBlocks.VAULT_FRAME.get(), Direction.NORTH);
+        }
+        assertConnections(helper, corner, Set.of(Direction.EAST, Direction.DOWN));
+        if (!Shapes.joinIsNotEmpty(Shapes.block(), outline(helper, corner), BooleanOp.ONLY_FIRST)) {
+            helper.fail(Component.literal("the rounded corner's outline fills the block"));
+        }
+        if (helper.getBlockState(corner).isSolidRender()) {
+            helper.fail(Component.literal("the rounded corner would hide a neighbour's face behind its wedge"));
+        }
+        if (outline(helper, east) != Shapes.block()) {
+            helper.fail(Component.literal("the end of a bar is not a full cube"));
+        }
+        breakHolding(helper, corner, new ItemStack(Items.WOODEN_PICKAXE));
+        helper.assertItemEntityCountIs(ModItems.VAULT_FRAME.get(), corner, DROP_RADIUS, 1);
+        helper.succeed();
+    }
+
     /** Shapeless, so the lapis may sit anywhere. One frame per craft is §3.2's yield (Nb). */
     static void recipeYieldsExactlyOne(GameTestHelper helper) {
         for (int lapisSlot : new int[] {4, 0}) {
@@ -104,11 +134,19 @@ final class VaultFrameTests {
 
     private static void breakFrameHolding(GameTestHelper helper, ItemStack held) {
         helper.setBlock(FRAME, ModBlocks.VAULT_FRAME.get());
+        breakHolding(helper, FRAME, held);
+    }
+
+    private static void breakHolding(GameTestHelper helper, BlockPos pos, ItemStack held) {
         ServerPlayer player = FakePlayerFactory.get(helper.getLevel(), BREAKER);
         player.setItemInHand(InteractionHand.MAIN_HAND, held);
-        player.gameMode.destroyBlock(helper.absolutePos(FRAME));
+        player.gameMode.destroyBlock(helper.absolutePos(pos));
         // Without this, a break that never happened would pass the no-drop test.
-        helper.assertBlockPresent(Blocks.AIR, FRAME);
+        helper.assertBlockPresent(Blocks.AIR, pos);
+    }
+
+    private static VoxelShape outline(GameTestHelper helper, BlockPos pos) {
+        return helper.getBlockState(pos).getShape(helper.getLevel(), helper.absolutePos(pos), CollisionContext.empty());
     }
 
     private static void assertConnections(GameTestHelper helper, BlockPos pos, Set<Direction> expected) {

@@ -78,8 +78,8 @@ The rules for a new gametest (E1-S2, #193):
   the Gradle task.
 - A count quoted from the log includes the optional `minecraft:always_pass`, which is not ours, and the PR
   states the total it expects: passing tests log no name, and a test that failed to register exits 0. The
-  total is 10 at E2-S2's connected frame: `harness/passes`, `lang/coverage`, `vault/frame_pickaxe_drop`, `vault/frame_hand_no_drop`,
-  `vault/frame_recipe`, `vault/frame_properties`, `vault/frame_connects`, `vault/signet_recipe`, `vault/signet_stack_size` and
+  total is 11 at E2-S2's rounded frame corners: `harness/passes`, `lang/coverage`, `vault/frame_pickaxe_drop`, `vault/frame_hand_no_drop`,
+  `vault/frame_recipe`, `vault/frame_properties`, `vault/frame_connects`, `vault/frame_rounded`, `vault/signet_recipe`, `vault/signet_stack_size` and
   `minecraft:always_pass`.
 - There is no namespace filter: nothing in NeoForge 26.1.2.95 reads `neoforge.enabledGameTestNamespaces`, so the
   build does not set it. `--tests` is the vanilla selector.
