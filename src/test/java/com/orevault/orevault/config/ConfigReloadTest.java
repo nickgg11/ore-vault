@@ -13,9 +13,11 @@ class ConfigReloadTest {
     private final Queue<Runnable> serverThread = new ArrayDeque<>();
     private final List<String> online = new ArrayList<>();
     private final List<String> sentTo = new ArrayList<>();
+    private String commands = "commands";
 
     private void reload() {
-        ConfigReload.resendOnServerThread(serverThread::add, () -> List.copyOf(online), sentTo::add);
+        ConfigReload.resendOnServerThread(serverThread::add, () -> List.copyOf(online), () -> commands,
+                (current, player) -> sentTo.add(current.equals("commands") ? player : current + " to " + player));
     }
 
     @Test
@@ -31,6 +33,16 @@ class ConfigReloadTest {
         reload();
         serverThread.remove().run();
         assertEquals(List.of("alice", "bob"), sentTo);
+    }
+
+    /** A datapack reload replaces the server's {@code Commands}, so the one in use is read when the task runs. */
+    @Test
+    void theCommandsAreReadOnTheServerThread() {
+        online.add("alice");
+        reload();
+        commands = "reloaded";
+        serverThread.remove().run();
+        assertEquals(List.of("reloaded to alice"), sentTo);
     }
 
     /** The list itself is server-thread state, so it is read in the task, not on the watcher's thread. */

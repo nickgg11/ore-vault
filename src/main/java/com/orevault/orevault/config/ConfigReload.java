@@ -2,8 +2,9 @@ package com.orevault.orevault.config;
 
 import java.util.Collection;
 import java.util.concurrent.Executor;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
+import net.minecraft.commands.Commands;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
@@ -30,11 +31,16 @@ public final class ConfigReload {
             return;
         }
         LOG.info("Ore Vault config changed, re-sending the command tree");
-        resendOnServerThread(server, () -> server.getPlayerList().getPlayers(), server.getCommands()::sendCommands);
+        resendOnServerThread(server, () -> server.getPlayerList().getPlayers(), server::getCommands,
+                Commands::sendCommands);
     }
 
     /** The reload can arrive on the config file watcher's thread; the player list and the tree are the server's. */
-    static <P> void resendOnServerThread(Executor serverThread, Supplier<? extends Collection<P>> online, Consumer<P> send) {
-        serverThread.execute(() -> online.get().forEach(send));
+    static <P, C> void resendOnServerThread(Executor serverThread, Supplier<? extends Collection<P>> online,
+            Supplier<C> commands, BiConsumer<C, P> send) {
+        serverThread.execute(() -> {
+            C current = commands.get();
+            online.get().forEach(player -> send.accept(current, player));
+        });
     }
 }

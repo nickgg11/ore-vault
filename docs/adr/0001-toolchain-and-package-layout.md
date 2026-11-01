@@ -78,8 +78,8 @@ The rules for a new gametest (E1-S2, #193):
   the Gradle task.
 - A count quoted from the log includes the optional `minecraft:always_pass`, which is not ours, and the PR
   states the total it expects: passing tests log no name, and a test that failed to register exits 0. The
-  total is 19 at E3-S1: `harness/passes`, `lang/coverage`, `vault/frame_pickaxe_drop`, `vault/frame_hand_no_drop`,
-  `vault/frame_recipe`, `vault/frame_properties`, `vault/frame_connects`, `vault/frame_rounded`, `vault/signet_recipe`, `vault/signet_stack_size`, `team/unknown_is_one`, `team/solo`, `team/party_and_disband`, `debug/gate`, `debug/break_removes_the_block`, `debug/break_on_air_fails`, `debug/break_loads_the_chunk`, `debug/diag_prints_the_break_state` and
+  total is 20 at E3-S1: `harness/passes`, `lang/coverage`, `vault/frame_pickaxe_drop`, `vault/frame_hand_no_drop`,
+  `vault/frame_recipe`, `vault/frame_properties`, `vault/frame_connects`, `vault/frame_rounded`, `vault/signet_recipe`, `vault/signet_stack_size`, `team/unknown_is_one`, `team/solo`, `team/party_and_disband`, `debug/gate`, `debug/break_removes_the_block`, `debug/break_on_air_fails`, `debug/break_loads_the_chunk`, `debug/diag_prints_the_break_state`, `debug/diag_reads_the_players_level` and
   `minecraft:always_pass`.
 - There is no namespace filter: nothing in NeoForge 26.1.2.95 reads `neoforge.enabledGameTestNamespaces`, so the
   build does not set it. `--tests` is the vanilla selector.

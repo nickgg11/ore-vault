@@ -1,6 +1,7 @@
 package com.orevault.orevault.debug;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
@@ -17,7 +18,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,20 +41,21 @@ public final class DebugCommands {
         Predicate<CommandSourceStack> allowed = Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS)
                 .and(source -> enabled.getAsBoolean());
         root.then(Commands.literal("diag").requires(allowed)
-                .executes(context -> diag(context.getSource(), null))
+                .executes(context -> diag(context, false))
                 .then(Commands.argument("pos", BlockPosArgument.blockPos())
-                        .executes(context -> diag(context.getSource(),
-                                BlockPosArgument.getLoadedBlockPos(context, "pos")))));
+                        .executes(context -> diag(context, true))));
         root.then(Commands.literal("break").requires(allowed)
                 .then(Commands.argument("pos", BlockPosArgument.blockPos())
                         .executes(context -> breakBlock(context.getSource(),
                                 BlockPosArgument.getBlockPos(context, "pos")))));
     }
 
-    private static int diag(CommandSourceStack source, @Nullable BlockPos explicit) throws CommandSyntaxException {
+    /** Everything is read from the player's level, the position's loaded check included: it diagnoses their break. */
+    private static int diag(CommandContext<CommandSourceStack> context, boolean explicitPos) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
         ServerPlayer player = source.getPlayerOrException();
         ServerLevel level = player.level();
-        BlockPos pos = explicit != null ? explicit : aimedBlock(player);
+        BlockPos pos = explicitPos ? loadedPos(context, level) : aimedBlock(player);
         MinecraftServer server = level.getServer();
         BlockState state = level.getBlockState(pos);
         BreakDiagnosis diagnosis = new BreakDiagnosis(
@@ -71,6 +72,22 @@ public final class DebugCommands {
                 player.gameMode.getGameModeForPlayer().getName());
         diagnosis.lines().forEach(line -> print(source, line));
         return 1;
+    }
+
+    /**
+     * {@code BlockPosArgument.getLoadedBlockPos(context, level, name)} takes a level and then checks the source's
+     * (read 2026-11-01, 26.1.2.95), so under {@code execute in} it answers for the wrong one.
+     */
+    private static BlockPos loadedPos(CommandContext<CommandSourceStack> context, ServerLevel level)
+            throws CommandSyntaxException {
+        BlockPos pos = BlockPosArgument.getBlockPos(context, "pos");
+        if (!level.hasChunkAt(pos)) {
+            throw BlockPosArgument.ERROR_NOT_LOADED.create();
+        }
+        if (!level.isInWorldBounds(pos)) {
+            throw BlockPosArgument.ERROR_OUT_OF_WORLD.create();
+        }
+        return pos;
     }
 
     private static BlockPos aimedBlock(ServerPlayer player) {

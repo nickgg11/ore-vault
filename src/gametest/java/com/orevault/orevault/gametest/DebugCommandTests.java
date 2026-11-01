@@ -183,4 +183,27 @@ final class DebugCommandTests {
         }
         helper.succeed();
     }
+
+    /**
+     * Under {@code execute in} the source's level is not the player's. The diagnosis is of the player's break, so the
+     * position has to be checked in the level it is read from: this one is loaded there and not in the Nether.
+     */
+    static void diagReadsThePlayersLevelUnderExecuteIn(GameTestHelper helper) {
+        helper.setBlock(TARGET, Blocks.STONE);
+        BlockPos pos = helper.absolutePos(TARGET);
+        List<String> lines = new ArrayList<>();
+        var player = FakePlayerFactory.get(helper.getLevel(), new GameProfile(UUID.randomUUID(), "orevault-diag"));
+        CommandSourceStack source = source(helper, LevelBasedPermissionSet.GAMEMASTER)
+                .withEntity(player)
+                .withSource(recordingTo(lines));
+
+        withDebugCommands(() -> check(helper, "result", 1, run(dispatcher(helper),
+                "execute in minecraft:the_nether run orevault diag " + pos.getX() + " " + pos.getY() + " " + pos.getZ(),
+                source, helper)));
+
+        String printed = String.join("\n", lines);
+        check(helper, "the player's level", true, printed.contains("dim=minecraft:overworld"));
+        check(helper, "the block there", true, printed.contains("block=minecraft:stone"));
+        helper.succeed();
+    }
 }
