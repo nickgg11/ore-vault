@@ -1,6 +1,7 @@
 package com.orevault.orevault.gametest;
 
 import com.orevault.orevault.OreVault;
+import java.util.List;
 import java.util.function.Consumer;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
@@ -30,6 +31,9 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> PASSES = function("harness/passes");
     private static final ResourceKey<Consumer<GameTestHelper>> DELIBERATE_FAILURE = function("harness/deliberate_failure");
     private static final ResourceKey<Consumer<GameTestHelper>> LANG_COVERAGE = function("lang/coverage");
+    private static final ResourceKey<Consumer<GameTestHelper>> FRAME_PICKAXE_DROP = function("vault/frame_pickaxe_drop");
+    private static final ResourceKey<Consumer<GameTestHelper>> FRAME_HAND_NO_DROP = function("vault/frame_hand_no_drop");
+    private static final ResourceKey<Consumer<GameTestHelper>> FRAME_RECIPE = function("vault/frame_recipe");
 
     private GameTests() {
     }
@@ -48,14 +52,19 @@ public final class GameTests {
             registry.register(PASSES, GameTestHelper::succeed);
             registry.register(DELIBERATE_FAILURE, helper -> helper.fail(Component.literal("deliberate failure")));
             registry.register(LANG_COVERAGE, LangCoverage::everyKeyHasAValue);
+            registry.register(FRAME_PICKAXE_DROP, VaultFrameTests::dropsItselfToAPickaxe);
+            registry.register(FRAME_HAND_NO_DROP, VaultFrameTests::dropsNothingByHand);
+            registry.register(FRAME_RECIPE, VaultFrameTests::recipeYieldsExactlyOne);
         });
     }
 
     @SubscribeEvent
     static void registerTests(RegisterGameTestsEvent event) {
         Holder<TestEnvironmentDefinition<?>> environment = event.registerEnvironment(id("default"));
-        event.registerTest(PASSES.identifier(), new FunctionGameTestInstance(PASSES, data(environment, false)));
-        event.registerTest(LANG_COVERAGE.identifier(), new FunctionGameTestInstance(LANG_COVERAGE, data(environment, false)));
+        for (ResourceKey<Consumer<GameTestHelper>> test : List.of(
+                PASSES, LANG_COVERAGE, FRAME_PICKAXE_DROP, FRAME_HAND_NO_DROP, FRAME_RECIPE)) {
+            event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
+        }
         event.registerTest(DELIBERATE_FAILURE.identifier(),
                 new FunctionGameTestInstance(DELIBERATE_FAILURE, data(environment, true)));
     }

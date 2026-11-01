@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "orevault:block/vault_frame"
+    }
+  }
+}

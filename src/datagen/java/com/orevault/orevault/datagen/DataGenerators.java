@@ -1,6 +1,7 @@
 package com.orevault.orevault.datagen;
 
 import com.orevault.orevault.OreVault;
+import com.orevault.orevault.registry.ModBlocks;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -13,9 +14,11 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.loot.BlockLootSubProvider;
 import net.minecraft.data.loot.LootTableProvider;
+import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
@@ -55,6 +58,7 @@ public final class DataGenerators {
         // The super method generates vanilla's models and then fails on Ore Vault's id filter.
         @Override
         protected void registerModels(BlockModelGenerators blockModels, ItemModelGenerators itemModels) {
+            blockModels.createTrivialCube(ModBlocks.VAULT_FRAME.get());
         }
     }
 
@@ -65,7 +69,7 @@ public final class DataGenerators {
 
         @Override
         protected void addTags(HolderLookup.Provider provider) {
-            tag(BlockTags.MINEABLE_WITH_PICKAXE);
+            tag(BlockTags.MINEABLE_WITH_PICKAXE).add(ModBlocks.VAULT_FRAME.get());
         }
     }
 
@@ -76,6 +80,7 @@ public final class DataGenerators {
 
         @Override
         protected void generate() {
+            dropSelf(ModBlocks.VAULT_FRAME.get());
         }
 
         @Override
@@ -94,6 +99,11 @@ public final class DataGenerators {
 
         @Override
         protected void buildRecipes() {
+            shapeless(RecipeCategory.BUILDING_BLOCKS, ModBlocks.VAULT_FRAME.get())
+                    .requires(Items.IRON_INGOT, 8)
+                    .requires(Items.REDSTONE)
+                    .unlockedBy("has_iron_ingot", has(Items.IRON_INGOT))
+                    .save(output);
         }
 
         static final class Runner extends RecipeProvider.Runner {
