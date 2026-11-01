@@ -78,8 +78,8 @@ The rules for a new gametest (E1-S2, #193):
   the Gradle task.
 - A count quoted from the log includes the optional `minecraft:always_pass`, which is not ours, and the PR
   states the total it expects: passing tests log no name, and a test that failed to register exits 0. The
-  total is 9 at E2-S3: `harness/passes`, `lang/coverage`, `vault/frame_pickaxe_drop`, `vault/frame_hand_no_drop`,
-  `vault/frame_recipe`, `vault/frame_properties`, `vault/signet_recipe`, `vault/signet_stack_size` and
+  total is 10 at E2-S2's connected frame: `harness/passes`, `lang/coverage`, `vault/frame_pickaxe_drop`, `vault/frame_hand_no_drop`,
+  `vault/frame_recipe`, `vault/frame_properties`, `vault/frame_connects`, `vault/signet_recipe`, `vault/signet_stack_size` and
   `minecraft:always_pass`.
 - There is no namespace filter: nothing in NeoForge 26.1.2.95 reads `neoforge.enabledGameTestNamespaces`, so the
   build does not set it. `--tests` is the vanilla selector.
@@ -126,6 +126,7 @@ Pure packages. None imports Minecraft, NeoForge or Mojang classes, so all of it 
 | `core.reset` | The reset vote state machine (ADR 0007) | nothing |
 | `core.wear` | `WearRules` (ADR 0008) and `WearScope`, the per-player wear inputs the mixin reads | `core.tree` |
 | `core.signet` | `SignetTier`: the §3.3 capabilities of all four tiers, and the tooltip lines built from them | nothing |
+| `core.frame` | `FrameNeighbours`: from the Vault Frames around a block to the texture each face shows (§3.2) | nothing |
 | `core.key` | `VaultKeys`: the one function pair between a team UUID and the lower-case hex form used by the dimension path `vault_<teamUuidNoHyphens>` and the team `SavedData` id (ADR 0002, ADR 0005 "one function parses both"), so any adapter can tell whether a level is a Vault and whose without importing `vault` | nothing |
 
 Minecraft-facing adapters. They hold as little logic as they can and call into `core`.
@@ -393,3 +394,6 @@ first lines it will hold. Nothing else changed.
 
 Amended 2026-10-31 by E2-S3 (#219): the `core.signet` row, its rule and its fixture, because the tier capabilities
 are pure logic and the adapter rows hold as little logic as they can. The signet item stays in `vault`. Named `core.signet` by Nick on 2026-11-01, after `core.igniter`.
+
+Amended 2026-11-01 by E2-S2 (#210): the `core.frame` row, its rule and its fixture, for the connected Vault Frame.
+The block stays in `vault`.

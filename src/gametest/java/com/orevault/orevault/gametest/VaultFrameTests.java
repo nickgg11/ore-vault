@@ -5,8 +5,10 @@ import com.orevault.orevault.registry.ModBlocks;
 import com.orevault.orevault.registry.ModItems;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -17,7 +19,10 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.PipeBlock;
 import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.MapColor;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
 
 /**
@@ -48,28 +53,50 @@ final class VaultFrameTests {
 
     static void hasTheSpecProperties(GameTestHelper helper) {
         Block frame = ModBlocks.VAULT_FRAME.get();
+        if (frame.defaultMapColor() != MapColor.STONE) {
+            helper.fail(Component.literal("not the stone map colour"));
+        }
         if (frame.defaultDestroyTime() != 1.5F) {
             helper.fail(Component.literal("hardness " + frame.defaultDestroyTime()));
         }
         if (frame.getExplosionResistance() != 6.0F) {
             helper.fail(Component.literal("blast resistance " + frame.getExplosionResistance()));
         }
-        if (frame.defaultBlockState().getSoundType() != SoundType.METAL) {
-            helper.fail(Component.literal("not the metal sound"));
+        if (frame.defaultBlockState().getSoundType() != SoundType.STONE) {
+            helper.fail(Component.literal("not the stone sound"));
         }
         helper.succeed();
     }
 
-    /** Shapeless, so the redstone may sit anywhere. One frame per craft is §3.2's yield (Nb). */
+    /** A run of three, then its middle broken: each end follows, and stone beside a frame connects to nothing. */
+    static void connectsOnlyToFrames(GameTestHelper helper) {
+        // The test area is one block wide with barriers around it, so the run stands clear of them.
+        BlockPos west = new BlockPos(3, 1, 3);
+        BlockPos middle = west.east();
+        BlockPos east = middle.east();
+        for (BlockPos pos : List.of(west, middle, east)) {
+            helper.placeBlock(pos, ModBlocks.VAULT_FRAME.get(), Direction.NORTH);
+        }
+        helper.setBlock(middle.north(), Blocks.STONE);
+        assertConnections(helper, west, Set.of(Direction.EAST));
+        assertConnections(helper, middle, Set.of(Direction.EAST, Direction.WEST));
+        assertConnections(helper, east, Set.of(Direction.WEST));
+        helper.setBlock(middle, Blocks.AIR);
+        assertConnections(helper, west, Set.of());
+        assertConnections(helper, east, Set.of());
+        helper.succeed();
+    }
+
+    /** Shapeless, so the lapis may sit anywhere. One frame per craft is §3.2's yield (Nb). */
     static void recipeYieldsExactlyOne(GameTestHelper helper) {
-        for (int redstoneSlot : new int[] {4, 0}) {
-            CraftingInput input = ironAround(redstoneSlot);
+        for (int lapisSlot : new int[] {4, 0}) {
+            CraftingInput input = bricksAround(lapisSlot);
             ItemStack result = helper.getLevel().getServer().getRecipeManager()
                     .getRecipeFor(RecipeType.CRAFTING, input, helper.getLevel())
                     .map(holder -> holder.value().assemble(input))
                     .orElse(ItemStack.EMPTY);
             if (!result.is(ModItems.VAULT_FRAME.get()) || result.getCount() != 1) {
-                helper.fail(Component.literal("redstone in slot " + redstoneSlot + " crafted " + result));
+                helper.fail(Component.literal("lapis in slot " + lapisSlot + " crafted " + result));
             }
         }
         helper.succeed();
@@ -84,10 +111,19 @@ final class VaultFrameTests {
         helper.assertBlockPresent(Blocks.AIR, FRAME);
     }
 
-    private static CraftingInput ironAround(int redstoneSlot) {
+    private static void assertConnections(GameTestHelper helper, BlockPos pos, Set<Direction> expected) {
+        BlockState state = helper.getBlockState(pos);
+        for (Direction direction : Direction.values()) {
+            if (state.getValue(PipeBlock.PROPERTY_BY_DIRECTION.get(direction)) != expected.contains(direction)) {
+                helper.fail(Component.literal(pos + " " + direction + " wrong in " + state));
+            }
+        }
+    }
+
+    private static CraftingInput bricksAround(int lapisSlot) {
         List<ItemStack> slots = new ArrayList<>();
         for (int slot = 0; slot < 9; slot++) {
-            slots.add(new ItemStack(slot == redstoneSlot ? Items.REDSTONE : Items.IRON_INGOT));
+            slots.add(new ItemStack(slot == lapisSlot ? Items.LAPIS_LAZULI : Items.STONE_BRICKS));
         }
         return CraftingInput.of(3, 3, slots);
     }

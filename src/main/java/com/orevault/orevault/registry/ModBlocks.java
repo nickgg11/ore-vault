@@ -1,7 +1,7 @@
 package com.orevault.orevault.registry;
 
 import com.orevault.orevault.OreVault;
-import net.minecraft.world.level.block.Block;
+import com.orevault.orevault.vault.VaultFrameBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.material.MapColor;
 import net.neoforged.bus.api.IEventBus;
@@ -15,12 +15,11 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public final class ModBlocks {
     private static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(OreVault.MOD_ID);
 
-    /** §3.2. A plain block until the portal stories (E3-S2, E3-S4) give it behaviour of its own. */
-    public static final DeferredBlock<Block> VAULT_FRAME = BLOCKS.registerBlock("vault_frame", Block::new,
+    public static final DeferredBlock<VaultFrameBlock> VAULT_FRAME = BLOCKS.registerBlock("vault_frame", VaultFrameBlock::new,
             properties -> properties
-                    .mapColor(MapColor.METAL)
+                    .mapColor(MapColor.STONE)
                     .strength(1.5F, 6.0F)
-                    .sound(SoundType.METAL)
+                    .sound(SoundType.STONE)
                     .requiresCorrectToolForDrops());
 
     private ModBlocks() {

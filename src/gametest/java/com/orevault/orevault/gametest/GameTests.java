@@ -35,6 +35,7 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> FRAME_HAND_NO_DROP = function("vault/frame_hand_no_drop");
     private static final ResourceKey<Consumer<GameTestHelper>> FRAME_RECIPE = function("vault/frame_recipe");
     private static final ResourceKey<Consumer<GameTestHelper>> FRAME_PROPERTIES = function("vault/frame_properties");
+    private static final ResourceKey<Consumer<GameTestHelper>> FRAME_CONNECTS = function("vault/frame_connects");
     private static final ResourceKey<Consumer<GameTestHelper>> SIGNET_STACK_SIZE = function("vault/signet_stack_size");
     private static final ResourceKey<Consumer<GameTestHelper>> SIGNET_RECIPE = function("vault/signet_recipe");
 
@@ -59,6 +60,7 @@ public final class GameTests {
             registry.register(FRAME_HAND_NO_DROP, VaultFrameTests::dropsNothingByHand);
             registry.register(FRAME_RECIPE, VaultFrameTests::recipeYieldsExactlyOne);
             registry.register(FRAME_PROPERTIES, VaultFrameTests::hasTheSpecProperties);
+            registry.register(FRAME_CONNECTS, VaultFrameTests::connectsOnlyToFrames);
             registry.register(SIGNET_STACK_SIZE, SignetTests::stacksToOne);
             registry.register(SIGNET_RECIPE, SignetTests::recipeTakesIronAndRedstoneSideBySide);
         });
@@ -69,7 +71,7 @@ public final class GameTests {
         Holder<TestEnvironmentDefinition<?>> environment = event.registerEnvironment(id("default"));
         for (ResourceKey<Consumer<GameTestHelper>> test : List.of(
                 PASSES, LANG_COVERAGE, FRAME_PICKAXE_DROP, FRAME_HAND_NO_DROP, FRAME_RECIPE, FRAME_PROPERTIES,
-                SIGNET_RECIPE, SIGNET_STACK_SIZE)) {
+                FRAME_CONNECTS, SIGNET_RECIPE, SIGNET_STACK_SIZE)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
         }
         event.registerTest(DELIBERATE_FAILURE.identifier(),
