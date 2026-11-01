@@ -67,16 +67,18 @@ Nick: "So for the portal block I'd want the door texture to appear once the port
 | The door and the portal are 4 pixels thick, as a nether portal is | #229 already said 4 px; the door had no thickness | Nick's words above. |
 | The sealed door has collision. The swing on approach stays in #401, after E3-S7 | Nothing; it was unsettled | Nick left the swing to the plan. A door you can walk through would not read as sealed; that part is the Manager's call and goes to him with the render. |
 
-Nick asked whether the frame's runes should "start out grey and dim then then you ignite the portal it matches the tier", meaning the frame blocks, not the portal. Shown a computed render: "Yeah the door looks good as two doors." and "Dormant looks good, I am fine with the blue being flatter. I'd say I'd want the T3 to be a deeper richer purple and T4 to be an orange closer to what legendary items use in video games." On the Tier 1 rune tint: "It don't see much a difference between the two greens so just pick whichever you think is better."
+Nick asked whether the frame's runes should "start out grey and dim then then you ignite the portal it matches the tier", meaning the frame blocks, not the portal. Shown a computed render: "Yeah the door looks good as two doors." and "Dormant looks good, I am fine with the blue being flatter. I'd say I'd want the T3 to be a deeper richer purple and T4 to be an orange closer to what legendary items use in video games." On the Tier 1 rune tint: "It don't see much a difference between the two greens so just pick whichever you think is better." On the final renders: "I don't want or need the colours to get brighter with each tier. I like all the colours, yes let's not shade the portal blocks."
 
 | Decision | Replaced | Reasoning |
 |---|---|---|
 | The door is built from position-dependent tiles: two leaves, iron straps, a centre seam, one seat | One repeated panel, rejected because at 21×21 it is a tiled wall | Nick's words above. |
 | A frame's strands are a grey tint layer, dormant until lit, then the tier's colour; a dissolve returns them to grey. The Woad blue is no longer the resting look | Fixed blue strands | Nick's words above. ADR 0010 settles how: a frame stores no tier and derives it from the portal cells around it, highest tier winning, so nothing writes to the frame when a portal opens or dissolves. Lit frames tint, they do not glow. |
 | Tier 1's runes use #148031. The signet gem and the strip keep #0D7026 | One value per tier everywhere | Nick left it open. The render measured contrast against the bezel at 2.31 against 1.89, and #0D7026 went to a dark band at night. |
-| Tiers 3 and 4 change: a deeper purple and a legendary orange. Values are settled by the render | T3 #CB7DFF, T4 #FFAE2B | Nick's words above. |
+| Tiers 3 and 4 change to a deeper purple and a legendary orange: T3 #A038D0, T4 #FF8000. T1 #0D7026 and T2 #316CFF stay | T3 #CB7DFF, T4 #FFAE2B | Nick's words above: "a deeper richer purple", "an orange closer to what legendary items use", and on the render "I like all the colours". |
+| The ladder no longer rises in lightness | The rule that each tier is lighter than the one below, in the E2-S1 ladder's row further down | A rich purple above T2 collapses into T2 under protanopia, and Nick: "I don't want or need the colours to get brighter with each tier." The accepted risk: T2 and T3 are the hardest pair under colour blindness, and the order no longer survives greyscale. |
+| The strip model sets `"shade": false`. The door and the frame are shaded as normal | Default shading on the portal | Orange read as brown at 80 percent face shade. Nick: "yes let's not shade the portal blocks." |
 
-§3.2 changes once Nick has said yes to the render of the door.
+Nick has said yes to the renders, and §3.2, §3.3 and §13 now carry the door, the frame colour and this ladder.
 
 ## 2026-11-01 — The T2 playtest is deferred; Epic 3 opens without it
 

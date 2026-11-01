@@ -1,6 +1,6 @@
 # 0010. The sealed door, and how a frame shows its portal's colour
 
-Status: proposed, 2026-11-01 (E3-S4, #229). Waits on the matrix reviewers and on Nick's yes to the door render.
+Status: proposed, 2026-11-01 (E3-S4, #229). Waits on the matrix reviewers. Nick's yes to the render is given; see the amendment below.
 Spec: §3.2, §3.3. `DESIGN_LOG.md` 2026-11-01, "A valid frame shows a sealed door". Depends on ADR 0001's package
 table and on `VaultPortalShape` (#207).
 
@@ -201,11 +201,27 @@ scheduled dissolve tick is vanilla's and is saved with the chunk.
 
 ## Spec sections changed
 
-§3.2, by the Writer once Nick has said yes to the render: Vault Frame Block (colour, dormant to lit, not stored),
+§3.2, by the Writer, now that Nick has said yes to the render: Vault Frame Block (colour, dormant to lit, not stored),
 Scanner (door on completion, signet on door or frame, the door's tag), a new Sealed Door block, Ore Vault Portal
 Block (`updateShape` schedules; `LiquidBlockContainer`; the immune tags). `DESIGN_LOG.md`: the row "Each frame needs
 its own tier state" is superseded, with this record's reason. #229's criteria change with it, and `VaultPortalShape`'s
 Javadoc names the tag.
+
+## Amendment, 2026-11-01
+
+Nick said yes to the renders: "Yeah the door looks good as two doors.", "Dormant looks good, I am fine with the blue
+being flatter." and "I don't want or need the colours to get brighter with each tier. I like all the colours, yes
+let's not shade the portal blocks." This does not change the status: the record stays proposed until the matrix
+reviewers run.
+
+The render settled what this record left open. The rune colours are the tier ladder, T1 `#0D7026`, T2 `#316CFF`, T3
+`#A038D0`, T4 `#FF8000`, except that frame runes in Tier 1 use `#148031`. The door has 13 parts in two leaves and is a
+4 px slab, as is the portal. The strip is 16 frames at frametime 2, alpha 196, with `"shade": false` on the strip model
+only.
+
+§3.2, §3.3 and §13 were changed on this date. The `DESIGN_LOG.md` row named above was never written; the entry's row
+on grey strands carries that decision. Read "still opening by signet" in the test list as opening once the obstruction
+is cleared, because the signet's scan accepts only air, doors and portals.
 
 ## Reviews
 
