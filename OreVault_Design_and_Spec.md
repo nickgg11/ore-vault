@@ -187,13 +187,10 @@ When an FTB Team is disbanded, nothing kept for the team is deleted: its Vault w
 - Breaking any block of the frame's four sides dissolves the whole portal (`updateShape` whole-frame re-validation). Corners are optional (below), so a corner block is not part of the frame and breaking one leaves the portal standing
 
 **Connected texture**
-- A built ring reads as one carved border. Each of a block's six faces shows one of 17 textures, picked from which of the block's six neighbours are Vault Frames (`FrameNeighbours`). Any other block beside a frame connects to nothing
+- A built ring reads as one carved border. Each of a block's six faces shows one of 16 textures, picked from which of the block's six neighbours are Vault Frames (`FrameNeighbours`). Any other block beside a frame connects to nothing
 - Six boolean block state properties (`north`, `east`, `south`, `west`, `up`, `down`) hold those neighbours, giving 64 states with one cube model each. They are drawing state only: anything asking whether a block belongs to a frame tests the block, not these values
-- 16 of the textures cover every combination of the face's four edges connecting; the name lists the edges as seen from outside the face (`vault_frame`, `_u`, `_d`, `_l`, `_r`, `_ud`, `_lr`, `_ul`, `_ur`, `_dl`, `_dr`, `_udl`, `_udr`, `_ulr`, `_dlr`, `_udlr`). Left and right swap between opposite faces, so a run stays correct from behind with no mirrored UVs
-- The 17th, `vault_frame_thin`, is plain stone with no interlace, for the edge of a frame one block thick: a face whose normal lies in the frame's plane
-- Neighbours on two axes name that plane. Neighbours on one horizontal axis are read as an upright frame, the plane holding that axis and the vertical
-- A column, with neighbours on the vertical axis only, cannot tell its front from its reveal, so all four of its sides show the interlace and only its top and bottom are thin. This holds for the upright sides of every ring, corners or not
-- A lone block and a block with neighbours on all three axes have no thin face, so a wall two blocks thick shows the interlace on every outer face
+- The textures cover every combination of the face's four edges connecting; the name lists the edges as seen from outside the face (`vault_frame`, `_u`, `_d`, `_l`, `_r`, `_ud`, `_lr`, `_ul`, `_ur`, `_dl`, `_dr`, `_udl`, `_udr`, `_ulr`, `_dlr`, `_udlr`). Left and right swap between opposite faces, so a run stays correct from behind with no mirrored UVs
+- Every face follows that one rule, so the inside and outside of a ring show the interlace on all four sides of it, the same as its front and back. A column cannot tell its front from those faces, so a plain edge on some faces would apply to the bars and not the uprights
 - With its corner blocks in place a ring closes in rounded corners. With its corners empty it shows four separate bars, each ending at its last block
 - A lone block, the item and the break particles use the unconnected `vault_frame` texture on every face
 
@@ -2968,10 +2965,10 @@ Use this to track progress. Tick a line only when the work has merged and been s
 
 ### Portal and Signet
 - [ ] Vault Frame block: hardness 1.5, blast resistance 6.0, stone sound, stone map colour, drops itself only to a pickaxe, by gametest (§3.2) — E2-S2 (#210)
-- [ ] Connected Vault Frame: six neighbour properties, one model for each of the 64 states, 17 textures picked per face, connecting only to Vault Frames (§3.2) — E2-S2 (#210)
+- [ ] Connected Vault Frame: six neighbour properties, one model for each of the 64 states, 16 textures picked per face, connecting only to Vault Frames (§3.2) — E2-S2 (#210)
 - [ ] Vault Frame `minecraft:mineable/pickaxe` tag in the **`minecraft` namespace** — E2-S2 (#210)
 - [ ] Vault Frame shapeless recipe (8 stone bricks + 1 lapis lazuli, one frame) — E2-S2 (#210)
-- [ ] Woad Interlace Vault Frame (17 textures) and Worn Signet textures at 16×16 — E2-S1 (#204)
+- [ ] Woad Interlace Vault Frame (16 textures) and Worn Signet textures at 16×16 — E2-S1 (#204)
 - [ ] `VaultPortalShape` scanner as pure logic (both axes, 2×3 to 21×21, corners optional) — E3-S2 (#207)
 - [ ] Ore Vault Portal block: no collision, unbreakable, `HORIZONTAL_AXIS`, four tier variants, failure sound only on a wrong frame (§3.2) — E3-S4 (#229)
 - [ ] Whole-frame dissolve when a side block breaks (`updateShape`) — E3-S4 (#229)

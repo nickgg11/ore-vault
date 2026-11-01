@@ -10,10 +10,10 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.junit.jupiter.api.Test;
 
-/** Which of the 17 textures each face of a Vault Frame shows (§3.2). */
+/** Which of the 16 textures each face of a Vault Frame shows (§3.2). */
 class FrameNeighboursTest {
     private static final Set<String> TEXTURES = Set.of("", "_u", "_d", "_l", "_r", "_ud", "_lr", "_dr", "_dl", "_ur", "_ul",
-            "_udl", "_udr", "_ulr", "_dlr", "_udlr", "_thin");
+            "_udl", "_udr", "_ulr", "_dlr", "_udlr");
 
     private static final FrameNeighbours NONE = new FrameNeighbours(false, false, false, false, false, false);
 
@@ -39,47 +39,47 @@ class FrameNeighboursTest {
 
     @Test
     void aRunAlongXSwapsLeftAndRightBetweenFrontAndBack() {
-        assertFaces(with("e"), "_l", "_r", "_thin", "_thin", "_thin", "_thin");
+        assertFaces(with("e"), "_l", "_r", "", "", "_r", "_r");
     }
 
     @Test
     void aRunAlongZSwapsLeftAndRightBetweenFrontAndBack() {
-        assertFaces(with("s"), "_thin", "_thin", "_l", "_r", "_thin", "_thin");
+        assertFaces(with("s"), "", "", "_l", "_r", "_d", "_u");
     }
 
     @Test
-    void theMiddleOfAHorizontalRunIsThinAboveAndBelow() {
-        assertFaces(with("ew"), "_lr", "_lr", "_thin", "_thin", "_thin", "_thin");
+    void theMiddleOfAHorizontalRunKeepsThePlaitAboveAndBelow() {
+        assertFaces(with("ew"), "_lr", "_lr", "", "", "_lr", "_lr");
     }
 
     @Test
-    void aColumnKeepsThePlaitOnAllFourSidesBecauseNothingSaysWhichIsTheFront() {
-        assertFaces(with("ud"), "_ud", "_ud", "_ud", "_ud", "_thin", "_thin");
+    void aColumnKeepsThePlaitOnAllFourSides() {
+        assertFaces(with("ud"), "_ud", "_ud", "_ud", "_ud", "", "");
     }
 
     @Test
     void theTopOfAColumnEndsThePlaitDownward() {
-        assertFaces(with("d"), "_d", "_d", "_d", "_d", "_thin", "_thin");
+        assertFaces(with("d"), "_d", "_d", "_d", "_d", "", "");
     }
 
     @Test
-    void aCornerOfAnXFramePatternsItsFrontAndBackOnly() {
-        assertFaces(with("ed"), "_dl", "_dr", "_thin", "_thin", "_thin", "_thin");
+    void aCornerOfAnXFrameTurnsOnItsFrontAndBack() {
+        assertFaces(with("ed"), "_dl", "_dr", "_d", "_d", "_r", "_r");
     }
 
     @Test
-    void aCornerOfAZFramePatternsItsFrontAndBackOnly() {
-        assertFaces(with("sd"), "_thin", "_thin", "_dl", "_dr", "_thin", "_thin");
+    void aCornerOfAZFrameTurnsOnItsFrontAndBack() {
+        assertFaces(with("sd"), "_d", "_d", "_dl", "_dr", "_d", "_u");
     }
 
     @Test
     void aJunctionInAWallShowsTheCrossPiece() {
-        assertFaces(with("ewud"), "_udlr", "_udlr", "_thin", "_thin", "_thin", "_thin");
+        assertFaces(with("ewud"), "_udlr", "_udlr", "_ud", "_ud", "_lr", "_lr");
     }
 
     @Test
-    void aFlatLayerPatternsItsTopAndUndersideAndThinsItsEdges() {
-        assertFaces(with("ne"), "_thin", "_thin", "_thin", "_thin", "_ur", "_dr");
+    void aFlatLayerKeepsThePlaitOnItsEdges() {
+        assertFaces(with("ne"), "_l", "_r", "_r", "_l", "_ur", "_dr");
     }
 
     @Test

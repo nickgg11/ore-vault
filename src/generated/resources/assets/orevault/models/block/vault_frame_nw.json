@@ -2,11 +2,11 @@
   "parent": "minecraft:block/cube",
   "textures": {
     "down": "orevault:block/vault_frame_dl",
-    "east": "orevault:block/vault_frame_thin",
-    "north": "orevault:block/vault_frame_thin",
+    "east": "orevault:block/vault_frame_r",
+    "north": "orevault:block/vault_frame_r",
     "particle": "orevault:block/vault_frame",
-    "south": "orevault:block/vault_frame_thin",
+    "south": "orevault:block/vault_frame_l",
     "up": "orevault:block/vault_frame_ul",
-    "west": "orevault:block/vault_frame_thin"
+    "west": "orevault:block/vault_frame_l"
   }
 }
