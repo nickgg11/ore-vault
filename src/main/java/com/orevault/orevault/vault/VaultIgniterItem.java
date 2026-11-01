@@ -14,7 +14,7 @@ public final class VaultIgniterItem extends Item {
     private final IgniterTier tier;
 
     public VaultIgniterItem(Properties properties, IgniterTier tier) {
-        super(properties);
+        super(properties.stacksTo(1));
         this.tier = tier;
     }
 

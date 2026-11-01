@@ -235,7 +235,7 @@ Return position is stored in the player's NeoForge data attachment `orevault:pla
 
 The Vault Igniter replaces Flint & Steel as the portal activation item. Four tiers, each crafted from the previous tier plus additional materials.
 
-**Every tier grants a persistent capability, not a buff.** Earlier drafts gave the tiers short potion effects on arrival (Speed I for 5s, Haste I, Haste II); those were removed. They were cosmetic noise, and the Vault Fever and Miner's Constitution nodes already own the haste and hunger axes far more meaningfully — a 15-second Haste II on entry is worthless next to a node granting it permanently. The igniter is the player's *key*: what it carries is access, not stats.
+**Every tier grants a persistent capability, not a buff.** Earlier drafts gave the tiers short potion effects on arrival (Speed I for 5s, Haste I, Haste II); those were removed. They were cosmetic noise, and the Vault Fever and Miner's Constitution nodes already own the haste and hunger axes far more meaningfully — a 15-second Haste II on entry is worthless next to a node granting it permanently. The igniter is the player's *key*: what it carries is access, not stats. Every tier stacks to 1.
 
 | Tier | Name | Recipe | Capability |
 |---|---|---|---|
@@ -2952,14 +2952,14 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Vault Expansion: the Vault re-created under the expanded type at the next reset (§3.5) — E11-S7 (#290)
 
 ### Portal and Igniter
-- [ ] Vault Frame block: hardness 1.5, blast resistance 6.0, metal sound, drops itself only to a pickaxe (§3.2) — E2-S2 (#210)
+- [ ] Vault Frame block: hardness 1.5, blast resistance 6.0, metal sound, drops itself only to a pickaxe, by gametest (§3.2) — E2-S2 (#210)
 - [ ] Vault Frame `minecraft:mineable/pickaxe` tag in the **`minecraft` namespace** — E2-S2 (#210)
-- [ ] Vault Frame crafting recipe (8 iron + 1 redstone, one frame) — E2-S2 (#210)
+- [ ] Vault Frame shapeless recipe (8 iron + 1 redstone, one frame) — E2-S2 (#210)
 - [ ] Vault Frame and Crude Vault Igniter textures at 16×16 — E2-S1 (#204)
 - [ ] `VaultPortalShape` scanner as pure logic (both axes, 2×3 to 21×21, corners optional) — E3-S2 (#207)
 - [ ] Ore Vault Portal block: no collision, unbreakable, `HORIZONTAL_AXIS`, four tier variants, failure sound only on a wrong frame (§3.2) — E3-S4 (#229)
 - [ ] Whole-frame dissolve when a side block breaks (`updateShape`) — E3-S4 (#229)
-- [ ] Crude Vault Igniter (Tier 1), with capability accessors (`entryPointCapacity`, `hasInstantTravel`, `canResetVault`) that no call site replaces with a tier-number comparison (§3.3) — E2-S3 (#219)
+- [ ] Crude Vault Igniter (Tier 1): capability accessors for all four tiers (`entryPointCapacity`, `hasInstantTravel`, `canResetVault`), tooltip built from them, no tier-number comparison, stacks to 1 (§3.3); right-click arrives with E3-S4 (#229) — E2-S3 (#219)
 - [ ] Attuned, Resonant and Sovereign igniters (Tiers 2 to 4) with their recipes (§3.3) — E10-S1 (#369); textures — E13-S2b (#218)
 - [ ] Tier 2: one personal entry point; Tier 3: three, chosen from a list, and instant travel. Stored as `entry_points` on the player attachment (§11) — E10-S1 (#369); list design — E10-S7 (#293)
 - [ ] Tier 4: the reset button appears only for a viewer holding it (§3.5) — E11-S5 (#298); the Vault Anchor recipe takes it and returns it — E10-S3 (#373)

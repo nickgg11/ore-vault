@@ -4,7 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -78,6 +81,14 @@ class IgniterTierTest {
     @EnumSource(IgniterTier.class)
     void onlyTheUpgradeLineIsAHint(IgniterTier tier) {
         tier.tooltipLines().forEach(line -> assertEquals(line.key().equals(UPGRADE), line.hint(), line.key()));
+    }
+
+    @Test
+    void everyTooltipKeyIsExactlyWhatTheTiersShow() {
+        Set<String> shown = Arrays.stream(IgniterTier.values())
+                .flatMap(tier -> keys(tier).stream())
+                .collect(Collectors.toSet());
+        assertEquals(shown, Set.copyOf(IgniterTier.everyTooltipKey()));
     }
 
     @Test

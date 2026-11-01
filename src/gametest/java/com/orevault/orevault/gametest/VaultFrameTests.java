@@ -15,7 +15,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SoundType;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
 
 /**
@@ -41,6 +43,20 @@ final class VaultFrameTests {
     static void dropsNothingByHand(GameTestHelper helper) {
         breakFrameHolding(helper, ItemStack.EMPTY);
         helper.assertItemEntityCountIs(ModItems.VAULT_FRAME.get(), FRAME, DROP_RADIUS, 0);
+        helper.succeed();
+    }
+
+    static void hasTheSpecProperties(GameTestHelper helper) {
+        Block frame = ModBlocks.VAULT_FRAME.get();
+        if (frame.defaultDestroyTime() != 1.5F) {
+            helper.fail(Component.literal("hardness " + frame.defaultDestroyTime()));
+        }
+        if (frame.getExplosionResistance() != 6.0F) {
+            helper.fail(Component.literal("blast resistance " + frame.getExplosionResistance()));
+        }
+        if (frame.defaultBlockState().getSoundType() != SoundType.METAL) {
+            helper.fail(Component.literal("not the metal sound"));
+        }
         helper.succeed();
     }
 

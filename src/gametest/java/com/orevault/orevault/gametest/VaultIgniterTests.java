@@ -17,6 +17,15 @@ final class VaultIgniterTests {
     private VaultIgniterTests() {
     }
 
+    /** The stack size is set in the item's constructor, so a later tier inherits this. */
+    static void stacksToOne(GameTestHelper helper) {
+        int maxStackSize = ModItems.CRUDE_VAULT_IGNITER.toStack().getMaxStackSize();
+        if (maxStackSize != 1) {
+            helper.fail(Component.literal("stacks to " + maxStackSize));
+        }
+        helper.succeed();
+    }
+
     static void recipeTakesIronAndRedstoneSideBySide(GameTestHelper helper) {
         ItemStack sideBySide = craft(helper, CraftingInput.of(2, 1, IRON_AND_REDSTONE));
         if (!sideBySide.is(ModItems.CRUDE_VAULT_IGNITER.get()) || sideBySide.getCount() != 1) {

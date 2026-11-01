@@ -34,6 +34,8 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> FRAME_PICKAXE_DROP = function("vault/frame_pickaxe_drop");
     private static final ResourceKey<Consumer<GameTestHelper>> FRAME_HAND_NO_DROP = function("vault/frame_hand_no_drop");
     private static final ResourceKey<Consumer<GameTestHelper>> FRAME_RECIPE = function("vault/frame_recipe");
+    private static final ResourceKey<Consumer<GameTestHelper>> FRAME_PROPERTIES = function("vault/frame_properties");
+    private static final ResourceKey<Consumer<GameTestHelper>> IGNITER_STACK_SIZE = function("vault/igniter_stack_size");
     private static final ResourceKey<Consumer<GameTestHelper>> IGNITER_RECIPE = function("vault/igniter_recipe");
 
     private GameTests() {
@@ -56,6 +58,8 @@ public final class GameTests {
             registry.register(FRAME_PICKAXE_DROP, VaultFrameTests::dropsItselfToAPickaxe);
             registry.register(FRAME_HAND_NO_DROP, VaultFrameTests::dropsNothingByHand);
             registry.register(FRAME_RECIPE, VaultFrameTests::recipeYieldsExactlyOne);
+            registry.register(FRAME_PROPERTIES, VaultFrameTests::hasTheSpecProperties);
+            registry.register(IGNITER_STACK_SIZE, VaultIgniterTests::stacksToOne);
             registry.register(IGNITER_RECIPE, VaultIgniterTests::recipeTakesIronAndRedstoneSideBySide);
         });
     }
@@ -64,7 +68,8 @@ public final class GameTests {
     static void registerTests(RegisterGameTestsEvent event) {
         Holder<TestEnvironmentDefinition<?>> environment = event.registerEnvironment(id("default"));
         for (ResourceKey<Consumer<GameTestHelper>> test : List.of(
-                PASSES, LANG_COVERAGE, FRAME_PICKAXE_DROP, FRAME_HAND_NO_DROP, FRAME_RECIPE, IGNITER_RECIPE)) {
+                PASSES, LANG_COVERAGE, FRAME_PICKAXE_DROP, FRAME_HAND_NO_DROP, FRAME_RECIPE, FRAME_PROPERTIES,
+                IGNITER_RECIPE, IGNITER_STACK_SIZE)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
         }
         event.registerTest(DELIBERATE_FAILURE.identifier(),

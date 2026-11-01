@@ -5,8 +5,8 @@
   "tooltip.orevault.igniter.entry_point": "Right-click a block in your Vault to set your entry point",
   "tooltip.orevault.igniter.entry_points": "Right-click blocks in your Vault to set up to %s entry points",
   "tooltip.orevault.igniter.instant_travel": "Instant travel: no portal wait and no re-entry cooldown",
-  "tooltip.orevault.igniter.opens_portal": "Right-click a finished Vault Frame to light it",
+  "tooltip.orevault.igniter.opens_portal": "Right-click a finished portal frame to light it",
   "tooltip.orevault.igniter.purpose": "Lights a Vault Frame portal to your team's Vault",
   "tooltip.orevault.igniter.reset_vault": "Unlocks the Vault Reset button in the Tome",
-  "tooltip.orevault.igniter.upgrade": "A higher tier grants more"
+  "tooltip.orevault.igniter.upgrade": "Craft it into the next tier to add a new ability"
 }
