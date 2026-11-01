@@ -14,6 +14,48 @@ Newest first.
 
 ---
 
+## 2026-11-01 — The frame is connected Woad Interlace; the price of getting in sits on the signet
+
+**Where this came from.** Nick's answers in the E2 thread, on the same day as the entry below, which left the
+frame unchosen. On the frame: "Yeah I take like the connected woad interlace, let's go with that one." On the
+price: "For balance we'll need to decide if the cost comes from the portal blocks, the signet ring, or the
+mining dimension being weak or not having much ore." The answer put to him was the signet, and he did not
+object, so that one is a recommendation he let stand, not his own pick. On the rendered art: "I'd say the rings
+look good and frame mostly looks good, I'd just say for the four corners the dark bezel should be present like
+the rest of the blocks turn its ready for in game testing." The spec was changed in §3.2 and §13. Nothing here
+has been seen in a client, so no §13 line is ticked.
+
+**Decisions.**
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| The Vault Frame is connected Woad Interlace: 17 textures picked per face from the neighbouring frames, so a built ring reads as one carved border. Rounded corners with corner blocks, four separate bars without, a thin edge texture on a frame one block thick | "The frame is not chosen" in the entry below, and the gunmetal frame | Nick's words above. It answers his complaint in the entry below that a portal shows where one block ends and the next begins. |
+| The recipe is 8 stone bricks + 1 lapis lazuli, shapeless, one frame per craft. The yield stays at one (Nb) | 8 iron ingots + 1 redstone dust, shapeless, one frame per craft | Portals go up to a 21×21 interior, which is 84 frames, so a price per block punishes the big ones: 672 iron at the old recipe. A first portal of 10 frames drops from about 13 veins of ore to about 3. Both vein counts are estimates, not measured in play. The stone is not free: 80 stone is 800 seconds in one furnace. |
+| The frame's sound and map colour are stone | Metal, both | They follow the material, as the entry below said they would. |
+| The price of getting in sits on the signet. The Worn Signet stays 1 iron ingot + 1 redstone dust for now, and the Vault keeps its full ore density | Nothing; the question was open | Of Nick's three places, the signet is the only one that charges once whatever the portal's size and leaves the mining alone. The E2-S4 playtest (#228) asks whether getting in felt too cheap. If it did, raise the signet's cost, not the frame's. |
+| The Worn Signet is redrawn from Nick's own references, decoded to exact pixels, and the frame's four corner textures get the dark bezel the other blocks have | The ring art that "stands for now" in the entry below; the corners in d9413d5 | Nick's words above. The Designer took `vault_frame_ul`, `_ur`, `_dl` and `_dr` back for the bezel after d9413d5. #218 stays open: it covers Tiers 2 to 4. |
+| The door, #401, stays deferred until the plain portal has passed its playtest | Nothing; the proposal below holds | The door must not hold up the first way into the Vault. It still needs a rendered preview and Nick's yes before any code. |
+
+**Not decided by Nick.** The thin edge has one exception, which comes from `FrameNeighbours` in d9413d5. A block
+with neighbours only above and below cannot tell its front from its reveal, so the upright sides of every ring
+show the interlace on their reveals while the top and bottom bars show the thin edge. He has not seen it in a
+client. The E2-S4 script has a step for it.
+
+**What this supersedes.**
+
+- In "The Signet replaces the Vault Key; the frame goes back to Nick" below: the row saying the frame is not
+  chosen and §3.2 keeps its numbers, and the row saying the ring art stands for now. Its requirement that a
+  built portal reads as one structure stands.
+
+**Rejected.**
+
+- Pricing the frame blocks. A price per block grows with the portal, so it taxes building a big one, and the
+  iron recipe already did that.
+- A weak Vault, or one with little ore. The ore density is the reward, so making it the cost takes away what
+  the player came for. If a playtest says getting in is too cheap, neither of these is the fix; the signet is.
+
+---
+
 ## 2026-11-01 — The Signet replaces the Vault Key; the frame goes back to Nick
 
 **Where this came from.** Nick's answers in the E2 thread, after the Manager offered other names and other

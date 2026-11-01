@@ -175,13 +175,27 @@ When an FTB Team is disbanded, nothing kept for the team is deleted: its Vault w
 ### 3.2 Portal and Frame
 
 **Vault Frame Block**
-- Crafting recipe: 8 iron ingots surrounding 1 redstone dust (shapeless, fills all 8 outer slots), yielding **one** Vault Frame per craft
+- Material: Woad Interlace, pale carved stone with a blue interlace set in a dark bezel (Nick, 2026-11-01)
+- Crafting recipe: 8 stone bricks + 1 lapis lazuli (shapeless, so all 9 grid slots are filled in any arrangement), yielding **one** Vault Frame per craft
+- Price of a portal: the smallest, a 2×3 interior with its corners empty, takes 10 frames, which is 80 stone bricks + 10 lapis lazuli. With its four corners it takes 14 frames. The largest, a 21×21 interior with its corners empty, takes 84 frames, which is 672 stone bricks + 84 lapis lazuli
+- The frame stays cheap on purpose, because portals scale up to 21×21 and a price per block punishes a big one. Any rise in the price of getting in goes on the Signet (§3.3), never on the frame and never on the Vault's ore density (§3.1)
 - Hardness: 1.5 (mines at stone speed), blast resistance: 6.0
 - Mineable with any pickaxe (`minecraft:mineable/pickaxe` tag; MC 26.1 harvest rules are driven by the item `Tool` component)
 - Requires correct tool to drop
-- Sound: metal
+- Sound: stone. Map colour: stone
 - Right-clicking with a Signet triggers the portal shape scan
 - Breaking any block of the frame's four sides dissolves the whole portal (`updateShape` whole-frame re-validation). Corners are optional (below), so a corner block is not part of the frame and breaking one leaves the portal standing
+
+**Connected texture**
+- A built ring reads as one carved border. Each of a block's six faces shows one of 17 textures, picked from which of the block's six neighbours are Vault Frames (`FrameNeighbours`). Any other block beside a frame connects to nothing
+- Six boolean block state properties (`north`, `east`, `south`, `west`, `up`, `down`) hold those neighbours, giving 64 states with one cube model each. They are drawing state only: anything asking whether a block belongs to a frame tests the block, not these values
+- 16 of the textures cover every combination of the face's four edges connecting; the name lists the edges as seen from outside the face (`vault_frame`, `_u`, `_d`, `_l`, `_r`, `_ud`, `_lr`, `_ul`, `_ur`, `_dl`, `_dr`, `_udl`, `_udr`, `_ulr`, `_dlr`, `_udlr`). Left and right swap between opposite faces, so a run stays correct from behind with no mirrored UVs
+- The 17th, `vault_frame_thin`, is plain stone with no interlace, for the edge of a frame one block thick: a face whose normal lies in the frame's plane
+- Neighbours on two axes name that plane. Neighbours on one horizontal axis are read as an upright frame, the plane holding that axis and the vertical
+- A column, with neighbours on the vertical axis only, cannot tell its front from its reveal, so all four of its sides show the interlace and only its top and bottom are thin. This holds for the upright sides of every ring, corners or not
+- A lone block and a block with neighbours on all three axes have no thin face, so a wall two blocks thick shows the interlace on every outer face
+- With its corner blocks in place a ring closes in rounded corners. With its corners empty it shows four separate bars, each ending at its last block
+- A lone block, the item and the break particles use the unconnected `vault_frame` texture on every face
 
 **VaultPortalShape Scanner**
 - Scans outward from the clicked frame block in both X and Z orientations
@@ -2953,10 +2967,11 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Vault Expansion: the Vault re-created under the expanded type at the next reset (§3.5) — E11-S7 (#290)
 
 ### Portal and Signet
-- [ ] Vault Frame block: hardness 1.5, blast resistance 6.0, metal sound, drops itself only to a pickaxe, by gametest (§3.2) — E2-S2 (#210)
+- [ ] Vault Frame block: hardness 1.5, blast resistance 6.0, stone sound, stone map colour, drops itself only to a pickaxe, by gametest (§3.2) — E2-S2 (#210)
+- [ ] Connected Vault Frame: six neighbour properties, one model for each of the 64 states, 17 textures picked per face, connecting only to Vault Frames (§3.2) — E2-S2 (#210)
 - [ ] Vault Frame `minecraft:mineable/pickaxe` tag in the **`minecraft` namespace** — E2-S2 (#210)
-- [ ] Vault Frame shapeless recipe (8 iron + 1 redstone, one frame) — E2-S2 (#210)
-- [ ] Vault Frame and Worn Signet textures at 16×16 — E2-S1 (#204)
+- [ ] Vault Frame shapeless recipe (8 stone bricks + 1 lapis lazuli, one frame) — E2-S2 (#210)
+- [ ] Woad Interlace Vault Frame (17 textures) and Worn Signet textures at 16×16 — E2-S1 (#204)
 - [ ] `VaultPortalShape` scanner as pure logic (both axes, 2×3 to 21×21, corners optional) — E3-S2 (#207)
 - [ ] Ore Vault Portal block: no collision, unbreakable, `HORIZONTAL_AXIS`, four tier variants, failure sound only on a wrong frame (§3.2) — E3-S4 (#229)
 - [ ] Whole-frame dissolve when a side block breaks (`updateShape`) — E3-S4 (#229)

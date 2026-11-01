@@ -51,15 +51,15 @@ question, below.
 ### Iron, frame and signet
 
 The player needs 10 Vault Frames for the smallest portal: a 2 by 3 interior with corners left empty, as a
-nether portal allows (§3.2 VaultPortalShape Scanner; Nb). One frame is 8 iron ingots round 1 redstone dust,
+nether portal allows (§3.2 VaultPortalShape Scanner; Nb). One frame is 8 stone bricks and 1 lapis lazuli,
 one frame per craft (§3.2 Vault Frame Block). The Worn Signet is one iron ingot and one redstone
-dust (§3.3). That is 81 iron and 11 redstone before the mod does anything. The recipes are in JEI; the
+dust (§3.3). That is 80 stone bricks, 10 lapis, 1 iron and 1 redstone before the mod does anything. The recipes are in JEI; the
 frame's shape is not.
 
 They build the frame and right-click it with the signet. A valid frame fills with the green portal of the
 common tier (§3.2 Ore Vault Portal Block). An invalid one plays a failure sound and nothing else: nothing
 says which side is wrong, the same as a nether portal (§3.2; Nick, Q6). The frame needs a pickaxe to drop,
-so a player who punches out a misplaced frame by hand loses 8 iron (§3.2: "Requires correct tool to drop").
+so a player who punches out a misplaced frame by hand loses 8 stone bricks and a lapis (§3.2: "Requires correct tool to drop").
 
 ### Arrival
 
@@ -278,22 +278,22 @@ later feature is not reported as a bug.
 
 ### T2: Vault Frame and Worn Signet
 
-The player finds both items in the creative tab and in JEI, with recipes: 8 iron round 1 redstone for one
-frame, iron and redstone in a row for the signet (§3.2, §3.3). At slot size the frame reads as a metal
+The player finds both items in the creative tab and in JEI, with recipes: 8 stone bricks and 1 lapis for one
+frame, iron and redstone in a row for the signet (§3.2, §3.3). At slot size the frame reads as a carved stone
 frame block and the signet as a ring, not as blobs (`CLAUDE.md` Textures; Designer's `mc-asset` drafts,
-Q5). Placed, the frame mines at stone speed with a pickaxe and sounds like metal, and drops nothing without
+Q5). Placed, the frame mines at stone speed with a pickaxe and sounds like stone, and drops nothing without
 one (§3.2).
 
 Not yet there: right-clicking a frame with the signet does nothing until T3.
 
 Confusing: a purple cube or an invisible item; an item missing from JEI; a frame that drops nothing when
-broken by hand, with no hint why (vanilla's iron blocks behave the same way, so this is watched, not
+broken by hand, with no hint why (vanilla's stone blocks behave the same way, so this is watched, not
 changed).
 
 How the player knows it worked: the items appear, craft as JEI shows, and the frame drops itself when mined
 with a pickaxe.
 
-Session focus: How long did the iron for 10 frames and a signet take, and did 81 iron feel like a fair
+Session focus: How long did 10 frames and a signet take, and did 80 stone bricks and 10 lapis feel like a fair
 price of entry? Can you tell both items apart from vanilla ones at slot size?
 
 ### T3: The dimension path
