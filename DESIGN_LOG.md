@@ -14,6 +14,52 @@ Newest first.
 
 ---
 
+## 2026-11-01 — The locked door over the Vault portal (proposed, not a decision)
+
+**Where this came from.** Nick, in the same message that approved the contact sheet: "Also a neat idea could
+be that when a valid portal is made a big wood door texture with a large central round lock appears then the
+key unlocks the door, when you walk up to the portal the door swings open and shows the portal texture but
+when you're further away the door looks closed."
+
+**Status.** Proposed. Nothing in the spec changes and §3.2 still describes the plain portal. The idea is
+filed as E3-S13 and starts after the T3 playtest, E3-S7 (#253), has passed, so the door cannot hold up the
+first way into the Vault. It needs a rendered preview and Nick's yes before any code. The Manager told Nick
+this the same day. Nothing in this log's rejected lists covers it.
+
+**Unsettled, all for E3-S13.** How one door reads on every interior from 2x3 to 21x21; what shows through it;
+whether the open distance can be per player and client-side only; how entry and the four tier tints work
+with it; whether the return portal has a door.
+
+---
+
+## 2026-11-01 — Contact sheet approved; the Vault Igniter becomes the Vault Key
+
+**Where this came from.** Nick's answer on the E2-S1 contact sheet (#204): "I approve of the everything in
+the contact-sheet, I like the vault igniter being a key, I'd just rename to and change the flavour around it
+to account for it being a key instead of a flint and steel." The sentence gives no new name after "rename
+to". The Manager chose Vault Key and told Nick so in the thread. The spec was changed in §3.2, §3.3 and §13,
+with the rename carried through §1, §3.4, §3.5, §6, §8 and §12.
+
+**Decisions.**
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| The E2-S1 contact sheet is approved whole: the Vault Frame, the Tier 1 item, and the tier ladder | Nothing; it was waiting on Nick's yes | Nick's words above. The sheet is a computed render and nothing on it has been seen in a client, so the §13 lines for the frame and the key stay unticked. The item was described to him as an iron striker with a green bulb and a red ember, and he read it as a key; the art is approved as drawn. |
+| The tier ladder is T1 `#0D7026`, T2 `#316CFF`, T3 `#CB7DFF`, T4 `#FFAE2B`, for the keys, the portal tints and the return portal (§3.2) | The old build's #84 tints, which E3-S3 (#181) names as its start: `#66FF66`, `#5555FF`, `#CC33FF`, `#FF9933` | Each tier is lighter than the one below, so the order survives greyscale and colour blindness. That made T1 much darker than the old green, and Nick was told it may need another look on the translucent portal. E3-S3 (#181) checks T1 at the portal's real alpha and may reopen the ladder. |
+| The Tier 1 to 4 items are the Crude, Attuned, Resonant and Sovereign Vault Key, and the verb is unlock: a key unlocks a portal, it does not light or ignite one | Crude, Attuned, Resonant and Sovereign Vault Igniter; the verb light | Nick asked for the name and the flavour to follow the item being a key instead of a flint and steel. What each tier does in §3.3 is unchanged. The name is the Manager's choice from a gap in Nick's sentence, and he has since said prefixes on Vault Key can work and asked for 3 to 5 other names, so a later pass may change it again. Entries above this date keep "igniter". |
+| Keys stack to 1, every tier | Nothing; §3.3's rule carries over from the igniter | Written down so that the rename does not reopen it. The stack size is checked by gametest. |
+
+**Rejected.**
+
+- **Keeping the name Vault Igniter.** Nick likes the item as a key, and an igniter is the flint and steel he
+  asked to move away from.
+- **UI/UX's lighter purple `#D993FF` for T3.** The Designer kept `#CB7DFF` on the numbers. The T3 to T4 gap in
+  L* would have been 5.5 in greyscale and 2.7 under protanopia, against 11.5 and 8.7 for the approved colour.
+  At 2.7 purple would almost match orange in lightness under protanopia, and the ladder exists to keep the
+  tiers apart by lightness.
+
+---
+
 ## 2026-10-31 — What the Epic 0 review changed, round 2
 
 **Where this came from.** The same roles reviewed the round-1 fixes, and the Manager ruled on every new

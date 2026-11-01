@@ -16,7 +16,7 @@ costs nothing extra for players.
 | FTB Teams API (`ftbteams`) | 26.1.2.4 | All Rights Reserved | Already required | Custom team properties (`TeamProperty`, registered through `CollectTeamPropertiesEvent`, synced to clients automatically). Small team-wide values the Tome's top bar needs, such as Resonance level and unspent points, could ride on this instead of a hand-written sync packet. Keep `SavedData` as the source of truth for progression; properties are a display mirror. Events cover team created, deleted, player joined or left, which §3.1 and §9 already need. |
 | FTB Ultimine API (`ftbultimine`) | 26.1.2.6 | All Rights Reserved | `compileOnly`, soft | Already planned. Worth noting the 26.1 API is now registration events: `RegisterBlockBreakHandlerEvent`, `RegisterRestrictionHandlerEvent`, `RegisterShapeEvent`, plus `CanUltimineResult`. That is the hook for the Volatile Veins once-per-operation roll and the Broad Cut cluster. It requires FTB Library too. |
 | Jade API (`jade`) | 26.1.12 | CC-BY-NC-SA-4.0 (the API is meant for plugins) | `compileOnly`, soft | An optional plugin (`IWailaPlugin`, `IBlockComponentProvider`) that shows an ore's rarity class or vein state when looking at it inside the Vault. Saves building a custom HUD overlay for that. Polish, not core. |
-| JEI (`jei`) | 29.47.0.111 | MIT | `compileOnly`, soft | Info pages for the igniter tiers and the Resonance Crystal gate. Optional polish. |
+| JEI (`jei`) | 29.47.0.111 | MIT | `compileOnly`, soft | Info pages for the Vault Key tiers and the Resonance Crystal gate. Optional polish. |
 
 ## Worth a look, not recommended as dependencies
 
