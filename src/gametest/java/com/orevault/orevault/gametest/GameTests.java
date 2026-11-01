@@ -42,6 +42,12 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> TEAM_UNKNOWN = function("team/unknown_is_one");
     private static final ResourceKey<Consumer<GameTestHelper>> TEAM_SOLO = function("team/solo");
     private static final ResourceKey<Consumer<GameTestHelper>> TEAM_PARTY = function("team/party_and_disband");
+    private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_GATE = function("debug/gate");
+    private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_BREAK = function("debug/break_removes_the_block");
+    private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_BREAK_EMPTY = function("debug/break_on_air_fails");
+    private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_BREAK_UNLOADED = function("debug/break_loads_the_chunk");
+    private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_DIAG_LEVEL = function("debug/diag_reads_the_players_level");
+    private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_DIAG = function("debug/diag_prints_the_break_state");
 
     private GameTests() {
     }
@@ -71,6 +77,12 @@ public final class GameTests {
             registry.register(TEAM_UNKNOWN, TeamTests::anUnknownIdIsATeamOfOne);
             registry.register(TEAM_SOLO, TeamTests::aSoloPlayerIsTheirOwnTeam);
             registry.register(TEAM_PARTY, TeamTests::aPartyChangesTheTeamAndItsLastMemberDisbandsIt);
+            registry.register(DEBUG_GATE, DebugCommandTests::theRootIsAlwaysThereAndTheSubcommandsAreGated);
+            registry.register(DEBUG_BREAK, DebugCommandTests::breakRemovesTheBlockAndSaysSo);
+            registry.register(DEBUG_BREAK_EMPTY, DebugCommandTests::breakOnAirFails);
+            registry.register(DEBUG_BREAK_UNLOADED, DebugCommandTests::breakLoadsTheChunkItNeeds);
+            registry.register(DEBUG_DIAG_LEVEL, DebugCommandTests::diagReadsThePlayersLevelUnderExecuteIn);
+            registry.register(DEBUG_DIAG, DebugCommandTests::diagPrintsTheBreakState);
         });
     }
 
@@ -79,7 +91,8 @@ public final class GameTests {
         Holder<TestEnvironmentDefinition<?>> environment = event.registerEnvironment(id("default"));
         for (ResourceKey<Consumer<GameTestHelper>> test : List.of(
                 PASSES, LANG_COVERAGE, FRAME_PICKAXE_DROP, FRAME_HAND_NO_DROP, FRAME_RECIPE, FRAME_PROPERTIES,
-                FRAME_CONNECTS, FRAME_ROUNDED, SIGNET_RECIPE, SIGNET_STACK_SIZE, TEAM_UNKNOWN, TEAM_SOLO, TEAM_PARTY)) {
+                FRAME_CONNECTS, FRAME_ROUNDED, SIGNET_RECIPE, SIGNET_STACK_SIZE, TEAM_UNKNOWN, TEAM_SOLO, TEAM_PARTY,
+                DEBUG_GATE, DEBUG_BREAK, DEBUG_BREAK_EMPTY, DEBUG_BREAK_UNLOADED, DEBUG_DIAG, DEBUG_DIAG_LEVEL)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
         }
         event.registerTest(DELIBERATE_FAILURE.identifier(),

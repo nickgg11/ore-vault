@@ -1,6 +1,6 @@
 # 0010. The sealed door, and how a frame shows its portal's colour
 
-Status: proposed, 2026-11-01 (E3-S4, #229). Waits on the matrix reviewers and on Nick's yes to the door render.
+Status: proposed, 2026-11-01 (E3-S4, #229). Waits on the matrix reviewers. Nick's yes to the render is given; see the amendment below.
 Spec: §3.2, §3.3. `DESIGN_LOG.md` 2026-11-01, "A valid frame shows a sealed door". Depends on ADR 0001's package
 table and on `VaultPortalShape` (#207).
 
@@ -64,8 +64,9 @@ that passes this test belongs to that ring. Doors have no tier and count for not
 The pure half is `core.frame.FrameLight`: `int tierAround(x, y, z, PortalView)`, returning 0 for grey, where
 `PortalView#tierAt(x, y, z, axis)` is 0 for anything that is not a portal on that axis. It imports nothing, so
 ADR 0001's `core.frame` row stands. The tint source is `client.VaultFrameTint`: `color(state)` is grey, and
-`colorInWorld` calls `FrameLight` over `level` and maps the tier to the rune colour. `VaultPortalBlock#tier()`
-gives it the tier. It is registered through `RegisterColorHandlersEvent.BlockTintSources` on the mod bus, and
+`colorInWorld` calls `FrameLight` over `level` and maps the tier to the rune colour. `colorAsTerrainParticle`
+defaults to `colorInWorld` and `TerrainParticle` multiplies by it, so the tint source overrides it to return white
+and stone break particles are not tinted. `VaultPortalBlock#tier()` gives it the tier. It is registered through `RegisterColorHandlersEvent.BlockTintSources` on the mod bus, and
 `relevantProperties()` stays empty, because no frame property affects it. The portal's change redraws the frame,
 through the widening above.
 
@@ -90,7 +91,10 @@ dissolves both, since both rings are then invalid.
 
 `VaultFrameBlock#onPlace`, when `!oldState.is(this)`, calls `VaultOpenings.seal(level, pos)` once. It runs
 `VaultPortalShape.findAll` from that block and, for each shape whose cells are all `AIR`, sets the door with flags
-18, from `DoorPart.of(column, row, width, height)`.
+18, from `DoorPart.of(column, row, width, height)`. It re-checks all-`AIR` per shape at write time, because two
+crossing rings can share a column and the first door written fills it.
+
+The return portal builder writes its cells before its frames, so no frame finds an empty ring and no door seals first.
 
 | Way a frame arrives | Result |
 |---|---|
@@ -121,7 +125,10 @@ reads only the `BlockAndTintGetter` it is given.
 `VaultDoorBlock`, one block, not one per tier: `HORIZONTAL_AXIS` and an `IntegerProperty` `part` 0 to 12, 26 states,
 hardness -1, blast resistance 3,600,000, `PushReaction.BLOCK`, no loot, a 4 px shape for outline and collision. It
 does not implement `Portal`. A shared block would need its collision, light, `entityInside` and portal behaviour
-each switched on a state, for one swap.
+each switched on a state, for one swap. #229's creative-break cancel applies to the door as it does to the portal.
+
+The door and the portal each have a 4 px `getShape` by axis, as `NetherPortalBlock` does. The portal's collision is
+empty. Its travel trigger stays the full cell: `getEntityInsideCollisionShape` keeps its default, `Shapes.block()`.
 
 `DoorPart` is a pure enum in `core.frame`. `StringRepresentable` cannot be imported there, so the property holds an
 explicit `DoorPart#id()`, not the ordinal. Those ids are save data from the first door, pinned by a golden unit test.
@@ -151,14 +158,17 @@ that tier's portal with flags 18. The frames need nothing.
 
 A door and a portal behave alike, in `VaultOpenings`. `updateShape` returns the state unchanged and, when an in-plane
 neighbour is neither Vault Frame nor `vault_openings`, calls `ticks.scheduleTick(pos, this, 1)`, since `updateShape`
-has only a `LevelReader` to write with. `tick` runs `around`; if the opening is still valid it stops. If not, it
-collects every connected cell of the same axis, then removes them all with `UPDATE_ALL` so nearby water and redstone
+has only a `LevelReader` to write with. `tick` runs `around`; the scanner accepts air, so `tick` also treats any cell
+not in `orevault:vault_openings` as invalid, and a hole in a door or portal dissolves the rest. If the opening is still
+valid it stops. If not, it collects every connected cell of the same axis, then removes them all with `UPDATE_ALL` so nearby water and redstone
 hear it (old PR #108). This collect reads the level directly: a synchronous load beats an unbreakable orphan. A
 frame goes grey by itself.
 
 The door cannot be obstructed once placed: nothing replaces it short of a command, a piston refuses it, and
 fluid cannot enter because its 4 px shape is full height, so it counts as solid. The portal has no collision, so it
-implements `LiquidBlockContainer` with `canPlaceLiquid` false, or water washes it away.
+implements `LiquidBlockContainer` with `canPlaceLiquid` false, or water washes it away. That stops only flowing
+water. It also overrides `canBeReplaced(BlockState, Fluid)` to return false, as `EndPortalBlock` does (line 125), or a
+bucket or dispenser destroys a cell through `BucketItem#emptyContents`.
 
 ### Save data
 
@@ -179,10 +189,12 @@ scheduled dissolve tick is vanilla's and is saved with the chunk.
 - A ring that spans a chunk not loaded at completion gets no door until something places a block again.
 - `/fill` with `strict`, or any writer with flag 16, can leave a door or portal with no ring. Creative plus sneak
   (#229) clears it.
-- Test list: unit `DoorPart` ids and `FrameLight`; gametests for a ring sealing on the last block, a piston
-  completing a ring, an obstructed ring getting no door and still opening by signet, a swap, a side break dissolving
-  door and portal, a corner break not, two crossing rings refusing, and a shared bar surviving a dissolve of one
-  portal; `runClient` for colour, including a corner placed after opening.
+- Test list: unit `DoorPart` ids, `FrameLight`, and on the scan's `View`, an unloaded position answering `OTHER`;
+  gametests for a ring sealing on the last block, a piston completing a ring, an obstructed ring getting no door
+  (press refused, clear the opening, press opens), a swap, placement and the signet swap through `ItemStack#useOn`
+  with a fake player, a side break dissolving door and portal, a corner break not, a hole in a door or portal
+  dissolving the rest, water against a portal, two crossing rings refusing, crossing rings sealed by one block, and a
+  shared bar surviving a dissolve of one portal; `runClient` for colour, including a corner placed after opening.
 
 ## Rejected alternatives
 
@@ -201,11 +213,26 @@ scheduled dissolve tick is vanilla's and is saved with the chunk.
 
 ## Spec sections changed
 
-§3.2, by the Writer once Nick has said yes to the render: Vault Frame Block (colour, dormant to lit, not stored),
+§3.2, by the Writer, now that Nick has said yes to the render: Vault Frame Block (colour, dormant to lit, not stored),
 Scanner (door on completion, signet on door or frame, the door's tag), a new Sealed Door block, Ore Vault Portal
 Block (`updateShape` schedules; `LiquidBlockContainer`; the immune tags). `DESIGN_LOG.md`: the row "Each frame needs
 its own tier state" is superseded, with this record's reason. #229's criteria change with it, and `VaultPortalShape`'s
 Javadoc names the tag.
+
+## Amendment, 2026-11-01
+
+Nick said yes to the renders: "Yeah the door looks good as two doors.", "Dormant looks good, I am fine with the blue
+being flatter." and "I don't want or need the colours to get brighter with each tier. I like all the colours, yes
+let's not shade the portal blocks." This does not change the status: the record stays proposed until the matrix
+reviewers run.
+
+The render settled what this record left open. The rune colours are the tier ladder, T1 `#0D7026`, T2 `#316CFF`, T3
+`#A038D0`, T4 `#FF8000`, except that frame runes in Tier 1 use `#148031`. The door has 13 parts in two leaves and is a
+4 px slab, as is the portal. The strip is 16 frames at frametime 2, alpha 196, with `"shade": false` on the strip model
+only.
+
+§3.2, §3.3 and §13 were changed on this date. The `DESIGN_LOG.md` row named above was never written; the entry's row
+on grey strands carries that decision.
 
 ## Reviews
 

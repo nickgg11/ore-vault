@@ -30,6 +30,11 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  */
 final class LangCoverage {
     private static final String EN_US = "/assets/orevault/lang/en_us.json";
+    /** Keys {@code ConfigurationScreen} builds from the mod id and the file name, which no spec carries. */
+    private static final List<String> CONFIG_SCREEN_KEYS = List.of(
+            OreVault.MOD_ID + ".configuration.title",
+            OreVault.MOD_ID + ".configuration.section.orevault.server.toml",
+            OreVault.MOD_ID + ".configuration.section.orevault.server.toml.title");
 
     private LangCoverage() {
     }
@@ -55,6 +60,7 @@ final class LangCoverage {
         ownedEntries(BuiltInRegistries.ENTITY_TYPE).forEach(type -> keys.add(type.getDescriptionId()));
         keys.add(ModCreativeTabs.TITLE_KEY);
         keys.addAll(SignetTier.everyTooltipKey());
+        keys.addAll(CONFIG_SCREEN_KEYS);
         ModConfigs.getModConfigs(OreVault.MOD_ID).stream()
                 .map(ModConfig::getSpec)
                 .filter(ModConfigSpec.class::isInstance)
@@ -78,12 +84,17 @@ final class LangCoverage {
                 List<String> sectionPath = new ArrayList<>(path);
                 sectionPath.add(entry.getKey());
                 String key = spec.getLevelTranslationKey(sectionPath);
-                keys.add(key != null ? key : fallback);
+                addWithTooltip(key != null ? key : fallback, keys);
                 addConfigKeys(spec, section, sectionPath, keys);
             } else if (entry.getValue() instanceof ModConfigSpec.ValueSpec value) {
-                keys.add(value.getTranslationKey() != null ? value.getTranslationKey() : fallback);
+                addWithTooltip(value.getTranslationKey() != null ? value.getTranslationKey() : fallback, keys);
             }
         }
+    }
+
+    private static void addWithTooltip(String key, List<String> keys) {
+        keys.add(key);
+        keys.add(key + ".tooltip");
     }
 
     private static JsonObject readLang() {

@@ -175,7 +175,7 @@ When an FTB Team is disbanded, nothing kept for the team is deleted: its Vault w
 ### 3.2 Portal and Frame
 
 **Vault Frame Block**
-- Material: Woad Interlace, pale carved stone with a blue interlace set in a dark bezel (Nick, 2026-11-01)
+- Material: Woad Interlace, pale carved stone with an interlace set in a dark bezel (Nick, 2026-11-01). The interlace's strands are a tint layer, grey until lit (Frame colour, below)
 - Crafting recipe: 8 stone bricks + 1 lapis lazuli (shapeless, so all 9 grid slots are filled in any arrangement), yielding **one** Vault Frame per craft
 - Price of a portal: the smallest, a 2×3 interior with its corners empty, takes 10 frames, which is 80 stone bricks + 10 lapis lazuli. With its four corners it takes 14 frames. The largest, a 21×21 interior with its corners empty, takes 84 frames, which is 672 stone bricks + 84 lapis lazuli
 - The frame stays cheap on purpose, because portals scale up to 21×21 and a price per block punishes a big one. Any rise in the price of getting in goes on the Signet (§3.3), never on the frame and never on the Vault's ore density (§3.1)
@@ -183,8 +183,8 @@ When an FTB Team is disbanded, nothing kept for the team is deleted: its Vault w
 - Mineable with any pickaxe (`minecraft:mineable/pickaxe` tag; MC 26.1 harvest rules are driven by the item `Tool` component)
 - Requires correct tool to drop
 - Sound: stone. Map colour: stone
-- Right-clicking with a Signet triggers the portal shape scan
-- Breaking any block of the frame's four sides dissolves the whole portal (`updateShape` whole-frame re-validation). Corners are optional (below), so breaking a corner block leaves the portal standing, though the scan still accepts a click on one
+- Completing a ring fills it with a sealed door (Sealed Door, below). Right-clicking the frame or the door with a Signet opens the portal (Pressing a Signet, below)
+- Breaking any block of the frame's four sides dissolves the whole door or portal (Dissolve, below). Corners are optional (below), so breaking a corner block leaves the door or portal standing, though the scan still accepts a click on one
 
 **Connected texture**
 - A built ring reads as one carved border. Each of a block's six faces shows one of 16 textures, picked from which of the block's six neighbours are Vault Frames (`FrameNeighbours`). Any other block beside a frame connects to nothing
@@ -196,26 +196,64 @@ When an FTB Team is disbanded, nothing kept for the team is deleted: its Vault w
 - A rounded corner's outline and collision follow the same shape, and a player can walk over it, but mobs do not path through it. Like a stair it does not conduct redstone and does not suffocate. Most attachments that need a full face will not hold on the curve; wall signs and centre-supported blocks still can, as on a stair. A frame is still recognised by its block, never by its shape
 - A lone block, the item and the break particles use the unconnected `vault_frame` texture on every face
 
+**Frame colour**
+- A frame block's strands are a tint layer over the base (`"tintindex": 0`). They are grey (`#74767C`) while the block is dormant, the item included, and take the tier's rune colour once a portal around it lights it. A dissolve returns them to grey. A sealed door has no tier and lights nothing
+- The colour is not stored. The frame has no `tier` property, keeps its 64 states, and nothing writes to it when a portal opens or dissolves. It is worked out on the client each time the section is drawn (`client.VaultFrameTint`, calling the pure `core.frame.FrameLight`), reading only the blocks beside it, so a portal's change redraws the frame by itself
+- The rule: a frame block shows the highest tier among the portal cells around it in their plane, and grey if there are none. On axis X those are the eight positions at (x±1, y), (x, y±1) and the diagonals in that plane, on axis Z the same with z, 14 blocks in all. A cell counts only if it is a portal whose own axis is that plane's
+- Only the ring and corner blocks light. Every block around an opening cell in its plane is another cell, a side or a corner position, so a frame block that passes the rule belongs to that ring, and this holds for a corner block added after the portal opened. A bar running on past its corner stays grey, as does any frame block behind or in front of the ring
+- Removing the portal releases every one of those blocks by the same rule, corners included. Breaking a corner block leaves the portal standing and changes no other block's colour
+- A block shared by two portals shows the higher tier, as the return portal's tier only upgrades. Dissolving one portal leaves the block showing the other's colour, or grey if there is no other. Breaking the shared block dissolves both, since both rings are then invalid
+- A lit frame tints and does not glow: it gives no block light and is not full bright. Stone break particles are not tinted (`VaultFrameTint` overrides `colorAsTerrainParticle`)
+- The item draws the same grey through a `minecraft:constant` tint
+
 **VaultPortalShape Scanner**
-- Scans outward from the clicked frame block in both X and Z orientations
+- Scans outward from the frame block it starts at in both X and Z orientations. It runs when a frame block arrives (Sealed Door, below) and when a Signet is pressed (Pressing a Signet, below)
 - Valid frame: rectangular, all four sides made of Vault Frame blocks. **Corners are optional**: the four corner positions may hold anything, as with a nether portal
 - A click on a corner block is accepted and finds that ring. So is a click on a block that sits at the corner of some other ring: any frame block with a valid opening on one of its diagonals finds that opening
 - A bar may run on past its corner. This follows from the corners holding anything and from two portals sharing a bar: only the blocks along the opening's four edges are checked
 - Interior dimensions: minimum 2 wide × 3 tall, maximum 21 wide × 21 tall
-- Interior must be entirely air or existing portal blocks
-- If valid: fills interior with the tier-matched Ore Vault Portal variant, oriented to match the frame axis
-- If invalid: plays a failure sound, no portal created. Nothing says which side is wrong: like a nether portal, the frame either opens or it does not (Nick, 2026-10-27, declining an action-bar line naming the problem)
+- Interior must be entirely air, or blocks in `orevault:vault_openings` (a sealed door or a portal)
+- On a Signet press, if valid: fills interior with the tier-matched Ore Vault Portal variant, oriented to match the frame axis
+- On a Signet press, if invalid: plays a failure sound, no portal created. Nothing says which side is wrong: like a nether portal, the frame either opens or it does not (Nick, 2026-10-27, declining an action-bar line naming the problem)
+
+**Sealed Door**
+- The door gives no light
+- A completed ring fills with a sealed door, with no item used (Nick, 2026-11-01). `orevault:vault_door` is one block for every tier, and it is not a portal: it does not implement `Portal` and nothing travels through it
+- Trigger: `VaultFrameBlock#onPlace`, when the old state was not a frame, runs one scan from the block that arrived. That covers player placement, `/setblock`, `/fill`, a piston and a structure placed at run time. Every ring the scan finds with all its cells air gets a door, set with flags 18, and all-air is checked again per ring at write time, because crossing rings can share a column. The block that completes a ring is the one that finds it. The scan is silent: the failure sound belongs to the press
+- The return portal builder writes its cells before its frames, so no door seals first
+- Nothing else scans. A neighbour changing, a connection property changing, an obstruction clearing and a chunk loading start no scan, and a frame generated by a structure gets no door. Such a ring still works: a Signet opens it
+- An obstructed ring gets no door, and nothing notices when it clears. Once its opening is air the Signet still opens it, with no door shown, and placing any frame block of the ring again seals it. The same covers a ring built before the door existed, and the player who pillars up inside a ring to place the top bar
+- The scan reads an unloaded position as not open and never loads a chunk, so a ring spanning an unloaded chunk at completion gets no door until a block is placed again
+- Parts: the built door has two leaves, iron straps, a centre seam and one seat, and each opening cell takes the tile for its position (`DoorPart.of(column, row, width, height)`), so a 21×21 door is not a tiled wall. There are 13 parts on two axes, `HORIZONTAL_AXIS` and an integer `part` 0 to 12, 26 states. `part` holds `DoorPart#id()`, not the ordinal: those ids are save data from the first door
+- Hardness: -1.0 (unbreakable), blast resistance: 3,600,000, `PushReaction.BLOCK`, no loot. Creative breaking is cancelled as it is for the portal, with creative plus sneak as the escape hatch (E3-S4, #229)
+- Shape: a 4 px `getShape` by axis for outline and collision, the thickness of a nether portal. A door cannot be obstructed once placed: its shape is full height, so it counts as solid and fluid cannot enter, and a piston refuses it
+- Tags: the door is not in `orevault:vault_portals`, whose readers mean something you can travel through. `orevault:vault_openings` holds `orevault:vault_door` and `#orevault:vault_portals`, and the scanner reads anything in it as an opening. The door and the portals are in `minecraft:wither_immune` and `minecraft:dragon_immune`, because a wither and the dragon ignore hardness
+- The swing on approach is E3-S13 (#401), after E3-S7
+
+**Pressing a Signet**
+- On a frame block the scan is `VaultPortalShape.find`. On a door or portal it is `VaultPortalShape.around`, from that cell on the block's own axis
+- The press is refused with the failure sound if no shape is found or any filled cell has a different axis: two crossing rings share a cell, and the other ring's door is not this press's to replace
+- Otherwise every cell becomes that tier's portal, set with flags 18. The frames need nothing
+
+**Dissolve**
+- A door and a portal behave alike. `updateShape` returns the state unchanged and, when an in-plane neighbour is neither Vault Frame nor in `orevault:vault_openings`, schedules a tick one game tick later
+- The tick re-validates the opening and stops if it is still valid. Any cell not in `orevault:vault_openings` makes it invalid, so a hole in a door or portal dissolves the rest. If invalid, it collects every connected cell of the same axis, then removes them all with `UPDATE_ALL`, so nearby water and redstone hear it
+- A frame goes grey by itself (Frame colour, above)
+- `/fill` with `strict`, or any writer with flag 16, can leave a door or portal with no ring. Creative plus sneak clears it
 
 **Ore Vault Portal Block**
 - No collision
 - Hardness: -1.0 (unbreakable), blast resistance: 3,600,000
 - Light level: 11
 - Has HORIZONTAL_AXIS block state property for orientation
+- A 4 px `getShape` by axis for model and outline, the thickness of a nether portal, the same as the sealed door. Collision is empty, and the travel trigger stays the full cell
+- Implements `LiquidBlockContainer` with `canPlaceLiquid` false, because a block with no collision otherwise holds fluid and water would wash it away. That stops only flowing water, so it also overrides `canBeReplaced(BlockState, Fluid)` to return false, as the end portal does, or a bucket or dispenser destroys a cell through `BucketItem#emptyContents`
 - Four variants, one per signet tier (#84): common (green), uncommon (blue), rare (purple), legendary (orange) — the signet's tier selects which variant fills the frame. All four share one near-white texture tinted client-side via BlockColors (`tintindex`), and everything that recognises "a portal block" uses the `orevault:vault_portals` block tag.
-- Tier colours, shared by the signets' gems, the portal tints and the return portal: T1 `#0D7026`, T2 `#316CFF`, T3 `#CB7DFF`, T4 `#FFAE2B`, each lighter than the tier below (Nick, 2026-11-01, on the E2-S1 contact sheet). E3-S3 (#181) checks T1 at the portal's real alpha and may reopen the ladder
+- The texture is a strip of 16 frames at frametime 2 and alpha 196. The strip model sets `"shade": false`, so a tier colour is not darkened on the faces vanilla shades (Nick, 2026-11-01). That setting is on the strip model only: the door and the frame are shaded as normal
+- Tier colours, shared by the signets' gems, the portal tints, the frame runes and the return portal: T1 `#0D7026`, T2 `#316CFF`, T3 `#A038D0`, T4 `#FF8000` (Nick, 2026-11-01, on the rendered previews). The frame runes in Tier 1 use `#148031`; every other use of Tier 1 is `#0D7026`. E3-S3 (#181) checks T1 at the portal's real alpha and may reopen the ladder
 - Implements MC 26.1's `Portal` interface: entering starts the vanilla nether-style charge-up — 80 ticks (4 seconds) inside the portal with the wavy "confusion" screen overlay, giving players the chance to step back out — followed by a portal travel sound and the teleport
 - `entityInside()` handles teleportation (players only)
-- `updateShape()` breaks to air if a neighbouring block is neither Vault Frame nor portal block (whole-frame re-validation)
+- `updateShape()` schedules the whole-frame re-validation (Dissolve, above); it does not break the block itself
 - Teleport cooldown: 80 ticks (4 seconds) using vanilla `portalCooldown`; Tier 3+ signet holders skip the wait and the cooldown entirely (§3.3)
 
 **No team gate.** FTB Teams auto-creates a single-member team for every player who logs in, so a logged-in player always has a team and nothing is gated on team membership. `getTeamForPlayerID` is empty for an id not in FTB Teams' `knownPlayers`, such as a never-seen UUID or a FakePlayer (`TeamManagerImpl:123-126`), and `TeamHelper.teamId` answers such an id with itself, the id its personal team will get. For a fake player that is a phantom id with no team behind it, so §3.4 callers must reject fake players first. Solo players get a solo Vault, exactly as §2 describes.
@@ -249,7 +287,7 @@ Return position is stored in the player's NeoForge data attachment `orevault:pla
 
 ### 3.3 Signet Tiers
 
-The Signet is a silver signet ring with one gem, and the gem changes per tier. It is what opens a Vault portal: the player builds the frame, then presses the signet into it. Four tiers, each crafted from the previous tier plus additional materials.
+The Signet is a silver signet ring with one gem, and the gem changes per tier. It is what opens a Vault portal: the player builds the frame, which fills with a sealed door, then presses the signet into the door or the frame. Each gem takes its tier's colour from the ladder in §3.2. Four tiers, each crafted from the previous tier plus additional materials.
 
 **Every tier grants a persistent capability, not a buff.** Earlier drafts gave the tiers short potion effects on arrival (Speed I for 5s, Haste I, Haste II); those were removed. They were cosmetic noise, and the Vault Fever and Miner's Constitution nodes already own the haste and hunger axes far more meaningfully — a 15-second Haste II on entry is worthless next to a node granting it permanently. A signet carries access, not stats. Every tier stacks to 1.
 
@@ -2941,7 +2979,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [x] Package structure created as `docs/adr/0001-toolchain-and-package-layout.md` lays it out: pure `core.*` packages with no Minecraft imports, Minecraft-facing adapters around them, and an ArchUnit test with one rule per package plus the named rules, each shown failing against a planted violation (S43), with named rule 7 to land with E3-S6a (#237); a package appears with its first class — E1-S3 (#194)
 - [x] Main mod class taking the `modEventBus` — E1-S1 (#188)
 - [x] Data generators for blockstates, models, recipes, tags and loot, with a check that committed output matches — E1-S9 (#198)
-- [ ] Command root `/orevault`, always registered, with only its debug subcommands behind `[debug].enable_debug_commands`; `/orevault reset vote` and `/orevault archive` are registered whatever the flag (§10); and the config screen — E3-S1 (#205)
+- [x] Command root `/orevault`, always registered, with only its debug subcommands behind `[debug].enable_debug_commands`; `/orevault reset vote` and `/orevault archive` join it unguarded with their own stories (§10); and the config screen — E3-S1 (#205)
 - [ ] Tree layout file and `TreeLayout` (§6, §11), with the constants class beside it — E8a-S9 (#189), E8a-S1 (#208), E8a-S4 (#212), E8a-S3a (#239)
 - [ ] Team data `SavedData`, one per team, id `orevault:team_<teamUuidNoHyphens>` (§11 SavedData Pattern, ADR 0005): the shell with `vault_generation` and `disbanded_at`, and the Vault type file `orevault_vault.dat` in each Vault folder, its name frozen as save data with the key and folder scheme (§11 SavedData Pattern, Per-Vault data) — E3-S9 (#232); `resonance_pool` and `level_reached` — E6-S1 (#241); the tree (`owned`, `fork_choice`, the respec window, pin and buyers) — E6-S3 (#251)
 - [ ] `PlayerStats` nested in team data with its own `data_version` (§11) — E6-S2 (#276)
@@ -2975,8 +3013,13 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Vault Frame shapeless recipe (8 stone bricks + 1 lapis lazuli, one frame) — E2-S2 (#210)
 - [ ] Woad Interlace Vault Frame (16 face and 4 rim textures) and Worn Signet textures at 16×16 — E2-S1 (#204)
 - [x] `VaultPortalShape` scanner as pure logic behind a `View`, with no Minecraft imports: both axes, 2×3 to 21×21, corners optional, started from any frame block, tested in JUnit only until a block calls it — E3-S2 (#207)
-- [ ] Ore Vault Portal block: no collision, unbreakable, `HORIZONTAL_AXIS`, four tier variants, failure sound only on a wrong frame (§3.2) — E3-S4 (#229)
-- [ ] Whole-frame dissolve when a side block breaks (`updateShape`) — E3-S4 (#229)
+- [ ] Ore Vault Portal block: no collision, unbreakable, `HORIZONTAL_AXIS`, a 4 px slab, four tier variants, `LiquidBlockContainer` refusing fluid, failure sound only on a wrong frame (§3.2) — E3-S4 (#229)
+- [ ] Sealed door: `orevault:vault_door`, 13 parts on two axes (26 states), a 4 px slab with collision, unbreakable, `PushReaction.BLOCK`, no loot, part ids pinned by a golden unit test (§3.2) — E3-S4 (#229)
+- [ ] A ring seals when its last block arrives, by one scan from `onPlace`; an obstructed ring gets no door and a Signet still opens it once clear (§3.2) — E3-S4 (#229)
+- [ ] Signet press on a door, portal or frame swaps the opening for that tier's portal; refused on a filled cell of another axis (§3.2) — E3-S4 (#229)
+- [ ] `orevault:vault_openings` tag, and the door and portals in `minecraft:wither_immune` and `minecraft:dragon_immune` (§3.2) — E3-S4 (#229)
+- [ ] Frame colour derived from the portal cells around it, not stored: strand tint grey until lit, `FrameLight` unit-tested, highest tier on a shared block, only ring and corner blocks lit, seen in a client (§3.2) — E3-S4 (#229)
+- [ ] Whole-frame dissolve of a door or portal when a side block breaks: `updateShape` schedules, the tick collects every connected cell, then removes them (§3.2) — E3-S4 (#229)
 - [ ] Worn Signet (Tier 1): capability accessors for all four tiers (`entryPointCapacity`, `hasInstantTravel`, `canResetVault`), tooltip built from them, no tier-number comparison, stacks to 1 (§3.3); right-click arrives with E3-S4 (#229) — E2-S3 (#219)
 - [ ] Heirloom, Fabled and Primordial Signets (Tiers 2 to 4) with their recipes (§3.3) — E10-S1 (#369); textures — E13-S2b (#218)
 - [ ] Tier 2: one personal entry point; Tier 3: three, chosen from a list, and instant travel. Stored as `entry_points` on the player attachment (§11) — E10-S1 (#369); list design — E10-S7 (#293)
@@ -3195,7 +3238,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Ore Doubling fallback chain (Mekanism tags → dust → raw ore) — E12-S4 (#371)
 
 ### Config
-- [ ] `orevault-server.toml` generated with defaults; each value added with its reader by the story that uses it (`CLAUDE.md` rule 7), the first being `[debug]` — E3-S1 (#205)
+- [x] `orevault-server.toml` generated with defaults; each value added with its reader by the story that uses it (`CLAUDE.md` rule 7), the first being `[debug]` — E3-S1 (#205)
 - [ ] `vault_presence_enabled` toggle — E10-S3 (#373)
 - [ ] `max_loaded_chunks_per_team` ceiling — E10-S3 (#373)
 - [ ] `ore_classification.overrides` map — E4-S2 (#238)
@@ -3218,7 +3261,8 @@ Use this to track progress. Tick a line only when the work has merged and been s
       `minecraft:textures/entity/experience/experience_orb.png` and ships no texture of its own,
       and re-sizing a vanilla sprite is not ours to do
 - [ ] Tome node art — craggly, stained-paper frames per node class, readable at every GUI scale, the paper a frame and a wash, never a busy fill behind text; one icon per skill and per travel stat (§8) — E8-S2 (#256) and the icon stories under UI
-- [ ] Translucent portal strip, one near-white animated texture, tinted per tier in four colours (§3.2) — E3-S3 (#181)
+- [ ] Translucent portal strip, one near-white animated texture of 16 frames at frametime 2 and alpha 196, `"shade": false` on the strip model only, tinted per tier in four colours (§3.2) — E3-S3 (#181)
+- [ ] Sealed door textures, one tile for each of the 13 parts, and the frame's grey strand tint layer (§3.2) — E3-S4 (#229)
 - [ ] Blockstate and model JSONs, through the data generators — E1-S9 (#198) and the story of each block and item
 - [ ] In-game guide, only if the first-ten-minutes playtest shows one is needed, preferring a hover-in-JEI-and-hold-a-key guide to a book (§12) — E9-S59 (#363) decides, E13-S7 (#377)
 
