@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "orevault:crude_vault_igniter"
+        "recipe": "orevault:crude_vault_key"
       },
       "trigger": "minecraft:recipe_unlocked"
     }
@@ -26,7 +26,7 @@
   ],
   "rewards": {
     "recipes": [
-      "orevault:crude_vault_igniter"
+      "orevault:crude_vault_key"
     ]
   }
 }

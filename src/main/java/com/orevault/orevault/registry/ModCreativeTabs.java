@@ -21,7 +21,7 @@ public final class ModCreativeTabs {
                     .icon(() -> ModItems.VAULT_FRAME.get().getDefaultInstance())
                     .displayItems((parameters, output) -> {
                         output.accept(ModItems.VAULT_FRAME.get());
-                        output.accept(ModItems.CRUDE_VAULT_IGNITER.get());
+                        output.accept(ModItems.CRUDE_VAULT_KEY.get());
                     })
                     .build());
 

@@ -4,7 +4,7 @@ import com.electronwill.nightconfig.core.UnmodifiableConfig;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.orevault.orevault.OreVault;
-import com.orevault.orevault.core.igniter.IgniterTier;
+import com.orevault.orevault.core.vaultkey.VaultKeyTier;
 import com.orevault.orevault.registry.ModCreativeTabs;
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,7 +54,7 @@ final class LangCoverage {
         ownedEntries(BuiltInRegistries.ITEM).forEach(item -> keys.add(item.getDescriptionId()));
         ownedEntries(BuiltInRegistries.ENTITY_TYPE).forEach(type -> keys.add(type.getDescriptionId()));
         keys.add(ModCreativeTabs.TITLE_KEY);
-        keys.addAll(IgniterTier.everyTooltipKey());
+        keys.addAll(VaultKeyTier.everyTooltipKey());
         ModConfigs.getModConfigs(OreVault.MOD_ID).stream()
                 .map(ModConfig::getSpec)
                 .filter(ModConfigSpec.class::isInstance)

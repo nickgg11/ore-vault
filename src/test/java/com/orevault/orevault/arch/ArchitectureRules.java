@@ -75,7 +75,7 @@ final class ArchitectureRules {
                 pureRow("reset", "CoreReset"),
                 pureRow("wear", "CoreWear", core("tree")),
                 pureRow("key", "CoreKey"),
-                pureRow("igniter", "CoreIgniter"));
+                pureRow("vaultkey", "CoreVaultKey"));
     }
 
     private static List<Rule> adapterRows() {
