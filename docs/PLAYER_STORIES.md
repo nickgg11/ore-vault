@@ -48,7 +48,7 @@ What the player should take away: there is a tree, it costs points, and points c
 Vault. The Tome says nothing about how to build the portal. Whether anything should is the Q17 guide
 question, below.
 
-### Iron, frame and signet
+### Stone, frame and signet
 
 The player needs 10 Vault Frames for the smallest portal: a 2 by 3 interior with corners left empty, as a
 nether portal allows (§3.2 VaultPortalShape Scanner; Nb). One frame is 8 stone bricks and 1 lapis lazuli,
@@ -239,7 +239,7 @@ Build: <commit>, mods: vanilla plus FTB Teams and JEI, team size: 1
 Kind: first ten minutes (buy freely)
 Focus: 1. At which step would a new player have needed to be told something, and what?
        2. Which nodes did you buy at level 1, why, and how did you know each worked?
-Setup: fresh world, iron and redstone for 10 frames and a signet in a chest, stone pickaxe or better
+Setup: fresh world, stone bricks and lapis for 10 frames and iron and redstone for a signet in a chest, stone pickaxe or better
 Steps (QA's, QA-34):
         1. Log in; the Tome is in the inventory.
         2. Open it: level 0, the empty-state line.
