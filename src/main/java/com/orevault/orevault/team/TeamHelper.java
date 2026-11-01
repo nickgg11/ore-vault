@@ -16,6 +16,8 @@ import java.util.function.Consumer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.NeoForge;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The only class that imports FTB Teams (rule 5, §9), so that nothing else holds an FTB type: the rest of the mod
@@ -30,6 +32,7 @@ import org.jspecify.annotations.Nullable;
  * party they joined, and the change would read as a move from the party to itself.
  */
 public final class TeamHelper {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TeamHelper.class);
     private static final List<Consumer<TeamChange>> TEAM_CHANGES = new CopyOnWriteArrayList<>();
     private static final List<Consumer<UUID>> DISBANDS = new CopyOnWriteArrayList<>();
 
@@ -97,15 +100,29 @@ public final class TeamHelper {
         PlayerChangedTeamEvent.Data data = event.getEventData();
         Team previous = data.previousTeam();
         TeamChange change = new TeamChange(data.playerId(), previous == null ? null : previous.getId(), data.team().getId());
-        TEAM_CHANGES.forEach(listener -> listener.accept(change));
+        tell(TEAM_CHANGES, change);
     }
 
     /** A server team's delete posts this event too, and it is no disband: only parties own what §9 archives. */
     private static void onTeamDeleted(FTBTeamsEvent.TeamDeleted event) {
         Team team = event.getEventData().team();
         if (team.isPartyTeam()) {
-            UUID teamId = team.getId();
-            DISBANDS.forEach(listener -> listener.accept(teamId));
+            tell(DISBANDS, team.getId());
+        }
+    }
+
+    /**
+     * Each listener alone: we run inside FTB Teams' own team change, which posts this event and then the delete
+     * ({@code AbstractTeam#onPlayerChangeTeam}), so a throw that got out would skip the delete as well as the listeners
+     * after this one. Logged, and the rest still run.
+     */
+    private static <T> void tell(List<Consumer<T>> listeners, T value) {
+        for (Consumer<T> listener : listeners) {
+            try {
+                listener.accept(value);
+            } catch (RuntimeException e) {
+                LOGGER.error("A team listener failed on {}", value, e);
+            }
         }
     }
 }

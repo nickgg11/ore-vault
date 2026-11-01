@@ -282,12 +282,31 @@ home, not a fall.
 
 A Vault belongs to one team (§3), and a player's records stay with the team they leave (§9, Q3). So a
 player whose effective team changes while they stand in a Vault that is not their new team's is sent out.
-`team` hears `FTBTeamsEvent.PlayerChangedTeam` (rule 5: only the team helper imports FTB Teams) and hands
-`vault` the player id and the new team id as values. If the player is online and in a Vault level whose
-team id (from `core.key.VaultKeys`) is not the new team, `vault` teleports them to `return_pos` (the Overworld
-respawn point when absent), clears `in_vault`, and sends a chat line saying why (a lang key, the Writer's).
-This covers a member kicked from a party while mining in its Vault, and a player standing in their solo
-Vault who joins a party. An offline player is handled at login by case 2.
+`team` hears `FTBTeamsEvent.PlayerChangedTeam` (rule 5: only the team helper imports FTB Teams) and offers it
+through `TeamHelper.onTeamChange`, a `TeamChange` of plain ids. `vault` subscribes; `team` does not import
+`vault` (Hooks, below). If the player is online and in a Vault level whose team id (from
+`core.key.VaultKeys`) is not the new team, `vault` teleports them to `return_pos` (the Overworld respawn point
+when absent), clears `in_vault`, and sends a chat line saying why (a lang key, the Writer's). This covers a
+member kicked from a party while mining in its Vault, and a player standing in their solo Vault who joins a
+party. An offline player is handled at login by case 2.
+
+Hooks, from E3-S8 (#206). The boundary runs one way: `vault` imports `team`, and `team` imports neither `vault`
+nor `data`. This removes the `team` and `vault` cycle ADR 0001's table allowed, and lets a gametest drive the
+real FTB Teams path with no consumer built (`TeamTests`). The terms:
+
+- One subscriber per hook, in `vault` (`VaultTeamEvents`), registered once from the `@Mod` constructor after
+  `TeamHelper.register()`. The lists are static and never cleared, so a subscription made at a server event
+  would double on a second world in one client. That one subscriber writes the order of its jobs: rebuild both
+  teams' views (ADR 0003, the member lists read through `TeamHelper`, handing `data` values), mark
+  `data.SyncOutbox` (ADR 0006), then the check above. On `onDisband`, ADR 0007's Disband steps.
+- `TeamHelper` runs each listener in its own `try`, logging at ERROR. FTB Teams posts `PlayerChangedTeamEvent`
+  and then `TeamDeletedEvent` from one method (`AbstractTeam#onPlayerChangeTeam`, lines 90 to 101), so a
+  throw from a team-change listener would skip the delete event, and `disbanded_at` would never be set.
+- `previousTeamId` is null for the change FTB Teams posts when it first makes a personal team. A party's last
+  member gets the team change before the disband, and by then the party has left FTB's team map: a subscriber
+  takes that id as a value, and `members` on it answers empty.
+- The event carries no server, and a `ServerPlayer` is null for an offline player, so `vault` finds an online
+  player through `ServerLifecycleHooks.getCurrentServer()`.
 
 Mining in a Vault pays only a current member of that Vault's team. The break pipeline checks it, so a
 non-member who is still inside for the rest of the tick, or an operator visiting by command, pays and
@@ -539,3 +558,8 @@ Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md
 with no getter, so the AT stays; the activation call is `@ApiStatus.Internal` and runs validation, so step 13
 makes no extra call; removal step 2 needs the mod's own record of each Anchor. The Anchor callback's block read
 stays unverified until E10-S3 (#373). No decision changed.
+
+Amended 2026-11-01 by E3-S8 (#206): `team` offers team changes and disbands through `TeamHelper`'s hooks instead
+of handing `vault` values directly ("Team change while inside", Hooks). This needs, in the same PR as the code
+it describes: ADR 0001's `team` row loses `data` and `vault`, and `ArchitectureRules` line 91 with it; ADR 0006's
+`PlayerChangedTeam` row says `vault` marks the outbox, not `team`; `TeamHelper` gains the per-listener `try`.

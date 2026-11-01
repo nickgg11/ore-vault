@@ -72,7 +72,7 @@ Nick asked whether the frame's runes should "start out grey and dim then then yo
 | Decision | Replaced | Reasoning |
 |---|---|---|
 | The door is built from position-dependent tiles: two leaves, iron straps, a centre seam, one seat | One repeated panel, rejected because at 21×21 it is a tiled wall | Nick's words above. |
-| A frame's strands are a grey tint layer, dormant until lit, then the tier's colour; a dissolve returns them to grey. The Woad blue is no longer the resting look | Fixed blue strands | Nick's words above. Each frame needs its own tier state, which goes to the Architect first. |
+| A frame's strands are a grey tint layer, dormant until lit, then the tier's colour; a dissolve returns them to grey. The Woad blue is no longer the resting look | Fixed blue strands | Nick's words above. ADR 0010 settles how: a frame stores no tier and derives it from the portal cells around it, highest tier winning, so nothing writes to the frame when a portal opens or dissolves. Lit frames tint, they do not glow. |
 | Tier 1's runes use #148031. The signet gem and the strip keep #0D7026 | One value per tier everywhere | Nick left it open. The render measured contrast against the bezel at 2.31 against 1.89, and #0D7026 went to a dark band at night. |
 | Tiers 3 and 4 change: a deeper purple and a legendary orange. Values are settled by the render | T3 #CB7DFF, T4 #FFAE2B | Nick's words above. |
 

@@ -136,7 +136,7 @@ Minecraft-facing adapters. They hold as little logic as they can and call into `
 |---|---|---|
 | root | `OreVault`, the `@Mod` entry; wires the mod bus and `NeoForge.EVENT_BUS` (rule 3); the two ordering listeners, `ServerStartedEvent` and `ServerTickEvent.Post` (below) | MC, core, every adapter except `client`; `integration.*` only through its entry class, after the `isLoaded` check. `OreVault.MOD_ID` may be read by any adapter; no other root member may be, and `core` may not read it |
 | `registry` | `DeferredRegister` holders, data components, attachments, tags, creative tab | MC, core, `vault`, `mining` (the blocks, items and entities it registers) |
-| `team` | `TeamHelper` and the FTB Teams event listeners | MC, `dev.ftb.mods.ftbteams..`, core, `data`, `vault` |
+| `team` | `TeamHelper` and the FTB Teams event listeners | MC, `dev.ftb.mods.ftbteams..`, core |
 | `data` | `OreVaultTeamData`, `PlayerStats`, the per-Vault explored map `SavedData` (ADR 0004 Amendment 1), attachment codecs other than the vein index's, migrations; `GenSnapshots`, the holders and the main-thread code that reads team data into plain values and calls `core.gen`'s builders (ADR 0003); `SyncOutbox`, the outbound sync set (below) | MC, core. Never `team`: a rebuild takes the team's member list and online members as values from its caller |
 | `ore` | `OreClassifier`: reads `#c:ores` and the placed features at server start and publishes an immutable `OreTable` (ADR 0009) | MC, core |
 | `vault` | `VaultLevels` (the one world-map insert, with `markWorldsDirty()`), `VaultDimensions` (find-or-create, restore, archive), `VaultFolders` and the start-of-server pass (ADR 0007), the Vault `ChunkEvent.Load` listener (vein index settle, explored map; ADR 0004 Amendment 1), the end-of-tick empty-Vault check that applies a pending generation vote (ADR 0003), the end-of-tick chunk entry check that sets a chunk's `entered` flag and credits `chunks_entered` (ADR 0004 Amendment 1, Nick 2026-10-27), teleport, the portal and frame blocks, the Signets, the layer config (ADR 0002) | MC, core, `data`, `worldgen`, `worldgen.index`, `team`, `registry` |
@@ -153,13 +153,13 @@ Minecraft-facing adapters. They hold as little logic as they can and call into `
 A row names one package, not its subpackages: `worldgen` and `worldgen.index` are separate rows and
 separate rules.
 
-Outbound sync goes through one pattern. `team`, `mining` and `vault` never import `network`. When one of
+Outbound sync goes through one pattern. `mining` and `vault` never import `network`. When one of
 them changes something a client shows, it records what changed in `data.SyncOutbox`, a main-thread set of
 entries keyed by team or player and payload kind (a team's `TreeState`, `TeamProgress` or `ResetVoteState`
 is stale, a player's `EntryPoints` is stale, a player has a `VeinOutline` waiting with its positions), and returns.
 `network` drains the outbox at the end of the server tick, last in the root tick listener (below), builds each payload once from the current state
 and sends it (ADR 0006 Triggers). The triggers that use it are the ones raised outside `network`: a member's
-team change (`team`), Resonance gain, a level-up and a vein outline (`mining`), and a pending generation
+team change (`vault`, on `TeamHelper.onTeamChange`), Resonance gain, a level-up and a vein outline (`mining`), and a pending generation
 vote applied in an empty Vault (`vault`). A level-up's `TeamProgress` still reaches the client in the tick
 it happens, so ADR 0006's "at once on a level-up" holds. `reset`, `chunkload`, `config` and `debug` may call
 `network` directly, as their row allows; mutations `network` itself accepts or refuses resync in the
@@ -280,7 +280,7 @@ Nick can overrule S42.
 - A new package needs a row here and its rule in the same PR.
 - `core.layout` depends on Gson. T1 declares it as a `testImplementation` at the version Minecraft ships
   (pin table), so the unit tests do not rely on NeoGradle's test classpath.
-- `team`, `mining` and `vault` reach the client only through `data.SyncOutbox`, so a sync is one tick late
+- `mining` and `vault` reach the client only through `data.SyncOutbox`, so a sync is one tick late
   at most and is built from the state at the end of the tick, not from the state at the moment of the
   change.
 - The mixin seam goes through `core.wear.WearScope`, which is main-thread state in a pure package. ArchUnit
@@ -301,6 +301,7 @@ Nick can overrule S42.
   several changes in one tick then send several payloads; the outbox gives one place that sends.
 - Strict acyclic rules across the adapters. `team` must call `vault` on a disband and `vault` must ask
   `team` for a player's team; breaking that cycle would need the internal event bus this layout rules out.
+  (E3-S8 broke that one pair: `vault` subscribes to `TeamHelper`'s hooks, ADR 0002. The rule stays rejected.)
 - Keeping `integration.mekanism` as the package name, for the reason above.
 - Pinning the JDK through `org.gradle.java.installations.paths` in the repo. It broke every other checkout.
 
@@ -404,3 +405,6 @@ frame's, and its `View` keeps it pure. Adapters over it stay in `vault`.
 
 Amended 2026-11-01 by E3-S8 (#206): the `core.team` row, its rule and its fixture, because the size floor is the one
 piece of logic in the team boundary and a class importing FTB Teams cannot be unit tested. `TeamHelper` stays in `team`.
+
+Amended 2026-11-01 for #206 (Architect): the `team` row loses `data` and `vault`, which it imports neither of.
+`team` hands plain ids to whoever subscribes (ADR 0002), so `vault`, not `team`, marks the outbox on a team change.

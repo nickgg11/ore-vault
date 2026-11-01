@@ -59,10 +59,19 @@ final class TeamTests {
     static void aPartyChangesTheTeamAndItsLastMemberDisbandsIt(GameTestHelper helper) {
         List<TeamChange> changes = new ArrayList<>();
         List<UUID> disbands = new ArrayList<>();
+        UUID id = UUID.randomUUID();
+        // Registered first, so a throw that escaped would skip the recording listeners, and FTB Teams' delete after them.
+        TeamHelper.onTeamChange(change -> {
+            if (change.playerId().equals(id)) {
+                throw new IllegalStateException("deliberate: a listener that throws");
+            }
+        });
+        TeamHelper.onDisband(team -> {
+            throw new IllegalStateException("deliberate: a listener that throws");
+        });
         TeamHelper.onTeamChange(changes::add);
         TeamHelper.onDisband(disbands::add);
 
-        UUID id = UUID.randomUUID();
         manager().playerLoggedIn(null, id, "orevault-party");
         check(helper, "first login", List.of(new TeamChange(id, null, id)), of(changes, id));
 
