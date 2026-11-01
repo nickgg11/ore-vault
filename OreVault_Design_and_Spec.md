@@ -184,7 +184,7 @@ When an FTB Team is disbanded, nothing kept for the team is deleted: its Vault w
 - Requires correct tool to drop
 - Sound: stone. Map colour: stone
 - Right-clicking with a Signet triggers the portal shape scan
-- Breaking any block of the frame's four sides dissolves the whole portal (`updateShape` whole-frame re-validation). Corners are optional (below), so a corner block is not part of the frame and breaking one leaves the portal standing
+- Breaking any block of the frame's four sides dissolves the whole portal (`updateShape` whole-frame re-validation). Corners are optional (below), so breaking a corner block leaves the portal standing, though the scan still accepts a click on one
 
 **Connected texture**
 - A built ring reads as one carved border. Each of a block's six faces shows one of 16 textures, picked from which of the block's six neighbours are Vault Frames (`FrameNeighbours`). Any other block beside a frame connects to nothing
@@ -199,6 +199,8 @@ When an FTB Team is disbanded, nothing kept for the team is deleted: its Vault w
 **VaultPortalShape Scanner**
 - Scans outward from the clicked frame block in both X and Z orientations
 - Valid frame: rectangular, all four sides made of Vault Frame blocks. **Corners are optional**: the four corner positions may hold anything, as with a nether portal
+- A click on a corner block is accepted and finds that ring. So is a click on a block that sits at the corner of some other ring: any frame block with a valid opening on one of its diagonals finds that opening
+- A bar may run on past its corner. This follows from the corners holding anything and from two portals sharing a bar: only the blocks along the opening's four edges are checked
 - Interior dimensions: minimum 2 wide × 3 tall, maximum 21 wide × 21 tall
 - Interior must be entirely air or existing portal blocks
 - If valid: fills interior with the tier-matched Ore Vault Portal variant, oriented to match the frame axis
@@ -216,7 +218,7 @@ When an FTB Team is disbanded, nothing kept for the team is deleted: its Vault w
 - `updateShape()` breaks to air if a neighbouring block is neither Vault Frame nor portal block (whole-frame re-validation)
 - Teleport cooldown: 80 ticks (4 seconds) using vanilla `portalCooldown`; Tier 3+ signet holders skip the wait and the cooldown entirely (§3.3)
 
-**No team gate.** FTB Teams auto-creates a single-member team for every player, so there is no such thing as a teamless player at runtime and nothing is gated on team membership. `getTeamForPlayerID` never returns empty on a live server; any check written against it is dead code. Solo players get a solo Vault, exactly as §2 describes.
+**No team gate.** FTB Teams auto-creates a single-member team for every player who logs in, so a logged-in player always has a team and nothing is gated on team membership. `getTeamForPlayerID` is empty for an id not in FTB Teams' `knownPlayers`, such as a never-seen UUID or a FakePlayer (`TeamManagerImpl:123-126`), and `TeamHelper.teamId` answers such an id with itself, the id its personal team will get. For a fake player that is a phantom id with no team behind it, so §3.4 callers must reject fake players first. Solo players get a solo Vault, exactly as §2 describes.
 
 **Teleportation Logic**
 ```
@@ -2484,8 +2486,8 @@ count.
 - A player who leaves a team or joins another takes no personal records with them: their `PlayerStats` (deepest Y, ores mined, Kindred Rock's types, the Vein Discipline streak, the Seam Courier link, tradeoff switches and votes) stay in the old team's data, and they start fresh in the new team (Nick, 2026-10-27: "I am fine with the player losing progress when he swaps teams."). Rejoining the old team finds the record where it was left
 - Dimension created lazily, on the first portal trip by any team member, and never before (§3.1)
 - A player's solo team is their personal FTB team, whose id is their UUID; FTB Teams never deletes it, and joining a party only points it at the party. A solo Vault therefore stays on disk while its player is in a party, is restored at each start, and is theirs again when they leave
-- On the FTB Teams disband event, which fires only when a party's last member leaves, the team's Vault world, tree and stats are archived, not deleted: `disbanded_at` is set and online players inside are evacuated, and the folder and the team's data file move to `<world>/orevault_archive/<teamUuid>/<disbandedAt>/` at the next server start (§3.1). An admin command purges archives. Joining a party never disbands the player's solo team, so a party join archives nothing
-- Solo players use their auto-created single-member FTB team. Because FTB Teams creates that team automatically for every player who logs in, `getTeamForPlayerID` never returns empty on a live server — **nothing in this mod may gate behaviour on "has a team"**, since the condition can never be false
+- When a party's last member leaves, the only disband there is (`TeamHelper` passes on `TeamDeleted` for party teams only, §11), the team's Vault world, tree and stats are archived, not deleted: `disbanded_at` is set and online players inside are evacuated, and the folder and the team's data file move to `<world>/orevault_archive/<teamUuid>/<disbandedAt>/` at the next server start (§3.1). An admin command purges archives. Joining a party never disbands the player's solo team, so a party join archives nothing
+- Solo players use their auto-created single-member FTB team. FTB Teams creates that team automatically for every player who logs in, so a logged-in player always has a team and **nothing in this mod may gate behaviour on "has a team"**. `getTeamForPlayerID` is empty for an id not in `knownPlayers`, such as a never-seen UUID or a FakePlayer (`TeamManagerImpl:123-126`); `TeamHelper.teamId` then answers that UUID, the id its personal team will get. For a fake player that is a phantom id, so §3.4 callers must reject fake players first
 
 ### FTB Ultimine (Soft Dependency)
 
@@ -2746,8 +2748,8 @@ Apply admin config overrides after classification. Store classification in memor
 
 - `FTBTeamsEvent.TeamCreated` → nothing. FTB Teams creates a team for every player who logs in; team data is created on its first write, not here
 - Tome of the Deep Seam → granted on the player's first login, through the vanilla login event rather than an FTB Teams event (FTB's party-join event never fires for a solo player), and recorded as `tome_granted` so it is given once
-- `FTBTeamsEvent.TeamDeleted` (posted only when a party's last member leaves) → set `disbanded_at` on the team's data and evacuate online players inside its Vault. Nothing is deleted or moved while the server runs: the Vault's folder and the team's data file move to `<world>/orevault_archive/<teamUuid>/<disbandedAt>/` at the next server start, before restore, and restore skips it (§3.1). The start-of-server pass reads team files as raw NBT, so it never caches a `SavedData` for a file it then moves
-- `FTBTeamsEvent.PlayerChangedTeam` → the team-change triggers (snapshot, sync). It fires for offline players too; `PlayerJoinedPartyTeam` does not
+- `FTBTeamsEvent.TeamDeleted` (posted when a party's last member leaves, and by `ServerTeam.delete` for a server team, which is no disband, so `TeamHelper` passes it on for party teams only) → set `disbanded_at` on the team's data and evacuate online players inside its Vault. Nothing is deleted or moved while the server runs: the Vault's folder and the team's data file move to `<world>/orevault_archive/<teamUuid>/<disbandedAt>/` at the next server start, before restore, and restore skips it (§3.1). The start-of-server pass reads team files as raw NBT, so it never caches a `SavedData` for a file it then moves
+- `FTBTeamsEvent.PlayerChangedTeam` → the team-change triggers (snapshot, sync). It fires for offline players too; `PlayerJoinedPartyTeam` does not. It also fires on a player's first-ever login, with a null previous team, when FTB Teams makes their personal team. `TeamHelper` passes that on with a null `previousTeamId`, and listeners such as E6-S5's must not treat it as a team change. A party's last member's change is posted before `TeamDeleted` (`AbstractTeam:91,100`)
 
 ### Volatile Veins Pity System
 

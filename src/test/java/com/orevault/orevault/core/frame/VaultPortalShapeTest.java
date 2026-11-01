@@ -208,6 +208,20 @@ class VaultPortalShapeTest {
         assertFinds(ring, ring.built().put(ring.at(2, BOTTOM + 2), Kind.PORTAL), ring.leftSide());
     }
 
+    /** A corner placed on a lit ring finds the opening; the door caller's view must not, or it seals a live portal. */
+    @Test
+    void aViewAnsweringOtherForPortalKeepsALitRingFromTheDoorCaller() {
+        Ring ring = new Ring(Axis.X, 2, 3);
+        World world = ring.built();
+        ring.opening().forEach(cell -> world.put(cell, Kind.PORTAL));
+        Cell corner = ring.at(0, BOTTOM);
+        world.put(corner, Kind.FRAME);
+        View doorCaller = (x, y, z) -> world.kindAt(x, y, z) == Kind.PORTAL ? Kind.OTHER : world.kindAt(x, y, z);
+
+        assertFinds(ring, world, corner);
+        assertNothing(doorCaller, corner);
+    }
+
     @Test
     void aFrameOnTheZAxisIsFoundOnThatAxis() {
         Ring ring = new Ring(Axis.Z, 2, 3);

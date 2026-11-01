@@ -3,14 +3,15 @@ package com.orevault.orevault.gametest;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.orevault.orevault.team.TeamHelper;
 import com.orevault.orevault.team.TeamHelper.TeamChange;
-import dev.ftb.mods.ftblibrary.icon.Color4I;
 import dev.ftb.mods.ftbteams.data.PartyTeam;
+import dev.ftb.mods.ftbteams.data.ServerTeam;
 import dev.ftb.mods.ftbteams.data.TeamManagerImpl;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 
@@ -66,7 +67,7 @@ final class TeamTests {
         check(helper, "first login", List.of(new TeamChange(id, null, id)), of(changes, id));
 
         try {
-            PartyTeam party = manager().createParty(id, null, "orevault-test-" + id, "", Color4I.WHITE);
+            PartyTeam party = manager().createParty(id, null, "orevault-test-" + id, "", null);
             UUID partyId = party.getId();
             check(helper, "joined", new TeamChange(id, id, partyId), of(changes, id).getLast());
             check(helper, "team id in a party", partyId, TeamHelper.teamId(id));
@@ -79,6 +80,12 @@ final class TeamTests {
             check(helper, "left", new TeamChange(id, partyId, id), of(changes, id).getLast());
             check(helper, "disbanded", List.of(partyId), disbands);
             check(helper, "team id after", id, TeamHelper.teamId(id));
+
+            // A server team's delete posts the same event, and no Vault is keyed on it: not a disband (§9).
+            CommandSourceStack source = helper.getLevel().getServer().createCommandSourceStack();
+            ServerTeam serverTeam = (ServerTeam) manager().createServerTeam(source, "orevault-server-" + id, "", null);
+            serverTeam.delete(source);
+            check(helper, "after a server team's delete", List.of(partyId), disbands);
         } catch (CommandSyntaxException e) {
             helper.fail(Component.literal(e.getMessage()));
         }

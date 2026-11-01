@@ -16,10 +16,15 @@ import java.util.Set;
  * frame behind it, it runs on past the corner. Walking the open cells from just inside the clicked block finds the
  * opening whichever bar was clicked, and whatever stands beyond the corners.
  *
- * <p>This is the whole scan for both of its callers: a signet pressed into a frame (E3-S4, #229) and a frame block
- * placed, which seals a completed ring with a door (Nick, {@code DESIGN_LOG.md}, 2026-11-01). Neither knows which part
- * of the ring it started from, so any frame block will do, the corners included. A placed block can complete two
- * frames at once, so {@link #findAll} returns all of them.
+ * <p>It has two callers: a signet pressed into a frame (E3-S4, #229) and a frame block placed, which seals a completed
+ * ring with a door (Nick, {@code DESIGN_LOG.md}, 2026-11-01). Neither knows which part of the ring it started from, so
+ * any frame block will do, the corners included. A placed block can complete two frames at once, so {@link #findAll}
+ * returns all of them.
+ *
+ * <p>The scan alone is not safe for the door caller, because it accepts an opening that is already filled. Place a
+ * frame in an empty corner of a lit ring and {@link #findAll} returns that opening, and sealing it would put a door over
+ * a live portal. The door caller seals only an opening that is all air: it checks every one of {@link #cells()}, or it
+ * scans with a view that answers {@link Kind#OTHER} where the signet's view answers {@link Kind#PORTAL}.
  *
  * @param minX the opening's lowest cell, as {@link #minY} and {@link #minZ} are
  * @param width the opening's size along {@link #axis}
@@ -77,7 +82,7 @@ public record VaultPortalShape(Axis axis, int minX, int minY, int minZ, int widt
      * <pre>{@code
      * if (state.is(ModBlocks.VAULT_FRAME)) return Kind.FRAME;
      * if (state.isAir()) return Kind.AIR;
-     * return state.is(<the portal tag>) ? Kind.PORTAL : Kind.OTHER;
+     * return state.is(<the orevault:vault_portals tag>) || state.is(<the sealed door>) ? Kind.PORTAL : Kind.OTHER;
      * }</pre>
      *
      * <p>{@link Kind#FRAME} means the position holds the Vault Frame block, and it must be decided by asking exactly
@@ -86,8 +91,9 @@ public record VaultPortalShape(Axis axis, int minX, int minY, int minZ, int widt
      * rounded corner and a bar's end are not full cubes (§3.2, {@link FrameCorner}), and a test of shape would turn a
      * correct ring into a refused one at the block where it is rounded.
      *
-     * <p>Whatever fills an opening has to answer {@link Kind#PORTAL}, the sealed door as well as the four portals, or
-     * pressing a signet into a door would find its own door in the way.
+     * <p>Whatever fills an opening has to answer {@link Kind#PORTAL}, or pressing a signet into a door would find its own
+     * door in the way. The door is a check of its own and stays out of {@code orevault:vault_portals}: §3.2 has everything
+     * that recognises a portal read that tag, so a door in it would be a portal to all of them.
      */
     @FunctionalInterface
     public interface View {

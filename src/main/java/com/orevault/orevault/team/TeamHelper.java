@@ -50,12 +50,15 @@ public final class TeamHelper {
         NeoForge.EVENT_BUS.addListener(FTBTeamsEvent.TeamDeleted.class, TeamHelper::onTeamDeleted);
     }
 
-    /** Runs {@code listener} on each team change, on the main thread. */
+    /** Runs {@code listener} on each team change, on the main thread. Call once at mod init: listeners are never removed. */
     public static void onTeamChange(Consumer<TeamChange> listener) {
         TEAM_CHANGES.add(listener);
     }
 
-    /** Runs {@code listener} with the team's id when a party's last member leaves, the only time a team is deleted (§9). */
+    /**
+     * Runs {@code listener} with the party's id when its last member leaves, the only disband there is (§9). Call once at
+     * mod init: listeners are never removed.
+     */
     public static void onDisband(Consumer<UUID> listener) {
         DISBANDS.add(listener);
     }
@@ -97,8 +100,12 @@ public final class TeamHelper {
         TEAM_CHANGES.forEach(listener -> listener.accept(change));
     }
 
+    /** A server team's delete posts this event too, and it is no disband: only parties own what §9 archives. */
     private static void onTeamDeleted(FTBTeamsEvent.TeamDeleted event) {
-        UUID teamId = event.getEventData().team().getId();
-        DISBANDS.forEach(listener -> listener.accept(teamId));
+        Team team = event.getEventData().team();
+        if (team.isPartyTeam()) {
+            UUID teamId = team.getId();
+            DISBANDS.forEach(listener -> listener.accept(teamId));
+        }
     }
 }
