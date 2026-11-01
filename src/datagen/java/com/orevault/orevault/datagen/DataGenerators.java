@@ -2,12 +2,14 @@ package com.orevault.orevault.datagen;
 
 import com.orevault.orevault.OreVault;
 import com.orevault.orevault.registry.ModBlocks;
+import com.orevault.orevault.registry.ModItems;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.client.data.models.BlockModelGenerators;
 import net.minecraft.client.data.models.ItemModelGenerators;
 import net.minecraft.client.data.models.ModelProvider;
+import net.minecraft.client.data.models.model.ModelTemplates;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -59,6 +61,7 @@ public final class DataGenerators {
         @Override
         protected void registerModels(BlockModelGenerators blockModels, ItemModelGenerators itemModels) {
             blockModels.createTrivialCube(ModBlocks.VAULT_FRAME.get());
+            itemModels.generateFlatItem(ModItems.CRUDE_VAULT_IGNITER.get(), ModelTemplates.FLAT_ITEM);
         }
     }
 
@@ -102,6 +105,12 @@ public final class DataGenerators {
             shapeless(RecipeCategory.BUILDING_BLOCKS, ModBlocks.VAULT_FRAME.get())
                     .requires(Items.IRON_INGOT, 8)
                     .requires(Items.REDSTONE)
+                    .unlockedBy("has_iron_ingot", has(Items.IRON_INGOT))
+                    .save(output);
+            shaped(RecipeCategory.TOOLS, ModItems.CRUDE_VAULT_IGNITER.get())
+                    .define('I', Items.IRON_INGOT)
+                    .define('R', Items.REDSTONE)
+                    .pattern("IR")
                     .unlockedBy("has_iron_ingot", has(Items.IRON_INGOT))
                     .save(output);
         }

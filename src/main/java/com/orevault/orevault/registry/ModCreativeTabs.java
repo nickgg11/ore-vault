@@ -19,7 +19,10 @@ public final class ModCreativeTabs {
             () -> CreativeModeTab.builder()
                     .title(Component.translatable(TITLE_KEY))
                     .icon(() -> ModItems.VAULT_FRAME.get().getDefaultInstance())
-                    .displayItems((parameters, output) -> output.accept(ModItems.VAULT_FRAME.get()))
+                    .displayItems((parameters, output) -> {
+                        output.accept(ModItems.VAULT_FRAME.get());
+                        output.accept(ModItems.CRUDE_VAULT_IGNITER.get());
+                    })
                     .build());
 
     private ModCreativeTabs() {

@@ -78,8 +78,8 @@ The rules for a new gametest (E1-S2, #193):
   the Gradle task.
 - A count quoted from the log includes the optional `minecraft:always_pass`, which is not ours, and the PR
   states the total it expects: passing tests log no name, and a test that failed to register exits 0. The
-  total is 6 at E2-S2: `harness/passes`, `lang/coverage`, `vault/frame_pickaxe_drop`, `vault/frame_hand_no_drop`,
-  `vault/frame_recipe` and `minecraft:always_pass`.
+  total is 7 at E2-S3: `harness/passes`, `lang/coverage`, `vault/frame_pickaxe_drop`, `vault/frame_hand_no_drop`,
+  `vault/frame_recipe`, `vault/igniter_recipe` and `minecraft:always_pass`.
 - There is no namespace filter: nothing in NeoForge 26.1.2.95 reads `neoforge.enabledGameTestNamespaces`, so the
   build does not set it. `--tests` is the vanilla selector.
 
@@ -124,6 +124,7 @@ Pure packages. None imports Minecraft, NeoForge or Mojang classes, so all of it 
 | `core.session` | The trip record (§11 Vault Session State), including Apprentice's Ledger's 10-minute continuation (Q9) | nothing |
 | `core.reset` | The reset vote state machine (ADR 0007) | nothing |
 | `core.wear` | `WearRules` (ADR 0008) and `WearScope`, the per-player wear inputs the mixin reads | `core.tree` |
+| `core.igniter` | `IgniterTier`: the §3.3 capabilities of all four tiers, and the tooltip lines built from them | nothing |
 | `core.key` | `VaultKeys`: the one function pair between a team UUID and the lower-case hex form used by the dimension path `vault_<teamUuidNoHyphens>` and the team `SavedData` id (ADR 0002, ADR 0005 "one function parses both"), so any adapter can tell whether a level is a Vault and whose without importing `vault` | nothing |
 
 Minecraft-facing adapters. They hold as little logic as they can and call into `core`.
@@ -388,3 +389,6 @@ T1 and is not a condition of acceptance, since nothing can be compiled before T1
 Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md`: the three mixin unknowns are
 answered from source, with the first load still E9-S7's (#311), and the AT section names the default path and the
 first lines it will hold. Nothing else changed.
+
+Amended 2026-10-31 by E2-S3 (#219): the `core.igniter` row, its rule and its fixture, because the tier capabilities
+are pure logic and the adapter rows hold as little logic as they can. The igniter item stays in `vault`.
