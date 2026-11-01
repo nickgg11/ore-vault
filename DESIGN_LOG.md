@@ -69,7 +69,7 @@ Nick, seeing the frame in game: "in game it looks good but it think it'd look ev
 - Transparent pixels. Straight on they match, but at an angle the top and side stay square with a hole under them, and the outline stays square.
 - A coarse 5-box corner. It reads as a staircase and needs the corner art repainted.
 
-**Known weak.** The weave breaks into flecks across the 1-texel steps mid curve. Only the top-left corner on an upright frame has the weave's true phase at both seams; the others reflect it, because a full fix is up to 16 textures against the 4 used. Nick judges this in game.
+**Known weak.** The weave breaks into flecks across the 1-texel steps mid curve. Only the top-left corner on an upright frame has the weave's true phase at both seams; the others reflect it, because a full fix is up to 16 textures against the 4 used. Nick checked this in a client, with the lighting, a block against the curve, the outline and walking over it: "Everything you wanted me to check is good."
 
 ## 2026-11-01 — The Signet replaces the Vault Key; the frame goes back to Nick
 

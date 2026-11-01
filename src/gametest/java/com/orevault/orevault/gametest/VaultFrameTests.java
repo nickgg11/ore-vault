@@ -23,6 +23,7 @@ import net.minecraft.world.level.block.PipeBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -108,6 +109,21 @@ final class VaultFrameTests {
         }
         if (helper.getBlockState(corner).isSolidRender()) {
             helper.fail(Component.literal("the rounded corner would hide a neighbour's face behind its wedge"));
+        }
+        BlockState rounded = helper.getBlockState(corner);
+        BlockPos absolute = helper.absolutePos(corner);
+        if (!Shapes.joinIsNotEmpty(Shapes.block(), rounded.getCollisionShape(helper.getLevel(), absolute),
+                BooleanOp.ONLY_FIRST)) {
+            helper.fail(Component.literal("the rounded corner's collision fills the block"));
+        }
+        if (rounded.isRedstoneConductor(helper.getLevel(), absolute)) {
+            helper.fail(Component.literal("the rounded corner conducts redstone"));
+        }
+        if (rounded.isSuffocating(helper.getLevel(), absolute)) {
+            helper.fail(Component.literal("the rounded corner suffocates"));
+        }
+        if (rounded.isPathfindable(PathComputationType.LAND)) {
+            helper.fail(Component.literal("mobs would path into the rounded corner"));
         }
         if (outline(helper, east) != Shapes.block()) {
             helper.fail(Component.literal("the end of a bar is not a full cube"));
