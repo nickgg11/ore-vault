@@ -76,7 +76,8 @@ final class ArchitectureRules {
                 pureRow("wear", "CoreWear", core("tree")),
                 pureRow("key", "CoreKey"),
                 pureRow("signet", "CoreSignet"),
-                pureRow("frame", "CoreFrame"));
+                pureRow("frame", "CoreFrame"),
+                pureRow("team", "CoreTeam"));
     }
 
     private static List<Rule> adapterRows() {
@@ -87,7 +88,7 @@ final class ArchitectureRules {
                         BASE + ".mixin", BASE + ".chunkload", BASE + ".reset", BASE + ".config", BASE + ".debug",
                         BASE + ".integration..")),
                 row(REGISTRY, "Registry", withMc(CORE, VAULT, MINING)),
-                row(TEAM, "Team", withMc("dev.ftb.mods.ftbteams..", CORE, DATA, VAULT)),
+                row(TEAM, "Team", withMc("dev.ftb.mods.ftbteams..", CORE)),
                 row(DATA, "Data", withMc(CORE)),
                 row(ORE, "Ore", withMc(CORE)),
                 row(VAULT, "Vault", withMc(CORE, DATA, WORLDGEN, INDEX, TEAM, REGISTRY)),

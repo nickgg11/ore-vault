@@ -57,6 +57,35 @@ ring and more block state, and would still have to guess for a lone column, so e
 
 ---
 
+## 2026-11-01 — A valid frame shows a sealed door; the signet turns it into the portal
+
+Nick: "So for the portal block I'd want the door texture to appear once the portal is valid, then once the portal is "lit" with the ring it changes into the portal texture, I want all portal related textures to be the same thickness as the nether portal texture. Once the portal is working I guess you'll look at making it look like a door that swings open, or is that a task for later?"
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| Completing a valid frame fills the opening with a sealed door, with no item used. Pressing a signet into the door or frame swaps it for the portal in that signet's tier | A frame that stays empty until the signet scans it, and "the door stays deferred until the plain portal has passed its playtest" | Nick's words above. |
+| The door and the portal are 4 pixels thick, as a nether portal is | #229 already said 4 px; the door had no thickness | Nick's words above. |
+| The sealed door has collision. The swing on approach stays in #401, after E3-S7 | Nothing; it was unsettled | Nick left the swing to the plan. A door you can walk through would not read as sealed; that part is the Manager's call and goes to him with the render. |
+
+Nick asked whether the frame's runes should "start out grey and dim then then you ignite the portal it matches the tier", meaning the frame blocks, not the portal. Shown a computed render: "Yeah the door looks good as two doors." and "Dormant looks good, I am fine with the blue being flatter. I'd say I'd want the T3 to be a deeper richer purple and T4 to be an orange closer to what legendary items use in video games." On the Tier 1 rune tint: "It don't see much a difference between the two greens so just pick whichever you think is better."
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| The door is built from position-dependent tiles: two leaves, iron straps, a centre seam, one seat | One repeated panel, rejected because at 21×21 it is a tiled wall | Nick's words above. |
+| A frame's strands are a grey tint layer, dormant until lit, then the tier's colour; a dissolve returns them to grey. The Woad blue is no longer the resting look | Fixed blue strands | Nick's words above. ADR 0010 settles how: a frame stores no tier and derives it from the portal cells around it, highest tier winning, so nothing writes to the frame when a portal opens or dissolves. Lit frames tint, they do not glow. |
+| Tier 1's runes use #148031. The signet gem and the strip keep #0D7026 | One value per tier everywhere | Nick left it open. The render measured contrast against the bezel at 2.31 against 1.89, and #0D7026 went to a dark band at night. |
+| Tiers 3 and 4 change: a deeper purple and a legendary orange. Values are settled by the render | T3 #CB7DFF, T4 #FFAE2B | Nick's words above. |
+
+§3.2 changes once Nick has said yes to the render of the door.
+
+## 2026-11-01 — The T2 playtest is deferred; Epic 3 opens without it
+
+Nick: "I'll run this balancing test later on. I'd prefer we just move onto the next piece of work and come back to this later. We can easily adjust the recipe as needed. I assume getting the lapis will take 30-60 minutes."
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| Epic 3 opens with E2-S4 (#228) still open. Nick has seen the frame and signet in a client, which is what the gate protects; what is deferred is the timed balance question | "Opens after E2-S4" on #163 | Nick's words above. A recipe is a data change, so a wrong price is cheap to fix later. His 30 to 60 minutes for lapis is an estimate, not a measurement, and #228 still times it. |
+
 ## 2026-11-01 — Frame corners are really round
 
 Nick, seeing the frame in game: "in game it looks good but it think it'd look even better if the outside corners also rounded off it that's possible. is it possible to make a some of the block transparent so it looks round? That could be another option." Shown a computed render of three ways, he said: "Let's do smooth."

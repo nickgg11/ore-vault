@@ -3,6 +3,7 @@ package com.orevault.orevault;
 import com.orevault.orevault.registry.ModBlocks;
 import com.orevault.orevault.registry.ModCreativeTabs;
 import com.orevault.orevault.registry.ModItems;
+import com.orevault.orevault.team.TeamHelper;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -19,5 +20,6 @@ public final class OreVault {
         ModBlocks.register(modEventBus);
         ModItems.register(modEventBus);
         ModCreativeTabs.register(modEventBus);
+        TeamHelper.register();
     }
 }

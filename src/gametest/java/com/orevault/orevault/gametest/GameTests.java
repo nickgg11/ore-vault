@@ -39,6 +39,9 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> FRAME_ROUNDED = function("vault/frame_rounded");
     private static final ResourceKey<Consumer<GameTestHelper>> SIGNET_STACK_SIZE = function("vault/signet_stack_size");
     private static final ResourceKey<Consumer<GameTestHelper>> SIGNET_RECIPE = function("vault/signet_recipe");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_UNKNOWN = function("team/unknown_is_one");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_SOLO = function("team/solo");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_PARTY = function("team/party_and_disband");
 
     private GameTests() {
     }
@@ -65,6 +68,9 @@ public final class GameTests {
             registry.register(FRAME_ROUNDED, VaultFrameTests::roundedCornerHasItsShapeAndStillDropsItself);
             registry.register(SIGNET_STACK_SIZE, SignetTests::stacksToOne);
             registry.register(SIGNET_RECIPE, SignetTests::recipeTakesIronAndRedstoneSideBySide);
+            registry.register(TEAM_UNKNOWN, TeamTests::anUnknownIdIsATeamOfOne);
+            registry.register(TEAM_SOLO, TeamTests::aSoloPlayerIsTheirOwnTeam);
+            registry.register(TEAM_PARTY, TeamTests::aPartyChangesTheTeamAndItsLastMemberDisbandsIt);
         });
     }
 
@@ -73,7 +79,7 @@ public final class GameTests {
         Holder<TestEnvironmentDefinition<?>> environment = event.registerEnvironment(id("default"));
         for (ResourceKey<Consumer<GameTestHelper>> test : List.of(
                 PASSES, LANG_COVERAGE, FRAME_PICKAXE_DROP, FRAME_HAND_NO_DROP, FRAME_RECIPE, FRAME_PROPERTIES,
-                FRAME_CONNECTS, FRAME_ROUNDED, SIGNET_RECIPE, SIGNET_STACK_SIZE)) {
+                FRAME_CONNECTS, FRAME_ROUNDED, SIGNET_RECIPE, SIGNET_STACK_SIZE, TEAM_UNKNOWN, TEAM_SOLO, TEAM_PARTY)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
         }
         event.registerTest(DELIBERATE_FAILURE.identifier(),
