@@ -126,7 +126,8 @@ Pure packages. None imports Minecraft, NeoForge or Mojang classes, so all of it 
 | `core.reset` | The reset vote state machine (ADR 0007) | nothing |
 | `core.wear` | `WearRules` (ADR 0008) and `WearScope`, the per-player wear inputs the mixin reads | `core.tree` |
 | `core.signet` | `SignetTier`: the §3.3 capabilities of all four tiers, and the tooltip lines built from them | nothing |
-| `core.frame` | `FrameNeighbours`: from the Vault Frames around a block to the texture each face shows (§3.2) | nothing |
+| `core.frame` | `FrameNeighbours`: from the Vault Frames around a block to the texture each face shows (§3.2). `VaultPortalShape`: the portal shape scan over a `View` (§3.2) | nothing |
+| `core.team` | `TeamSize`: the floor of 1 on a team's size (§9), which every divisor of team scaling relies on | nothing |
 | `core.key` | `VaultKeys`: the one function pair between a team UUID and the lower-case hex form used by the dimension path `vault_<teamUuidNoHyphens>` and the team `SavedData` id (ADR 0002, ADR 0005 "one function parses both"), so any adapter can tell whether a level is a Vault and whose without importing `vault` | nothing |
 
 Minecraft-facing adapters. They hold as little logic as they can and call into `core`.
@@ -397,3 +398,9 @@ are pure logic and the adapter rows hold as little logic as they can. The signet
 
 Amended 2026-11-01 by E2-S2 (#210): the `core.frame` row, its rule and its fixture, for the connected Vault Frame.
 The block stays in `vault`.
+
+Amended 2026-11-01 by E3-S2 (#207): `VaultPortalShape` joins the `core.frame` row, because the ring it scans is the
+frame's, and its `View` keeps it pure. Adapters over it stay in `vault`.
+
+Amended 2026-11-01 by E3-S8 (#206): the `core.team` row, its rule and its fixture, because the size floor is the one
+piece of logic in the team boundary and a class importing FTB Teams cannot be unit tested. `TeamHelper` stays in `team`.

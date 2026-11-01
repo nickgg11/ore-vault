@@ -2944,7 +2944,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Team data `SavedData`, one per team, id `orevault:team_<teamUuidNoHyphens>` (§11 SavedData Pattern, ADR 0005): the shell with `vault_generation` and `disbanded_at`, and the Vault type file `orevault_vault.dat` in each Vault folder, its name frozen as save data with the key and folder scheme (§11 SavedData Pattern, Per-Vault data) — E3-S9 (#232); `resonance_pool` and `level_reached` — E6-S1 (#241); the tree (`owned`, `fork_choice`, the respec window, pin and buyers) — E6-S3 (#251)
 - [ ] `PlayerStats` nested in team data with its own `data_version` (§11) — E6-S2 (#276)
 - [ ] `data_version` on every saved shape, with a fall-through migration chain and golden key-set tests (§11 SavedData Pattern) — E3-S9 (#232) first, then each story that adds a shape
-- [ ] `TeamHelper`, the only class that imports FTB Teams; team size never below 1 (§9) — E3-S8 (#206)
+- [x] `TeamHelper`, the only class that imports FTB Teams, with an ArchUnit rule holding the import to the `team` package: team id, members, online members, team size never below 1 (§9), and the team-change and disband events passed on as plain ids — E3-S8 (#206)
 - [ ] FTB Teams event hooks (§11): `PlayerChangedTeam` starts the player fresh in the new team (§9) — E6-S5 (#282); `TeamDeleted` sets `disbanded_at` and evacuates — E11-S6 (#289). The Tome grant listens to the vanilla login event, not FTB's party-join event, which never fires for a solo player — E7-S3 (#277)
 - [ ] Per-team dimension key `orevault:vault_<teamUuidNoHyphens>`, and restore mapping a folder name back to a team (§3.1, §11) — E3-S6a (#237)
 
@@ -2972,7 +2972,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Vault Frame `minecraft:mineable/pickaxe` tag in the **`minecraft` namespace** — E2-S2 (#210)
 - [ ] Vault Frame shapeless recipe (8 stone bricks + 1 lapis lazuli, one frame) — E2-S2 (#210)
 - [ ] Woad Interlace Vault Frame (16 face and 4 rim textures) and Worn Signet textures at 16×16 — E2-S1 (#204)
-- [ ] `VaultPortalShape` scanner as pure logic (both axes, 2×3 to 21×21, corners optional) — E3-S2 (#207)
+- [x] `VaultPortalShape` scanner as pure logic behind a `View`, with no Minecraft imports: both axes, 2×3 to 21×21, corners optional, started from any frame block, tested in JUnit only until a block calls it — E3-S2 (#207)
 - [ ] Ore Vault Portal block: no collision, unbreakable, `HORIZONTAL_AXIS`, four tier variants, failure sound only on a wrong frame (§3.2) — E3-S4 (#229)
 - [ ] Whole-frame dissolve when a side block breaks (`updateShape`) — E3-S4 (#229)
 - [ ] Worn Signet (Tier 1): capability accessors for all four tiers (`entryPointCapacity`, `hasInstantTravel`, `canResetVault`), tooltip built from them, no tier-number comparison, stacks to 1 (§3.3); right-click arrives with E3-S4 (#229) — E2-S3 (#219)
@@ -2989,7 +2989,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Fixed team anchor at X=0, Z=0, with safe arrival on the surface; nothing derived from Overworld coordinates (§3.1, §3.2) — E3-S6b (#244)
 - [ ] Exactly one 4×5 return portal per Vault, built at the anchor and idempotent — E3-S6b (#244)
 - [ ] Return portal coloured by the highest signet tier that has entered, read back from the placed blocks — E3-S6b (#244)
-- [ ] No team gate: nothing is gated on having a team (§3.2, §9) — E3-S8 (#206)
+- [x] No team gate: `TeamHelper` always answers a team id, and offers nothing to ask whether a player has one (§3.2, §9) — E3-S8 (#206)
 - [ ] Tier 3+ skips the charge-up and the cooldown — E10-S1 (#369)
 - [ ] The `in_vault` login check: a player whose Vault is gone goes to their return position; one whose Vault was reset while they were offline goes to the team anchor (§11, ADR 0002) — E3-S6a (#237)
 
