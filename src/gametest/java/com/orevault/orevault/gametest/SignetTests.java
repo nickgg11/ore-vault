@@ -10,16 +10,16 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 
 /** §3.3: Tier 1 is iron and redstone side by side, and the shaped recipe holds them to that. */
-final class VaultKeyTests {
+final class SignetTests {
     private static final List<ItemStack> IRON_AND_REDSTONE =
             List.of(new ItemStack(Items.IRON_INGOT), new ItemStack(Items.REDSTONE));
 
-    private VaultKeyTests() {
+    private SignetTests() {
     }
 
     /** The stack size is set in the item's constructor, so a later tier inherits this. */
     static void stacksToOne(GameTestHelper helper) {
-        int maxStackSize = ModItems.CRUDE_VAULT_KEY.toStack().getMaxStackSize();
+        int maxStackSize = ModItems.WORN_SIGNET.toStack().getMaxStackSize();
         if (maxStackSize != 1) {
             helper.fail(Component.literal("stacks to " + maxStackSize));
         }
@@ -28,7 +28,7 @@ final class VaultKeyTests {
 
     static void recipeTakesIronAndRedstoneSideBySide(GameTestHelper helper) {
         ItemStack sideBySide = craft(helper, CraftingInput.of(2, 1, IRON_AND_REDSTONE));
-        if (!sideBySide.is(ModItems.CRUDE_VAULT_KEY.get()) || sideBySide.getCount() != 1) {
+        if (!sideBySide.is(ModItems.WORN_SIGNET.get()) || sideBySide.getCount() != 1) {
             helper.fail(Component.literal("side by side crafted " + sideBySide));
         }
         ItemStack stacked = craft(helper, CraftingInput.of(1, 2, IRON_AND_REDSTONE));

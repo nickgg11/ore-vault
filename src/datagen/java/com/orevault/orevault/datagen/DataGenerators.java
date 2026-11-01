@@ -61,7 +61,7 @@ public final class DataGenerators {
         @Override
         protected void registerModels(BlockModelGenerators blockModels, ItemModelGenerators itemModels) {
             blockModels.createTrivialCube(ModBlocks.VAULT_FRAME.get());
-            itemModels.generateFlatItem(ModItems.CRUDE_VAULT_KEY.get(), ModelTemplates.FLAT_ITEM);
+            itemModels.generateFlatItem(ModItems.WORN_SIGNET.get(), ModelTemplates.FLAT_ITEM);
         }
     }
 
@@ -107,7 +107,7 @@ public final class DataGenerators {
                     .requires(Items.REDSTONE)
                     .unlockedBy("has_iron_ingot", has(Items.IRON_INGOT))
                     .save(output);
-            shaped(RecipeCategory.TOOLS, ModItems.CRUDE_VAULT_KEY.get())
+            shaped(RecipeCategory.TOOLS, ModItems.WORN_SIGNET.get())
                     .define('I', Items.IRON_INGOT)
                     .define('R', Items.REDSTONE)
                     .pattern("IR")

@@ -68,7 +68,7 @@ class TextureRulesTest {
 
     @Test
     void onlyBlockAndItemTexturesAreChecked() {
-        assertTrue(TextureRules.applies("assets/orevault/textures/item/vault_key.png"));
+        assertTrue(TextureRules.applies("assets/orevault/textures/item/signet.png"));
         assertFalse(TextureRules.applies("logo.png"));
         assertFalse(TextureRules.applies("assets/orevault/textures/gui/sprites/tome/page.png"));
     }

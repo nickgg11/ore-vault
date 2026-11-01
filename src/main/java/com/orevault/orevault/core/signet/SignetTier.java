@@ -1,20 +1,20 @@
-package com.orevault.orevault.core.vaultkey;
+package com.orevault.orevault.core.signet;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The Vault Key ladder of §3.3. Callers ask what a tier can do and never which tier it is: instant travel has
+ * The signet ladder of §3.3. Callers ask what a tier can do and never which tier it is: instant travel has
  * already moved tiers once (old #122), and the tooltip is built here from the same accessors so it cannot go on
- * claiming the old answer (old #125). All four tiers answer now, though only {@link #CRUDE} has an item yet.
+ * claiming the old answer (old #125). All four tiers answer now, though only {@link #WORN} has an item yet.
  */
-public enum VaultKeyTier {
-    CRUDE(0, false, false, true),
-    ATTUNED(1, false, false, true),
-    RESONANT(3, true, false, true),
-    SOVEREIGN(3, true, true, false);
+public enum SignetTier {
+    WORN(0, false, false, true),
+    HEIRLOOM(1, false, false, true),
+    FABLED(3, true, false, true),
+    PRIMORDIAL(3, true, true, false);
 
-    private static final String PREFIX = "tooltip.orevault.vault_key.";
+    private static final String PREFIX = "tooltip.orevault.signet.";
     private static final String PURPOSE = PREFIX + "purpose";
     private static final String OPENS_PORTAL = PREFIX + "opens_portal";
     private static final String ENTRY_POINT = PREFIX + "entry_point";
@@ -28,7 +28,7 @@ public enum VaultKeyTier {
     private final boolean resetVault;
     private final boolean upgradable;
 
-    VaultKeyTier(int entryPointCapacity, boolean instantTravel, boolean resetVault, boolean upgradable) {
+    SignetTier(int entryPointCapacity, boolean instantTravel, boolean resetVault, boolean upgradable) {
         this.entryPointCapacity = entryPointCapacity;
         this.instantTravel = instantTravel;
         this.resetVault = resetVault;
