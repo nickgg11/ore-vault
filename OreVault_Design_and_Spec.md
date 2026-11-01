@@ -2979,7 +2979,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [x] Package structure created as `docs/adr/0001-toolchain-and-package-layout.md` lays it out: pure `core.*` packages with no Minecraft imports, Minecraft-facing adapters around them, and an ArchUnit test with one rule per package plus the named rules, each shown failing against a planted violation (S43), with named rule 7 to land with E3-S6a (#237); a package appears with its first class — E1-S3 (#194)
 - [x] Main mod class taking the `modEventBus` — E1-S1 (#188)
 - [x] Data generators for blockstates, models, recipes, tags and loot, with a check that committed output matches — E1-S9 (#198)
-- [ ] Command root `/orevault`, always registered, with only its debug subcommands behind `[debug].enable_debug_commands`; `/orevault reset vote` and `/orevault archive` join it unguarded with their own stories (§10); and the config screen — E3-S1 (#205)
+- [x] Command root `/orevault`, always registered, with only its debug subcommands behind `[debug].enable_debug_commands`; `/orevault reset vote` and `/orevault archive` join it unguarded with their own stories (§10); and the config screen — E3-S1 (#205)
 - [ ] Tree layout file and `TreeLayout` (§6, §11), with the constants class beside it — E8a-S9 (#189), E8a-S1 (#208), E8a-S4 (#212), E8a-S3a (#239)
 - [ ] Team data `SavedData`, one per team, id `orevault:team_<teamUuidNoHyphens>` (§11 SavedData Pattern, ADR 0005): the shell with `vault_generation` and `disbanded_at`, and the Vault type file `orevault_vault.dat` in each Vault folder, its name frozen as save data with the key and folder scheme (§11 SavedData Pattern, Per-Vault data) — E3-S9 (#232); `resonance_pool` and `level_reached` — E6-S1 (#241); the tree (`owned`, `fork_choice`, the respec window, pin and buyers) — E6-S3 (#251)
 - [ ] `PlayerStats` nested in team data with its own `data_version` (§11) — E6-S2 (#276)
@@ -3238,7 +3238,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Ore Doubling fallback chain (Mekanism tags → dust → raw ore) — E12-S4 (#371)
 
 ### Config
-- [ ] `orevault-server.toml` generated with defaults; each value added with its reader by the story that uses it (`CLAUDE.md` rule 7), the first being `[debug]` — E3-S1 (#205)
+- [x] `orevault-server.toml` generated with defaults; each value added with its reader by the story that uses it (`CLAUDE.md` rule 7), the first being `[debug]` — E3-S1 (#205)
 - [ ] `vault_presence_enabled` toggle — E10-S3 (#373)
 - [ ] `max_loaded_chunks_per_team` ceiling — E10-S3 (#373)
 - [ ] `ore_classification.overrides` map — E4-S2 (#238)
