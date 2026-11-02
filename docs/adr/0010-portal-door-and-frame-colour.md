@@ -1,6 +1,6 @@
 # 0010. The sealed door, and how a frame shows its portal's colour
 
-Status: proposed, 2026-11-01 (E3-S4, #229). Waits on the matrix reviewers. Nick's yes to the render is given; see the amendment below.
+Status: accepted, 2026-11-01 (E3-S4, #229). The Reviewer has read the code at f531f1c; see Reviews. Nick's yes to the render is given; see the amendment below.
 Spec: §3.2, §3.3. `DESIGN_LOG.md` 2026-11-01, "A valid frame shows a sealed door". Depends on ADR 0001's package
 table and on `VaultPortalShape` (#207).
 
@@ -151,8 +151,12 @@ The door and the portals also go in `minecraft:wither_immune` and `minecraft:dra
 `SignetItem#useOn`. On a frame, `VaultPortalShape.find`. On a door or portal, a new
 `VaultPortalShape.around(view, axis, x, y, z)`, the existing `openingAround` from that cell on the block's own axis.
 The press is refused with the failure sound if no shape is found or any filled cell has a different axis: two
-crossing rings share a cell, and the other ring's door is not this press's to replace. Otherwise every cell becomes
-that tier's portal with flags 18. The frames need nothing.
+crossing rings share a cell, and the other ring's door is not this press's to replace. It is also refused unless
+`SignetTier#mayPress` allows it: the signet has to outrank the highest portal in the opening, and a door or an empty
+ring has rank 0. So a lower or equal signet gets the failure sound and a higher one upgrades, on Vault and return
+portals alike. That is the Manager's recommendation, built while Nick has not answered (`DESIGN_LOG.md`, 2026-11-01),
+and `mayPress` is the only place that says so. Otherwise every cell becomes that tier's portal with flags 18. The
+frames need nothing.
 
 ### Dissolve
 
@@ -237,4 +241,7 @@ on grey strands carries that decision.
 ## Reviews
 
 Matrix row "System design before code": developer (buildable), reviewer (rules), qa (testable), with the Writer for
-the registry and lang entries. Not yet reviewed.
+the registry and lang entries.
+
+2026-11-01: the Reviewer read the code at f531f1c. This record is accepted on that reading, with its changes made in
+the working tree after it.

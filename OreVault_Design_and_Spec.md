@@ -234,7 +234,7 @@ When an FTB Team is disbanded, nothing kept for the team is deleted: its Vault w
 **Pressing a Signet**
 - On a frame block the scan is `VaultPortalShape.find`. On a door or portal it is `VaultPortalShape.around`, from that cell on the block's own axis
 - The press is refused with the failure sound if no shape is found or any filled cell has a different axis: two crossing rings share a cell, and the other ring's door is not this press's to replace
-- A signet of a lower tier than the portal it is pressed on is refused with the failure sound, on Vault and return portals alike. A higher tier upgrades the portal, and the same tier changes nothing. A door or an empty ring has no tier, so any signet opens it (Nick, 2026-11-01). The rule is one method, `SignetTier#mayPress`
+- A signet of a lower or equal tier to the portal it is pressed on is refused with the failure sound, on Vault and return portals alike. A higher tier upgrades the portal. A door or an empty ring has no tier, so any signet opens it. This is the Manager's recommendation, built while Nick has not answered (`DESIGN_LOG.md`, 2026-11-01). The rule is one method, `SignetTier#mayPress`
 - Otherwise every cell becomes that tier's portal, set with flags 18. The frames need nothing
 
 **Dissolve**

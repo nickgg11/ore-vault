@@ -71,7 +71,7 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> PORTAL_SHARED_BOTH = function("portal/breaking_a_shared_bar_dissolves_both");
     private static final ResourceKey<Consumer<GameTestHelper>> PORTAL_WATER = function("portal/water_leaves_a_portal_alone");
     private static final ResourceKey<Consumer<GameTestHelper>> PORTAL_CREATIVE = function("portal/creative_break_refused_unless_sneaking");
-    private static final ResourceKey<Consumer<GameTestHelper>> PORTAL_ENTITY = function("portal/entity_starts_its_charge");
+    private static final ResourceKey<Consumer<GameTestHelper>> PORTAL_ENTITY = function("portal/only_a_player_starts_a_charge");
     private static final ResourceKey<Consumer<GameTestHelper>> PORTAL_PROPERTIES = function("portal/block_properties");
     private static final ResourceKey<Consumer<GameTestHelper>> PORTAL_NO_LOAD = function("portal/scan_never_loads_a_chunk");
     private static final ResourceKey<Consumer<GameTestHelper>> PORTAL_DISSOLVE_WATER = function("portal/dissolve_lets_water_in");
@@ -132,7 +132,7 @@ public final class GameTests {
             registry.register(PORTAL_SHARED_BOTH, PortalTests::breakingASharedBarDissolvesBoth);
             registry.register(PORTAL_WATER, PortalTests::waterLeavesAPortalAlone);
             registry.register(PORTAL_CREATIVE, PortalTests::creativeBreakingIsRefusedUnlessSneaking);
-            registry.register(PORTAL_ENTITY, PortalTests::anEntityInAPortalStartsItsCharge);
+            registry.register(PORTAL_ENTITY, PortalTests::onlyAPlayerStartsACharge);
             registry.register(PORTAL_PROPERTIES, PortalTests::theBlocksHaveTheSpecProperties);
             registry.register(PORTAL_NO_LOAD, PortalTests::theScanNeverLoadsAChunk);
             registry.register(PORTAL_DISSOLVE_WATER, PortalTests::aDissolveLetsWaterIn);

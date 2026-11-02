@@ -6,6 +6,7 @@ import com.orevault.orevault.core.frame.FrameNeighbours;
 import java.util.function.Function;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
@@ -107,8 +108,8 @@ public final class VaultFrameBlock extends Block {
      */
     @Override
     protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
-        if (!oldState.is(this)) {
-            VaultOpenings.seal(level, pos);
+        if (!oldState.is(this) && level instanceof ServerLevel server) {
+            VaultOpenings.seal(server, pos);
         }
     }
 

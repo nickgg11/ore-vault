@@ -9,6 +9,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.InsideBlockEffectApplier;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
@@ -35,8 +36,8 @@ import org.jspecify.annotations.Nullable;
  * wash this one away. {@link LiquidBlockContainer} stops flowing water and {@link #canBeReplaced(BlockState, Fluid)} stops
  * a bucket or dispenser.
  *
- * <p>Teleporting arrives with E3-S8 (#237). Until then {@link #getPortalDestination} answers null, which vanilla reads as
- * nowhere to go, so standing in a portal charges and draws the overlay, then does nothing.
+ * <p>Teleporting arrives with E3-S6a (#237). Until then {@link #getPortalDestination} answers null, which vanilla reads as
+ * nowhere to go, so a player standing in a portal charges and sees the overlay, then nothing happens.
  */
 public final class VaultPortalBlock extends Block implements Portal, LiquidBlockContainer {
     /** §3.2: four seconds. */
@@ -89,11 +90,11 @@ public final class VaultPortalBlock extends Block implements Portal, LiquidBlock
         return VaultOpenings.rotated(state, rotation);
     }
 
-    /** On both sides, as vanilla's portal: the client's own processor is what draws the overlay (old #81). */
+    /** Players only (§3.2), on both sides: the client's own processor is what draws the overlay (old #81). */
     @Override
     protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity,
             InsideBlockEffectApplier effectApplier, boolean isPrecise) {
-        if (entity.canUsePortal(false)) {
+        if (entity instanceof Player && entity.canUsePortal(false)) {
             entity.setAsInsidePortal(this, pos);
         }
     }

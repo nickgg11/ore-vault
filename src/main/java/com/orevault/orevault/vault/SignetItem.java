@@ -4,6 +4,7 @@ import com.orevault.orevault.core.signet.SignetTier;
 import java.util.function.Consumer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionResult;
@@ -30,13 +31,13 @@ public final class SignetItem extends Item {
         if (!VaultOpenings.takesASignet(level.getBlockState(context.getClickedPos()))) {
             return InteractionResult.PASS;
         }
-        if (level.isClientSide()) {
-            return InteractionResult.SUCCESS;
+        if (level instanceof ServerLevel server) {
+            boolean opened = VaultOpenings.press(server, context.getClickedPos(), tier);
+            server.playSound(null, context.getClickedPos(), opened ? SoundEvents.PORTAL_TRIGGER : SoundEvents.FIRE_EXTINGUISH,
+                    SoundSource.BLOCKS, 1.0F, 1.0F);
+            return InteractionResult.SUCCESS_SERVER;
         }
-        boolean opened = VaultOpenings.press(level, context.getClickedPos(), tier);
-        level.playSound(null, context.getClickedPos(), opened ? SoundEvents.PORTAL_TRIGGER : SoundEvents.FIRE_EXTINGUISH,
-                SoundSource.BLOCKS, 1.0F, 1.0F);
-        return InteractionResult.SUCCESS_SERVER;
+        return InteractionResult.SUCCESS;
     }
 
     @Override

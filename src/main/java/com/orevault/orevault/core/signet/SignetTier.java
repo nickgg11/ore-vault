@@ -55,11 +55,11 @@ public enum SignetTier {
 
     /**
      * Whether this signet may be pressed into an opening whose highest portal has this rank, 0 for a door or an empty
-     * ring. A lower signet is refused, on Vault and return portals alike, and a higher one upgrades (§3.2, Nick). He may
-     * change this, and it is the only place that says so.
+     * ring. A lower or equal signet is refused, on Vault and return portals alike, and a higher one upgrades (§3.2). This
+     * is the Manager's recommendation, which Nick has not answered, and this is the only place that says so.
      */
     public boolean mayPress(int portalRank) {
-        return rank() >= portalRank;
+        return rank() > portalRank;
     }
 
     public int entryPointCapacity() {

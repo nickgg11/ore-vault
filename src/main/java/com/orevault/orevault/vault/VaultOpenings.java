@@ -68,7 +68,7 @@ public final class VaultOpenings {
      * crossing rings can share a column, and {@code find} also accepts a ring with a live portal in it, which a corner
      * placed afterwards would otherwise cover with a door.
      */
-    static void seal(Level level, BlockPos pos) {
+    static void seal(ServerLevel level, BlockPos pos) {
         View view = view(level);
         for (VaultPortalShape shape : VaultPortalShape.findAll(view, pos.getX(), pos.getY(), pos.getZ())) {
             if (shape.cells().stream().allMatch(cell -> view.kindAt(cell.x(), cell.y(), cell.z()) == Kind.AIR)) {
@@ -77,7 +77,7 @@ public final class VaultOpenings {
         }
     }
 
-    private static void writeDoor(Level level, VaultPortalShape shape) {
+    private static void writeDoor(ServerLevel level, VaultPortalShape shape) {
         for (Cell cell : shape.cells()) {
             DoorPart part = DoorPart.of(shape.column(cell), cell.y() - shape.minY(), shape.width(), shape.height());
             level.setBlock(pos(cell), VaultDoorBlock.state(minecraftAxis(shape.axis()), part), FILL_FLAGS);
@@ -94,7 +94,7 @@ public final class VaultOpenings {
      *
      * @return false if it was refused, which leaves the world as it was
      */
-    public static boolean press(Level level, BlockPos pos, SignetTier tier) {
+    public static boolean press(ServerLevel level, BlockPos pos, SignetTier tier) {
         Optional<VaultPortalShape> found = shapeFor(level, pos, level.getBlockState(pos));
         if (found.isEmpty()) {
             return false;

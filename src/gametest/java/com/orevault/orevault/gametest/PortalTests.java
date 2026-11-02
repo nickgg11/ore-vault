@@ -62,6 +62,8 @@ final class PortalTests {
 
     private static final GameProfile PLAYER =
             new GameProfile(UUID.fromString("7f1d9a52-6b2e-4b9c-8c11-0f6d2a4e7b31"), "orevault-presser");
+    private static final GameProfile CHARGER =
+            new GameProfile(UUID.fromString("c4b0e1d3-5a77-4e2a-9d68-3f1ab8c2d905"), "orevault-charger");
     private static final GameProfile BUILDER =
             new GameProfile(UUID.fromString("2c8e4b17-9a3d-4f06-b5de-71c2f0a9e644"), "orevault-creative");
 
@@ -363,12 +365,15 @@ final class PortalTests {
         helper.succeed();
     }
 
-    /** §3.2, Nick: a higher signet upgrades, a lower one is refused with the failure sound, and the same one is no change. */
+    /** §3.2, the Manager's recommendation: only a higher signet changes a portal; a lower or equal one gets the failure sound. */
     static void aLowerSignetIsRefusedAndAHigherUpgrades(GameTestHelper helper) {
         Ring ring = Ring.in(helper, 10, Direction.EAST, 2, 3);
         ring.build();
         press(helper, ring.at(0, 0));
         ring.assertAll(ModBlocks.VAULT_PORTAL_COMMON.get());
+        press(helper, ring.at(1, 1));
+        ring.assertAll(ModBlocks.VAULT_PORTAL_COMMON.get());
+        assertSoundAt(helper, ring.at(1, 1), SoundEvents.FIRE_EXTINGUISH);
         BlockPos portal = helper.absolutePos(ring.at(0, 0));
         check(helper, VaultOpenings.press(helper.getLevel(), portal, SignetTier.FABLED), "the upgrade was refused");
         ring.assertAll(ModBlocks.VAULT_PORTAL_RARE.get());
@@ -377,7 +382,7 @@ final class PortalTests {
         assertSoundAt(helper, ring.at(0, 0), SoundEvents.FIRE_EXTINGUISH);
         check(helper, !VaultOpenings.press(helper.getLevel(), helper.absolutePos(ring.at(-1, 0)), SignetTier.HEIRLOOM),
                 "a lower signet on the frame was accepted");
-        check(helper, VaultOpenings.press(helper.getLevel(), portal, SignetTier.FABLED), "the same tier was refused");
+        check(helper, !VaultOpenings.press(helper.getLevel(), portal, SignetTier.FABLED), "the same tier was accepted");
         ring.assertAll(ModBlocks.VAULT_PORTAL_RARE.get());
         helper.succeed();
     }
@@ -527,16 +532,23 @@ final class PortalTests {
         helper.succeed();
     }
 
-    /** {@code entityInside} on the server here; the client half is the same line and a playtest step. */
-    static void anEntityInAPortalStartsItsCharge(GameTestHelper helper) {
+    /** §3.2: players only. {@code entityInside} on the server here; the client half is the same line and a playtest step. */
+    static void onlyAPlayerStartsACharge(GameTestHelper helper) {
         Ring ring = Ring.in(helper, 23, Direction.EAST, 2, 3);
         ring.build();
         press(helper, ring.at(0, 0));
         // A ring can sit in the chunk beside the forced one, which ticks blocks and not entities, so this asks directly.
         Pig pig = helper.spawn(EntityType.PIG, ring.at(0, 0));
         pig.applyEffectsFromBlocks(pig.position(), pig.position());
-        check(helper, pig.portalProcess != null, "no portal process");
+        check(helper, pig.portalProcess == null, "a pig started a charge");
         pig.discard();
+        ServerPlayer player = player(helper, CHARGER);
+        player.portalProcess = null;
+        Vec3 inside = helper.absoluteVec(Vec3.atBottomCenterOf(ring.at(0, 0)));
+        player.snapTo(inside);
+        player.applyEffectsFromBlocks(inside, inside);
+        check(helper, player.portalProcess != null, "a player started no charge");
+        player.portalProcess = null;
         helper.succeed();
     }
 
