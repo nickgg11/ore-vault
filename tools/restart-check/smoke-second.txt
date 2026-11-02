@@ -1,0 +1,12 @@
+# Second lifetime of the smoke check. Nobody has connected. The block from the first lifetime is read and broken
+# through /orevault break under `execute in`, the form the Vault check uses (QA-38).
+
+run execute in minecraft:the_nether run orevault break 64 100 64
+expect break minecraft:the_nether 64 100 64 minecraft:gold_block: destroyBlock=true gone=true
+log \[orevault-debug\] break minecraft:the_nether 64 100 64
+run execute in minecraft:the_nether run forceload add 64 64
+expect Marked chunk
+run execute in minecraft:the_nether if block 64 100 64 minecraft:gold_block
+expect Test failed
+run execute in minecraft:the_nether if block 64 100 64 minecraft:air
+expect Test passed
