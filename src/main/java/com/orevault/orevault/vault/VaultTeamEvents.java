@@ -43,7 +43,8 @@ public final class VaultTeamEvents {
 
     /**
      * ADR 0007's Disband step 1. A team that never wrote data and has no Vault folder has nothing to archive, so nothing is
-     * written. Evacuating anyone inside, step 2, and the archive move are E11-S6's. The event carries no server.
+     * written. Evacuating anyone inside, step 2, and the archive move are E11-S6's. The event carries no server. The write
+     * can be lost, if a damaged team file cannot be copied aside ({@link OreVaultTeamData#forWrite}), so it is read back.
      */
     private static void onDisband(UUID teamId) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
@@ -52,6 +53,11 @@ public final class VaultTeamEvents {
         }
         OreVaultTeamData.forWrite(server, teamId).markDisbanded(server.overworld().getGameTime());
         server.getDataStorage().saveAndJoin();
-        LOGGER.info("Team {} disbanded; its Vault and data are archived at the next start", teamId);
+        if (OreVaultTeamData.read(server, teamId).disbandedAt().isEmpty()) {
+            LOGGER.error("Team {} disbanded, but disbanded_at could not be recorded: its team file is damaged and could not be "
+                    + "copied aside. Its Vault stays as if the team still existed", teamId);
+            return;
+        }
+        LOGGER.info("Team {} disbanded; disbanded_at saved", teamId);
     }
 }

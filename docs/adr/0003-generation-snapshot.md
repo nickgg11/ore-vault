@@ -108,6 +108,13 @@ constructed with `Supplier<GenSnapshot>` (the holder's `get`) and the team id, a
 team. `TeamEffects` is kept per team in a plain main-thread map in the same class, since only the main
 thread reads it.
 
+The map of holders is main-thread only; a generator keeps its own reference to its holder. Filling puts a new
+holder in the map, never a new variant into an old one, so a generator still draining across a reset keeps
+the snapshot it was built with and cannot trip its variant check. `vault` hands the variant in, read from the
+Vault's folder (ADR 0002 creation step 2), because team data does not hold it. A rebuild keeps the variant of
+the holder it replaces the value of, and a team with no holder has nothing to rebuild. The map is static, and a
+personal team's id is the same in a second world in one client, so it is cleared at `ServerStoppedEvent`.
+
 The generator calls the supplier exactly once per chunk, at the start of `fillFromNoise`, and passes that
 one snapshot to every placement step for the chunk: layers, lava pools, ore, gravel and clay, geodes,
 debris, the vein index entries and the stamp. All Ore Vault placement for a chunk happens in that one
@@ -210,6 +217,18 @@ salt leaves another feature's stream unchanged.
     but a mod has to aim at the Vault to do that, and a second hook for that case earns nothing.
   - A Disturbed Zone (§7) cannot use natural spawning in a Vault, so it spawns through its own block logic.
   E3-S5's (#233) gametest calls `getMobsAt` for every `MobCategory` and expects an empty list.
+- `applyBiomeDecoration` and `createStructures` do nothing (Architect, 2026-11-01). Biome modifiers reach
+  features as they reach spawns: a `neoforge:add_features` modifier on `neoforge:any` puts its placed features
+  in `orevault:vault`, because `ChunkGenerator` reads them through `Biome#getGenerationSettings` (line 91). Left
+  alone, that is ore placed by static feature, against §3.1, outside the S12 counts and the vein index, and
+  seeded from the world seed (line 330). A structure whose biome set reaches the Vault is the same case. The
+  base `applyBiomeDecoration` does nothing else: it places features and structure pieces (lines 320 to 421),
+  with no NeoForge hook inside. Heightmap priming and border ticks are in its caller
+  (`ChunkStatusTasks#generateFeatures`, lines 137 to 146), and `onStructureStartsAvailable` is called whether
+  or not structures ran (`generateStructureStarts`, line 54). `DebugLevelSource` replaces the method without
+  calling super. `createReferences` stays: with no starts it has nothing to reference. So a `features` list
+  added to the biome file by a pack does nothing in a Vault, and all Vault terrain stays in `fillFromNoise`.
+  E3-S5's gametest calls both overrides with null arguments, which the base methods cannot survive.
 
 ### Enforcement
 
@@ -339,3 +358,5 @@ RV2-2). The end-of-tick check stays in `vault`, as written above.
 Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md`: empty spawner lists are not a
 guarantee in a pack, so the generator overrides `getMobsAt` and leaves `spawnOriginalMobs` empty. Behaviour stays
 no mobs, so this is not a design change.
+
+Amended 2026-11-01 for E3-S5 (#233) (Architect, reading the 26.1.2.95 sources; both signatures confirmed by `javap` on 26.1.2.121): the generator also overrides `applyBiomeDecoration` and `createStructures` to do nothing ("Generator plumbing"), for the reason the spawn overrides exist. The table above is `GenSnapshot`'s full shape. The record lands with `variant` and `vault_generation` only and each other row joins with the story that reads it, as ADR 0005 section 8 allows; a row is not a debt on E3-S5. The new paragraph under "Holders and the supplier" states what `data.GenSnapshots` owes ADR 0002 step 3 in E3-S6a (#237).

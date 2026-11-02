@@ -62,6 +62,33 @@ class TeamFieldsTest {
         assertEquals(OptionalLong.empty(), TeamFields.DEFAULTS.disbandedAt());
     }
 
+    /** Version 1 as a saved file holds it, built key by key, so a change of a key's type fails here and not in a world. */
+    private static CompoundTag versionOneFixture() {
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("data_version", 1);
+        tag.putString("team_id", TEAM.toString());
+        tag.putInt("vault_generation", 5);
+        return tag;
+    }
+
+    @Test
+    void theVersionOneFixtureWithNoDisbandReadsAndWritesTheSameTag() {
+        CompoundTag fixture = versionOneFixture();
+        TeamFields fields = read(fixture);
+        assertEquals(new TeamFields(5, OptionalLong.empty()), fields);
+        assertEquals(fixture, fields.write(TEAM));
+    }
+
+    /** A game time past an int's range, so a read or a write narrowed to int cannot pass. */
+    @Test
+    void theVersionOneFixtureWithADisbandReadsAndWritesTheSameTag() {
+        CompoundTag fixture = versionOneFixture();
+        fixture.putLong("disbanded_at", 3_000_000_000L);
+        TeamFields fields = read(fixture);
+        assertEquals(new TeamFields(5, OptionalLong.of(3_000_000_000L)), fields);
+        assertEquals(fixture, fields.write(TEAM));
+    }
+
     @Test
     void aTagWithoutTheGenerationReadsZero() {
         CompoundTag tag = new TeamFields(4, OptionalLong.of(5L)).write(TEAM);

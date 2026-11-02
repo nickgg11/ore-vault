@@ -97,6 +97,10 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_DIMENSION_TYPES = function("worldgen/dimension_types_load");
     private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_BIOME = function("worldgen/biome_loads_with_no_spawns");
     private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_LAYERS = function("worldgen/layer_files_load");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_FAILED_COPY = function("team_data/failed_copy_leaves_the_file");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_DISBAND_LOST = function("team_data/unrecorded_disband_logs_an_error");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_NO_FEATURES = function("worldgen/no_features_and_no_structures");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_FIRST_FREE = function("worldgen/first_free_block_from_the_state");
 
     private GameTests() {
     }
@@ -195,6 +199,10 @@ public final class GameTests {
             registry.register(WORLDGEN_DIMENSION_TYPES, WorldgenTests::theDimensionTypesLoadWithTheHeightsInJava);
             registry.register(WORLDGEN_BIOME, WorldgenTests::theBiomeLoadsWithNoSpawnsAndInNoBroadTag);
             registry.register(WORLDGEN_LAYERS, WorldgenTests::theLayerFilesLoadFromTheDataPack);
+            registry.register(TEAM_DATA_FAILED_COPY, unchecked(TeamDataTests::aFailedCopyLeavesTheFileAndTheNextWriteCopies));
+            registry.register(TEAM_DATA_DISBAND_LOST, unchecked(TeamDataTests::aDisbandThatCouldNotBeRecordedLogsAnError));
+            registry.register(WORLDGEN_NO_FEATURES, WorldgenTests::placesNoFeaturesAndNoStructures);
+            registry.register(WORLDGEN_FIRST_FREE, WorldgenTests::theFirstFreeBlockComesFromTheResolvedState);
         });
     }
 
@@ -215,7 +223,8 @@ public final class GameTests {
                 TEAM_DATA_REAL, TEAM_DATA_DISBAND, TEAM_DATA_DISBAND_EMPTY, TEAM_DATA_DISBAND_FOLDER,
                 TEAM_DATA_UNREADABLE, WORLDGEN_BASE, WORLDGEN_EXPANDED, WORLDGEN_ONE_READ, WORLDGEN_VARIANT,
                 WORLDGEN_NO_MOBS, WORLDGEN_SEED, WORLDGEN_HEIGHTS, WORLDGEN_CODEC, WORLDGEN_DIMENSION_TYPES,
-                WORLDGEN_BIOME, WORLDGEN_LAYERS)) {
+                WORLDGEN_BIOME, WORLDGEN_LAYERS, TEAM_DATA_FAILED_COPY,
+                TEAM_DATA_DISBAND_LOST, WORLDGEN_NO_FEATURES, WORLDGEN_FIRST_FREE)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
         }
         event.registerTest(DELIBERATE_FAILURE.identifier(),

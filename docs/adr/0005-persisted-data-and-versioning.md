@@ -314,8 +314,12 @@ death marker without editing offline players' files (ADR 0007).
   types `orevault:ore_vault` and `orevault:ore_vault_expanded`, the dimension key and `SavedData` id
   patterns, the `SavedData` id `orevault:explored_map`, the biome `orevault:vault`, the `TicketController` id, `orevault:travel_max_health`, and every
   node, skill and option id in the layout (with the §6.1 reserved ids never reused), and the Vault type
-  file's name `orevault_vault.dat`. All of them are string constants in one pure class (`core` has no
-  Minecraft imports) that registration reads, pinned by a golden JUnit test. Renaming a block or item id, or an
+  file's name `orevault_vault.dat`. Each id stays beside the code that owns it, in a pure class where it has
+  one (`VaultKeys`, `VaultVariant`) and in its `DeferredRegister` call otherwise. The pin is the test, not the
+  location: a golden JUnit test for each pure class's ids, and a gametest (`registry/frozen_ids`) that walks the
+  block, item, entity type, data component, attachment type, biome and dimension type registries for namespace
+  `orevault` and compares what is there with a literal list, so a rename, a removal and an unlisted new id all
+  fail it. The list is written out in the test and reads no constant. Renaming a block or item id, or an
   attachment type id, needs `DeferredRegister#addAlias(from, to)` (Context), kept for good, with a golden test;
   without it the data is gone at the next save. Renaming any other id needs a migration.
 - Tests (S17). A golden key-set test per shape, the chunk attachment's including its `ores` palette of
@@ -561,3 +565,5 @@ file's NBT calls are named. Save shapes and keys are unchanged. The "Anchor tick
 it was and is open with E10-S3 (#373).
 
 Amended 2026-11-01 by E3-S9 (#232): if the copy aside of section 2 itself fails, the file is left alone and the write accessor hands back data that is never saved, so that one write is lost and the next tries the copy again. "An unreadable team file is never overwritten" holds in that case too. `vault_generation` and `disbanded_at` are read and written by the plain class `data.TeamFields`, and `OreVaultTeamData` is the `SavedData` around it. Save shapes and keys are unchanged.
+
+Amended 2026-11-01 for E3-S9 (#232) and E3-S5 (#233) (Architect). Section 6's "one pure class" of frozen ids is dropped. It was never built, the block and item ids are in `ModBlocks` and `ModItems`, and `core.gen` importing a shared id class would add an edge for no check. A golden constant also cannot show that registration used it; a walk of the live registries can. `registry/frozen_ids` is owed before T5, when the ids freeze, and the Manager tickets it. The read accessor `OreVaultTeamData#read` stays silent on an unreadable file: `SavedDataStorage` logs the failure once at ERROR and caches it, a log per read would repeat on every rebuild, and the ERROR naming the path belongs to restore (ADR 0002 step 4) and the write accessor (section 2). Restore needs absent told from unreadable, which `read` and `hasRecord` do not answer, so E3-S6a (#237) adds `OreVaultTeamData#isUnreadable(server, teamId)`, true when `get` is null and the file exists, and ADR 0007's pass uses the same method.

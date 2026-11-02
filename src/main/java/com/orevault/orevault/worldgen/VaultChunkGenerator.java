@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -20,9 +21,11 @@ import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.util.random.WeightedList;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.StructureManager;
+import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.biome.FixedBiomeSource;
@@ -30,9 +33,11 @@ import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 
 /**
  * A team's Vault terrain (§3.1, §11 Dynamic Chunk Generator): the layer stack, flat, with no ore until T4.
@@ -43,8 +48,10 @@ import net.minecraft.world.level.levelgen.blending.Blender;
  * from {@code data} and {@code team} (S15). Built per team in code, never parsed from a pack, so the codec is a unit of the
  * instance.
  *
- * <p>Nothing here reads the world seed: a chunk's seed comes from {@link #chunkSeed}, so that within one generation of the
- * Vault a chunk comes out the same whenever it is first visited.
+ * <p>All Vault terrain is written in that one method. The two later steps that could add to it, biome decoration and
+ * structures, do nothing here, and they are also what would read the world seed. So a chunk's seed comes only from
+ * {@link #chunkSeed}, and within one generation of the Vault a chunk comes out the same whenever it is first visited.
+ * {@code createReferences} stays as it is: with no structure starts it has nothing to reference.
  */
 public final class VaultChunkGenerator extends ChunkGenerator {
     public static final ResourceKey<Biome> BIOME =
@@ -70,8 +77,17 @@ public final class VaultChunkGenerator extends ChunkGenerator {
         if (column.length != variant.height()) {
             throw new IllegalArgumentException("A stack of " + column.length + " for " + variant.id());
         }
-        int firstAir = layers.firstAirIndex();
-        this.firstFreeY = variant.minY() + (firstAir < 0 ? variant.height() : firstAir);
+        this.firstFreeY = variant.minY() + firstAirIndex(column);
+    }
+
+    /** From the resolved states: a layer file may say {@code air} or a modded air, and only the block can tell. */
+    private static int firstAirIndex(BlockState[] column) {
+        for (int index = 0; index < column.length; index++) {
+            if (column[index].isAir()) {
+                return index;
+            }
+        }
+        return column.length;
     }
 
     /** The seed for one feature in one chunk: each feature passes its own salt, so adding one shifts no other (§3.1). */
@@ -119,6 +135,22 @@ public final class VaultChunkGenerator extends ChunkGenerator {
     /** The chunk-generation mob pass, the one path that reads the biome's list directly (ADR 0003). */
     @Override
     public void spawnOriginalMobs(WorldGenRegion region) {
+    }
+
+    /**
+     * Does nothing. A biome modifier on {@code neoforge:any} reaches {@code orevault:vault} and adds its placed features to
+     * the biome, and the base method would place them: ore by static feature, against §3.1, outside the baseline's counts
+     * and the vein index, seeded from the world seed (ADR 0003). Heightmap priming and border ticks are in the caller.
+     */
+    @Override
+    public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structureManager) {
+    }
+
+    /** Does nothing, for the same reason: a structure whose biome set reaches the Vault would be terrain from outside this class. */
+    @Override
+    public void createStructures(
+            RegistryAccess registryAccess, ChunkGeneratorStructureState state, StructureManager structureManager, ChunkAccess chunk,
+            StructureTemplateManager templates, ResourceKey<Level> level) {
     }
 
     /** No caves by default (§3.1). */

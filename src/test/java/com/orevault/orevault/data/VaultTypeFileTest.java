@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.orevault.orevault.core.gen.VaultVariant;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -109,6 +110,16 @@ class VaultTypeFileTest {
         assertEquals(Optional.of(VaultVariant.EXPANDED), read());
         assertEquals(1, warnings.size(), warnings.toString());
         assertTrue(warnings.getFirst().contains("99"), warnings.getFirst());
+    }
+
+    @Test
+    void theVersionOneFixtureReadsAndWritesTheSameTag() throws IOException {
+        CompoundTag fixture = new CompoundTag();
+        fixture.putInt("data_version", 1);
+        fixture.putString("variant", "orevault:ore_vault_expanded");
+        writeTag(fixture);
+        assertEquals(Optional.of(VaultVariant.EXPANDED), read());
+        assertEquals(fixture, VaultTypeFile.toTag(VaultVariant.EXPANDED));
     }
 
     @Test
@@ -237,5 +248,18 @@ class VaultTypeFileTest {
         assertEquals(Optional.empty(), openOrCreate(VaultVariant.BASE));
         VaultTypeFile.write(folder(), VaultVariant.EXPANDED);
         assertEquals(Optional.of(VaultVariant.EXPANDED), openOrCreate(VaultVariant.BASE));
+    }
+
+    /** {@code Files.list} reports a failure while iterating as an unchecked exception, and that must not crash a start. */
+    @Test
+    void aFolderThatFailsWhileListingIsARefusalAndWritesNothing() throws IOException {
+        Files.createDirectories(folder());
+        VaultTypeFile.FolderListing failing = path -> Stream.of(path).map(file -> {
+            throw new UncheckedIOException(new IOException("the disk went away"));
+        });
+        assertEquals(Optional.empty(), VaultTypeFile.openOrCreate(folder(), () -> VaultVariant.BASE, warnings::add, errors::add, failing));
+        assertEquals(1, errors.size(), errors.toString());
+        assertTrue(errors.getFirst().contains(folder().toString()), errors.getFirst());
+        assertEquals(List.of(), folderFiles());
     }
 }

@@ -149,6 +149,32 @@ final class WorldgenTests {
         helper.succeed();
     }
 
+    /**
+     * ADR 0003: a modifier on {@code neoforge:any} reaches the biome's features, so nothing but {@code fillFromNoise} may
+     * write Vault terrain. The base methods dereference these nulls, so only a method that does nothing passes.
+     */
+    static void placesNoFeaturesAndNoStructures(GameTestHelper helper) {
+        VaultChunkGenerator generator = generator(helper.getLevel(), VaultVariant.BASE);
+        generator.applyBiomeDecoration(null, null, null);
+        generator.createStructures(null, null, null, null, null, null);
+        helper.succeed();
+    }
+
+    /** {@code air} is the block {@code minecraft:air} and passes validation, so the first free block comes from the state. */
+    static void theFirstFreeBlockComesFromTheResolvedState(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        VaultVariant base = VaultVariant.BASE;
+        LevelHeightAccessor heights = LevelHeightAccessor.create(base.minY(), base.height());
+        LayerStack shortAir = new LayerStack(List.of(new LayerStack.Layer("minecraft:stone", 100), new LayerStack.Layer("air", 220)));
+        VaultChunkGenerator generator = new VaultChunkGenerator(TEAM, vaultBiome(level), base, shortAir, () -> new GenSnapshot(base, 0));
+        check(helper, "short air id", 100, generator.getBaseHeight(0, 0, Heightmap.Types.WORLD_SURFACE_WG, heights, null));
+
+        LayerStack solid = new LayerStack(List.of(new LayerStack.Layer("minecraft:stone", 320)));
+        VaultChunkGenerator noAir = new VaultChunkGenerator(TEAM, vaultBiome(level), base, solid, () -> new GenSnapshot(base, 0));
+        check(helper, "no air", 320, noAir.getBaseHeight(0, 0, Heightmap.Types.WORLD_SURFACE_WG, heights, null));
+        helper.succeed();
+    }
+
     /** The team, the reset count, the chunk and a salt, and no way for a world seed to get in (§3.1). */
     static void theSeedComesFromTheTeamAndTheChunk(GameTestHelper helper) {
         GenSnapshot snapshot = new GenSnapshot(VaultVariant.BASE, 4);

@@ -60,12 +60,13 @@ public record LayerStack(List<Layer> layers) {
 
     /**
      * The stack in {@code json} if it is well formed, names only blocks that exist and fills the variant's height exactly,
-     * and otherwise the built-in stack, with one line to {@code error} saying why (§3.1, rule 8).
+     * and otherwise the built-in stack, with one line to {@code error} saying why (§3.1, rule 8). The height is summed as a
+     * long before anything is expanded, so a huge thickness is a bad file and not an {@link OutOfMemoryError}.
      */
     public static LayerStack fromJson(Reader json, VaultVariant variant, Predicate<String> blockExists, Consumer<String> error) {
         try {
             LayerStack stack = parse(json);
-            int total = stack.column().size();
+            long total = stack.layers.stream().mapToLong(Layer::thickness).sum();
             if (total != variant.height()) {
                 throw new IllegalArgumentException("sums to " + total + ", expected the height " + variant.height());
             }
@@ -97,10 +98,5 @@ public record LayerStack(List<Layer> layers) {
             column.addAll(Collections.nCopies(layer.thickness, layer.block));
         }
         return Collections.unmodifiableList(column);
-    }
-
-    /** The column index of the lowest air block, or -1 for a stack with none. */
-    public int firstAirIndex() {
-        return column().indexOf(AIR);
     }
 }

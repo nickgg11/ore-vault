@@ -20,6 +20,19 @@ class VaultVariantTest {
     }
 
     @Test
+    void theBaseStoneBandIs245Layers() {
+        assertEquals(1, VaultVariant.BASE.stoneBottomY());
+        assertEquals(245, VaultVariant.BASE.stoneTopY());
+    }
+
+    /** ADR 0009: Y=0 is stone here, so the band has one layer more than the base type's. */
+    @Test
+    void theExpandedStoneBandStartsAtZero() {
+        assertEquals(0, VaultVariant.EXPANDED.stoneBottomY());
+        assertEquals(245, VaultVariant.EXPANDED.stoneTopY());
+    }
+
+    @Test
     void theIdsAreFrozen() {
         assertEquals("orevault:ore_vault", VaultVariant.BASE.id());
         assertEquals("orevault:ore_vault_expanded", VaultVariant.EXPANDED.id());

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
@@ -70,18 +71,6 @@ class LayerStackTest {
     }
 
     @Test
-    void theFirstAirIndexIsTheBlockAboveTheGrass() {
-        assertEquals(251, LayerStack.builtIn(VaultVariant.BASE).firstAirIndex());
-        assertEquals(251 + 64, LayerStack.builtIn(VaultVariant.EXPANDED).firstAirIndex());
-    }
-
-    @Test
-    void aStackWithNoAirHasNoFirstAirIndex() {
-        LayerStack solid = new LayerStack(List.of(new LayerStack.Layer("minecraft:stone", 16)));
-        assertEquals(-1, solid.firstAirIndex());
-    }
-
-    @Test
     void aGoodFileIsUsedAsWritten() {
         List<String> errors = new ArrayList<>();
         LayerStack stack = load(GOOD_BASE, ANY_BLOCK, errors);
@@ -121,6 +110,29 @@ class LayerStackTest {
         assertEquals(1, errors.size(), errors.toString());
     }
 
+    /** The sum comes first: expanding the column to measure it would run out of memory (§3.1, a bad file falls back). */
+    @Test
+    void aHugeThicknessFallsBack() {
+        List<String> errors = new ArrayList<>();
+        String json = GOOD_BASE.replace("\"thickness\": 69", "\"thickness\": 2147483647");
+        assertEquals(LayerStack.builtIn(VaultVariant.BASE), load(json, ANY_BLOCK, errors));
+        assertEquals(1, errors.size(), errors.toString());
+    }
+
+    /** Two thicknesses that an int sum would wrap back round to exactly the height. */
+    @Test
+    void thicknessesThatOverflowAnIntFallBack() {
+        List<String> errors = new ArrayList<>();
+        String json = """
+                {"layers": [
+                  {"block": "minecraft:stone", "thickness": 2147483647},
+                  {"block": "minecraft:stone", "thickness": 2147483647},
+                  {"block": "minecraft:air", "thickness": 322}
+                ]}""";
+        assertEquals(LayerStack.builtIn(VaultVariant.BASE), load(json, ANY_BLOCK, errors));
+        assertEquals(1, errors.size(), errors.toString());
+    }
+
     /** Rule 8: the stack against the heights in Java is what makes a wrong file loud. */
     @Test
     void aStackOfTheWrongHeightFallsBackAndNamesBothHeights() {
@@ -138,6 +150,17 @@ class LayerStackTest {
         assertEquals(LayerStack.builtIn(VaultVariant.BASE), load(GOOD_BASE, noCobble, errors));
         assertEquals(1, errors.size(), errors.toString());
         assertTrue(errors.getFirst().contains("minecraft:cobblestone"), errors.getFirst());
+    }
+
+    /** ADR 0009: the stone band is every stone layer of the type's stack, and the bounds say so per type. */
+    @Test
+    void theStoneBandsBoundsAreTheStacksStoneLayers() {
+        for (VaultVariant variant : VaultVariant.values()) {
+            List<String> column = LayerStack.builtIn(variant).column();
+            assertEquals(variant.stoneTopY() - variant.stoneBottomY() + 1, Collections.frequency(column, "minecraft:stone"), variant.id());
+            assertEquals("minecraft:stone", at(variant, variant.stoneBottomY()), variant.id());
+            assertEquals("minecraft:stone", at(variant, variant.stoneTopY()), variant.id());
+        }
     }
 
     @Test

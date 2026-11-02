@@ -3,6 +3,7 @@ package com.orevault.orevault.data;
 import com.orevault.orevault.core.gen.VaultVariant;
 import com.orevault.orevault.core.key.VaultKeys;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -83,24 +84,35 @@ public final class VaultTypeFile {
      */
     public static Optional<VaultVariant> openOrCreate(
             Path folder, Supplier<VaultVariant> forANewVault, Consumer<String> warn, Consumer<String> error) {
+        return openOrCreate(folder, forANewVault, warn, error, Files::list);
+    }
+
+    /** Lists a folder. A seam for the one failure a test cannot provoke, a disk that fails part way through a listing. */
+    interface FolderListing {
+        Stream<Path> open(Path folder) throws IOException;
+    }
+
+    /** {@code Files.list} throws {@link UncheckedIOException} for a failure while iterating, so that is a refusal too. */
+    static Optional<VaultVariant> openOrCreate(
+            Path folder, Supplier<VaultVariant> forANewVault, Consumer<String> warn, Consumer<String> error, FolderListing listing) {
         try {
-            if (!holdsAVault(folder)) {
+            if (!holdsAVault(folder, listing)) {
                 VaultVariant variant = forANewVault.get();
                 write(folder, variant);
                 return Optional.of(variant);
             }
-        } catch (IOException e) {
-            error.accept("Vault type file in " + folder + " cannot be written: " + e);
+        } catch (IOException | UncheckedIOException e) {
+            error.accept("Vault folder " + folder + " cannot be read or written: " + e);
             return Optional.empty();
         }
         return read(folder.resolve(VaultKeys.VAULT_TYPE_FILE), warn, error);
     }
 
-    private static boolean holdsAVault(Path folder) throws IOException {
+    private static boolean holdsAVault(Path folder, FolderListing listing) throws IOException {
         if (!Files.exists(folder)) {
             return false;
         }
-        try (Stream<Path> files = Files.list(folder)) {
+        try (Stream<Path> files = listing.open(folder)) {
             List<String> names = files.map(file -> file.getFileName().toString()).toList();
             return !names.isEmpty() && !names.equals(List.of(TEMP_FILE));
         }

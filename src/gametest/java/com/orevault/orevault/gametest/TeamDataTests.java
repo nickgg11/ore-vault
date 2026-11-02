@@ -8,12 +8,15 @@ import com.orevault.orevault.data.DataPaths;
 import com.orevault.orevault.data.OreVaultTeamData;
 import com.orevault.orevault.data.TeamFields;
 import com.orevault.orevault.data.VaultTypeFile;
+import com.orevault.orevault.vault.VaultTeamEvents;
 import dev.ftb.mods.ftbteams.data.PartyTeam;
 import dev.ftb.mods.ftbteams.data.TeamManagerImpl;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -29,6 +32,12 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.Property;
 
 /**
  * Team data against the real server storage and the real FTB Teams path (§11 SavedData Pattern, ADR 0005). The shape's
@@ -198,6 +207,80 @@ final class TeamDataTests {
         server.getDataStorage().saveAndJoin();
         check(helper, "the new file", 9L, NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap())
                 .getCompoundOrEmpty("data").getLongOr("disbanded_at", -1L));
+        helper.succeed();
+    }
+
+    /** Plants a damaged team file and a file on the copy's path, so {@code Files.copy} refuses. */
+    private static Path plantUncopyableFile(MinecraftServer server, UUID team) throws IOException {
+        Path file = DataPaths.teamFile(server, team);
+        Files.createDirectories(file.getParent());
+        Files.write(file, GARBAGE);
+        Files.write(copyAt(file, server.overworld().getGameTime()), new byte[] {9});
+        return file;
+    }
+
+    private static Path copyAt(Path file, long gameTime) {
+        return file.resolveSibling(file.getFileName() + ".unreadable-" + gameTime);
+    }
+
+    /** ADR 0005's amendment: a copy that fails leaves the file alone, the write is lost, and the next one tries again. */
+    static void aFailedCopyLeavesTheFileAndTheNextWriteCopies(GameTestHelper helper) throws IOException {
+        MinecraftServer server = server(helper);
+        UUID team = UUID.randomUUID();
+        Path file = plantUncopyableFile(server, team);
+
+        OreVaultTeamData.forWrite(server, team).markDisbanded(9L);
+        server.getDataStorage().saveAndJoin();
+
+        check(helper, "the original's bytes", true, Arrays.equals(GARBAGE, Files.readAllBytes(file)));
+        check(helper, "nothing held for the save", null, server.getDataStorage().get(OreVaultTeamData.type(team)));
+        check(helper, "the write is lost", TeamFields.DEFAULTS, OreVaultTeamData.read(server, team));
+
+        long firstAttempt = server.overworld().getGameTime();
+        helper.runAfterDelay(1, () -> {
+            long now = server.overworld().getGameTime();
+            check(helper, "a tick has passed", true, now > firstAttempt);
+            OreVaultTeamData.forWrite(server, team).markDisbanded(10L);
+            try {
+                check(helper, "the copy's bytes", true, Arrays.equals(GARBAGE, Files.readAllBytes(copyAt(file, now))));
+            } catch (IOException e) {
+                helper.fail(Component.literal(e.toString()));
+            }
+            check(helper, "the second write", OptionalLong.of(10L), OreVaultTeamData.read(server, team).disbandedAt());
+            helper.succeed();
+        });
+    }
+
+    /** A disband that could not be recorded has to say so: at the next start this team's Vault would simply be restored. */
+    static void aDisbandThatCouldNotBeRecordedLogsAnError(GameTestHelper helper) throws CommandSyntaxException, IOException {
+        MinecraftServer server = server(helper);
+        UUID player = UUID.randomUUID();
+        PartyTeam party = partyOf(player);
+        UUID partyId = party.getId();
+        Path file = plantUncopyableFile(server, partyId);
+
+        List<String> errors = new ArrayList<>();
+        Logger logger = (Logger) LogManager.getLogger(VaultTeamEvents.class);
+        AbstractAppender appender = new AbstractAppender("orevault-test-" + partyId, null, null, false, Property.EMPTY_ARRAY) {
+            @Override
+            public void append(LogEvent event) {
+                if (event.getLevel() == Level.ERROR) {
+                    errors.add(event.getMessage().getFormattedMessage());
+                }
+            }
+        };
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            party.leave(player);
+        } finally {
+            logger.removeAppender(appender);
+        }
+
+        check(helper, "not recorded", OptionalLong.empty(), OreVaultTeamData.read(server, partyId).disbandedAt());
+        check(helper, "the original's bytes", true, Arrays.equals(GARBAGE, Files.readAllBytes(file)));
+        check(helper, "errors", 1, errors.size());
+        check(helper, "names the team", true, errors.getFirst().contains(partyId.toString()));
         helper.succeed();
     }
 }
