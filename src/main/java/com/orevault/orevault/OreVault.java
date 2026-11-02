@@ -9,6 +9,7 @@ import com.orevault.orevault.registry.ModCreativeTabs;
 import com.orevault.orevault.registry.ModItems;
 import com.orevault.orevault.team.TeamHelper;
 import com.orevault.orevault.vault.VaultOpenings;
+import com.orevault.orevault.vault.VaultTeamEvents;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.neoforged.bus.api.IEventBus;
@@ -31,6 +32,7 @@ public final class OreVault {
         ModItems.register(modEventBus);
         ModCreativeTabs.register(modEventBus);
         TeamHelper.register();
+        VaultTeamEvents.register();
         container.registerConfig(ModConfig.Type.SERVER, OreVaultServerConfig.SPEC);
         modEventBus.addListener(ConfigReload::onReloading);
         NeoForge.EVENT_BUS.addListener(OreVault::registerCommands);

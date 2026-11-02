@@ -559,3 +559,5 @@ and `NbtIo`, the patched sources: `copyOnDeath` and the alias API are confirmed;
 reader of section 6, since a failed read drops the attachment before `migrate()`; the world root and the type
 file's NBT calls are named. Save shapes and keys are unchanged. The "Anchor tickets" row in section 2 is left as
 it was and is open with E10-S3 (#373).
+
+Amended 2026-11-01 by E3-S9 (#232): if the copy aside of section 2 itself fails, the file is left alone and the write accessor hands back data that is never saved, so that one write is lost and the next tries the copy again. "An unreadable team file is never overwritten" holds in that case too. `vault_generation` and `disbanded_at` are read and written by the plain class `data.TeamFields`, and `OreVaultTeamData` is the `SavedData` around it. Save shapes and keys are unchanged.

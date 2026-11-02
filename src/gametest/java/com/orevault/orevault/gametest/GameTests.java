@@ -76,6 +76,28 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> PORTAL_NO_LOAD = function("portal/scan_never_loads_a_chunk");
     private static final ResourceKey<Consumer<GameTestHelper>> PORTAL_DISSOLVE_WATER = function("portal/dissolve_lets_water_in");
 
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_CODEC = function("team_data/codec_round_trips");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_STORAGE = function("team_data/write_lands_in_the_servers_storage");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_READ = function("team_data/read_writes_nothing");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_LOGIN = function("team_data/first_login_and_party_join_write_nothing");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_FAKE = function("team_data/fake_player_refused");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_REAL = function("team_data/real_player_written_through");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_DISBAND = function("team_data/disband_sets_disbanded_at");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_DISBAND_EMPTY = function("team_data/disband_with_nothing_writes_nothing");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_DISBAND_FOLDER = function("team_data/disband_with_only_a_folder_is_recorded");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_UNREADABLE = function("team_data/unreadable_file_copied_aside");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_BASE = function("worldgen/fills_the_base_stack");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_EXPANDED = function("worldgen/fills_the_expanded_stack");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_ONE_READ = function("worldgen/reads_the_snapshot_once_a_chunk");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_VARIANT = function("worldgen/refuses_the_other_variant");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_NO_MOBS = function("worldgen/no_mobs_at_for_every_category");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_SEED = function("worldgen/seed_from_team_and_chunk");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_HEIGHTS = function("worldgen/height_questions");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_CODEC = function("worldgen/codec_is_a_unit");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_DIMENSION_TYPES = function("worldgen/dimension_types_load");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_BIOME = function("worldgen/biome_loads_with_no_spawns");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_LAYERS = function("worldgen/layer_files_load");
+
     private GameTests() {
     }
 
@@ -85,6 +107,22 @@ public final class GameTests {
 
     private static Identifier id(String path) {
         return Identifier.fromNamespaceAndPath(OreVault.MOD_ID, path);
+    }
+
+    /** A test that throws fails with what it threw, so a test around file or reflection calls need not catch. */
+    private static Consumer<GameTestHelper> unchecked(ThrowingTest test) {
+        return helper -> {
+            try {
+                test.run(helper);
+            } catch (Exception e) {
+                helper.fail(Component.literal(e.toString()));
+            }
+        };
+    }
+
+    @FunctionalInterface
+    private interface ThrowingTest {
+        void run(GameTestHelper helper) throws Exception;
     }
 
     @SubscribeEvent
@@ -136,6 +174,27 @@ public final class GameTests {
             registry.register(PORTAL_PROPERTIES, PortalTests::theBlocksHaveTheSpecProperties);
             registry.register(PORTAL_NO_LOAD, PortalTests::theScanNeverLoadsAChunk);
             registry.register(PORTAL_DISSOLVE_WATER, PortalTests::aDissolveLetsWaterIn);
+            registry.register(TEAM_DATA_CODEC, TeamDataTests::theCodecRoundTrips);
+            registry.register(TEAM_DATA_STORAGE, TeamDataTests::aWriteLandsInTheServersStorage);
+            registry.register(TEAM_DATA_READ, TeamDataTests::aReadWritesNothing);
+            registry.register(TEAM_DATA_LOGIN, unchecked(TeamDataTests::aFirstLoginAndAPartyJoinWriteNothing));
+            registry.register(TEAM_DATA_FAKE, TeamDataTests::aFakePlayerIsRefusedBeforeAnythingIsWritten);
+            registry.register(TEAM_DATA_REAL, TeamDataTests::aRealPlayerIsWrittenThrough);
+            registry.register(TEAM_DATA_DISBAND, unchecked(TeamDataTests::aDisbandSetsDisbandedAtAndSaves));
+            registry.register(TEAM_DATA_DISBAND_EMPTY, unchecked(TeamDataTests::aDisbandWithNothingToArchiveWritesNothing));
+            registry.register(TEAM_DATA_DISBAND_FOLDER, unchecked(TeamDataTests::aDisbandWithOnlyAVaultFolderIsRecorded));
+            registry.register(TEAM_DATA_UNREADABLE, unchecked(TeamDataTests::anUnreadableFileIsCopiedAsideBeforeTheFirstWrite));
+            registry.register(WORLDGEN_BASE, WorldgenTests::fillsTheBaseStack);
+            registry.register(WORLDGEN_EXPANDED, WorldgenTests::fillsTheExpandedStack);
+            registry.register(WORLDGEN_ONE_READ, WorldgenTests::readsTheSnapshotOnceAChunk);
+            registry.register(WORLDGEN_VARIANT, WorldgenTests::refusesASnapshotOfTheOtherVariant);
+            registry.register(WORLDGEN_NO_MOBS, WorldgenTests::anyBiomesSpawnsAreRefused);
+            registry.register(WORLDGEN_SEED, WorldgenTests::theSeedComesFromTheTeamAndTheChunk);
+            registry.register(WORLDGEN_HEIGHTS, WorldgenTests::answersTheHeightQuestions);
+            registry.register(WORLDGEN_CODEC, unchecked(WorldgenTests::theCodecIsAUnitOfTheGenerator));
+            registry.register(WORLDGEN_DIMENSION_TYPES, WorldgenTests::theDimensionTypesLoadWithTheHeightsInJava);
+            registry.register(WORLDGEN_BIOME, WorldgenTests::theBiomeLoadsWithNoSpawnsAndInNoBroadTag);
+            registry.register(WORLDGEN_LAYERS, WorldgenTests::theLayerFilesLoadFromTheDataPack);
         });
     }
 
@@ -151,7 +210,12 @@ public final class GameTests {
                 PORTAL_CROSSING_REFUSED, PORTAL_SWAP, PORTAL_TIERS, PORTAL_ORPHAN, PORTAL_SIDE_DOOR,
                 PORTAL_SIDE_PORTAL, PORTAL_CORNER, PORTAL_HOLE_DOOR, PORTAL_HOLE_PORTAL,
                 PORTAL_SHARED_SURVIVES, PORTAL_SHARED_BOTH, PORTAL_WATER, PORTAL_CREATIVE, PORTAL_ENTITY,
-                PORTAL_PROPERTIES, PORTAL_NO_LOAD, PORTAL_DISSOLVE_WATER)) {
+                PORTAL_PROPERTIES, PORTAL_NO_LOAD, PORTAL_DISSOLVE_WATER,
+                TEAM_DATA_CODEC, TEAM_DATA_STORAGE, TEAM_DATA_READ, TEAM_DATA_LOGIN, TEAM_DATA_FAKE,
+                TEAM_DATA_REAL, TEAM_DATA_DISBAND, TEAM_DATA_DISBAND_EMPTY, TEAM_DATA_DISBAND_FOLDER,
+                TEAM_DATA_UNREADABLE, WORLDGEN_BASE, WORLDGEN_EXPANDED, WORLDGEN_ONE_READ, WORLDGEN_VARIANT,
+                WORLDGEN_NO_MOBS, WORLDGEN_SEED, WORLDGEN_HEIGHTS, WORLDGEN_CODEC, WORLDGEN_DIMENSION_TYPES,
+                WORLDGEN_BIOME, WORLDGEN_LAYERS)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
         }
         event.registerTest(DELIBERATE_FAILURE.identifier(),

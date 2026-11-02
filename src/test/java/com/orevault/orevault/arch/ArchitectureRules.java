@@ -68,7 +68,7 @@ final class ArchitectureRules {
                 pureRow("layout", "CoreLayout", "com.google.gson.."),
                 pureRow("tree", "CoreTree", core("layout")),
                 pureRow("curve", "CoreCurve", core("gen"), core("ore")),
-                pureRow("gen", "CoreGen", core("ore"), core("tree")),
+                pureRow("gen", "CoreGen", core("ore"), core("tree"), "com.google.gson.."),
                 pureRow("mining", "CoreMining", core("ore"), core("tree"), core("vein")),
                 pureRow("vein", "CoreVein", core("gen")),
                 pureRow("session", "CoreSession"),

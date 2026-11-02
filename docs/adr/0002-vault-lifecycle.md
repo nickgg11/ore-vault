@@ -563,3 +563,5 @@ Amended 2026-11-01 by E3-S8 (#206): `team` offers team changes and disbands thro
 of handing `vault` values directly ("Team change while inside", Hooks). This needs, in the same PR as the code
 it describes: ADR 0001's `team` row loses `data` and `vault`, and `ArchitectureRules` line 91 with it; ADR 0006's
 `PlayerChangedTeam` row says `vault` marks the outbox, not `team`; `TeamHelper` gains the per-listener `try`.
+
+Amended 2026-11-01 by E3-S9 (#232): creation step 2 is `data.VaultTypeFile#openOrCreate`. An empty folder counts as no folder, as a folder holding only the temp file does: it is the other place a cut creation stops, between making the folder and writing the temp file, and it holds no chunk. Case (e), a folder with region files and no type file, is still refused.
