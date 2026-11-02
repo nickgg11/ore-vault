@@ -96,4 +96,23 @@ class SignetTierTest {
         assertEquals(List.of(PURPOSE, OPENS_PORTAL, ENTRY_POINT, ENTRY_POINTS, INSTANT_TRAVEL, RESET_VAULT, UPGRADE),
                 SignetTier.everyTooltipKey());
     }
+
+    @Test
+    void ranksRunFromOneToFour() {
+        assertEquals(1, SignetTier.WORN.rank());
+        assertEquals(2, SignetTier.HEIRLOOM.rank());
+        assertEquals(3, SignetTier.FABLED.rank());
+        assertEquals(4, SignetTier.PRIMORDIAL.rank());
+    }
+
+    /** §3.2, Nick: a lower signet is refused on any portal, a higher one upgrades, and a door or empty ring is rank 0. */
+    @Test
+    void aSignetIsRefusedOnlyByAHigherPortal() {
+        assertTrue(SignetTier.WORN.mayPress(0));
+        assertTrue(SignetTier.WORN.mayPress(1));
+        assertFalse(SignetTier.WORN.mayPress(2));
+        assertTrue(SignetTier.FABLED.mayPress(2));
+        assertFalse(SignetTier.FABLED.mayPress(4));
+        assertTrue(SignetTier.PRIMORDIAL.mayPress(4));
+    }
 }

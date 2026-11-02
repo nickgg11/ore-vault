@@ -217,6 +217,7 @@ When an FTB Team is disbanded, nothing kept for the team is deleted: its Vault w
 - On a Signet press, if invalid: plays a failure sound, no portal created. Nothing says which side is wrong: like a nether portal, the frame either opens or it does not (Nick, 2026-10-27, declining an action-bar line naming the problem)
 
 **Sealed Door**
+- Seen from behind, each column shows its mirror (`DoorPart#back()`), so a leaf's outer edge never lands on the seam
 - The door gives no light
 - A completed ring fills with a sealed door, with no item used (Nick, 2026-11-01). `orevault:vault_door` is one block for every tier, and it is not a portal: it does not implement `Portal` and nothing travels through it
 - Trigger: `VaultFrameBlock#onPlace`, when the old state was not a frame, runs one scan from the block that arrived. That covers player placement, `/setblock`, `/fill`, a piston and a structure placed at run time. Every ring the scan finds with all its cells air gets a door, set with flags 18, and all-air is checked again per ring at write time, because crossing rings can share a column. The block that completes a ring is the one that finds it. The scan is silent: the failure sound belongs to the press
@@ -233,6 +234,7 @@ When an FTB Team is disbanded, nothing kept for the team is deleted: its Vault w
 **Pressing a Signet**
 - On a frame block the scan is `VaultPortalShape.find`. On a door or portal it is `VaultPortalShape.around`, from that cell on the block's own axis
 - The press is refused with the failure sound if no shape is found or any filled cell has a different axis: two crossing rings share a cell, and the other ring's door is not this press's to replace
+- A signet of a lower tier than the portal it is pressed on is refused with the failure sound, on Vault and return portals alike. A higher tier upgrades the portal, and the same tier changes nothing. A door or an empty ring has no tier, so any signet opens it (Nick, 2026-11-01). The rule is one method, `SignetTier#mayPress`
 - Otherwise every cell becomes that tier's portal, set with flags 18. The frames need nothing
 
 **Dissolve**

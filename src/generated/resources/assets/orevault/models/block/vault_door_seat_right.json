@@ -1,0 +1,61 @@
+{
+  "parent": "minecraft:block/block",
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "cullface": "down",
+          "rotation": 90,
+          "texture": "#edge",
+          "uv": [
+            6.0,
+            0.0,
+            10.0,
+            16.0
+          ]
+        },
+        "east": {
+          "cullface": "east",
+          "texture": "#edge"
+        },
+        "north": {
+          "texture": "#back"
+        },
+        "south": {
+          "texture": "#front"
+        },
+        "up": {
+          "cullface": "up",
+          "rotation": 90,
+          "texture": "#edge",
+          "uv": [
+            6.0,
+            0.0,
+            10.0,
+            16.0
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#edge"
+        }
+      },
+      "from": [
+        0,
+        0,
+        6
+      ],
+      "to": [
+        16,
+        16,
+        10
+      ]
+    }
+  ],
+  "textures": {
+    "back": "orevault:block/vault_door_seat_l",
+    "edge": "orevault:block/vault_door_edge",
+    "front": "orevault:block/vault_door_seat_r",
+    "particle": "orevault:block/vault_door_field"
+  }
+}

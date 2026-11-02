@@ -9,6 +9,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
@@ -29,6 +30,9 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * collision through the default {@code getCollisionShape}, and for occlusion through the default
  * {@code getOcclusionShape}. That last one stops a solid neighbour culling its face behind the wedge. Stair-style
  * light handling lets light into the wedge but not through the arm sides, so the steps are not drawn black.
+ *
+ * <p>The frame has no {@code tier} property. Its colour is worked out from the portal cells beside it, on the client
+ * ({@code client.VaultFrameTint}), so nothing writes to a frame when a portal opens or dissolves (§3.2, ADR 0010).
  */
 public final class VaultFrameBlock extends Block {
     private static final MapCodec<VaultFrameBlock> CODEC = simpleCodec(VaultFrameBlock::new);
@@ -94,6 +98,18 @@ public final class VaultFrameBlock extends Block {
     protected BlockState updateShape(BlockState state, LevelReader level, ScheduledTickAccess ticks, BlockPos pos,
             Direction directionToNeighbour, BlockPos neighbourPos, BlockState neighbourState, RandomSource random) {
         return state.setValue(PipeBlock.PROPERTY_BY_DIRECTION.get(directionToNeighbour), neighbourState.is(this));
+    }
+
+    /**
+     * The one trigger for a door, and it fires however the block arrived: placement, a command, a piston, a structure
+     * placed at run time (ADR 0010). The check stops a connection change scanning, because updating a neighbour's booleans
+     * comes through here too. Generation does not reach it, since {@code ProtoChunk} has no {@code onPlace}.
+     */
+    @Override
+    protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
+        if (!oldState.is(this)) {
+            VaultOpenings.seal(level, pos);
+        }
     }
 
     @Override

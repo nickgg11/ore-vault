@@ -1,0 +1,95 @@
+{
+  "variants": {
+    "axis=x,part=0": {
+      "model": "orevault:block/vault_door_field_left"
+    },
+    "axis=x,part=1": {
+      "model": "orevault:block/vault_door_field_right"
+    },
+    "axis=x,part=10": {
+      "model": "orevault:block/vault_door_seat_left"
+    },
+    "axis=x,part=11": {
+      "model": "orevault:block/vault_door_seat_right"
+    },
+    "axis=x,part=12": {
+      "model": "orevault:block/vault_door_seat_centre"
+    },
+    "axis=x,part=2": {
+      "model": "orevault:block/vault_door_seam_left"
+    },
+    "axis=x,part=3": {
+      "model": "orevault:block/vault_door_seam_right"
+    },
+    "axis=x,part=4": {
+      "model": "orevault:block/vault_door_seam_centre"
+    },
+    "axis=x,part=5": {
+      "model": "orevault:block/vault_door_strap_left"
+    },
+    "axis=x,part=6": {
+      "model": "orevault:block/vault_door_strap_right"
+    },
+    "axis=x,part=7": {
+      "model": "orevault:block/vault_door_strap_seam_left"
+    },
+    "axis=x,part=8": {
+      "model": "orevault:block/vault_door_strap_seam_right"
+    },
+    "axis=x,part=9": {
+      "model": "orevault:block/vault_door_strap_seam_centre"
+    },
+    "axis=z,part=0": {
+      "model": "orevault:block/vault_door_field_left",
+      "y": 90
+    },
+    "axis=z,part=1": {
+      "model": "orevault:block/vault_door_field_right",
+      "y": 90
+    },
+    "axis=z,part=10": {
+      "model": "orevault:block/vault_door_seat_left",
+      "y": 90
+    },
+    "axis=z,part=11": {
+      "model": "orevault:block/vault_door_seat_right",
+      "y": 90
+    },
+    "axis=z,part=12": {
+      "model": "orevault:block/vault_door_seat_centre",
+      "y": 90
+    },
+    "axis=z,part=2": {
+      "model": "orevault:block/vault_door_seam_left",
+      "y": 90
+    },
+    "axis=z,part=3": {
+      "model": "orevault:block/vault_door_seam_right",
+      "y": 90
+    },
+    "axis=z,part=4": {
+      "model": "orevault:block/vault_door_seam_centre",
+      "y": 90
+    },
+    "axis=z,part=5": {
+      "model": "orevault:block/vault_door_strap_left",
+      "y": 90
+    },
+    "axis=z,part=6": {
+      "model": "orevault:block/vault_door_strap_right",
+      "y": 90
+    },
+    "axis=z,part=7": {
+      "model": "orevault:block/vault_door_strap_seam_left",
+      "y": 90
+    },
+    "axis=z,part=8": {
+      "model": "orevault:block/vault_door_strap_seam_right",
+      "y": 90
+    },
+    "axis=z,part=9": {
+      "model": "orevault:block/vault_door_strap_seam_centre",
+      "y": 90
+    }
+  }
+}

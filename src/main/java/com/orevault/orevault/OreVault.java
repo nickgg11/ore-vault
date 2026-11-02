@@ -8,6 +8,7 @@ import com.orevault.orevault.registry.ModBlocks;
 import com.orevault.orevault.registry.ModCreativeTabs;
 import com.orevault.orevault.registry.ModItems;
 import com.orevault.orevault.team.TeamHelper;
+import com.orevault.orevault.vault.VaultOpenings;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.neoforged.bus.api.IEventBus;
@@ -33,6 +34,7 @@ public final class OreVault {
         container.registerConfig(ModConfig.Type.SERVER, OreVaultServerConfig.SPEC);
         modEventBus.addListener(ConfigReload::onReloading);
         NeoForge.EVENT_BUS.addListener(OreVault::registerCommands);
+        NeoForge.EVENT_BUS.addListener(VaultOpenings::refuseBreak);
     }
 
     /** The root carries no guard: everything that is not a debug tool lives under it too, whatever the flag says (§10). */

@@ -78,8 +78,8 @@ The rules for a new gametest (E1-S2, #193):
   the Gradle task.
 - A count quoted from the log includes the optional `minecraft:always_pass`, which is not ours, and the PR
   states the total it expects: passing tests log no name, and a test that failed to register exits 0. The
-  total is 20 at E3-S1: `harness/passes`, `lang/coverage`, `vault/frame_pickaxe_drop`, `vault/frame_hand_no_drop`,
-  `vault/frame_recipe`, `vault/frame_properties`, `vault/frame_connects`, `vault/frame_rounded`, `vault/signet_recipe`, `vault/signet_stack_size`, `team/unknown_is_one`, `team/solo`, `team/party_and_disband`, `debug/gate`, `debug/break_removes_the_block`, `debug/break_on_air_fails`, `debug/break_loads_the_chunk`, `debug/diag_prints_the_break_state`, `debug/diag_reads_the_players_level` and
+  total is 46 at E3-S4: `harness/passes`, `lang/coverage`, `vault/frame_pickaxe_drop`, `vault/frame_hand_no_drop`,
+  `vault/frame_recipe`, `vault/frame_properties`, `vault/frame_connects`, `vault/frame_rounded`, `vault/signet_recipe`, `vault/signet_stack_size`, `team/unknown_is_one`, `team/solo`, `team/party_and_disband`, `debug/gate`, `debug/break_removes_the_block`, `debug/break_on_air_fails`, `debug/break_loads_the_chunk`, `debug/diag_prints_the_break_state`, `debug/diag_reads_the_players_level`, the 26 under `portal/` (`seals_on_the_last_block`, `seals_along_z`, `piston_completes_a_ring`, `placement_and_press_by_a_player`, `signet_passes_on_other_blocks`, `obstructed_ring_gets_no_door`, `placing_again_seals_an_empty_ring`, `corner_added_later_leaves_a_live_portal`, `crossing_rings_sealed_by_one_block`, `crossing_rings_refuse_the_other_axis`, `press_on_a_door_swaps_it`, `lower_signet_refused_higher_upgrades`, `door_with_no_ring_refuses`, `side_break_dissolves_a_door`, `side_break_dissolves_a_portal`, `corner_break_leaves_it_standing`, `hole_in_a_door_dissolves_the_rest`, `hole_in_a_portal_dissolves_the_rest`, `shared_bar_survives_one_dissolve`, `breaking_a_shared_bar_dissolves_both`, `water_leaves_a_portal_alone`, `creative_break_refused_unless_sneaking`, `entity_starts_its_charge`, `block_properties`, `scan_never_loads_a_chunk`, `dissolve_lets_water_in`) and
   `minecraft:always_pass`.
 - There is no namespace filter: nothing in NeoForge 26.1.2.95 reads `neoforge.enabledGameTestNamespaces`, so the
   build does not set it. `--tests` is the vanilla selector.
@@ -126,7 +126,7 @@ Pure packages. None imports Minecraft, NeoForge or Mojang classes, so all of it 
 | `core.reset` | The reset vote state machine (ADR 0007) | nothing |
 | `core.wear` | `WearRules` (ADR 0008) and `WearScope`, the per-player wear inputs the mixin reads | `core.tree` |
 | `core.signet` | `SignetTier`: the §3.3 capabilities of all four tiers, and the tooltip lines built from them | nothing |
-| `core.frame` | `FrameNeighbours`: from the Vault Frames around a block to the texture each face shows (§3.2). `VaultPortalShape`: the portal shape scan over a `View` (§3.2) | nothing |
+| `core.frame` | `FrameNeighbours`: from the Vault Frames around a block to the texture each face shows (§3.2). `VaultPortalShape`: the portal shape scan over a `View` (§3.2). `DoorPart`: the sealed door's parts and their saved ids. `FrameLight`: a frame block's colour from the portals around it (ADR 0010) | nothing |
 | `core.team` | `TeamSize`: the floor of 1 on a team's size (§9), which every divisor of team scaling relies on | nothing |
 | `core.key` | `VaultKeys`: the one function pair between a team UUID and the lower-case hex form used by the dimension path `vault_<teamUuidNoHyphens>` and the team `SavedData` id (ADR 0002, ADR 0005 "one function parses both"), so any adapter can tell whether a level is a Vault and whose without importing `vault` | nothing |
 

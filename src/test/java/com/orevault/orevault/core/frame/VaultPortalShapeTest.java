@@ -425,4 +425,92 @@ class VaultPortalShapeTest {
         assertEquals(Set.copyOf(ring.opening()), Set.copyOf(found.get().cells()));
         assertFalse(found.get().cells().isEmpty());
     }
+
+    /** A door or portal cell answers for the opening on its own axis, with no frame block to start from. */
+    @Test
+    void aroundFindsTheOpeningFromAnyCell() {
+        World world = RING.get();
+        Optional<VaultPortalShape> shape = VaultPortalShape.around(world, Axis.X, 2, BOTTOM + 3, 0);
+        assertEquals(Optional.of(new VaultPortalShape(Axis.X, 1, BOTTOM, 0, 3, 4)), shape);
+    }
+
+    @Test
+    void aroundFindsNothingOnTheOtherAxis() {
+        assertTrue(VaultPortalShape.around(RING.get(), Axis.Z, 2, BOTTOM + 3, 0).isEmpty());
+    }
+
+    @Test
+    void aroundFindsNothingOnceABarIsGone() {
+        World world = RING.get().put(new Cell(0, BOTTOM + 1, 0), Kind.OTHER);
+        assertTrue(VaultPortalShape.around(world, Axis.X, 2, BOTTOM + 3, 0).isEmpty());
+    }
+
+    /** The same ring turned a quarter: the plane has to follow the axis it was asked for. */
+    @Test
+    void aroundFindsTheOpeningOnZ() {
+        World world = new World();
+        for (int z = 1; z <= 3; z++) {
+            world.put(new Cell(0, BOTTOM - 1, z), Kind.FRAME).put(new Cell(0, BOTTOM + 4, z), Kind.FRAME);
+        }
+        for (int y = BOTTOM; y < BOTTOM + 4; y++) {
+            world.put(new Cell(0, y, 0), Kind.FRAME).put(new Cell(0, y, 4), Kind.FRAME);
+        }
+        Optional<VaultPortalShape> shape = VaultPortalShape.around(world, Axis.Z, 0, BOTTOM + 3, 2);
+        assertEquals(Optional.of(new VaultPortalShape(Axis.Z, 0, BOTTOM, 1, 3, 4)), shape);
+    }
+
+    @Test
+    void aColumnCountsAlongTheAxis() {
+        assertEquals(2, new VaultPortalShape(Axis.X, 5, 64, 9, 3, 3).column(new Cell(7, 65, 9)));
+        assertEquals(1, new VaultPortalShape(Axis.Z, 9, 64, 5, 3, 3).column(new Cell(9, 66, 6)));
+    }
+
+    /** ADR 0010: the scan never loads a chunk from {@code onPlace}, so it does not even read an unloaded position. */
+    @Test
+    void anUnloadedPositionAnswersOtherWithoutReadingTheBlock() {
+        View neverRead = (x, y, z) -> {
+            throw new AssertionError("read an unloaded block");
+        };
+        assertEquals(Kind.OTHER, View.loadedOnly((x, z) -> false, neverRead).kindAt(1, 2, 3));
+    }
+
+    @Test
+    void aLoadedPositionAnswersWithTheBlock() {
+        View frame = (x, y, z) -> Kind.FRAME;
+        assertEquals(Kind.FRAME, View.loadedOnly((x, z) -> x == 1 && z == 3, frame).kindAt(1, 2, 3));
+    }
+
+    /** The door caller's view: a ring with a chunk unloaded under one bar is no ring. */
+    @Test
+    void aRingAcrossAnUnloadedChunkIsNotFound() {
+        View view = View.loadedOnly((x, z) -> x < 3, RING.get());
+        assertTrue(VaultPortalShape.find(view, 1, BOTTOM - 1, 0).isEmpty());
+    }
+
+    @Test
+    void connectedWalksThePlaneOnly() {
+        Set<Cell> filled = Set.of(new Cell(0, 0, 0), new Cell(1, 0, 0), new Cell(1, 1, 0), new Cell(1, 1, 1), new Cell(2, 2, 0),
+                new Cell(3, 0, 0));
+        Set<Cell> found = Set.copyOf(VaultPortalShape.connected(Axis.X, new Cell(0, 0, 0), filled::contains));
+        assertEquals(Set.of(new Cell(0, 0, 0), new Cell(1, 0, 0), new Cell(1, 1, 0)), found);
+    }
+
+    @Test
+    void connectedWalksZOnItsAxis() {
+        Set<Cell> filled = Set.of(new Cell(0, 0, 0), new Cell(0, 0, 1), new Cell(1, 0, 0));
+        assertEquals(Set.of(new Cell(0, 0, 0), new Cell(0, 0, 1)),
+                Set.copyOf(VaultPortalShape.connected(Axis.Z, new Cell(0, 0, 0), filled::contains)));
+    }
+
+    /** An opening 3 by 4 with its lowest cell at x 1, y {@link #BOTTOM}, z 0, and no corners. */
+    private static final java.util.function.Supplier<World> RING = () -> {
+        World world = new World();
+        for (int x = 1; x <= 3; x++) {
+            world.put(new Cell(x, BOTTOM - 1, 0), Kind.FRAME).put(new Cell(x, BOTTOM + 4, 0), Kind.FRAME);
+        }
+        for (int y = BOTTOM; y < BOTTOM + 4; y++) {
+            world.put(new Cell(0, y, 0), Kind.FRAME).put(new Cell(4, y, 0), Kind.FRAME);
+        }
+        return world;
+    };
 }

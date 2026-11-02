@@ -48,6 +48,20 @@ public enum SignetTier {
         }
     }
 
+    /** This tier's place on the ladder, from 1. A portal has the rank of the signet that opened it. */
+    public int rank() {
+        return ordinal() + 1;
+    }
+
+    /**
+     * Whether this signet may be pressed into an opening whose highest portal has this rank, 0 for a door or an empty
+     * ring. A lower signet is refused, on Vault and return portals alike, and a higher one upgrades (§3.2, Nick). He may
+     * change this, and it is the only place that says so.
+     */
+    public boolean mayPress(int portalRank) {
+        return rank() >= portalRank;
+    }
+
     public int entryPointCapacity() {
         return entryPointCapacity;
     }

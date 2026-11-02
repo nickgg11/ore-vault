@@ -1,5 +1,10 @@
 {
+  "block.orevault.vault_door": "Sealed Door",
   "block.orevault.vault_frame": "Vault Frame",
+  "block.orevault.vault_portal_common": "Ore Vault Portal (Tier 1)",
+  "block.orevault.vault_portal_legendary": "Ore Vault Portal (Tier 4)",
+  "block.orevault.vault_portal_rare": "Ore Vault Portal (Tier 3)",
+  "block.orevault.vault_portal_uncommon": "Ore Vault Portal (Tier 2)",
   "item.orevault.worn_signet": "Worn Signet",
   "itemGroup.orevault": "Ore Vault",
   "orevault.configuration.debug": "Debug",

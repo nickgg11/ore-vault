@@ -376,13 +376,437 @@
         16,
         16
       ]
+    },
+    {
+      "faces": {
+        "down": {
+          "cullface": "down",
+          "texture": "#tread_strand",
+          "tintindex": 0
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#north_strand",
+          "tintindex": 0
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#south_strand",
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#riser_strand",
+          "tintindex": 0,
+          "uv": [
+            16.0,
+            1.0,
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "from": [
+        13,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        1,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#tread_strand",
+          "tintindex": 0
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#north_strand",
+          "tintindex": 0
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#south_strand",
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#riser_strand",
+          "tintindex": 0,
+          "uv": [
+            16.0,
+            2.0,
+            0.0,
+            1.0
+          ]
+        }
+      },
+      "from": [
+        10,
+        1,
+        0
+      ],
+      "to": [
+        16,
+        2,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#tread_strand",
+          "tintindex": 0
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#north_strand",
+          "tintindex": 0
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#south_strand",
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#riser_strand",
+          "tintindex": 0,
+          "uv": [
+            16.0,
+            3.0,
+            0.0,
+            2.0
+          ]
+        }
+      },
+      "from": [
+        8,
+        2,
+        0
+      ],
+      "to": [
+        16,
+        3,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#tread_strand",
+          "tintindex": 0
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#north_strand",
+          "tintindex": 0
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#south_strand",
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#riser_strand",
+          "tintindex": 0,
+          "uv": [
+            16.0,
+            4.0,
+            0.0,
+            3.0
+          ]
+        }
+      },
+      "from": [
+        7,
+        3,
+        0
+      ],
+      "to": [
+        16,
+        4,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#tread_strand",
+          "tintindex": 0
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#north_strand",
+          "tintindex": 0
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#south_strand",
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#riser_strand",
+          "tintindex": 0,
+          "uv": [
+            16.0,
+            5.0,
+            0.0,
+            4.0
+          ]
+        }
+      },
+      "from": [
+        6,
+        4,
+        0
+      ],
+      "to": [
+        16,
+        5,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#tread_strand",
+          "tintindex": 0
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#north_strand",
+          "tintindex": 0
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#south_strand",
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#riser_strand",
+          "tintindex": 0,
+          "uv": [
+            16.0,
+            6.0,
+            0.0,
+            5.0
+          ]
+        }
+      },
+      "from": [
+        5,
+        5,
+        0
+      ],
+      "to": [
+        16,
+        6,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#tread_strand",
+          "tintindex": 0
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#north_strand",
+          "tintindex": 0
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#south_strand",
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#riser_strand",
+          "tintindex": 0,
+          "uv": [
+            16.0,
+            7.0,
+            0.0,
+            6.0
+          ]
+        }
+      },
+      "from": [
+        4,
+        6,
+        0
+      ],
+      "to": [
+        16,
+        7,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#tread_strand",
+          "tintindex": 0
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#north_strand",
+          "tintindex": 0
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#south_strand",
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#riser_strand",
+          "tintindex": 0,
+          "uv": [
+            16.0,
+            8.0,
+            0.0,
+            7.0
+          ]
+        }
+      },
+      "from": [
+        3,
+        7,
+        0
+      ],
+      "to": [
+        16,
+        8,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#tread_strand",
+          "tintindex": 0
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#north_strand",
+          "tintindex": 0
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#south_strand",
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#riser_strand",
+          "tintindex": 0,
+          "uv": [
+            16.0,
+            10.0,
+            0.0,
+            8.0
+          ]
+        }
+      },
+      "from": [
+        2,
+        8,
+        0
+      ],
+      "to": [
+        16,
+        10,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#tread_strand",
+          "tintindex": 0
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#north_strand",
+          "tintindex": 0
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#south_strand",
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#riser_strand",
+          "tintindex": 0,
+          "uv": [
+            16.0,
+            13.0,
+            0.0,
+            10.0
+          ]
+        }
+      },
+      "from": [
+        1,
+        10,
+        0
+      ],
+      "to": [
+        16,
+        13,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#tread_strand",
+          "tintindex": 0
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#north_strand",
+          "tintindex": 0
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#south_strand",
+          "tintindex": 0
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#riser_strand",
+          "tintindex": 0,
+          "uv": [
+            16.0,
+            16.0,
+            0.0,
+            13.0
+          ]
+        }
+      },
+      "from": [
+        0,
+        13,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ]
     }
   ],
   "textures": {
     "north": "orevault:block/vault_frame_ul",
+    "north_strand": "orevault:block/vault_frame_ul_strand",
     "particle": "orevault:block/vault_frame",
     "riser": "orevault:block/vault_frame_rim_riser_mixed",
+    "riser_strand": "orevault:block/vault_frame_rim_riser_mixed_strand",
     "south": "orevault:block/vault_frame_ur",
-    "tread": "orevault:block/vault_frame_rim_tread_mixed"
+    "south_strand": "orevault:block/vault_frame_ur_strand",
+    "tread": "orevault:block/vault_frame_rim_tread_mixed",
+    "tread_strand": "orevault:block/vault_frame_rim_tread_mixed_strand"
   }
 }
