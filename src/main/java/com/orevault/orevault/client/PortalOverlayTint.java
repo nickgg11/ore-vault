@@ -36,7 +36,7 @@ final class PortalOverlayTint {
 
     static void before(RenderGuiLayerEvent.Pre event) {
         LocalPlayer player = Minecraft.getInstance().player;
-        if (player == null || !event.getName().equals(VanillaGuiLayers.CAMERA_OVERLAYS)) {
+        if (player == null || event.isCanceled() || !event.getName().equals(VanillaGuiLayers.CAMERA_OVERLAYS)) {
             return;
         }
         tier = tierOf(player.portalProcess, player.portalEffectIntensity, tier);

@@ -129,7 +129,7 @@ public final class VaultDimensions {
         List<Restore> results = new ArrayList<>();
         for (UUID teamId : teamIds) {
             try {
-                results.add(restoreOne(server, teamId));
+                results.add(restore(server, teamId, resetTeamIds.contains(teamId)));
             } catch (RuntimeException e) {
                 LOGGER.error("Restoring the Vault of team {} failed", teamId, e);
                 results.add(new Restore(teamId, false, "failed: " + e));
@@ -162,10 +162,23 @@ public final class VaultDimensions {
     }
 
     /**
-     * Restore steps 2 to 6 for one team. Team data is read for {@code disbanded_at} only, and an absent or unreadable team
-     * file never stops a Vault, whose type is in its own folder.
+     * Restore steps 2 to 6 for one team found on disk. A team with no folder is refused: only a reset ADR 0007's pass
+     * finished at this start may restore a Vault whose folder is gone, so this never makes a new Vault (named rule 7).
      */
     public static Restore restoreOne(MinecraftServer server, UUID teamId) {
+        return restore(server, teamId, false);
+    }
+
+    /**
+     * Team data is read for {@code disbanded_at} only, and an absent or unreadable team file never stops a Vault, whose
+     * type is in its own folder.
+     *
+     * @param reset whether the id came from {@code resetTeamIds}, the one case a Vault with no folder is registered
+     */
+    private static Restore restore(MinecraftServer server, UUID teamId, boolean reset) {
+        if (!reset && !Files.exists(DataPaths.vaultFolder(server, teamId))) {
+            return new Restore(teamId, false, "it has no folder, and only a finished reset restores a Vault without one");
+        }
         if (OreVaultTeamData.isUnreadable(server, teamId)) {
             LOGGER.error("Team file {} cannot be read. Its Vault is restored under its own type; the team's progress in that "
                     + "file is lost to play until it is repaired by hand", DataPaths.teamFile(server, teamId));

@@ -13,7 +13,7 @@ rejected version is usually the one a fresh reading of the spec would arrive at 
 Newest first.
 
 ---
-
+
 ## 2026-11-07 — Portal playtest: recipe shape, seat row, sound and overlay
 
 Nick ran the portal in a client and passed all 13 steps. His changes: "recipe should be changed so the lapis is in the middle slot"; "I would prefer if the if the lock texture was always the next texture above the bottom strap"; "I would tone down the nether portal effect or remove it. We'll probably add a new sound effect for opening the portal."; "at bare minimum the texture over the screen should match the portal tier but it'd better to make our own in the future."

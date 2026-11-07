@@ -165,6 +165,12 @@ final class ArchitectureRules {
                                 .and().doNotHaveFullyQualifiedName(VAULT + ".VaultDimensions")
                                 .should().callMethodWhere(calling(VAULT + ".VaultDimensions", "findOrCreate")),
                         List.of("PlantedLoginCreatesAVault")),
+                // Restore registers a Vault with no folder only for a finished reset; the root start listener is its one caller.
+                new Rule("7: only the root start listener restores", null,
+                        noClasses().that().doNotHaveFullyQualifiedName(BASE + ".OreVault")
+                                .and().doNotHaveFullyQualifiedName(VAULT + ".VaultDimensions")
+                                .should().callMethodWhere(calling(VAULT + ".VaultDimensions", "restoreAll", "restoreOne")),
+                        List.of("PlantedTeamEventRestores")),
                 new Rule("8: mixin reaches only core.wear", BASE + ".mixin",
                         noClasses().that().resideInAPackage(BASE + ".mixin")
                                 .should().dependOnClassesThat(resideInAnyPackage(BASE + "..")

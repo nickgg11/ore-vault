@@ -71,30 +71,35 @@ public final class VaultPlayerEvents {
                 recorded.map(InVault::team).orElse(null), recorded.map(InVault::generation).orElse(0),
                 levelTeam.orElse(null), levelTeamFields.disbandedAt().isPresent(), levelTeamFields.vaultGeneration(),
                 TeamHelper.teamId(player)));
-        switch (outcome) {
+        boolean moved = switch (outcome) {
             case SEND_HOME -> {
                 LOGGER.info("{} logged in recorded as inside the Vault of team {}, which is not where they are ({}); sent to "
                         + "their return position", player.getGameProfile().name(), recorded.map(InVault::team).orElse(null),
                         player.level().dimension().identifier());
-                VaultTravel.sendHome(player, null);
+                yield VaultTravel.sendHome(player, null);
             }
             case SEND_HOME_DISBANDED -> {
                 LOGGER.info("{} logged in inside the Vault of disbanded team {}; sent home", player.getGameProfile().name(),
                         levelTeam.orElse(null));
-                VaultTravel.sendHome(player, VaultTravel.SENT_HOME_DISBANDED);
+                yield VaultTravel.sendHome(player, VaultTravel.SENT_HOME_DISBANDED);
             }
             case SEND_HOME_NOT_THEIR_TEAM -> {
                 LOGGER.info("{} logged in inside the Vault of team {}, which is not their team; sent home",
                         player.getGameProfile().name(), levelTeam.orElse(null));
-                VaultTravel.sendHome(player, VaultTravel.SENT_HOME_NOT_THEIR_TEAM);
+                yield VaultTravel.sendHome(player, VaultTravel.SENT_HOME_NOT_THEIR_TEAM);
             }
             case TO_ANCHOR -> {
                 LOGGER.info("{} logged in inside the Vault of team {}, reset since they entered; placed at the anchor",
                         player.getGameProfile().name(), levelTeam.orElse(null));
-                VaultTravel.toAnchor(player, player.level());
+                yield VaultTravel.toAnchor(player, player.level());
             }
-            case STAY -> {
-            }
+            case STAY -> true;
+        };
+        if (!moved) {
+            // in_vault is kept, so the next login tries again rather than leaving them where the check found them.
+            LOGGER.warn("{} could not be moved at login ({}); in_vault is kept for the next login", player.getGameProfile().name(),
+                    outcome);
+            return outcome;
         }
         recordWhereTheyAre(player);
         return outcome;

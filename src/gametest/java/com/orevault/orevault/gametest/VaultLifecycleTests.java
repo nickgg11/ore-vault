@@ -240,6 +240,16 @@ final class VaultLifecycleTests {
         helper.succeed();
     }
 
+    /** Named rule 7: restore makes no new Vault. A team with no folder is refused, and no folder appears. */
+    static void restoreRefusesATeamWithNoFolder(GameTestHelper helper) {
+        MinecraftServer server = server(helper);
+        UUID team = UUID.randomUUID();
+        check(helper, "restored", false, VaultDimensions.restoreOne(server, team).restored());
+        check(helper, "level", null, server.getLevel(VaultDimensions.dimensionKey(team)));
+        check(helper, "folder", false, Files.exists(DataPaths.vaultFolder(server, team)));
+        helper.succeed();
+    }
+
     // ---- travel ----------------------------------------------------------------------------------------------------
 
     /** §3.2: the return position is saved by the teleport's post step, so only once the player is in the Vault. */
@@ -413,6 +423,25 @@ final class VaultLifecycleTests {
         check(helper, "home", new Vec3(12.5, 70, -7.5), VaultTravel.home(player, TeleportTransition.DO_NOTHING).position());
         check(helper, "in_vault", Optional.empty(), PlayerAttachment.get(player).inVault());
         check(helper, "return_pos kept", Optional.of(home), PlayerAttachment.get(player).returnPos());
+        helper.succeed();
+    }
+
+    /** A login move that fails keeps {@code in_vault}, so the next login tries again. */
+    static void aLoginMoveThatFailsKeepsInVault(GameTestHelper helper) {
+        FakePlayer player = player(server(helper).overworld(), "orevault-stuck");
+        InVault recorded = new InVault(UUID.randomUUID(), 0);
+        PlayerAttachment.update(player, data -> data.withInVault(recorded));
+
+        BOUNCED.add(player.getUUID());
+        Outcome outcome;
+        try {
+            outcome = VaultPlayerEvents.checkAtLogin(player);
+        } finally {
+            BOUNCED.remove(player.getUUID());
+        }
+
+        check(helper, "outcome", Outcome.SEND_HOME, outcome);
+        check(helper, "in_vault", Optional.of(recorded), PlayerAttachment.get(player).inVault());
         helper.succeed();
     }
 
