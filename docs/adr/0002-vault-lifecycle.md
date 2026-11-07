@@ -2,8 +2,8 @@
 
 Status: accepted, 2026-11-07, on Result A of the level-unload spike (E3-S11, #245, below). Proposed 2026-10-27 (E0-S4, #223). Round 1 and round 2 reviews are recorded below and their
 changes applied, round 2 by the Manager's ruling of 2026-10-31 (the Vault's type moves into the Vault's
-folder). Accepted once the level-unload spike (E3-S11, #245) is written into the pending section below and the
-matrix reviewers have signed. Spec: §3.1, §3.2 Teleportation Logic, §3.5, §11 Dimension-per-Team
+folder). Accepted after the level-unload spike (E3-S11, #245) was written into the pending section below and the
+matrix reviewers signed (architect and QA, 2026-11-07). Spec: §3.1, §3.2 Teleportation Logic, §3.5, §11 Dimension-per-Team
 Registration; S14, S19 (`docs/TEAM_REQUIREMENTS.md`).
 
 The 26.1 facts below were read on 2026-10-27 from the decompiled, NeoForge-patched Minecraft sources of
@@ -428,14 +428,14 @@ and remade the Vault under the other type.
 | Run | Unload | Delete | Remade | Return portal |
 | --- | --- | --- | --- | --- |
 | 1, Dev1's team, base then expanded | drain 4 ticks | 63 s after the removal line | `orevault:ore_vault_expanded, Y=-64..319` | rebuilt on the next entry |
-| 2, Dev2's team, expanded then base | drain 2 ticks | 10 s after the removal line | `orevault:ore_vault, Y=0..319` | rebuilt on the next entry |
+| 2, Dev2's team, expanded then base | drain 1 tick, then 2 ticks (see below) | 10 s after the removal line | `orevault:ore_vault, Y=0..319` | rebuilt on the next entry |
 
 In both runs the owner walked back in through the portal, mined, quit to the title screen and rejoined inside the
 new level; the other player's `execute in orevault:vault_<hex> run tp @s 0 251 0` from a client landed in it, with F3
 showing the new type's floor (check 5); the server stopped and started, `Restored` the Vault under the new type, and
 the owner logged in where they had stood at the stop (check 3). There was no tick line for the key between the removal
-line and the re-registration (67 s in run 1), and no ERROR or exception from the first unload to the last stop. Run 2
-also unloaded once and reopened the Vault from its old folder before any delete:
+line and the re-registration (73 s in run 1; in run 2, 66 s after its first unload), and no ERROR or exception from the first unload to the last stop. Run 2
+first unloaded the Vault (drain 1 tick), which is what covers check 1's 60 seconds there, and it reopened from its old folder before any delete:
 it came back as `orevault:ore_vault_expanded` with no error, the case a reset racing a portal entry would hit, and
 was unloaded again (drain 2 ticks) before the delete.
 
