@@ -31,6 +31,7 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> PASSES = function("harness/passes");
     private static final ResourceKey<Consumer<GameTestHelper>> DELIBERATE_FAILURE = function("harness/deliberate_failure");
     private static final ResourceKey<Consumer<GameTestHelper>> LANG_COVERAGE = function("lang/coverage");
+    private static final ResourceKey<Consumer<GameTestHelper>> FROZEN_IDS = function("registry/frozen_ids");
     private static final ResourceKey<Consumer<GameTestHelper>> FRAME_PICKAXE_DROP = function("vault/frame_pickaxe_drop");
     private static final ResourceKey<Consumer<GameTestHelper>> FRAME_HAND_NO_DROP = function("vault/frame_hand_no_drop");
     private static final ResourceKey<Consumer<GameTestHelper>> FRAME_RECIPE = function("vault/frame_recipe");
@@ -164,6 +165,7 @@ public final class GameTests {
             registry.register(PASSES, GameTestHelper::succeed);
             registry.register(DELIBERATE_FAILURE, helper -> helper.fail(Component.literal("deliberate failure")));
             registry.register(LANG_COVERAGE, LangCoverage::everyKeyHasAValue);
+            registry.register(FROZEN_IDS, FrozenIdsTests::everyIdIsListed);
             registry.register(FRAME_PICKAXE_DROP, VaultFrameTests::dropsItselfToAPickaxe);
             registry.register(FRAME_HAND_NO_DROP, VaultFrameTests::dropsNothingByHand);
             registry.register(FRAME_RECIPE, VaultFrameTests::recipeYieldsExactlyOne);
@@ -287,7 +289,8 @@ public final class GameTests {
                 LIFE_RESTORE_TYPE, LIFE_RESTORE_DISBANDED, LIFE_RESTORE_UNREADABLE, LIFE_ABSENT, TRAVEL_SAVED_AFTER,
                 TRAVEL_BOUNCED, TRAVEL_HOME, TRAVEL_FAKE, PLAYER_ROUND_TRIP, PLAYER_NO_IN_VAULT, PLAYER_DEATH,
                 PLAYER_RESPAWN, PLAYER_LOGIN_HOME, PLAYER_LOGIN_OTHER, LIFE_RESTORE_NO_FOLDER, PLAYER_LOGIN_STUCK,
-                RETURN_BUILT, RETURN_ONE, RETURN_TIERS, RETURN_REBUILT, ARRIVAL_PILLAR, RETURN_BLOCKED, ARRIVAL_TORCH)) {
+                RETURN_BUILT, RETURN_ONE, RETURN_TIERS, RETURN_REBUILT, ARRIVAL_PILLAR, RETURN_BLOCKED, ARRIVAL_TORCH,
+                FROZEN_IDS)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
         }
         event.registerTest(DELIBERATE_FAILURE.identifier(),

@@ -113,7 +113,7 @@ left no comment, the recommendation stands and the row says so.
 | Q4 | Playtest world carried from T5 to 1.0 | No comment; recommendation stands: carry over, added fields read a default, renames migrate. | §11; T6 onward |
 | Q5 | Reference textures | The Designer drafts with `mc-asset` first; Nick reviews and says how to improve. No reference textures needed before T2. | Designer's inputs; T2 |
 | Q6 | Portal frame says why it failed | No. Failure sound only, as with a nether portal. | §3.2 unchanged; T3 |
-| Q7 | FTB Evolution 2 version | No comment; recommendation stands: pin the version current when the dimension path lands (T3), re-check at release. A copy of Nick's instance for QA is unanswered. | T3, T14 |
+| Q7 | FTB Evolution 2 version | Pinned at 1.7.0 when the dimension path landed (E3-S12, #246, `docs/playtests/2026-11-07-E3-S12-ftb-evolution-2.md`), run in a copy of Nick's FTB App instance; re-check at release. | T3, T14 |
 | Q8 | Stone Memory T3 and T5 | T3 pays 0.05 Resonance per deepslate block; T5's burst fires on 0.05% of stone. | §4.2, §6.1, §11; T8a constants, T9 |
 | Q9 | Apprentice's Ledger trip | A trip starting within 10 minutes of the end of the last one continues its count. | §6.1, §11 Vault Session State; T9 |
 | Q10 | Team tests | Several temporary dev client sessions on Nick's PC with different dev usernames. No second person is needed, before 1.0 or after. | QA, Playtester; T5, T8, T11 |
