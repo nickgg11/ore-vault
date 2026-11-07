@@ -14,6 +14,23 @@ Newest first.
 
 ---
 
+## 2026-11-07 — Dense Stone: no one-hit breaks, tool power becomes ore
+
+Nick: "We should add a node or series of nodes that increases everything harder to mine in the ore vault but make it drop more stuff, that way crazy powerful tools don't one shot stone and stuff as it feels bad while still rewarding really powerful tools." Shown two versions, he chose the break-time floor with power turned into ore.
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| Dense Stone, a three-node `[TRADEOFF]` skill at rings 10, 16 and 22: while switched on, no Vault block breaks in under 2 ticks, and ore drops +25%, +35% or +50% for each multiple of the tool's power over one-hitting stone, capped at +75%, +125% and +200% (§6.1) | Nothing; new node | It stops every tool one-shotting however strong, leaves a tool that was not one-shotting untouched, and keeps a stronger tool paying more. Per-player switch, so a teammate with an ordinary pick leaves it off. |
+| The floor stays at 2 ticks at every tier; only the payout rises | The Balancer's version, a floor of 2, 3 and 4 ticks | A raised floor costs a diamond Efficiency V pick 12% and 22% of its blocks with no bonus, and one switch covers the whole skill. Settled by the Manager from Nick's "still rewarding really powerful tools". |
+| The bonus is paid only on the block the player was mining | Every ore of an FTB Ultimine chain or 3×3 hammer | The extra blocks break without waiting for the floor, so they would take the bonus with no cost. |
+| Cannot be switched on while the team owns Brittle Stone | An exclusive pair | The two contradict; the exclusive rule is for two single nodes. |
+
+**Rejected.** Every block in the Vault 2, 3 or 4 times as hard with a flat ore bonus, the literal reading of the ask. Vanilla pauses 5 ticks after any break that is not one hit, so a hardness multiplier costs weak tools the most (a diamond Efficiency III pick loses 47% of its blocks in the stone band at ×4) while a speed-200 modded tool still one-shots stone at ×4, and power above the multiplier does nothing, so two strong tools come out equal.
+
+Derived, unplaytested. Resonance is paid per ore broken, so the node lowers Resonance an hour for a one-shotting tool and never raises it.
+
+---
+
 ## 2026-11-07 — Portal playtest: recipe shape, seat row, sound and overlay
 
 Nick ran the portal in a client and passed all 13 steps. His changes: "recipe should be changed so the lapis is in the middle slot"; "I would prefer if the if the lock texture was always the next texture above the bottom strap"; "I would tone down the nether portal effect or remove it. We'll probably add a new sound effect for opening the portal."; "at bare minimum the texture over the screen should match the portal tier but it'd better to make our own in the future."
