@@ -195,6 +195,50 @@ class ReturnPortalTest {
     }
 
     @Test
+    void aDissolvedPortalUnderARoofIsRebuiltOnItsFramesNotOnTheRoof() {
+        World world = new World();
+        world.apply(build(world, SignetTier.WORN));
+        places(BASE, ReturnPortal.Role.CELL).forEach(world::remove);
+        world.remove(new Cell(-1, BASE + 2, 3));
+        for (int x = -1; x <= 2; x++) {
+            world.put(new Cell(x, BASE + 8, 3), Kind.OTHER);
+        }
+        Plan plan = build(world, SignetTier.WORN);
+        assertEquals(BASE, plan.baseY());
+        assertFalse(plan.blocked());
+        assertEquals(6, plan.cells().size());
+        assertEquals(List.of(new Cell(-1, BASE + 2, 3)), plan.frames());
+    }
+
+    @Test
+    void framesLeftInOneColumnHoldTheRingThoughAnotherColumnIsRoofed() {
+        // Only the east column's frames are left, the rest broken and a roof over the whole footprint: the ground is read
+        // under the frames that are left.
+        World world = new World();
+        world.apply(build(world, SignetTier.WORN));
+        for (ReturnPortal.Place place : ReturnPortal.layout(BASE)) {
+            if (place.cell().x() != 2) {
+                world.remove(place.cell());
+            }
+        }
+        for (int x = -1; x <= 2; x++) {
+            world.put(new Cell(x, BASE + 8, 3), Kind.OTHER);
+        }
+        assertEquals(BASE, build(world, SignetTier.WORN).baseY());
+    }
+
+    @Test
+    void somethingPutInADissolvedOpeningBlocksTheRebuild() {
+        World world = new World();
+        world.apply(build(world, SignetTier.WORN));
+        places(BASE, ReturnPortal.Role.CELL).forEach(world::remove);
+        world.put(new Cell(0, BASE + 2, 3), Kind.OTHER);
+        Plan plan = build(world, SignetTier.WORN);
+        assertEquals(BASE, plan.baseY());
+        assertTrue(plan.blocked());
+    }
+
+    @Test
     void aBrokenCornerIsPutBack() {
         World world = new World();
         world.apply(build(world, SignetTier.WORN));

@@ -84,9 +84,10 @@ public final class ReturnPortal {
     }
 
     /**
-     * The bottom row of the ring: where a standing one is, or else one above the ground under its four columns. Frames and
-     * openings are looked through, so a portal whose cells dissolved is rebuilt on its own frames, not on top of them, and
-     * a roof built over a standing portal does not move it.
+     * The bottom row of the ring: where a standing one is, or else one above the ground under its four columns. Where any
+     * column still holds frame blocks, the ground is read only in those columns, below the lowest frame of each, so a
+     * portal whose cells dissolved is rebuilt on its own frames, not on top of them or on a roof built over them. A roof
+     * over a standing portal does not move it either.
      *
      * @param top the highest height worth reading: the highest {@code MOTION_BLOCKING} heightmap of the four columns
      * @param minY the level's lowest block
@@ -98,16 +99,32 @@ public final class ReturnPortal {
                 return y - 1;
             }
         }
-        int ground = minY;
+        int framed = minY - 1;
+        int open = minY;
         for (int x = FIRST_X; x < FIRST_X + WIDTH; x++) {
+            int lowestFrame = Integer.MAX_VALUE;
             for (int y = top; y >= minY; y--) {
-                if (blocks.kindAt(x, y, PLANE_Z) == Kind.OTHER) {
-                    ground = Math.max(ground, y);
-                    break;
+                if (blocks.kindAt(x, y, PLANE_Z) == Kind.FRAME) {
+                    lowestFrame = y;
                 }
             }
+            if (lowestFrame != Integer.MAX_VALUE) {
+                framed = Math.max(framed, groundFrom(blocks, x, lowestFrame - 1, minY));
+            } else {
+                open = Math.max(open, groundFrom(blocks, x, top, minY));
+            }
         }
-        return ground + 1;
+        return (framed >= minY ? framed : open) + 1;
+    }
+
+    /** The first block that is neither air, frame nor opening, at or below {@code from}; {@code minY} if there is none. */
+    private static int groundFrom(Blocks blocks, int x, int from, int minY) {
+        for (int y = from; y >= minY; y--) {
+            if (blocks.kindAt(x, y, PLANE_Z) == Kind.OTHER) {
+                return y;
+            }
+        }
+        return minY;
     }
 
     /** Whether the sides are all frame and the opening all filled: a ring that works, with or without its corners. */

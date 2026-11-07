@@ -12,14 +12,24 @@ public final class SafeArrival {
     private SafeArrival() {
     }
 
-    /** Whether a height of the column is air. */
+    /**
+     * What a height of the column is to a player. {@link #OPEN} is anything with no collision that holds no fluid: air, a
+     * torch, a flower, carpet, a rail, a pressure plate or a button. A block a player can stand in is no reason to look
+     * further down, and a fluid is neither room nor floor.
+     */
+    public enum Space {
+        OPEN,
+        SOLID,
+        FLUID
+    }
+
     @FunctionalInterface
     public interface Column {
-        boolean isAir(int y);
+        Space at(int y);
     }
 
     /**
-     * The highest height at or below the surface with air at the feet and the head and something under the feet. The
+     * The highest height at or below the surface open at the feet and the head, with a solid block under the feet. The
      * floor test is what keeps a stale or over-high surface from landing a player in mid-air: the search goes on down the
      * air to whatever it stands on. Nothing above {@code maxY} or below {@code minY} is read.
      *
@@ -31,7 +41,7 @@ public final class SafeArrival {
      */
     public static int feetY(int surface, int minY, int maxY, Column column) {
         for (int y = Math.min(surface, maxY - 1); y > minY; y--) {
-            if (column.isAir(y) && column.isAir(y + 1) && !column.isAir(y - 1)) {
+            if (column.at(y) == Space.OPEN && column.at(y + 1) == Space.OPEN && column.at(y - 1) == Space.SOLID) {
                 return y;
             }
         }

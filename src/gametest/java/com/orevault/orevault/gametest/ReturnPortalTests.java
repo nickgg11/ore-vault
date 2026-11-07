@@ -7,12 +7,15 @@ import com.orevault.orevault.registry.ModBlocks;
 import com.orevault.orevault.vault.VaultDimensions;
 import com.orevault.orevault.vault.VaultPortalBlock;
 import com.orevault.orevault.vault.VaultTravel;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -42,6 +45,29 @@ final class ReturnPortalTests {
         if (!Objects.equals(expected, actual)) {
             helper.fail(Component.literal(what + ": expected " + expected + ", got " + actual));
         }
+    }
+
+    /** A fake player that keeps the overlay lines it is sent, which a plain one drops. */
+    private static final class Listener extends FakePlayer {
+        private final List<String> overlays = new ArrayList<>();
+
+        Listener(ServerLevel level) {
+            super(level, new GameProfile(UUID.randomUUID(), "orevault-listener"));
+        }
+
+        @Override
+        public void sendSystemMessage(Component message, boolean overlay) {
+            if (overlay && message.getContents() instanceof TranslatableContents key) {
+                overlays.add(key.getKey());
+            }
+        }
+    }
+
+    /** The overlay a trip in shows once it lands, run on a listener rather than through a teleport. */
+    private static List<String> arrivalOverlay(TeleportTransition trip, ServerLevel level) {
+        Listener listener = new Listener(level);
+        trip.postTeleportTransition().onTransition(listener);
+        return listener.overlays;
     }
 
     /** A trip in from a portal of this tier standing in the test's own area; the Vault's return portal is built by it. */
@@ -144,6 +170,44 @@ final class ReturnPortalTests {
 
         checkRing(helper, vault, SignetTier.WORN);
         check(helper, "census", new Census(6, 0, 14), Census.of(vault));
+        helper.succeed();
+    }
+
+    /**
+     * A return portal that cannot stand is said on arrival, with its own overlay, and the warning stays in the log. Its
+     * cells dissolved and a block was put in the opening, so the rebuild on its frames is blocked.
+     */
+    static void aBlockedReturnPortalSaysSo(GameTestHelper helper) {
+        UUID team = UUID.randomUUID();
+        TeleportTransition first = enter(helper, team, SignetTier.WORN);
+        ServerLevel vault = first.newLevel();
+        check(helper, "first overlay", List.of("message.orevault.arrived.vault"), arrivalOverlay(first, vault));
+        for (ReturnPortal.Place place : ReturnPortal.layout(BASE)) {
+            if (place.role() == ReturnPortal.Role.CELL) {
+                vault.setBlock(at(place), Blocks.AIR.defaultBlockState(), QUIET);
+            }
+        }
+        vault.setBlock(new BlockPos(0, BASE + 2, ReturnPortal.PLANE_Z), Blocks.STONE.defaultBlockState(), QUIET);
+
+        TeleportTransition blocked = enter(helper, team, SignetTier.WORN);
+
+        check(helper, "blocked overlay", List.of("message.orevault.arrived.vault_blocked"),
+                arrivalOverlay(blocked, vault));
+        check(helper, "nothing written", new Census(0, 0, 14), Census.of(vault));
+        helper.succeed();
+    }
+
+    /**
+     * A torch at the anchor's feet has no collision and does not block motion, so the heightmap stands at it. The arrival is
+     * beside it on the grass, not in a tunnel dug under the grass.
+     */
+    static void arrivalStandsBesideATorchOverATunnel(GameTestHelper helper) {
+        UUID team = UUID.randomUUID();
+        ServerLevel vault = enter(helper, team, SignetTier.WORN).newLevel();
+        vault.setBlock(new BlockPos(0, 240, 0), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+        vault.setBlock(new BlockPos(0, 241, 0), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+        vault.setBlock(new BlockPos(0, BASE, 0), Blocks.TORCH.defaultBlockState(), Block.UPDATE_ALL);
+        check(helper, "beside the torch", new Vec3(0.5, BASE, 0.5), VaultTravel.anchor(vault));
         helper.succeed();
     }
 

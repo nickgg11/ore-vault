@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.IntPredicate;
 import org.junit.jupiter.api.Test;
 
 /** §3.2 safe arrival (old #77): feet in a two-high pocket of air with something under it, searched down from the surface. */
@@ -18,7 +19,12 @@ class SafeArrivalTest {
         for (int y : alsoSolid) {
             solid.add(y);
         }
-        return y -> y > top && !solid.contains(y);
+        return air(y -> y > top && !solid.contains(y));
+    }
+
+    /** Open where the predicate holds, solid elsewhere. */
+    private static SafeArrival.Column air(IntPredicate open) {
+        return y -> open.test(y) ? SafeArrival.Space.OPEN : SafeArrival.Space.SOLID;
     }
 
     @Test
@@ -51,15 +57,45 @@ class SafeArrivalTest {
         // A surface given too high, over open air: the search goes on down to the ground rather than land the player in mid-air.
         assertEquals(GRASS + 1, SafeArrival.feetY(300, MIN_Y, MAX_Y, column(GRASS)));
         // A shaft open to the sky: the bottom of it is where the player lands.
-        SafeArrival.Column open = y -> y >= 200;
+        SafeArrival.Column open = air(y -> y >= 200);
         assertEquals(200, SafeArrival.feetY(MAX_Y + 1, MIN_Y, MAX_Y, open));
     }
 
     @Test
     void aOneHighGapUnderARoofIsNoPocketAtAll() {
         // Air at 200 only, solid above it to the top: the feet would fit, the head would not.
-        SafeArrival.Column gap = y -> y == 200;
+        SafeArrival.Column gap = air(y -> y == 200);
         assertEquals(SafeArrival.DEFAULT_FEET_Y, SafeArrival.feetY(MAX_Y + 1, MIN_Y, MAX_Y, gap));
+    }
+
+    @Test
+    void aTorchAtTheFeetIsStoodBesideNotFallenThrough() {
+        // Grass at 250, a torch on it at 251 (no collision, not motion-blocking, so the heightmap is 251), and a tunnel dug
+        // at 240 to 241 under the grass: the arrival is on the grass, by the torch, not down in the tunnel.
+        SafeArrival.Column torch = y -> y == 251 || y > 251 || y == 240 || y == 241 ? SafeArrival.Space.OPEN
+                : SafeArrival.Space.SOLID;
+        assertEquals(251, SafeArrival.feetY(251, MIN_Y, MAX_Y, torch));
+    }
+
+    @Test
+    void lavaIsNoFloor() {
+        // A lava pool on the grass at 251, open above it: the search goes past the lava to the pocket under the pool's
+        // stone bed at 245, never stands on the lava.
+        SafeArrival.Column pool = y -> {
+            if (y == 251) {
+                return SafeArrival.Space.FLUID;
+            }
+            return y > 251 || y == 246 || y == 247 ? SafeArrival.Space.OPEN : SafeArrival.Space.SOLID;
+        };
+        assertEquals(246, SafeArrival.feetY(252, MIN_Y, MAX_Y, pool));
+    }
+
+    @Test
+    void feetAndHeadInWaterAreNoPocket() {
+        SafeArrival.Column flooded = y -> y > 250 && y < 260 ? SafeArrival.Space.FLUID
+                : y >= 260 ? SafeArrival.Space.OPEN : SafeArrival.Space.SOLID;
+        // Open from 260 up, but the floor at 259 is water: no pocket in the column, so the default.
+        assertEquals(SafeArrival.DEFAULT_FEET_Y, SafeArrival.feetY(MAX_Y + 1, MIN_Y, MAX_Y, flooded));
     }
 
     @Test
@@ -70,23 +106,23 @@ class SafeArrivalTest {
     @Test
     void theHeadroomNeverReadsAboveTheWorld() {
         // Solid to 317: 318 and 319 are the last two blocks of air, and nothing above 319 is asked.
-        SafeArrival.Column capped = y -> {
+        SafeArrival.Column capped = air(y -> {
             if (y > MAX_Y) {
                 throw new AssertionError("read above the world: " + y);
             }
             return y > 317;
-        };
+        });
         assertEquals(318, SafeArrival.feetY(MAX_Y + 1, MIN_Y, MAX_Y, capped));
     }
 
     @Test
     void theFloorIsNeverReadBelowTheWorld() {
-        SafeArrival.Column empty = y -> {
+        SafeArrival.Column empty = air(y -> {
             if (y < MIN_Y) {
                 throw new AssertionError("read below the world: " + y);
             }
             return true;
-        };
+        });
         assertEquals(SafeArrival.DEFAULT_FEET_Y, SafeArrival.feetY(MAX_Y + 1, MIN_Y, MAX_Y, empty));
     }
 

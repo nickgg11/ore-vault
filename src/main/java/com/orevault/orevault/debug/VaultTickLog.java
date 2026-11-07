@@ -28,9 +28,9 @@ public final class VaultTickLog {
     /** Called once from the mod constructor. A gameplay event, so the game bus (rule 3). */
     public static void register(BooleanSupplier enabled) {
         NeoForge.EVENT_BUS.addListener((LevelTickEvent.Post event) -> {
-            if (event.getLevel() instanceof ServerLevel level && VaultDimensions.teamOf(level.dimension()).isPresent()) {
+            if (event.getLevel() instanceof ServerLevel level && enabled.getAsBoolean()) {
                 int tick = level.getServer().getTickCount();
-                if (TickLine.due(tick) && enabled.getAsBoolean()) {
+                if (TickLine.due(tick) && VaultDimensions.teamOf(level.dimension()).isPresent()) {
                     LOG.info("{}{}", TAG, new TickLine(level.dimension().identifier().toString(), tick).line());
                 }
             }

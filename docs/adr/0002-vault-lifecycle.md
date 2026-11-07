@@ -385,7 +385,8 @@ Run on Nick's PC, `neo_version=26.1.2.121`, HEAD 961c3ed plus the E3-S6b and E3-
 `tools/restart-check/restart-check.ps1` on a dedicated dev server with nobody connected. The spike's code was the
 removal steps above as a debug command (`/orevault vault unload|delete|folder <team>`), with the drain advanced from a
 `ServerTickEvent.Post` listener, so outside any level's tick, and `deactivateTicketsOnClosing()` called each drain tick
-as `stopServer` does. It is not in the tree: its patch and command lists go on a throwaway branch for #245. Three
+as `stopServer` does. It is not in the source sets: the patch, the list generator, the lists and the between-lifetimes
+hook are in `docs/spikes/e3-s11/`, applied with `git apply` for a run and reverted after it. Three
 runs: base then expanded (20261107-130931), then, with a check added that the old level's far region file existed
 before the delete, expanded then base (20261107-131141) and base then expanded (20261107-131320). All three passed
 every step. Each run created Vault A and a second Vault B, generated and edited chunks in A, force-loaded a chunk of
@@ -395,11 +396,11 @@ stopped, checked the folder with the server down, started, and checked again.
 | Check | Headless result |
 | --- | --- |
 | 1, the tick loop runs on and the key stops ticking | Pass in all runs: for 60 seconds after the removal line no tick line for A, tick lines for B go on, and no ERROR or exception after the unload line |
-| 2, the folder deletes and moves at once | Pass on Windows: moved to `.deleting` and deleted straight after the unload, with nothing held open |
+| 2, the folder deletes and moves at once | Pass on Windows. In the first three runs the delete came 60 seconds after the unload, after check 1's wait, so they prove only that nothing was held open a minute later. Two more runs on 2026-11-07 (20261107-165937 base then expanded, 20261107-170115 expanded then base) sent the delete as the next command after the removal line: moved to `.deleting` and deleted 136 ms and 71 ms after it, with nothing held open, and both passed every other step |
 | 3, a new level under the same key from a fresh stem, the other type, the registry entry left as it is | Pass for the level: registered under the other type, its bedrock floor where that type puts it, a block broken in it, and restored under the new type at the next start. Not run: a player entering, mining, logging out inside and back in |
 | 4, nothing writes into the deleted folder | Pass: no folder after `save-all flush`, and after the stop the remade folder has no `r.1.1.mca` in `region`, `entities` or `poi` though the old level had written one |
 | 5, a command in the key reaches the new level | Pass from the console (`execute in orevault:vault_<hex> ... if block` and the S44 break). Not run: the same from a client, with F3 |
-| 6, the drain finishes within 200 ticks | Pass: 3, 2 and 3 ticks |
+| 6, the drain finishes within 200 ticks | Pass: 3, 2, 3, 2 and 2 ticks |
 
 The log lines of the second run:
 

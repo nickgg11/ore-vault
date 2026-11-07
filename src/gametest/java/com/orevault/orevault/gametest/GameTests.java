@@ -128,6 +128,8 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> RETURN_TIERS = function("travel/return_portal_upgrades_never_downgrades");
     private static final ResourceKey<Consumer<GameTestHelper>> RETURN_REBUILT = function("travel/return_portal_rebuilt_after_a_dissolve");
     private static final ResourceKey<Consumer<GameTestHelper>> ARRIVAL_PILLAR = function("travel/arrival_stands_on_a_pillar");
+    private static final ResourceKey<Consumer<GameTestHelper>> RETURN_BLOCKED = function("travel/blocked_return_portal_says_so");
+    private static final ResourceKey<Consumer<GameTestHelper>> ARRIVAL_TORCH = function("travel/arrival_beside_a_torch_over_a_tunnel");
 
     private GameTests() {
     }
@@ -257,6 +259,8 @@ public final class GameTests {
             registry.register(RETURN_TIERS, ReturnPortalTests::upgradesAndNeverDowngrades);
             registry.register(RETURN_REBUILT, ReturnPortalTests::rebuiltAfterADissolve);
             registry.register(ARRIVAL_PILLAR, ReturnPortalTests::arrivalStandsOnAPillarOverTheAnchor);
+            registry.register(RETURN_BLOCKED, ReturnPortalTests::aBlockedReturnPortalSaysSo);
+            registry.register(ARRIVAL_TORCH, ReturnPortalTests::arrivalStandsBesideATorchOverATunnel);
         });
     }
 
@@ -283,7 +287,7 @@ public final class GameTests {
                 LIFE_RESTORE_TYPE, LIFE_RESTORE_DISBANDED, LIFE_RESTORE_UNREADABLE, LIFE_ABSENT, TRAVEL_SAVED_AFTER,
                 TRAVEL_BOUNCED, TRAVEL_HOME, TRAVEL_FAKE, PLAYER_ROUND_TRIP, PLAYER_NO_IN_VAULT, PLAYER_DEATH,
                 PLAYER_RESPAWN, PLAYER_LOGIN_HOME, PLAYER_LOGIN_OTHER, LIFE_RESTORE_NO_FOLDER, PLAYER_LOGIN_STUCK,
-                RETURN_BUILT, RETURN_ONE, RETURN_TIERS, RETURN_REBUILT, ARRIVAL_PILLAR)) {
+                RETURN_BUILT, RETURN_ONE, RETURN_TIERS, RETURN_REBUILT, ARRIVAL_PILLAR, RETURN_BLOCKED, ARRIVAL_TORCH)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
         }
         event.registerTest(DELIBERATE_FAILURE.identifier(),

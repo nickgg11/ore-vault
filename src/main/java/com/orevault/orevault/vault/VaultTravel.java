@@ -21,6 +21,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
@@ -47,6 +48,7 @@ public final class VaultTravel {
     static final String SENT_HOME_NOT_THEIR_TEAM = "message.orevault.sent_home.not_their_team";
     static final String ARRIVED_IN_VAULT = "message.orevault.arrived.vault";
     static final String ARRIVED_HOME = "message.orevault.arrived.home";
+    static final String ARRIVED_IN_VAULT_BLOCKED = "message.orevault.arrived.vault_blocked";
     /** Yaw 0 faces south, toward the return portal's plane. */
     private static final float FACING_THE_RETURN_PORTAL = 0.0F;
 
@@ -55,7 +57,8 @@ public final class VaultTravel {
 
     /** Every line this class sends, chat and overlay, for the lang coverage gametest. */
     public static List<String> messageKeys() {
-        return List.of(VAULT_DAMAGED, SENT_HOME_DISBANDED, SENT_HOME_NOT_THEIR_TEAM, ARRIVED_IN_VAULT, ARRIVED_HOME);
+        return List.of(VAULT_DAMAGED, SENT_HOME_DISBANDED, SENT_HOME_NOT_THEIR_TEAM, ARRIVED_IN_VAULT, ARRIVED_HOME,
+                ARRIVED_IN_VAULT_BLOCKED);
     }
 
     /**
@@ -92,23 +95,16 @@ public final class VaultTravel {
             return null;
         }
         ReturnPos noted = returnPosition(player, from, portalEntryPos);
-        standReturnPortal(vault.get(), ReturnPortals.tierAt(from, portalEntryPos));
+        // The builder never throws; false means no return portal stands, and the log says why.
+        String arrival = ReturnPortals.ensure(vault.get(), ReturnPortals.tierAt(from, portalEntryPos))
+                ? ARRIVED_IN_VAULT : ARRIVED_IN_VAULT_BLOCKED;
         return new TeleportTransition(vault.get(), anchor(vault.get()), Vec3.ZERO, FACING_THE_RETURN_PORTAL, player.getXRot(),
                 TeleportTransition.PLAY_PORTAL_SOUND.then(arrived -> {
                     if (arrived instanceof ServerPlayer moved) {
                         PlayerAttachment.update(moved, data -> data.withReturnPos(noted));
-                        overlay(moved, ARRIVED_IN_VAULT);
+                        overlay(moved, arrival);
                     }
                 }));
-    }
-
-    /** A builder that throws must not stop the trip: the player still arrives, and the next trip in tries again. */
-    private static void standReturnPortal(ServerLevel vault, SignetTier entering) {
-        try {
-            ReturnPortals.ensure(vault, entering);
-        } catch (RuntimeException e) {
-            LOGGER.error("Building the return portal of {} failed", vault.dimension().identifier(), e);
-        }
     }
 
     private static void overlay(Entity arrived, String key) {
@@ -160,22 +156,33 @@ public final class VaultTravel {
      * portal standing (ADR 0007 step 11).
      */
     static boolean toAnchor(ServerPlayer player, ServerLevel vault) {
-        standReturnPortal(vault, SignetTier.WORN);
+        ReturnPortals.ensure(vault, SignetTier.WORN);
         return player.teleport(new TeleportTransition(vault, anchor(vault), Vec3.ZERO, FACING_THE_RETURN_PORTAL,
                 player.getXRot(), TeleportTransition.DO_NOTHING)) != null;
     }
 
     /**
-     * The team anchor (X=0, Z=0): feet in the highest two-high pocket of air with a floor at or under the
+     * The team anchor (X=0, Z=0): feet in the highest two-high open pocket with a solid floor at or under the
      * {@code MOTION_BLOCKING} heightmap, or {@link SafeArrival#DEFAULT_FEET_Y} when the column has none (old #77). Loads that
      * chunk, generating it on first entry, so the heightmap is filled.
      */
     public static Vec3 anchor(ServerLevel vault) {
         vault.getChunk(0, 0);
         int surface = vault.getHeight(Heightmap.Types.MOTION_BLOCKING, 0, 0);
-        int feet = SafeArrival.feetY(surface, vault.getMinY(), vault.getMaxY(),
-                y -> vault.getBlockState(new BlockPos(0, y, 0)).isAir());
+        int feet = SafeArrival.feetY(surface, vault.getMinY(), vault.getMaxY(), y -> space(vault, new BlockPos(0, y, 0)));
         return new Vec3(0.5, feet, 0.5);
+    }
+
+    /**
+     * A torch, flower, carpet, rail, plate or button has no collision and is not motion-blocking, so it sits at the
+     * heightmap's own height: asking for air there would send the arrival on down into whatever is dug below.
+     */
+    private static SafeArrival.Space space(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        if (!state.getFluidState().isEmpty()) {
+            return SafeArrival.Space.FLUID;
+        }
+        return state.getCollisionShape(level, pos).isEmpty() ? SafeArrival.Space.OPEN : SafeArrival.Space.SOLID;
     }
 
     /** §3.2: walked out along the normal on the side the player came from, past the last portal cell. */
