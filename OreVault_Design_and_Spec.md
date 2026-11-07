@@ -420,7 +420,7 @@ A five-person team progresses 40% faster than a solo player, not 500% faster. Th
 1. The level cap is a constant: `LEVEL_CAP = 30` for both trees.
 2. Points awarded per level are a constant: `POINTS_PER_LEVEL = 5`, so a team has 150 points at level 30. Every node costs 1 point (§6), so 150 points buy 150 nodes. The server sends the value to clients with the team's progress.
 
-   **Pinned, not derived (Nick, 2026-10-26).** The tree holds 193 to 199 nodes in a vanilla pack and 207 to 213 in FTB Evolution 2 (§6.1 Totals). A team therefore owns 75% to 78% of a vanilla tree at level 30, and 70% to 72% of the pack's, which is about 85% and 82% of the nodes that are not travel. Deriving the award as `ceil(0.7 × loadedNodeCount / 30)` gives 5 today but turns into 6 at 215 loaded nodes, two to eight more than the pack's tree (fewer than Ore Working's three Mekanism-tag nodes), and at 6 a level a team owns nearly every node that is not travel by level 30, so routes stop mattering. With 5 pinned, adding content lowers the share owned, which is visible and can be argued about; a rounding flip is neither. Every level up to 30 buys something. The tiered tree this replaces could be bought whole by level 26, leaving levels 27 to 30, about 47 hours, with nothing to buy.
+   **Pinned, not derived (Nick, 2026-10-26).** The tree holds 196 to 202 nodes in a vanilla pack and 210 to 216 in FTB Evolution 2 (§6.1 Totals). A team therefore owns 74% to 77% of a vanilla tree at level 30, and 69% to 71% of the pack's. Deriving the award as `ceil(0.7 × loadedNodeCount / 30)` would give 5 or 6 depending on where in its range the pack's tree lands, since it turns into 6 at 215 loaded nodes, and at 6 a level a team owns nearly every node that is not travel by level 30, so routes stop mattering. With 5 pinned, adding content lowers the share owned, which is visible and can be argued about; a rounding flip is neither. Every level up to 30 buys something. The tiered tree this replaces could be bought whole by level 26, leaving levels 27 to 30, about 47 hours, with nothing to buy.
 3. From config, read `target_play_hours` (default: 100) and `curve_divisor` (default: 1.0) from the `[resonance]` block in §10. Both are read once at server start; changing either requires a restart, because moving a threshold mid-session would move it under teams that had already passed it.
 4. Calculate average Resonance per hour for a **solo** player: `resonancePerHour = averageOresPerHour * weightedAverageResonancePerOre`. `averageOresPerHour` is a **constant in code**, not config — it measures how fast a player mines rather than expressing a preference, so an admin has no way to know the right value and a wrong one silently distorts the whole curve. The knob a server owner wants is `curve_divisor` in the next step.
 
@@ -594,14 +594,14 @@ Every count below is derived, not measured, and the hours rest on the unmeasured
 
 | | Vanilla pack | FTB Evolution 2 |
 |---|---|---|
-| Skill tier nodes | 118 | 124 (6 for FTB Ultimine) |
+| Skill tier nodes | 121 | 127 (6 for FTB Ultimine) |
 | Flavour notables | 14 | 21 |
 | New keystones | 3 | 4 |
-| Real nodes | 135 | 149 |
+| Real nodes | 138 | 152 |
 | Travel nodes | 58 to 64 | 58 to 64 |
-| Tree | 193 to 199 | 207 to 213 |
+| Tree | 196 to 202 | 210 to 216 |
 | Points at level 30 | 150 | 150 |
-| Share of the tree owned at level 30 | 75% to 78% | 70% to 72% |
+| Share of the tree owned at level 30 | 74% to 77% | 69% to 71% |
 | Share of real nodes owned at level 30 | about 85% | about 82% |
 
 Ore Working's three Mekanism-tag nodes add 3 where the `c:clumps/`, `c:shards/` and `c:crystals/` tags are filled (§9). The real-node shares are estimates; the Balancer's model was last run before the second round of flavour nodes. A value-first team leaves a few far ends unbought at level 30, and which far end a team skips is the build choice the tree is meant to create.
@@ -1285,6 +1285,28 @@ The nodes are listed in this order: the skills carried over from the tiered tree
 > Which block is destroyed is derived and unplaytested; T9 confirms it.
 >
 > The adjacent-ore collateral is what makes instant breaking a real bargain rather than a straight upgrade: with it, a big vein loses a large fraction of itself to the speed. It also interacts badly with Vein Discipline on purpose — the collateral counts as breaking the vein, so the two together are a build that wants deliberate handling.
+
+---
+
+**Dense Stone** `[TRADEOFF]`
+
+> While switched on, no block in the Vault breaks in one hit: every block takes at least 2 ticks. Your tool's power above what one-hits stone becomes ore: +25% ore drops for each multiple of that power, rising to +35% and +50% at tiers 2 and 3, up to +75%, +125% and +200%.
+
+| Tier (nodes owned) | Effect | Ring |
+|---|---|---|
+| 1 | No hand break in the Vault completes in under 2 ticks. Ore drops +25% × (power − 1), up to +75% | 10 |
+| 2 | As tier 1; ore drops +35% × (power − 1), up to +125% | 16 |
+| 3 | As tier 1; ore drops +50% × (power − 1), up to +200% | 22 |
+
+> **Power** is the player's final break speed on the block, after every tree bonus and penalty, enchantment and effect (§11) but before Dense Stone, divided by 45, the speed that breaks stone (hardness 1.5) in one hit with the correct tool. Power at or below 1 pays nothing, and such a tool is not slowed either, because it already needs 2 ticks or more. Power is measured against stone in both bands, so the rule is one number a player can learn; in the deepslate band a tool between 45 and 90 pays a little without being slowed.
+>
+> **The floor** is a cap on break progress of 1/2 a tick, applied after `MiningSpeedModifiers` in the same `PlayerEvent.BreakSpeed` path, on both sides: the client predicts the break from the same rule, or it shows a one-hit break the server refuses. It stays at 2 ticks at every tier, so no tier slows a tool that was not already one-shotting. A raised floor at tiers 2 and 3 was rejected (`DESIGN_LOG.md` 2026-11-07).
+>
+> **The bonus** is a Quantity multiplier (§11 Drop Pipeline) on every ore of the break, including every ore of an FTB Ultimine chain and every block of a 3×3 hammer, each at the power of the block the player was mining. Only that block waits for the floor, so chains and hammers get the bonus nearly free; Nick accepts that (2026-11-07). Machine-broken blocks take none (§3.4), nor does ancient debris, which skips stages 2 to 4. Resonance is paid per ore broken, not per item, so the node never raises Resonance an hour; for a one-shotting tool it lowers it.
+>
+> Cannot be switched on while the team owns Brittle Stone, whose instant break it contradicts; the Tome's tooltip says so. The tooltip's current-tier line shows the held tool's power and payout ("Your tool: 4.4× stone power, +75% ore, capped").
+>
+> **Derived, unplaytested.** Two facts carry the numbers: vanilla's 5-tick pause after any break that is not one hit (`destroyDelay`, to be confirmed in the 26.1 sources), and an estimated 4 ticks a block for one-hit tunnelling once aiming and walking count. On those, a one-shotting tool loses about 43% of its blocks an hour with the node on, and its ore an hour at tiers 1, 2 and 3 is ×0.63, ×0.65 and ×0.68 at power 1.31 (Efficiency VII netherite), ×0.82, ×0.92 and ×1.07 at power 2.75, and ×1.00, ×1.26 and ×1.56 at power 4.4. Whether Mining Gadgets, the Meka-Tool and Just Dire Things abilities fire the break-speed event is unverified; if they do not, they bypass both the floor and the bonus. A timed playtest with one tool, 10 minutes off and 10 on, replaces these figures.
 
 ---
 
@@ -2860,7 +2882,7 @@ Many nodes modify what a block break drops, and the order they apply in changes 
 |---|---|
 | 1. Consume | Tithe (block consumed, no drops), Brittle Stone (shatter roll, and the adjacent ore it destroys), Stone Curse (stone drops nothing). This stage clears items only and never calls `setDroppedExperience`: vanilla XP from the block always drops (§3.4) |
 | 2. Fortune | Vein Fortune, Vault's Purity's +1 Fortune, Ore Imprint's +1 Fortune on its metal |
-| 3. Quantity | Ore Doubling, Greedy Seams (+100%), Resonant Overload (−50%), Novice's Luck, Resonant Symbiosis (+25% with company), Bedrock Communion (+2% per block below Y=0), Last Ore (final block doubled), Automated Extraction (machine breaks only) |
+| 3. Quantity | Ore Doubling, Greedy Seams (+100%), Resonant Overload (−50%), Dense Stone (+25% to +200% by tool power), Novice's Luck, Resonant Symbiosis (+25% with company), Bedrock Communion (+2% per block below Y=0), Last Ore (final block doubled), Automated Extraction (machine breaks only) |
 | 4. Transform | Smelter's Intuition, Molten Seam (smelted near lava; the better of its roll and Smelter's Intuition's), Runic Attunement (Attuned marking), dust/Mekanism substitution, Kiln Touch (non-ore drops smelted) |
 | 5. Bonus | Items: Stone Memory (flint, nugget), Salvager's Eye, Stonecaller. XP and orbs, from the same listener: Stone Memory XP (tripled by Stone Curse), Ancient Knowledge, Stonecutter's Patience, Pathfinder's Claim, Vault Echo and Echo Chamber, Chapter's End, Stone Memory T5's burst, Deep Harvest, travel vanilla XP from ore. Items, rolled once per ore and skipping stages 2 to 4: Bookseam, Gem Seam |
 | 6. Deliver | Budding Seam replaces the broken metal ore with its budding block; Seam Courier moves the final ore drops into the linked container; the counters for Tempered and Ascending Edge and the Echoing Edge roll run here, on the live main-hand stack |
@@ -2888,7 +2910,7 @@ A penalty is a penalty however it is written: Greedy Seams' "−50% Resonance" m
 | Resonance from one ore break | `ResonanceBonuses` | Shallow Grace (+50%), Apprentice's Ledger (+100% on a trip's first 100 ore), Deep Habit, Calloused Hands, Kindred Rock, Vein Discipline, Molten Seam (+25%), Frontier Bonus (+40%), Vault's Purity (+20%), Last Ore (+100% on the final block), Clean Cut (+50% across the vein), Resonant Overload (+100%), Resonant Symbiosis (+50% with company), Bedrock Communion (+2% per block below Y=0), Volatile Veins: Ultimine Gambit (+20% on surviving operations), travel Resonance gain (+5% a node) | Greedy Seams (−50%), Vault Fever (−25%), Full Spectrum (−20%), Resonant Symbiosis alone (−40%), Bedrock Communion between Y=32 and Y=245 (×0), Silent Stone (×0) |
 | Mining speed on one block | `MiningSpeedModifiers` | Long Delve (+10%/stack), Kindred Rock (+20% on kindred types), travel mining speed (+10% a node), Hammer and Paxel Affinity (+25%), Ore Imprint (+25% on its metal), Resonant Trait (+15% a level), Glass Edge (+50%) | Bedrock Communion (halve), Long Arm (×0.75), Unyielding Edge at 1 durability (×0.5) |
 
-Not in either accumulator, and still to be placed by the Balancer: the flat payments (Stone Memory's 0.05 on deepslate and its T5 burst, Vault Echo, Chapter's End), which are not per-break percentages and for which it is not yet stated whether the bonuses apply (Deep Harvest's extra orb takes none); Hoarder's Instinct's cache multiplier, paid on collection; Brittle Stone's instant break, which replaces mining speed rather than modifying it; and Vault Fever's Haste II, a potion effect.
+Not in either accumulator, and still to be placed by the Balancer: the flat payments (Stone Memory's 0.05 on deepslate and its T5 burst, Vault Echo, Chapter's End), which are not per-break percentages and for which it is not yet stated whether the bonuses apply (Deep Harvest's extra orb takes none); Hoarder's Instinct's cache multiplier, paid on collection; Brittle Stone's instant break, which replaces mining speed rather than modifying it; Dense Stone's 2-tick floor, a cap on break progress applied after the accumulator; and Vault Fever's Haste II, a potion effect.
 
 **Silent Stone's rate** is placed: it reads the bonuses in this table that can be evaluated for a member at any second (Deep Habit, Calloused Hands, Vein Discipline, Frontier Bonus at the member's chunk, Vault's Purity, Resonant Overload, Resonant Symbiosis with company, Bedrock Communion at the member's Y, travel Resonance gain), sums them the same way, and takes no penalty; the per-member results then go through the §4.2 team scaling. The other bonuses are tied to an ore break or a vein event and do not apply. The full rule and its numbers are with the node in §6.1.
 
@@ -3122,6 +3144,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
   - [ ] Kindred Rock (T1-T2) *(breakpoint, per player, reads `ores_mined`)* — E9-S29 (#333)
   - [ ] Highwater Mark (T1-T2) *(breakpoint, tool and armour repair)* — E9-S29 (#333)
   - [ ] Brittle Stone *(pact)* — E9-S30 (#334)
+  - [ ] Dense Stone (T1-T3) *(tradeoff; 2-tick break floor, ore bonus by tool power)* — not yet ticketed
   - [ ] Vault Fever *(tradeoff; the cost is −25% Resonance)* — E9-S31 (#335)
   - [ ] Vault Presence (T1-T3) — E10-S4 (#379)
   - [ ] Automated Extraction (T1-T2) — yield only, never Resonance — E10-S5 (#380)
