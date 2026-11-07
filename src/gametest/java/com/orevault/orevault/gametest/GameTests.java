@@ -123,6 +123,11 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> PLAYER_LOGIN_OTHER = function("player/login_in_another_teams_vault_goes_home");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_RESTORE_NO_FOLDER = function("vault/restore_refuses_a_team_with_no_folder");
     private static final ResourceKey<Consumer<GameTestHelper>> PLAYER_LOGIN_STUCK = function("player/failed_login_move_keeps_in_vault");
+    private static final ResourceKey<Consumer<GameTestHelper>> RETURN_BUILT = function("travel/return_portal_built_on_first_entry");
+    private static final ResourceKey<Consumer<GameTestHelper>> RETURN_ONE = function("travel/return_portal_one_and_idempotent");
+    private static final ResourceKey<Consumer<GameTestHelper>> RETURN_TIERS = function("travel/return_portal_upgrades_never_downgrades");
+    private static final ResourceKey<Consumer<GameTestHelper>> RETURN_REBUILT = function("travel/return_portal_rebuilt_after_a_dissolve");
+    private static final ResourceKey<Consumer<GameTestHelper>> ARRIVAL_PILLAR = function("travel/arrival_stands_on_a_pillar");
 
     private GameTests() {
     }
@@ -247,6 +252,11 @@ public final class GameTests {
             registry.register(PLAYER_LOGIN_OTHER, VaultLifecycleTests::aLoginInsideAnotherTeamsVaultGoesHome);
             registry.register(LIFE_RESTORE_NO_FOLDER, VaultLifecycleTests::restoreRefusesATeamWithNoFolder);
             registry.register(PLAYER_LOGIN_STUCK, VaultLifecycleTests::aLoginMoveThatFailsKeepsInVault);
+            registry.register(RETURN_BUILT, ReturnPortalTests::builtOnTheFirstEntry);
+            registry.register(RETURN_ONE, ReturnPortalTests::oneAndIdempotent);
+            registry.register(RETURN_TIERS, ReturnPortalTests::upgradesAndNeverDowngrades);
+            registry.register(RETURN_REBUILT, ReturnPortalTests::rebuiltAfterADissolve);
+            registry.register(ARRIVAL_PILLAR, ReturnPortalTests::arrivalStandsOnAPillarOverTheAnchor);
         });
     }
 
@@ -272,7 +282,8 @@ public final class GameTests {
                 DEBUG_VAULT_CREATE, DEBUG_BREAK_RESTORED, LIFE_LOGIN, LIFE_TICKS, LIFE_IDEMPOTENT, LIFE_DAMAGED,
                 LIFE_RESTORE_TYPE, LIFE_RESTORE_DISBANDED, LIFE_RESTORE_UNREADABLE, LIFE_ABSENT, TRAVEL_SAVED_AFTER,
                 TRAVEL_BOUNCED, TRAVEL_HOME, TRAVEL_FAKE, PLAYER_ROUND_TRIP, PLAYER_NO_IN_VAULT, PLAYER_DEATH,
-                PLAYER_RESPAWN, PLAYER_LOGIN_HOME, PLAYER_LOGIN_OTHER, LIFE_RESTORE_NO_FOLDER, PLAYER_LOGIN_STUCK)) {
+                PLAYER_RESPAWN, PLAYER_LOGIN_HOME, PLAYER_LOGIN_OTHER, LIFE_RESTORE_NO_FOLDER, PLAYER_LOGIN_STUCK,
+                RETURN_BUILT, RETURN_ONE, RETURN_TIERS, RETURN_REBUILT, ARRIVAL_PILLAR)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
         }
         event.registerTest(DELIBERATE_FAILURE.identifier(),

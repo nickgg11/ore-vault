@@ -85,8 +85,11 @@ public final class VaultFrameBlock extends Block {
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        BlockGetter level = context.getLevel();
-        BlockPos pos = context.getClickedPos();
+        return connectedState(context.getLevel(), context.getClickedPos());
+    }
+
+    /** This block at a position, connected to the Vault Frames already beside it: placement, and the return portal builder. */
+    BlockState connectedState(BlockGetter level, BlockPos pos) {
         BlockState state = defaultBlockState();
         for (Direction direction : Direction.values()) {
             state = state.setValue(PipeBlock.PROPERTY_BY_DIRECTION.get(direction),

@@ -184,6 +184,10 @@ becomes "reset, restart, check the folder and the team file".
 
 The result and its date are copied here from ADR 0002 when that section is filled.
 
+2026-11-07: not a result yet. The spike's headless half passed in both variant orders (ADR 0002, "Result so far"):
+unload, delete and re-registration under the other type worked with nobody connected, with a drain of 2 to 3 ticks. The
+two-client half is still to run, so neither branch is picked and this record stays proposed.
+
 The return portal's tier is held by its placed blocks (PR #109), so after a reset it starts at the tier of
 the next Signet that enters and climbs again. Colour only.
 

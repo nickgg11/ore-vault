@@ -40,7 +40,7 @@ public final class VaultOpenings {
     static final Map<Direction.Axis, VoxelShape> SHAPES = Shapes.rotateHorizontalAxis(Block.column(4.0, 16.0, 0.0, 16.0));
 
     /** As vanilla fills a nether portal: the client hears of it, and the neighbours are not asked. */
-    private static final int FILL_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
+    static final int FILL_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
 
     private static final int NEXT_TICK = 1;
 

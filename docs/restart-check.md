@@ -14,6 +14,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/restart-check/restart-
     -Between tools/restart-check/smoke-between.ps1
 ```
 
+The Vault check, which every dimension PR and every `neo_version` change runs:
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/restart-check/restart-check.ps1 `
+    -First tools/restart-check/vault-first.txt -Second tools/restart-check/vault-second.txt
+```
+
 `-ExecutionPolicy Bypass` applies to that one process only. Optional parameters: `-Between <script.ps1>` (run
 while the server is down, given `-WorldDir`; non-zero fails the run), `-World <folder>` (a folder under
 `run/server`; default is a fresh `restart-check-<timestamp>`; name an existing one to run against a prepared
@@ -99,16 +106,21 @@ Get-CimInstance Win32_Process -Filter "Name='java.exe'" | Where-Object { $_.Comm
   Nether stands in for a Vault. Lifetime 1 force-loads a chunk, places a gold block, checks it, and unloads the
   ticket. Lifetime 2, with nobody connected, runs `execute in minecraft:the_nether run orevault break 64 100 64`,
   the form the Vault check uses, and expects `destroyBlock=true gone=true` in the reply and in the log, then
-  checks the block is air.
+  checks the block is air. Its `help` step expects `/orevault (diag|break|` as a prefix, so a new subcommand does not
+  fail it, as the `vault` subcommand from #237 did until 2026-11-07.
 - `smoke-fail.txt`: a list that must fail. Pass it as `-First` or `-Second` to see a failing run.
+- `vault-first.txt`, `vault-second.txt`: ADR 0002's headless NeoForge-bump line, run on a real Vault (#237, #245).
+  Lifetime 1 makes Vault `0000000a-0000-4000-8000-00000000000a` with `/orevault vault create` after the first tick,
+  waits for its tick-logger line, force-loads its chunk 0 0 and places a gold block at 0 251 0. Lifetime 2, with nobody
+  connected, expects `Restored 1 Vaults, skipped 0`, the forced chunk back (`forceload query`), `destroyBlock=true
+  gone=true` from `execute in orevault:vault_0000000a00004000800000000000000a run orevault break 0 251 0`, air there
+  after, and tick-logger lines for the key. No `-Between`.
+
+The tick logger (`debug.VaultTickLog`) writes `[orevault-debug] tick <dimension> server_tick=<n>` once a second for
+each Vault the server ticks, only while `enable_debug_commands` is on, which the script sets.
 
 ## What waits
 
-- The Vault lists for ADR 0002's NeoForge-bump check: creating a Vault by debug command needs #237 (E3-S6a) and
-  the S44 create command; `execute in orevault:vault_<hex>` needs a Vault level; the tick-logger `log` line needs
-  the E3-S11 spike's listener (#245). The lists are written with those stories, as
-  `run execute in orevault:vault_<hex> run orevault break <x> <y> <z>` plus `expect ... gone=true` and a `log`
-  line for the key.
 - The damaged-file cases A, B and C in ADR 0005 section 6 (#200's 2026-10-31 comment): `-Between` is the slot
   that overwrites a team or type file while the server is down, and `-World` with the same folder adds the
   third lifetime case A needs. They need a Vault, so they wait for #237 too.
