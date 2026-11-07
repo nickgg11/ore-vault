@@ -14,6 +14,19 @@ Newest first.
 
 ---
 
+## 2026-11-07 — Portal playtest: recipe shape, seat row, sound and overlay
+
+Nick ran the portal in a client and passed all 13 steps. His changes: "recipe should be changed so the lapis is in the middle slot"; "I would prefer if the if the lock texture was always the next texture above the bottom strap"; "I would tone down the nether portal effect or remove it. We'll probably add a new sound effect for opening the portal."; "at bare minimum the texture over the screen should match the portal tier but it'd better to make our own in the future."
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| The frame recipe is shaped: 8 stone bricks around 1 lapis in the middle slot | Shapeless, lapis anywhere | Nick's words above. The cost is unchanged. |
+| The door's seat sits on the row directly above the bottom strap at every size | Row min(height/2, 2) from the sill | Nick's words above. |
+| Pressing a signet plays the vanilla trigger at a quarter volume until our own sound exists | Full volume | Nick's words above. Our own sound and overlay are #407. |
+| The charging overlay is tinted to the portal's tier | The vanilla purple overlay | Nick's words above. |
+
+Seen by Nick and kept as designed: an obstructed ring shows no door once cleared, until a frame block is placed again (ADR 0010).
+
 ## 2026-11-01 — The frame is connected Woad Interlace; the price of getting in sits on the signet
 
 **Where this came from.** Nick's answers in the E2 thread, on the same day as the entry below, which left the
@@ -66,6 +79,8 @@ Nick: "So for the portal block I'd want the door texture to appear once the port
 | Completing a valid frame fills the opening with a sealed door, with no item used. Pressing a signet into the door or frame swaps it for the portal in that signet's tier | A frame that stays empty until the signet scans it, and "the door stays deferred until the plain portal has passed its playtest" | Nick's words above. |
 | The door and the portal are 4 pixels thick, as a nether portal is | #229 already said 4 px; the door had no thickness | Nick's words above. |
 | The sealed door has collision. The swing on approach stays in #401, after E3-S7 | Nothing; it was unsettled | Nick left the swing to the plan. A door you can walk through would not read as sealed; that part is the Manager's call and goes to him with the render. |
+
+A lower-tier signet pressed on a higher-tier portal is refused with the failure sound, on Vault and return portals alike, and a higher tier upgrades. That is the Manager's recommendation, built while Nick has not answered, because the review found a press could downgrade a return portal. A same-tier press is refused the same way, so a success sound never means nothing happened. The rule lives in `SignetTier#mayPress`.
 
 Nick asked whether the frame's runes should "start out grey and dim then then you ignite the portal it matches the tier", meaning the frame blocks, not the portal. Shown a computed render: "Yeah the door looks good as two doors." and "Dormant looks good, I am fine with the blue being flatter. I'd say I'd want the T3 to be a deeper richer purple and T4 to be an orange closer to what legendary items use in video games." On the Tier 1 rune tint: "It don't see much a difference between the two greens so just pick whichever you think is better." On the final renders: "I don't want or need the colours to get brighter with each tier. I like all the colours, yes let's not shade the portal blocks."
 

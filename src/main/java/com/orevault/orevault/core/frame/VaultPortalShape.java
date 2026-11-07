@@ -1,10 +1,12 @@
 package com.orevault.orevault.core.frame;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * One valid portal opening, and the scan that finds it (§3.2): 2 to 21 wide, 3 to 21 tall, with all four sides of
@@ -44,6 +46,8 @@ public record VaultPortalShape(Axis axis, int minX, int minY, int minZ, int widt
      */
     private static final int[][] INSIDE = {{1, 1}, {-1, 1}, {1, -1}, {-1, -1}};
 
+    private static final int[][] SIDES = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+
     /** The horizontal axis a frame runs along, named as Minecraft's {@code Direction.Axis} names it. */
     public enum Axis {
         X,
@@ -82,7 +86,7 @@ public record VaultPortalShape(Axis axis, int minX, int minY, int minZ, int widt
      * <pre>{@code
      * if (state.is(ModBlocks.VAULT_FRAME)) return Kind.FRAME;
      * if (state.isAir()) return Kind.AIR;
-     * return state.is(<the orevault:vault_portals tag>) || state.is(<the sealed door>) ? Kind.PORTAL : Kind.OTHER;
+     * return state.is(ModTags.VAULT_OPENINGS) ? Kind.PORTAL : Kind.OTHER;
      * }</pre>
      *
      * <p>{@link Kind#FRAME} means the position holds the Vault Frame block, and it must be decided by asking exactly
@@ -92,12 +96,26 @@ public record VaultPortalShape(Axis axis, int minX, int minY, int minZ, int widt
      * correct ring into a refused one at the block where it is rounded.
      *
      * <p>Whatever fills an opening has to answer {@link Kind#PORTAL}, or pressing a signet into a door would find its own
-     * door in the way. The door is a check of its own and stays out of {@code orevault:vault_portals}: §3.2 has everything
-     * that recognises a portal read that tag, so a door in it would be a portal to all of them.
+     * door in the way. The door stays out of {@code orevault:vault_portals}: §3.2 has everything that recognises a portal
+     * read that tag, so a door in it would be a portal to all of them. {@code orevault:vault_openings} holds both.
      */
     @FunctionalInterface
     public interface View {
         Kind kindAt(int x, int y, int z);
+
+        /**
+         * This view, answering {@link Kind#OTHER} for a position in an unloaded chunk without reading it. Reading one
+         * from {@code onPlace} would load it synchronously (ADR 0010), and a ring across it is not a ring yet.
+         */
+        static View loadedOnly(Loaded loaded, View blocks) {
+            return (x, y, z) -> loaded.at(x, z) ? blocks.kindAt(x, y, z) : Kind.OTHER;
+        }
+    }
+
+    /** Whether the chunk holding this column is loaded. */
+    @FunctionalInterface
+    public interface Loaded {
+        boolean at(int x, int z);
     }
 
     /** The first opening {@link #findAll} finds from this block. */
@@ -122,6 +140,38 @@ public record VaultPortalShape(Axis axis, int minX, int minY, int minZ, int widt
             }
         }
         return List.copyOf(found);
+    }
+
+    /** The valid opening on this axis holding this cell: the scan for a door or portal, which has no frame to start from. */
+    public static Optional<VaultPortalShape> around(View view, Axis axis, int x, int y, int z) {
+        return new Plane(view, axis, axis.across(x, z)).openingAround(axis.along(x, z), y);
+    }
+
+    /**
+     * Every filled cell joined to this one through the four sides in its plane, itself included. It is how a dissolve
+     * finds what to remove, whatever is left of the ring, so it asks nothing about the frame (old PR #108).
+     */
+    public static List<Cell> connected(Axis axis, Cell start, Predicate<Cell> filled) {
+        Set<Cell> found = new LinkedHashSet<>(List.of(start));
+        ArrayDeque<Cell> open = new ArrayDeque<>(found);
+        while (!open.isEmpty()) {
+            Cell cell = open.remove();
+            int along = axis.along(cell.x(), cell.z());
+            int across = axis.across(cell.x(), cell.z());
+            for (int[] step : SIDES) {
+                Cell next = axis.cell(along + step[0], cell.y() + step[1], across);
+                if (!found.contains(next) && filled.test(next)) {
+                    found.add(next);
+                    open.add(next);
+                }
+            }
+        }
+        return List.copyOf(found);
+    }
+
+    /** How far along the opening this cell is, from 0. */
+    public int column(Cell cell) {
+        return axis.along(cell.x(), cell.z()) - axis.along(minX, minZ);
     }
 
     /** The opening's cells, bottom row first. */

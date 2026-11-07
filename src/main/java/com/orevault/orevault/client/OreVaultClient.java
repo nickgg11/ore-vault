@@ -1,9 +1,18 @@
 package com.orevault.orevault.client;
 
 import com.orevault.orevault.OreVault;
+import com.orevault.orevault.core.frame.FrameLight;
+import com.orevault.orevault.core.signet.SignetTier;
+import com.orevault.orevault.registry.ModBlocks;
+import java.util.List;
+import net.minecraft.client.color.block.BlockTintSources;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 
@@ -14,8 +23,20 @@ import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
  */
 @Mod(value = OreVault.MOD_ID, dist = Dist.CLIENT)
 public final class OreVaultClient {
-    public OreVaultClient(ModContainer container) {
+    public OreVaultClient(IEventBus modEventBus, ModContainer container) {
         container.registerExtensionPoint(IConfigScreenFactory.class,
                 (mod, parent) -> new ConfigurationScreen(mod, parent));
+        modEventBus.addListener(OreVaultClient::registerTints);
+        // Last, so a listener that cancels the layer has already done so and the intensity is never left at zero.
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, PortalOverlayTint::before);
+        NeoForge.EVENT_BUS.addListener(PortalOverlayTint::after);
+    }
+
+    /** One list entry per {@code tintindex}. All four portals share one near-white texture (§3.2). */
+    private static void registerTints(RegisterColorHandlersEvent.BlockTintSources event) {
+        event.register(List.of(new VaultFrameTint()), ModBlocks.VAULT_FRAME.get());
+        for (SignetTier tier : SignetTier.values()) {
+            event.register(List.of(BlockTintSources.constant(FrameLight.portalColor(tier.rank()))), ModBlocks.portal(tier));
+        }
     }
 }

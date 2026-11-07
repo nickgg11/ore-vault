@@ -10,6 +10,7 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.sli
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.Dependency;
 import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
@@ -24,8 +25,8 @@ import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
 /**
- * ADR 0001's rules: one per row of the package tables, then the named rules. Named rule 7 (Reviewer gate 2)
- * lands with E3-S6a (#237), where its classes exist. The rules never use {@code allowEmptyShould}: a rule
+ * ADR 0001's rules: one per row of the package tables, then the named rules, named rule 7 (Reviewer gate 2)
+ * among them since E3-S6a (#237). The rules never use {@code allowEmptyShould}: a rule
  * whose package has no classes yet runs only against its fixture (S43).
  */
 final class ArchitectureRules {
@@ -68,7 +69,7 @@ final class ArchitectureRules {
                 pureRow("layout", "CoreLayout", "com.google.gson.."),
                 pureRow("tree", "CoreTree", core("layout")),
                 pureRow("curve", "CoreCurve", core("gen"), core("ore")),
-                pureRow("gen", "CoreGen", core("ore"), core("tree")),
+                pureRow("gen", "CoreGen", core("ore"), core("tree"), "com.google.gson.."),
                 pureRow("mining", "CoreMining", core("ore"), core("tree"), core("vein")),
                 pureRow("vein", "CoreVein", core("gen")),
                 pureRow("session", "CoreSession"),
@@ -148,6 +149,28 @@ final class ArchitectureRules {
                 new Rule("6: the core packages have no cycles", CORE,
                         slices().matching(BASE + ".core.(*)..").should().beFreeOfCycles(),
                         List.of("PlantedCycleA", "PlantedCycleB")),
+                new Rule("7: only VaultLevels touches the world map", null,
+                        noClasses().that().doNotHaveFullyQualifiedName(VAULT + ".VaultLevels")
+                                .should().callMethodWhere(calling("net.minecraft.server.MinecraftServer",
+                                        "forgeGetWorldMap", "markWorldsDirty")),
+                        List.of("PlantedVaultTouchesWorldMap")),
+                new Rule("7: only VaultDimensions registers a level", null,
+                        noClasses().that().doNotHaveFullyQualifiedName(VAULT + ".VaultDimensions")
+                                .should().callMethodWhere(calling(VAULT + ".VaultLevels", "register")),
+                        List.of("PlantedVaultRegistersALevel")),
+                // The portal path and the S44 command; no login, team or start listener (rule 2, §3.1).
+                new Rule("7: only the portal path and the debug command create a Vault", null,
+                        noClasses().that().doNotHaveFullyQualifiedName(VAULT + ".VaultTravel")
+                                .and().doNotHaveFullyQualifiedName(BASE + ".debug.DebugCommands")
+                                .and().doNotHaveFullyQualifiedName(VAULT + ".VaultDimensions")
+                                .should().callMethodWhere(calling(VAULT + ".VaultDimensions", "findOrCreate")),
+                        List.of("PlantedLoginCreatesAVault")),
+                // Restore registers a Vault with no folder only for a finished reset; the root start listener is its one caller.
+                new Rule("7: only the root start listener restores", null,
+                        noClasses().that().doNotHaveFullyQualifiedName(BASE + ".OreVault")
+                                .and().doNotHaveFullyQualifiedName(VAULT + ".VaultDimensions")
+                                .should().callMethodWhere(calling(VAULT + ".VaultDimensions", "restoreAll", "restoreOne")),
+                        List.of("PlantedTeamEventRestores")),
                 new Rule("8: mixin reaches only core.wear", BASE + ".mixin",
                         noClasses().that().resideInAPackage(BASE + ".mixin")
                                 .should().dependOnClassesThat(resideInAnyPackage(BASE + "..")
@@ -181,6 +204,13 @@ final class ArchitectureRules {
                 }
             }
         };
+    }
+
+    /** A call to one of {@code methods} on {@code owner}, by name, so an overload added later is held too. */
+    private static DescribedPredicate<JavaMethodCall> calling(String owner, String... methods) {
+        Set<String> names = Set.of(methods);
+        return DescribedPredicate.describe(owner + "#" + String.join(" or #", methods),
+                call -> call.getTargetOwner().getName().equals(owner) && names.contains(call.getName()));
     }
 
     private static String core(String name) {

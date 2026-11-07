@@ -1,0 +1,31 @@
+{
+  "elements": [
+    {
+      "faces": {
+        "north": {
+          "texture": "#portal",
+          "tintindex": 0
+        },
+        "south": {
+          "texture": "#portal",
+          "tintindex": 0
+        }
+      },
+      "from": [
+        0,
+        0,
+        6
+      ],
+      "shade": false,
+      "to": [
+        16,
+        16,
+        10
+      ]
+    }
+  ],
+  "textures": {
+    "particle": "orevault:block/vault_portal",
+    "portal": "orevault:block/vault_portal"
+  }
+}

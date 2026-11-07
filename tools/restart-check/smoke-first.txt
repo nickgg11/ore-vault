@@ -1,0 +1,16 @@
+# First lifetime of the smoke check. Proves the script against what exists before #237: vanilla dimensions stand in
+# for a Vault. Places a block in the Nether, whose chunks nothing keeps loaded, and leaves it there across the stop.
+
+run execute in minecraft:the_nether run forceload add 64 64
+expect Marked chunk
+run execute in minecraft:the_nether run setblock 64 100 64 minecraft:gold_block
+expect Changed the block
+run execute in minecraft:the_nether if block 64 100 64 minecraft:gold_block
+expect Test passed
+run execute in minecraft:the_nether run forceload remove 64 64
+expect Unmarked|no longer force loaded
+log Done \(
+nolog \[orevault-debug\]
+# Longer than one RCON packet, so the multi-packet reply path runs on every smoke check.
+run help
+expect /orevault \(diag\|break\)

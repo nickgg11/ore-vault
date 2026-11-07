@@ -563,3 +563,7 @@ Amended 2026-11-01 by E3-S8 (#206): `team` offers team changes and disbands thro
 of handing `vault` values directly ("Team change while inside", Hooks). This needs, in the same PR as the code
 it describes: ADR 0001's `team` row loses `data` and `vault`, and `ArchitectureRules` line 91 with it; ADR 0006's
 `PlayerChangedTeam` row says `vault` marks the outbox, not `team`; `TeamHelper` gains the per-listener `try`.
+
+Amended 2026-11-01 by E3-S9 (#232): creation step 2 is `data.VaultTypeFile#openOrCreate`. An empty folder counts as no folder, as a folder holding only the temp file does: it is the other place a cut creation stops, between making the folder and writing the temp file, and it holds no chunk. Case (e), a folder with region files and no type file, is still refused.
+
+Amended 2026-11-01 for E3-S6a (#237) (Architect): creation step 3 is `data.GenSnapshots` given the variant from step 2, since team data does not hold it, and it returns the supplier step 6 passes to the generator (ADR 0003, "Holders and the supplier"). The generation comes from ADR 0005's read path, so a team with no data or an unreadable file gets 0, as Consequences accepts, and S18 holds. Restore steps 3 and 4 use `OreVaultTeamData#isUnreadable` (ADR 0005). Removal step 6 stays the only clear while the server runs; `GenSnapshots` and the static maps of `VaultDimensions` are also cleared at `ServerStoppedEvent`, or a second world in one client finds the first world's entries under the same personal team id.

@@ -133,15 +133,20 @@ final class VaultFrameTests {
         helper.succeed();
     }
 
-    /** Shapeless, so the lapis may sit anywhere. One frame per craft is §3.2's yield (Nb). */
+    /**
+     * Shaped, with the lapis in the middle slot and nowhere else (Nick, 2026-11-07). One frame per craft is §3.2's yield
+     * (Nb).
+     */
     static void recipeYieldsExactlyOne(GameTestHelper helper) {
-        for (int lapisSlot : new int[] {4, 0}) {
+        for (int lapisSlot = 0; lapisSlot < 9; lapisSlot++) {
             CraftingInput input = bricksAround(lapisSlot);
             ItemStack result = helper.getLevel().getServer().getRecipeManager()
                     .getRecipeFor(RecipeType.CRAFTING, input, helper.getLevel())
                     .map(holder -> holder.value().assemble(input))
                     .orElse(ItemStack.EMPTY);
-            if (!result.is(ModItems.VAULT_FRAME.get()) || result.getCount() != 1) {
+            boolean expected = lapisSlot == 4;
+            boolean crafted = result.is(ModItems.VAULT_FRAME.get()) && result.getCount() == 1;
+            if (crafted != expected || (!expected && !result.isEmpty())) {
                 helper.fail(Component.literal("lapis in slot " + lapisSlot + " crafted " + result));
             }
         }

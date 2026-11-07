@@ -9,6 +9,11 @@ displayName="${mod_name}"
 authors="${mod_authors}"
 description='''${mod_description}'''
 
+# E3-S6a (#237). FML 11.0.15 reads the default path when this list is absent and only this list when it is present
+# (ModFile, ModFileParser#getAccessTransformers), so the file is named here once and loaded once.
+[[accessTransformers]]
+file="META-INF/accesstransformer.cfg"
+
 [[dependencies.${mod_id}]]
     modId="neoforge"
     type="required"

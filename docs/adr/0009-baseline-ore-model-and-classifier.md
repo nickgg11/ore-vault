@@ -56,6 +56,14 @@ PR. The band heights it divides by (245 layers of stone, 63 of deepslate) are th
 dimension heights (`CLAUDE.md` rule 8): the layer config's load check compares them too, so the three fail
 together.
 
+The stone band is every stone layer of the type's stack: Y1..245 in the base type (245 layers) and Y0..245 in
+the expanded type (246), where Y=0 is stone (§3.1). The bounds are per type, on `VaultVariant`, and the load
+check compares each type's own figure. `OreBaseline`'s counts and the 245 above stay one set, the base
+type's, and the curve reads them. The expanded type spreads the same stone-band counts over 246 layers, about
+0.4% thinner, well inside S12's 5%; the edge factor takes that band's `H`. Without this Y=0 would be a flat
+layer no vein reaches, between two ore bands that §3.1 says nothing divides, and the height map below already
+counts it in its column Y-63..245.
+
 Nothing else is stored. Every figure below is a method on the record, computed from those fields and from
 `core.gen.VeinShape.meanBlocks(size)`, the mean blocks a vein of a configured size places in solid rock,
 from the pure port of vanilla's `OreFeature` (research section 5; ADR 0004 owns where the shape sits in the
@@ -301,8 +309,9 @@ cannot come back through a default.
 - Unit cases in `core.gen`: the fractional roll's mean, over 10,000 seeds, is `c` within three standard
   errors, as ADR 0003's per-chunk rolls are tested; with no generation nodes, vein heights are uniform in
   the band, and every slab is within 10% relative of the band density over 81 chunks. Slabs are 16 layers
-  counted up from each band's floor, and a partial top slab is merged into the one below: the stone band
-  (Y1..245) has fourteen 16-layer slabs from Y1 and a top slab Y225..245 of 21 layers; deepslate (Y-63..-1)
+  counted up from each band's floor, and a partial top slab is merged into the one below: the base stone band
+  (Y1..245) has fourteen 16-layer slabs from Y1 and a top slab Y225..245 of 21 layers; the expanded stone band
+  (Y0..245) has fourteen from Y0 and a top slab Y224..245 of 22 layers; deepslate (Y-63..-1)
   has two 16-layer slabs from Y-63 and a top slab Y-31..-1 of 31 layers. The lowest slab and the top slab
   are included. For a box of height `h`, every layer of the band is covered by exactly `h` of the allowed
   positions, and no position outside the band is placed or indexed; the edge factor at `h` = 1 is 1. The
@@ -475,3 +484,5 @@ BAL-16 is closed by it, and B and C are under Rejected alternatives.
 
 Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md`: the placement fields are private
 in a clean 26.1.2.95, so the fallback's AT lines stand, and the tag key is `Tags.Blocks.ORES`. Nothing else changed.
+
+Amended 2026-11-01 for E3-S5 (#233) (Architect): the expanded stone band is Y0..245, 246 layers ("One pure record", Tests). The generator's stack was right and this record was short by one layer; a load check written from the old text would have failed the correct expanded stack. The Balancer confirms the 0.4% in E4-S1 (#234). If it is refused, the one alternative is the expanded count × 246/245, the same bounds. The Writer adds the expanded top slab to §3.1's per-slab sentence, in E4-S1 at the latest.

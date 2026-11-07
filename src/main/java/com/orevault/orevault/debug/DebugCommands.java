@@ -3,10 +3,15 @@ package com.orevault.orevault.debug;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.orevault.orevault.core.gen.VaultVariant;
+import com.orevault.orevault.vault.VaultDimensions;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.UuidArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -48,6 +53,32 @@ public final class DebugCommands {
                 .then(Commands.argument("pos", BlockPosArgument.blockPos())
                         .executes(context -> breakBlock(context.getSource(),
                                 BlockPosArgument.getBlockPos(context, "pos")))));
+        root.then(Commands.literal("vault").requires(allowed)
+                .then(Commands.literal("create")
+                        .then(Commands.argument("team", UuidArgument.uuid())
+                                .executes(context -> createVault(context, VaultVariant.BASE))
+                                .then(Commands.literal("base").executes(context -> createVault(context, VaultVariant.BASE)))
+                                .then(Commands.literal("expanded")
+                                        .executes(context -> createVault(context, VaultVariant.EXPANDED))))));
+    }
+
+    /**
+     * S44: a team's Vault by command, so QA's scripted restart and E4-S4 need no client. The second way a Vault is made,
+     * beside the portal (ArchUnit named rule 7). A Vault whose folder exists keeps the type in its file, whatever is asked,
+     * and the line says which it has.
+     */
+    private static int createVault(CommandContext<CommandSourceStack> context, VaultVariant forANewVault) {
+        CommandSourceStack source = context.getSource();
+        UUID teamId = UuidArgument.getUuid(context, "team");
+        Optional<ServerLevel> vault = VaultDimensions.findOrCreate(source.getServer(), teamId, forANewVault);
+        if (vault.isEmpty()) {
+            source.sendFailure(Component.literal(TAG + "vault team=" + teamId + " refused: its type file cannot be read; "
+                    + "the server log names it"));
+            return 0;
+        }
+        print(source, "vault team=" + teamId + " dim=" + vault.get().dimension().identifier() + " type="
+                + VaultDimensions.variant(teamId).map(VaultVariant::id).orElse("?"));
+        return 1;
     }
 
     /** Everything is read from the player's level, the position's loaded check included: it diagnoses their break. */

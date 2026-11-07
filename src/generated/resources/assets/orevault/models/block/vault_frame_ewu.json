@@ -1,12 +1,102 @@
 {
-  "parent": "minecraft:block/cube",
+  "parent": "minecraft:block/block",
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "cullface": "down",
+          "texture": "#down"
+        },
+        "east": {
+          "cullface": "east",
+          "texture": "#east"
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#north"
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#south"
+        },
+        "up": {
+          "cullface": "up",
+          "texture": "#up"
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#west"
+        }
+      },
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "cullface": "down",
+          "texture": "#down_strand",
+          "tintindex": 0
+        },
+        "east": {
+          "cullface": "east",
+          "texture": "#east_strand",
+          "tintindex": 0
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#north_strand",
+          "tintindex": 0
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#south_strand",
+          "tintindex": 0
+        },
+        "up": {
+          "cullface": "up",
+          "texture": "#up_strand",
+          "tintindex": 0
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#west_strand",
+          "tintindex": 0
+        }
+      },
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ]
+    }
+  ],
   "textures": {
     "down": "orevault:block/vault_frame_lr",
+    "down_strand": "orevault:block/vault_frame_lr_strand",
     "east": "orevault:block/vault_frame_u",
+    "east_strand": "orevault:block/vault_frame_u_strand",
     "north": "orevault:block/vault_frame_ulr",
+    "north_strand": "orevault:block/vault_frame_ulr_strand",
     "particle": "orevault:block/vault_frame",
     "south": "orevault:block/vault_frame_ulr",
+    "south_strand": "orevault:block/vault_frame_ulr_strand",
     "up": "orevault:block/vault_frame_lr",
-    "west": "orevault:block/vault_frame_u"
+    "up_strand": "orevault:block/vault_frame_lr_strand",
+    "west": "orevault:block/vault_frame_u",
+    "west_strand": "orevault:block/vault_frame_u_strand"
   }
 }

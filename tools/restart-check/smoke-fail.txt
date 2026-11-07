@@ -1,0 +1,4 @@
+# Must fail. Pass this as -First or -Second to see the script exit non-zero and stop the server (docs/restart-check.md).
+
+run execute in minecraft:the_nether if block 0 300 0 minecraft:gold_block
+expect Test passed

@@ -12,6 +12,9 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
+// ADR 0001: each line of the file names the ticket that needs it. FML finds the file at this path in a built jar.
+minecraft.accessTransformers.file rootProject.file('src/main/resources/META-INF/accesstransformer.cfg')
+
 repositories {
     maven {
         name = 'FTB'

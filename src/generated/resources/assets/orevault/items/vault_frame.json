@@ -1,6 +1,12 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "orevault:block/vault_frame"
+    "model": "orevault:block/vault_frame",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": -9144708
+      }
+    ]
   }
 }
