@@ -4,6 +4,7 @@ import com.electronwill.nightconfig.core.UnmodifiableConfig;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.orevault.orevault.OreVault;
+import com.orevault.orevault.core.key.DimensionTitleKeys;
 import com.orevault.orevault.core.signet.SignetTier;
 import com.orevault.orevault.registry.ModCreativeTabs;
 import com.orevault.orevault.vault.VaultTravel;
@@ -62,6 +63,7 @@ final class LangCoverage {
         keys.add(ModCreativeTabs.TITLE_KEY);
         keys.addAll(SignetTier.everyTooltipKey());
         keys.addAll(VaultTravel.messageKeys());
+        keys.add(DimensionTitleKeys.TITLE);
         keys.addAll(CONFIG_SCREEN_KEYS);
         ModConfigs.getModConfigs(OreVault.MOD_ID).stream()
                 .map(ModConfig::getSpec)
