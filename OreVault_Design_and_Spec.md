@@ -1296,7 +1296,7 @@ The nodes are listed in this order: the skills carried over from the tiered tree
 >
 > **The floor** is a cap on break progress of 1/2 a tick, applied after `MiningSpeedModifiers` in the same `PlayerEvent.BreakSpeed` path, on both sides: the client predicts the break from the same rule, or it shows a one-hit break the server refuses. It stays at 2 ticks at every tier, so no tier slows a tool that was not already one-shotting. A raised floor at tiers 2 and 3 was rejected (`DESIGN_LOG.md` 2026-11-07).
 >
-> **The bonus** is a Quantity multiplier (§11 Drop Pipeline) on the block the player was mining. The other blocks of an FTB Ultimine chain or a 3×3 hammer break without waiting for the floor, so they take no bonus. Machine-broken blocks take none (§3.4), nor does ancient debris, which skips stages 2 to 4. Resonance is paid per ore broken, not per item, so the node never raises Resonance an hour; for a one-shotting tool it lowers it.
+> **The bonus** is a Quantity multiplier (§11 Drop Pipeline) on every ore of the break, including every ore of an FTB Ultimine chain and every block of a 3×3 hammer, each at the power of the block the player was mining. Only that block waits for the floor, so chains and hammers get the bonus nearly free; Nick accepts that (2026-11-07). Machine-broken blocks take none (§3.4), nor does ancient debris, which skips stages 2 to 4. Resonance is paid per ore broken, not per item, so the node never raises Resonance an hour; for a one-shotting tool it lowers it.
 >
 > Cannot be switched on while the team owns Brittle Stone, whose instant break it contradicts; the Tome's tooltip says so. The tooltip's current-tier line shows the held tool's power and payout ("Your tool: 4.4× stone power, +75% ore, capped").
 >
