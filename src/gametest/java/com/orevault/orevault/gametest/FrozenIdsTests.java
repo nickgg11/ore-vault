@@ -14,7 +14,7 @@ import net.minecraft.resources.ResourceKey;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
 /**
- * Pins every {@code orevault} registry id. Ids are save data: a renamed block id loses every placed block at the
+ * Pins every {@code orevault} registry id that is save data: a renamed block id loses every placed block at the
  * next save, and a constant cannot show that registration used it, so this walks the live registries instead
  * (ADR 0005 section 6, amended 2026-11-01). The registries are the ones ADR 0005 names. The lists are literal and
  * read no constant on purpose: a rename, a removal and an unlisted new id all fail here, and the fix for a new id
