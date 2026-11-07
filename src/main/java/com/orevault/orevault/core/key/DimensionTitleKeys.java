@@ -7,7 +7,7 @@ import org.jspecify.annotations.Nullable;
  * One title for every Vault in mods that name a dimension by a translation key built from its id. Traveler's Titles,
  * in FTB Evolution 2, looks up {@code travelerstitles.<namespace>.<path>} and draws {@code ???} when it is missing
  * (#414). A Vault's path is {@link VaultKeys#dimensionPath}, different for every team, so no lang file can hold it;
- * the client answers those keys with {@link #TITLE} instead. Only the title is answered: the mod falls back to its
+ * the client answers those keys with {@link #TITLE} instead. Only the title is answered: Traveler's Titles falls back to its
  * own colour when no {@code .color} key exists. No compile-time reference to the other mod (§9).
  */
 public final class DimensionTitleKeys {
