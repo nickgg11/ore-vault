@@ -36,8 +36,8 @@ import org.jspecify.annotations.Nullable;
  * wash this one away. {@link LiquidBlockContainer} stops flowing water and {@link #canBeReplaced(BlockState, Fluid)} stops
  * a bucket or dispenser.
  *
- * <p>Teleporting arrives with E3-S6a (#237). Until then {@link #getPortalDestination} answers null, which vanilla reads as
- * nowhere to go, so a player standing in a portal charges and sees the overlay, then nothing happens.
+ * <p>Where the charge leads is {@link VaultTravel}'s: into the player's team's Vault from anywhere else, and home from a
+ * Vault. Null, which vanilla reads as nowhere to go, for a fake player or a Vault that cannot be opened.
  */
 public final class VaultPortalBlock extends Block implements Portal, LiquidBlockContainer {
     /** §3.2: four seconds. */
@@ -106,7 +106,7 @@ public final class VaultPortalBlock extends Block implements Portal, LiquidBlock
 
     @Override
     public @Nullable TeleportTransition getPortalDestination(ServerLevel currentLevel, Entity entity, BlockPos portalEntryPos) {
-        return null;
+        return VaultTravel.portalDestination(currentLevel, entity, portalEntryPos);
     }
 
     @Override

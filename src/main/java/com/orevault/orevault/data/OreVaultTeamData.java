@@ -62,6 +62,15 @@ public final class OreVaultTeamData extends SavedData {
     }
 
     /**
+     * Whether the team has a file the storage could not read. The storage answers an absent file and a damaged one alike, as
+     * null, so the file on disk tells them apart. Restore (ADR 0002 step 4) and ADR 0007's pass log it at ERROR; this writes
+     * and logs nothing.
+     */
+    public static boolean isUnreadable(MinecraftServer server, UUID teamId) {
+        return server.getDataStorage().get(type(teamId)) == null && Files.exists(DataPaths.teamFile(server, teamId));
+    }
+
+    /**
      * The team's data to change, created if it has none. The one write accessor (ADR 0005 section 2). If the file cannot be
      * read, its bytes are copied aside first; play goes on with a fresh team. A copy that fails leaves the file alone: the
      * caller gets data that is never saved, so this write is lost and the next one tries the copy again.

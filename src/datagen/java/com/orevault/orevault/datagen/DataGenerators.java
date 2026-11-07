@@ -398,9 +398,13 @@ public final class DataGenerators {
 
         @Override
         protected void buildRecipes() {
-            shapeless(RecipeCategory.BUILDING_BLOCKS, ModBlocks.VAULT_FRAME.get())
-                    .requires(Items.STONE_BRICKS, 8)
-                    .requires(Items.LAPIS_LAZULI)
+            // Nick, 2026-11-07: the lapis in the middle slot.
+            shaped(RecipeCategory.BUILDING_BLOCKS, ModBlocks.VAULT_FRAME.get())
+                    .define('B', Items.STONE_BRICKS)
+                    .define('L', Items.LAPIS_LAZULI)
+                    .pattern("BBB")
+                    .pattern("BLB")
+                    .pattern("BBB")
                     .unlockedBy("has_stone_bricks", has(Items.STONE_BRICKS))
                     .save(output);
             shaped(RecipeCategory.TOOLS, ModItems.WORN_SIGNET.get())

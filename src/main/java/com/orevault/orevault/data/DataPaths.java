@@ -24,6 +24,11 @@ public final class DataPaths {
         return teamFile(server.getWorldPath(LevelResource.DATA), teamId);
     }
 
+    /** {@code <world>/dimensions/orevault/}, the folder restore scans (ADR 0002 restore step 1). */
+    public static Path vaultsFolder(MinecraftServer server) {
+        return vaultsFolder(server.getWorldPath(LevelResource.ROOT));
+    }
+
     public static Path vaultFolder(MinecraftServer server, UUID teamId) {
         return vaultFolder(server.getWorldPath(LevelResource.ROOT), teamId);
     }
@@ -36,8 +41,12 @@ public final class DataPaths {
         return dataFolder.resolve(NAMESPACE_FOLDER).resolve(VaultKeys.teamDataPath(teamId) + SAVED_DATA_SUFFIX);
     }
 
+    static Path vaultsFolder(Path worldRoot) {
+        return worldRoot.resolve(DIMENSIONS_FOLDER).resolve(NAMESPACE_FOLDER);
+    }
+
     static Path vaultFolder(Path worldRoot, UUID teamId) {
-        return worldRoot.resolve(DIMENSIONS_FOLDER).resolve(NAMESPACE_FOLDER).resolve(VaultKeys.dimensionPath(teamId));
+        return vaultsFolder(worldRoot).resolve(VaultKeys.dimensionPath(teamId));
     }
 
     static Path vaultTypeFile(Path worldRoot, UUID teamId) {

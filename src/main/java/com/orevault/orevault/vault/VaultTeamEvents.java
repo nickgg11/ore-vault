@@ -1,12 +1,14 @@
 package com.orevault.orevault.vault;
 
 import com.orevault.orevault.data.DataPaths;
+import com.orevault.orevault.data.GenSnapshots;
 import com.orevault.orevault.data.OreVaultTeamData;
 import com.orevault.orevault.team.TeamHelper;
 import com.orevault.orevault.team.TeamHelper.TeamChange;
 import java.nio.file.Files;
 import java.util.UUID;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,16 +31,40 @@ public final class VaultTeamEvents {
     }
 
     /**
-     * ADR 0002 fixes the order of what grows here: rebuild both teams' views (E9-S3), mark {@code data.SyncOutbox}, then send
-     * a player out of a Vault that is no longer theirs (E3-S6a). Nothing is copied between team files, so a change writes no
-     * team data (S18, §9). The change FTB Teams posts when it first makes a personal team has a null previous team and is
-     * not a change of team at all (§11).
+     * ADR 0002 fixes the order of what grows here: rebuild both teams' views, mark {@code data.SyncOutbox} (E9), then send a
+     * player out of a Vault that is no longer theirs. Nothing is copied between team files, so a change writes no team data
+     * (S18, §9). The change FTB Teams posts when it first makes a personal team has a null previous team: it is no change of
+     * team, but the player may still stand in a Vault that is not theirs, so the last step runs for it too.
      */
     private static void onTeamChange(TeamChange change) {
-        if (change.previousTeamId() == null) {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
             return;
         }
-        LOGGER.debug("Player {} moved from team {} to {}", change.playerId(), change.previousTeamId(), change.teamId());
+        if (change.previousTeamId() != null) {
+            LOGGER.debug("Player {} moved from team {} to {}", change.playerId(), change.previousTeamId(), change.teamId());
+            GenSnapshots.rebuild(server, change.previousTeamId());
+        }
+        GenSnapshots.rebuild(server, change.teamId());
+        sendOutOfAVaultNotTheirs(server, change);
+    }
+
+    /**
+     * RV-8: a player inside a Vault whose team is not their new one leaves it, with a chat line, for example a member kicked
+     * from a party while mining in its Vault. An offline player is the login check's (case 2). The event carries no server
+     * and no player, so the player is found by id.
+     */
+    private static void sendOutOfAVaultNotTheirs(MinecraftServer server, TeamChange change) {
+        ServerPlayer player = server.getPlayerList().getPlayer(change.playerId());
+        if (player == null) {
+            return;
+        }
+        VaultDimensions.teamOf(player.level().dimension())
+                .filter(vaultTeam -> !vaultTeam.equals(change.teamId()))
+                .ifPresent(vaultTeam -> {
+                    LOGGER.info("{} left team {} while inside its Vault; sent home", player.getGameProfile().name(), vaultTeam);
+                    VaultTravel.sendHome(player, VaultTravel.SENT_HOME_NOT_THEIR_TEAM);
+                });
     }
 
     /**

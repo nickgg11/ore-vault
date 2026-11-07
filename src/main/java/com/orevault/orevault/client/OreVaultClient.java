@@ -10,6 +10,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
@@ -25,6 +26,8 @@ public final class OreVaultClient {
         container.registerExtensionPoint(IConfigScreenFactory.class,
                 (mod, parent) -> new ConfigurationScreen(mod, parent));
         modEventBus.addListener(OreVaultClient::registerTints);
+        NeoForge.EVENT_BUS.addListener(PortalOverlayTint::before);
+        NeoForge.EVENT_BUS.addListener(PortalOverlayTint::after);
     }
 
     /** One list entry per {@code tintindex}. All four portals share one near-white texture (§3.2). */

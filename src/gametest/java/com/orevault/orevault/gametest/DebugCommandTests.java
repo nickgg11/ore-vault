@@ -6,6 +6,11 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.tree.CommandNode;
 import com.orevault.orevault.OreVault;
 import com.orevault.orevault.config.OreVaultServerConfig;
+import com.orevault.orevault.core.gen.VaultVariant;
+import com.orevault.orevault.data.DataPaths;
+import com.orevault.orevault.data.VaultTypeFile;
+import com.orevault.orevault.vault.VaultDimensions;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -15,6 +20,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.server.permissions.PermissionSet;
@@ -100,7 +106,7 @@ final class DebugCommandTests {
         CommandNode<CommandSourceStack> root = dispatcher(helper).getRoot().getChild(OreVault.MOD_ID);
 
         check(helper, "flag off: root for a player", true, root.canUse(player));
-        for (String subcommand : List.of("diag", "break")) {
+        for (String subcommand : List.of("diag", "break", "vault")) {
             CommandNode<CommandSourceStack> node = root.getChild(subcommand);
             check(helper, "flag off: " + subcommand + " for a gamemaster", false, node.canUse(gamemaster));
             withDebugCommands(() -> {
@@ -204,6 +210,46 @@ final class DebugCommandTests {
         String printed = String.join("\n", lines);
         check(helper, "the player's level", true, printed.contains("dim=minecraft:overworld"));
         check(helper, "the block there", true, printed.contains("block=minecraft:stone"));
+        helper.succeed();
+    }
+
+    /**
+     * S44's create command, then QA's break through {@code execute in} in the Vault it made. A second create asking for the
+     * other type keeps the folder's (ADR 0002 creation step 2).
+     */
+    static void vaultCreateMakesAVaultTheBreakWorksIn(GameTestHelper helper) {
+        UUID team = UUID.randomUUID();
+        String dim = VaultLifecycleTests.dimension(team);
+        List<String> lines = new ArrayList<>();
+        CommandSourceStack source = source(helper, LevelBasedPermissionSet.OWNER).withSource(recordingTo(lines));
+
+        withDebugCommands(() -> {
+            check(helper, "create", 1, run(dispatcher(helper), "orevault vault create " + team + " expanded", source, helper));
+            check(helper, "create again", 1, run(dispatcher(helper), "orevault vault create " + team + " base", source, helper));
+            check(helper, "break", 1, run(dispatcher(helper), "execute in " + dim + " run orevault break 0 250 0", source, helper));
+        });
+
+        String created = "[orevault-debug] vault team=" + team + " dim=" + dim + " type=orevault:ore_vault_expanded";
+        check(helper, "printed", List.of(created, created,
+                "[orevault-debug] break " + dim + " 0 250 0 minecraft:grass_block: destroyBlock=true gone=true"), lines);
+        helper.succeed();
+    }
+
+    /** The task's case: {@code /orevault break} in a Vault registered by restore, as the restart script runs it. */
+    static void breakWorksInARestoredVault(GameTestHelper helper) throws IOException {
+        MinecraftServer server = helper.getLevel().getServer();
+        UUID team = UUID.randomUUID();
+        VaultTypeFile.write(DataPaths.vaultFolder(server, team), VaultVariant.BASE);
+        check(helper, "restored", true, VaultDimensions.restoreOne(server, team).restored());
+        String dim = VaultLifecycleTests.dimension(team);
+        List<String> lines = new ArrayList<>();
+        CommandSourceStack source = source(helper, LevelBasedPermissionSet.OWNER).withSource(recordingTo(lines));
+
+        withDebugCommands(() -> check(helper, "break", 1,
+                run(dispatcher(helper), "execute in " + dim + " run orevault break 0 1 0", source, helper)));
+
+        check(helper, "printed", List.of("[orevault-debug] break " + dim + " 0 1 0 minecraft:stone: destroyBlock=true gone=true"),
+                lines);
         helper.succeed();
     }
 }

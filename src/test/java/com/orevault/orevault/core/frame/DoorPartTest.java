@@ -65,32 +65,32 @@ class DoorPartTest {
 
     @Test
     void anEvenDoorSplitsDownTheMiddle() {
-        // 4 by 5: straps on rows 0 and 4, the seat on row 2.
+        // 4 by 5: straps on rows 0 and 4, the seat on row 1, directly above the bottom strap.
         assertEquals(DoorPart.STRAP_LEFT, DoorPart.of(0, 0, 4, 5));
         assertEquals(DoorPart.STRAP_SEAM_LEFT, DoorPart.of(1, 0, 4, 5));
         assertEquals(DoorPart.STRAP_SEAM_RIGHT, DoorPart.of(2, 0, 4, 5));
         assertEquals(DoorPart.STRAP_RIGHT, DoorPart.of(3, 0, 4, 5));
-        assertEquals(DoorPart.FIELD_LEFT, DoorPart.of(0, 1, 4, 5));
-        assertEquals(DoorPart.SEAM_LEFT, DoorPart.of(1, 1, 4, 5));
-        assertEquals(DoorPart.SEAM_RIGHT, DoorPart.of(2, 1, 4, 5));
-        assertEquals(DoorPart.FIELD_RIGHT, DoorPart.of(3, 1, 4, 5));
-        assertEquals(DoorPart.SEAT_LEFT, DoorPart.of(1, 2, 4, 5));
-        assertEquals(DoorPart.SEAT_RIGHT, DoorPart.of(2, 2, 4, 5));
+        assertEquals(DoorPart.FIELD_LEFT, DoorPart.of(0, 2, 4, 5));
+        assertEquals(DoorPart.SEAM_LEFT, DoorPart.of(1, 2, 4, 5));
+        assertEquals(DoorPart.SEAM_RIGHT, DoorPart.of(2, 2, 4, 5));
+        assertEquals(DoorPart.FIELD_RIGHT, DoorPart.of(3, 2, 4, 5));
+        assertEquals(DoorPart.SEAT_LEFT, DoorPart.of(1, 1, 4, 5));
+        assertEquals(DoorPart.SEAT_RIGHT, DoorPart.of(2, 1, 4, 5));
     }
 
     @Test
     void anOddDoorHasACentreColumn() {
         assertEquals(DoorPart.STRAP_SEAM_CENTRE, DoorPart.of(1, 0, 3, 5));
-        assertEquals(DoorPart.SEAM_CENTRE, DoorPart.of(1, 1, 3, 5));
-        assertEquals(DoorPart.SEAT_CENTRE, DoorPart.of(1, 2, 3, 5));
-        assertEquals(DoorPart.FIELD_LEFT, DoorPart.of(0, 1, 3, 5));
-        assertEquals(DoorPart.FIELD_RIGHT, DoorPart.of(2, 1, 3, 5));
+        assertEquals(DoorPart.SEAM_CENTRE, DoorPart.of(1, 2, 3, 5));
+        assertEquals(DoorPart.SEAT_CENTRE, DoorPart.of(1, 1, 3, 5));
+        assertEquals(DoorPart.FIELD_LEFT, DoorPart.of(0, 2, 3, 5));
+        assertEquals(DoorPart.FIELD_RIGHT, DoorPart.of(2, 2, 3, 5));
     }
 
     @Test
     void strapsAndSeatFollowTheRenderAtEveryHeight() {
         STRAP_ROWS.forEach((height, rows) -> {
-            int seat = Math.min(height / 2, 2);
+            int seat = 1;
             for (int row = 0; row < height; row++) {
                 boolean strapped = DoorPart.of(0, row, 5, height) == DoorPart.STRAP_LEFT;
                 assertEquals(rows.contains(row), strapped, "height " + height + " row " + row);
@@ -100,7 +100,7 @@ class DoorPartTest {
         });
     }
 
-    /** A door one hand high at every size: the true centre of a 21 tall door is out of reach. */
+    /** One seat at every size, directly above the bottom strap. */
     @Test
     void aDoorHasExactlyOneSeatAtEverySize() {
         for (int width = VaultPortalShape.MIN_WIDTH; width <= VaultPortalShape.MAX_SIZE; width++) {

@@ -29,8 +29,8 @@ public enum DoorPart {
     /** Blocks between straps, more or less. The first and last rows always have one, so the door has a top and a bottom. */
     private static final double RUN_BETWEEN_STRAPS = 5.0;
 
-    /** Hand height, counted from the sill from 0. The true centre of a tall door is out of reach. */
-    private static final int HIGHEST_SEAT_ROW = 2;
+    /** The row directly above the bottom strap, at every size (Nick, 2026-11-07; it was min(height / 2, 2)). */
+    private static final int SEAT_ROW = 1;
 
     private final int id;
     private final String tile;
@@ -51,7 +51,7 @@ public enum DoorPart {
      * @param height the opening's height
      */
     public static DoorPart of(int column, int row, int width, int height) {
-        boolean seat = row == seatRow(height);
+        boolean seat = row == SEAT_ROW;
         boolean strapped = isStrapRow(row, height);
         if (width % 2 == 1 && column == width / 2) {
             return seat ? SEAT_CENTRE : strapped ? STRAP_SEAM_CENTRE : SEAM_CENTRE;
@@ -67,10 +67,6 @@ public enum DoorPart {
             return left ? STRAP_LEFT : STRAP_RIGHT;
         }
         return left ? FIELD_LEFT : FIELD_RIGHT;
-    }
-
-    private static int seatRow(int height) {
-        return Math.min(height / 2, HIGHEST_SEAT_ROW);
     }
 
     /** {@code Math.rint} rounds a half to even, as the render this door was approved on does: 9 rows put a strap on row 4. */

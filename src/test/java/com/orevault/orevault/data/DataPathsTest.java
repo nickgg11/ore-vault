@@ -17,6 +17,11 @@ class DataPathsTest {
     }
 
     @Test
+    void restoreScansTheModsDimensionsFolder() {
+        assertEquals(Path.of("world/dimensions/orevault"), DataPaths.vaultsFolder(Path.of("world")));
+    }
+
+    @Test
     void theVaultFolderIsUnderTheDimensionsFolder() {
         assertEquals(Path.of("world/dimensions/orevault/vault_" + HEX), DataPaths.vaultFolder(Path.of("world"), TEAM));
     }

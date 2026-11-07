@@ -13,6 +13,19 @@ rejected version is usually the one a fresh reading of the spec would arrive at 
 Newest first.
 
 ---
+
+## 2026-11-07 — Portal playtest: recipe shape, seat row, sound and overlay
+
+Nick ran the portal in a client and passed all 13 steps. His changes: "recipe should be changed so the lapis is in the middle slot"; "I would prefer if the if the lock texture was always the next texture above the bottom strap"; "I would tone down the nether portal effect or remove it. We'll probably add a new sound effect for opening the portal."; "at bare minimum the texture over the screen should match the portal tier but it'd better to make our own in the future."
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| The frame recipe is shaped: 8 stone bricks around 1 lapis in the middle slot | Shapeless, lapis anywhere | Nick's words above. The cost is unchanged. |
+| The door's seat sits on the row directly above the bottom strap at every size | Row min(height/2, 2) from the sill | Nick's words above. |
+| Pressing a signet plays the vanilla trigger at a quarter volume until our own sound exists | Full volume | Nick's words above. Our own sound and overlay are #407. |
+| The charging overlay is tinted to the portal's tier | The vanilla purple overlay | Nick's words above. |
+
+Seen by Nick and kept as designed: an obstructed ring shows no door once cleared, until a frame block is placed again (ADR 0010).
 
 ## 2026-11-01 — The frame is connected Woad Interlace; the price of getting in sits on the signet
 

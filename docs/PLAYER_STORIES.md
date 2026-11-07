@@ -51,7 +51,7 @@ question, below.
 ### Stone, frame and signet
 
 The player needs 10 Vault Frames for the smallest portal: a 2 by 3 interior with corners left empty, as a
-nether portal allows (§3.2 VaultPortalShape Scanner; Nb). One frame is 8 stone bricks and 1 lapis lazuli,
+nether portal allows (§3.2 VaultPortalShape Scanner; Nb). One frame is 8 stone bricks around 1 lapis lazuli in the middle slot,
 one frame per craft (§3.2 Vault Frame Block). The Worn Signet is one iron ingot and one redstone
 dust (§3.3). That is 80 stone bricks, 10 lapis, 1 iron and 1 redstone before the mod does anything. The recipes are in JEI; the
 frame's shape is not.
@@ -278,7 +278,7 @@ later feature is not reported as a bug.
 
 ### T2: Vault Frame and Worn Signet
 
-The player finds both items in the creative tab and in JEI, with recipes: 8 stone bricks and 1 lapis for one
+The player finds both items in the creative tab and in JEI, with recipes: 8 stone bricks around 1 lapis for one
 frame, iron and redstone in a row for the signet (§3.2, §3.3). At slot size the frame reads as a carved stone
 frame block and the signet as a ring, not as blobs (`CLAUDE.md` Textures; Designer's `mc-asset` drafts,
 Q5). Placed, the frame mines at stone speed with a pickaxe and sounds like stone, and drops nothing without

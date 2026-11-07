@@ -131,7 +131,7 @@ The door and the portal each have a 4 px `getShape` by axis, as `NetherPortalBlo
 empty. Its travel trigger stays the full cell: `getEntityInsideCollisionShape` keeps its default, `Shapes.block()`.
 
 `DoorPart` is a pure enum in `core.frame`. `StringRepresentable` cannot be imported there, so the property holds an
-explicit `DoorPart#id()`, not the ordinal. Those ids are save data from the first door, pinned by a golden unit test.
+explicit `DoorPart#id()`, not the ordinal. Those ids are save data from the first door, pinned by a golden unit test. The seat is on row 1, the row directly above the bottom strap, at every size (Nick, 2026-11-07; it was row min(height / 2, 2)). Only the tile a cell shows moves, so no saved id changes.
 
 **`View` and the tags.** The door is not in `orevault:vault_portals`: §3.2 says everything that recognises a portal
 block uses that tag, and those readers mean something you can travel through. A new tag, `orevault:vault_openings`,

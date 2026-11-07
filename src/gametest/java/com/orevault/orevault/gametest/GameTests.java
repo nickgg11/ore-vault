@@ -101,6 +101,26 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_DISBAND_LOST = function("team_data/unrecorded_disband_logs_an_error");
     private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_NO_FEATURES = function("worldgen/no_features_and_no_structures");
     private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_FIRST_FREE = function("worldgen/first_free_block_from_the_state");
+    private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_VAULT_CREATE = function("debug/vault_create_then_break_in_it");
+    private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_BREAK_RESTORED = function("debug/break_in_a_restored_vault");
+    private static final ResourceKey<Consumer<GameTestHelper>> LIFE_LOGIN = function("vault/login_creates_no_vault");
+    private static final ResourceKey<Consumer<GameTestHelper>> LIFE_TICKS = function("vault/created_after_the_first_tick_ticks");
+    private static final ResourceKey<Consumer<GameTestHelper>> LIFE_IDEMPOTENT = function("vault/find_or_create_is_idempotent");
+    private static final ResourceKey<Consumer<GameTestHelper>> LIFE_DAMAGED = function("vault/damaged_type_file_refuses");
+    private static final ResourceKey<Consumer<GameTestHelper>> LIFE_RESTORE_TYPE = function("vault/restore_reads_the_folders_type");
+    private static final ResourceKey<Consumer<GameTestHelper>> LIFE_RESTORE_DISBANDED = function("vault/restore_skips_a_disbanded_team");
+    private static final ResourceKey<Consumer<GameTestHelper>> LIFE_RESTORE_UNREADABLE = function("vault/restore_keeps_an_unreadable_teams_vault");
+    private static final ResourceKey<Consumer<GameTestHelper>> LIFE_ABSENT = function("vault/absent_team_file_is_not_unreadable");
+    private static final ResourceKey<Consumer<GameTestHelper>> TRAVEL_SAVED_AFTER = function("travel/return_pos_saved_after_the_teleport");
+    private static final ResourceKey<Consumer<GameTestHelper>> TRAVEL_BOUNCED = function("travel/bounced_teleport_keeps_return_pos");
+    private static final ResourceKey<Consumer<GameTestHelper>> TRAVEL_HOME = function("travel/home_or_world_spawn");
+    private static final ResourceKey<Consumer<GameTestHelper>> TRAVEL_FAKE = function("travel/fake_player_goes_nowhere");
+    private static final ResourceKey<Consumer<GameTestHelper>> PLAYER_ROUND_TRIP = function("player/attachment_round_trips");
+    private static final ResourceKey<Consumer<GameTestHelper>> PLAYER_NO_IN_VAULT = function("player/tag_without_in_vault_loads");
+    private static final ResourceKey<Consumer<GameTestHelper>> PLAYER_DEATH = function("player/attachment_survives_death");
+    private static final ResourceKey<Consumer<GameTestHelper>> PLAYER_RESPAWN = function("player/death_inside_clears_in_vault");
+    private static final ResourceKey<Consumer<GameTestHelper>> PLAYER_LOGIN_HOME = function("player/login_from_an_unloaded_vault_goes_home");
+    private static final ResourceKey<Consumer<GameTestHelper>> PLAYER_LOGIN_OTHER = function("player/login_in_another_teams_vault_goes_home");
 
     private GameTests() {
     }
@@ -203,6 +223,26 @@ public final class GameTests {
             registry.register(TEAM_DATA_DISBAND_LOST, unchecked(TeamDataTests::aDisbandThatCouldNotBeRecordedLogsAnError));
             registry.register(WORLDGEN_NO_FEATURES, WorldgenTests::placesNoFeaturesAndNoStructures);
             registry.register(WORLDGEN_FIRST_FREE, WorldgenTests::theFirstFreeBlockComesFromTheResolvedState);
+            registry.register(DEBUG_VAULT_CREATE, DebugCommandTests::vaultCreateMakesAVaultTheBreakWorksIn);
+            registry.register(DEBUG_BREAK_RESTORED, unchecked(DebugCommandTests::breakWorksInARestoredVault));
+            registry.register(LIFE_LOGIN, VaultLifecycleTests::aLoginCreatesNoVault);
+            registry.register(LIFE_TICKS, VaultLifecycleTests::aVaultCreatedAfterTheFirstTickTicks);
+            registry.register(LIFE_IDEMPOTENT, VaultLifecycleTests::findOrCreateIsIdempotentAndWritesOnlyTheTypeFile);
+            registry.register(LIFE_DAMAGED, unchecked(VaultLifecycleTests::aDamagedTypeFileRefusesTheVault));
+            registry.register(LIFE_RESTORE_TYPE, unchecked(VaultLifecycleTests::restoreReadsTheTypeFromTheFolder));
+            registry.register(LIFE_RESTORE_DISBANDED, unchecked(VaultLifecycleTests::restoreSkipsADisbandedTeam));
+            registry.register(LIFE_RESTORE_UNREADABLE, unchecked(VaultLifecycleTests::restoreKeepsTheVaultOfAnUnreadableTeam));
+            registry.register(LIFE_ABSENT, VaultLifecycleTests::anAbsentTeamFileIsNotUnreadable);
+            registry.register(TRAVEL_SAVED_AFTER, VaultLifecycleTests::theReturnPositionIsSavedAfterTheTeleport);
+            registry.register(TRAVEL_BOUNCED, VaultLifecycleTests::aBouncedTeleportKeepsTheOldReturnPosition);
+            registry.register(TRAVEL_HOME, VaultLifecycleTests::homeIsTheReturnPositionOrWorldSpawn);
+            registry.register(TRAVEL_FAKE, VaultLifecycleTests::aFakePlayerGoesNowhere);
+            registry.register(PLAYER_ROUND_TRIP, VaultLifecycleTests::theAttachmentRoundTripsThroughTheEntitySave);
+            registry.register(PLAYER_NO_IN_VAULT, VaultLifecycleTests::aTagWithoutInVaultLoads);
+            registry.register(PLAYER_DEATH, VaultLifecycleTests::theAttachmentSurvivesDeath);
+            registry.register(PLAYER_RESPAWN, VaultLifecycleTests::aDeathInsideClearsInVaultAtRespawn);
+            registry.register(PLAYER_LOGIN_HOME, VaultLifecycleTests::aLoginRecordedInAVaultThatDidNotLoadGoesHome);
+            registry.register(PLAYER_LOGIN_OTHER, VaultLifecycleTests::aLoginInsideAnotherTeamsVaultGoesHome);
         });
     }
 
@@ -224,7 +264,11 @@ public final class GameTests {
                 TEAM_DATA_UNREADABLE, WORLDGEN_BASE, WORLDGEN_EXPANDED, WORLDGEN_ONE_READ, WORLDGEN_VARIANT,
                 WORLDGEN_NO_MOBS, WORLDGEN_SEED, WORLDGEN_HEIGHTS, WORLDGEN_CODEC, WORLDGEN_DIMENSION_TYPES,
                 WORLDGEN_BIOME, WORLDGEN_LAYERS, TEAM_DATA_FAILED_COPY,
-                TEAM_DATA_DISBAND_LOST, WORLDGEN_NO_FEATURES, WORLDGEN_FIRST_FREE)) {
+                TEAM_DATA_DISBAND_LOST, WORLDGEN_NO_FEATURES, WORLDGEN_FIRST_FREE,
+                DEBUG_VAULT_CREATE, DEBUG_BREAK_RESTORED, LIFE_LOGIN, LIFE_TICKS, LIFE_IDEMPOTENT, LIFE_DAMAGED,
+                LIFE_RESTORE_TYPE, LIFE_RESTORE_DISBANDED, LIFE_RESTORE_UNREADABLE, LIFE_ABSENT, TRAVEL_SAVED_AFTER,
+                TRAVEL_BOUNCED, TRAVEL_HOME, TRAVEL_FAKE, PLAYER_ROUND_TRIP, PLAYER_NO_IN_VAULT, PLAYER_DEATH,
+                PLAYER_RESPAWN, PLAYER_LOGIN_HOME, PLAYER_LOGIN_OTHER)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
         }
         event.registerTest(DELIBERATE_FAILURE.identifier(),

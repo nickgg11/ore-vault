@@ -1,16 +1,14 @@
 {
-  "type": "minecraft:crafting_shapeless",
+  "type": "minecraft:crafting_shaped",
   "category": "building",
-  "ingredients": [
-    "minecraft:stone_bricks",
-    "minecraft:stone_bricks",
-    "minecraft:stone_bricks",
-    "minecraft:stone_bricks",
-    "minecraft:stone_bricks",
-    "minecraft:stone_bricks",
-    "minecraft:stone_bricks",
-    "minecraft:stone_bricks",
-    "minecraft:lapis_lazuli"
+  "key": {
+    "B": "minecraft:stone_bricks",
+    "L": "minecraft:lapis_lazuli"
+  },
+  "pattern": [
+    "BBB",
+    "BLB",
+    "BBB"
   ],
   "result": {
     "id": "orevault:vault_frame"

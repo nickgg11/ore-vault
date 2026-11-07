@@ -6,6 +6,7 @@ import com.google.gson.JsonParser;
 import com.orevault.orevault.OreVault;
 import com.orevault.orevault.core.signet.SignetTier;
 import com.orevault.orevault.registry.ModCreativeTabs;
+import com.orevault.orevault.vault.VaultTravel;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -60,6 +61,7 @@ final class LangCoverage {
         ownedEntries(BuiltInRegistries.ENTITY_TYPE).forEach(type -> keys.add(type.getDescriptionId()));
         keys.add(ModCreativeTabs.TITLE_KEY);
         keys.addAll(SignetTier.everyTooltipKey());
+        keys.addAll(VaultTravel.messageKeys());
         keys.addAll(CONFIG_SCREEN_KEYS);
         ModConfigs.getModConfigs(OreVault.MOD_ID).stream()
                 .map(ModConfig::getSpec)
