@@ -1,9 +1,9 @@
 # 0007. Reset, disband and the archive
 
-Status: proposed, 2026-10-27 (E0-S10, #258). Round 1 and round 2 reviews are recorded below and their
+Status: accepted, 2026-11-07, on Result A of the level-unload spike (E3-S11, #245): the live reset below. Proposed 2026-10-27 (E0-S10, #258). Round 1 and round 2 reviews are recorded below and their
 changes applied, round 2 by the Manager's ruling of 2026-10-31 (the Vault's type is kept in its folder, ADR
-0005 section 3a). Accepted once the level-unload spike (E3-S11, #245) is written into ADR 0002's pending section and the
-branch it picks is confirmed below, and the matrix reviewers have signed. Spec: §3.1 Disband, §3.5, §9 FTB
+0005 section 3a). Accepted after the level-unload spike (E3-S11, #245) was written into ADR 0002's pending section and the
+branch it picked was confirmed below, and the matrix reviewers signed (2026-11-07). Spec: §3.1 Disband, §3.5, §9 FTB
 Teams, §11 FTB Teams Event Hooks; S19, N8, Nh, Ni (`docs/TEAM_REQUIREMENTS.md`); Nick's 2026-10-27 answers
 Q2, Q14 and Q16 (`DESIGN_LOG.md`).
 
@@ -187,6 +187,13 @@ The result and its date are copied here from ADR 0002 when that section is fille
 2026-11-07: not a result yet. The spike's headless half passed in both variant orders (ADR 0002, "Result so far"):
 unload, delete and re-registration under the other type worked with nobody connected, with a drain of 2 to 3 ticks. The
 two-client half is still to run, so neither branch is picked and this record stays proposed.
+
+2026-11-07, later: Result A. The two-client half passed in both orders on a dedicated dev server with Nick playing two
+dev clients (ADR 0002, "Result, 2026-11-07: Result A"): drains of 4, 1 and 2 ticks, the folder deleted 10 s after the
+removal line, the new level entered through the portal, logged out of and back into, kept across a restart, and
+reached by `execute in` from a client, with no error. The live sequence is the branch: steps 6 to 12 run as soon as
+each finishes, and the Ni path handles an unload that throws or passes its bound. Run 2 also reopened an unloaded
+Vault from its old folder before the delete, cleanly, the race step 1's lock on portal entry prevents.
 
 The return portal's tier is held by its placed blocks (PR #109), so after a reset it starts at the tier of
 the next Signet that enters and climbs again. Colour only.
