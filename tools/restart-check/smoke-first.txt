@@ -13,4 +13,4 @@ log Done \(
 nolog \[orevault-debug\]
 # Longer than one RCON packet, so the multi-packet reply path runs on every smoke check.
 run help
-expect /orevault \(diag\|break\)
+expect /orevault \(diag\|break\|

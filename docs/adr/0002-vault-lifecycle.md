@@ -379,6 +379,43 @@ sent out, the Vault is closed to entry with a message, and it regenerates at the
 Either result is written here with the date, the build and the log lines, and the Status line changes to
 accepted. Disband never unloads at run time in either branch (S19, §3.1).
 
+#### Result so far, 2026-11-07: the headless half passes; the player half is not run
+
+Run on Nick's PC, `neo_version=26.1.2.121`, HEAD 961c3ed plus the E3-S6b and E3-S11 working tree, through
+`tools/restart-check/restart-check.ps1` on a dedicated dev server with nobody connected. The spike's code was the
+removal steps above as a debug command (`/orevault vault unload|delete|folder <team>`), with the drain advanced from a
+`ServerTickEvent.Post` listener, so outside any level's tick, and `deactivateTicketsOnClosing()` called each drain tick
+as `stopServer` does. It is not in the source sets: the patch, the list generator, the lists and the between-lifetimes
+hook are in `docs/spikes/e3-s11/`, applied with `git apply` for a run and reverted after it. Three
+runs: base then expanded (20261107-130931), then, with a check added that the old level's far region file existed
+before the delete, expanded then base (20261107-131141) and base then expanded (20261107-131320). All three passed
+every step. Each run created Vault A and a second Vault B, generated and edited chunks in A, force-loaded a chunk of
+A in region r.1.1 and saved, unloaded A, waited 60 seconds, deleted A's folder, made A again under the other type,
+stopped, checked the folder with the server down, started, and checked again.
+
+| Check | Headless result |
+| --- | --- |
+| 1, the tick loop runs on and the key stops ticking | Pass in all runs: for 60 seconds after the removal line no tick line for A, tick lines for B go on, and no ERROR or exception after the unload line |
+| 2, the folder deletes and moves at once | Pass on Windows. In the first three runs the delete came 60 seconds after the unload, after check 1's wait, so they prove only that nothing was held open a minute later. Two more runs on 2026-11-07 (20261107-165937 base then expanded, 20261107-170115 expanded then base) sent the delete as the next command after the removal line: moved to `.deleting` and deleted 136 ms and 71 ms after it, with nothing held open, and both passed every other step |
+| 3, a new level under the same key from a fresh stem, the other type, the registry entry left as it is | Pass for the level: registered under the other type, its bedrock floor where that type puts it, a block broken in it, and restored under the new type at the next start. Not run: a player entering, mining, logging out inside and back in |
+| 4, nothing writes into the deleted folder | Pass: no folder after `save-all flush`, and after the stop the remade folder has no `r.1.1.mca` in `region`, `entities` or `poi` though the old level had written one |
+| 5, a command in the key reaches the new level | Pass from the console (`execute in orevault:vault_<hex> ... if block` and the S44 break). Not run: the same from a client, with F3 |
+| 6, the drain finishes within 200 ticks | Pass: 3, 2, 3, 2 and 2 ticks |
+
+The log lines of the second run:
+
+```
+[13:11:58.292] Unloading Vault orevault:vault_0000000a00004000800000000000000a of team 0000000a-0000-4000-8000-00000000000a (spike): tickets deactivated at server tick 56
+[13:11:59.658] Unloaded Vault orevault:vault_0000000a00004000800000000000000a of team 0000000a-0000-4000-8000-00000000000a (spike): drain 2 ticks, removed at server tick 58
+[13:12:59.857] Deleted Vault folder .\restart-check-20261107-131141\.\dimensions\orevault\vault_0000000a00004000800000000000000a (spike) after moving it to ...vault_0000000a00004000800000000000000a.deleting
+[13:13:00.251] Registered Vault orevault:vault_0000000a00004000800000000000000a (orevault:ore_vault, Y=0..319) for team 0000000a-0000-4000-8000-00000000000a at server tick 1295
+[13:13:12.186] Registered Vault orevault:vault_0000000a00004000800000000000000a (orevault:ore_vault, Y=0..319) for team 0000000a-0000-4000-8000-00000000000a at server tick 0
+[13:13:12.199] Restored 2 Vaults, skipped 0
+```
+
+Nothing here is Result B, and nothing yet is Result A: the setup's two players and the player half of checks 3 and 5 need
+Nick's two dev clients, so the Status stays proposed until those steps run in both orders and the matrix reviewers sign.
+
 ### NeoForge bumps
 
 `forgeGetWorldMap()` and `markWorldsDirty()` are deprecated internals with no supported replacement (PR
@@ -389,7 +426,9 @@ with two lines in QA's regression list, both required on any PR that changes `ne
   first tick, stop, start, and run `/execute in orevault:vault_<hex>` from the console before anyone
   connects. Then an S44 debug command breaks a block at a given position in the Vault through a fake
   `ServerPlayer`'s `gameMode.destroyBlock` and prints whether the block is gone, and the level's tick logger
-  (the E3-S11 spike's `LevelTickEvent` listener) logs lines for the key (QA-38). That a Vault created after
+  (`debug.VaultTickLog`, the E3-S11 spike's `LevelTickEvent` listener, which logs only while `enable_debug_commands`
+  is on, as the script sets it) logs lines for the key (QA-38). The lists are `tools/restart-check/vault-first.txt`
+  and `vault-second.txt`. That a Vault created after
   the first tick ticks at all stays a gametest (QA T3): a gametest is one server lifetime and cannot act in
   the restarted server.
 - In a client, once per bump: log out inside a Vault, restart the server, log in, and land where you

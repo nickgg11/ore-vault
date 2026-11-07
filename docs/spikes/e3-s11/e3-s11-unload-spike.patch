@@ -1,0 +1,186 @@
+--- a/src/main/java/com/orevault/orevault/vault/VaultLevels.java
++++ b/src/main/java/com/orevault/orevault/vault/VaultLevels.java
+@@ -28,4 +28,11 @@
+         server.forgeGetWorldMap().put(key, level);
+         server.markWorldsDirty();
+     }
++
++    /** SPIKE (E3-S11, #245), throwaway: ADR 0002 removal step 5. */
++    @SuppressWarnings("deprecation")
++    static void remove(MinecraftServer server, ResourceKey<Level> key) {
++        server.forgeGetWorldMap().remove(key);
++        server.markWorldsDirty();
++    }
+ }
+--- a/src/main/java/com/orevault/orevault/debug/DebugCommands.java
++++ b/src/main/java/com/orevault/orevault/debug/DebugCommands.java
+@@ -5,6 +5,7 @@
+ import com.mojang.brigadier.exceptions.CommandSyntaxException;
+ import com.orevault.orevault.core.gen.VaultVariant;
+ import com.orevault.orevault.vault.VaultDimensions;
++import com.orevault.orevault.vault.VaultUnloadSpike;
+ import java.util.Optional;
+ import java.util.UUID;
+ import java.util.function.BooleanSupplier;
+@@ -59,7 +60,17 @@
+                                 .executes(context -> createVault(context, VaultVariant.BASE))
+                                 .then(Commands.literal("base").executes(context -> createVault(context, VaultVariant.BASE)))
+                                 .then(Commands.literal("expanded")
+-                                        .executes(context -> createVault(context, VaultVariant.EXPANDED))))));
++                                        .executes(context -> createVault(context, VaultVariant.EXPANDED)))))
++                // SPIKE (E3-S11, #245), throwaway.
++                .then(Commands.literal("unload").then(Commands.argument("team", UuidArgument.uuid())
++                        .executes(context -> spike(context, VaultUnloadSpike.start(context.getSource().getServer(),
++                                UuidArgument.getUuid(context, "team"))))))
++                .then(Commands.literal("delete").then(Commands.argument("team", UuidArgument.uuid())
++                        .executes(context -> spike(context, VaultUnloadSpike.delete(context.getSource().getServer(),
++                                UuidArgument.getUuid(context, "team"))))))
++                .then(Commands.literal("folder").then(Commands.argument("team", UuidArgument.uuid())
++                        .executes(context -> spike(context, VaultUnloadSpike.folder(context.getSource().getServer(),
++                                UuidArgument.getUuid(context, "team")))))));
+     }
+ 
+     /**
+@@ -81,6 +92,11 @@
+         return 1;
+     }
+ 
++    private static int spike(CommandContext<CommandSourceStack> context, String line) {
++        print(context.getSource(), line);
++        return 1;
++    }
++
+     /** Everything is read from the player's level, the position's loaded check included: it diagnoses their break. */
+     private static int diag(CommandContext<CommandSourceStack> context, boolean explicitPos) throws CommandSyntaxException {
+         CommandSourceStack source = context.getSource();
+--- a/src/main/java/com/orevault/orevault/OreVault.java
++++ b/src/main/java/com/orevault/orevault/OreVault.java
+@@ -44,6 +44,7 @@
+         VaultTeamEvents.register();
+         VaultPlayerEvents.register();
+         VaultTickLog.register(OreVaultServerConfig::enableDebugCommands);
++        com.orevault.orevault.vault.VaultUnloadSpike.register(); // SPIKE (#245), throwaway
+         container.registerConfig(ModConfig.Type.SERVER, OreVaultServerConfig.SPEC);
+         modEventBus.addListener(ConfigReload::onReloading);
+         NeoForge.EVENT_BUS.addListener(OreVault::registerCommands);
+--- /dev/null
++++ b/src/main/java/com/orevault/orevault/vault/VaultUnloadSpike.java
+@@ -0,0 +1,118 @@
++package com.orevault.orevault.vault;
++
++import com.orevault.orevault.data.DataPaths;
++import java.io.IOException;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.Comparator;
++import java.util.HashMap;
++import java.util.Iterator;
++import java.util.Map;
++import java.util.UUID;
++import java.util.stream.Stream;
++import net.minecraft.resources.ResourceKey;
++import net.minecraft.server.MinecraftServer;
++import net.minecraft.server.level.ServerLevel;
++import net.minecraft.world.level.Level;
++import net.neoforged.neoforge.common.NeoForge;
++import net.neoforged.neoforge.event.level.LevelEvent;
++import net.neoforged.neoforge.event.tick.ServerTickEvent;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
++/**
++ * SPIKE (E3-S11, #245), throwaway: ADR 0002's removal steps 1 to 5 and 7 for one Vault, with the drain of step 3 advanced
++ * once a tick from {@code ServerTickEvent.Post}, outside any level's tick. Not for merging.
++ */
++public final class VaultUnloadSpike {
++    private static final Logger LOGGER = LoggerFactory.getLogger(VaultUnloadSpike.class);
++    private static final int BOUND_TICKS = 200;
++    private static final Map<UUID, Pending> PENDING = new HashMap<>();
++
++    private record Pending(ServerLevel level, int startTick) {
++    }
++
++    private VaultUnloadSpike() {
++    }
++
++    public static void register() {
++        NeoForge.EVENT_BUS.addListener(VaultUnloadSpike::onServerTick);
++    }
++
++    /** Steps 1 and 2. */
++    public static String start(MinecraftServer server, UUID teamId) {
++        ResourceKey<Level> key = VaultDimensions.dimensionKey(teamId);
++        ServerLevel level = server.getLevel(key);
++        if (level == null) {
++            return "unload team=" + teamId + " refused: no level";
++        }
++        if (!level.players().isEmpty()) {
++            return "unload team=" + teamId + " refused: " + level.players().size() + " players inside";
++        }
++        level.getChunkSource().deactivateTicketsOnClosing();
++        PENDING.put(teamId, new Pending(level, server.getTickCount()));
++        LOGGER.info("Unloading Vault {} of team {} (spike): tickets deactivated at server tick {}", key.identifier(), teamId,
++                server.getTickCount());
++        return "unload team=" + teamId + " unloading";
++    }
++
++    /** Step 3, then 4, 5 and 7. */
++    private static void onServerTick(ServerTickEvent.Post event) {
++        MinecraftServer server = event.getServer();
++        for (Iterator<Map.Entry<UUID, Pending>> it = PENDING.entrySet().iterator(); it.hasNext(); ) {
++            Map.Entry<UUID, Pending> entry = it.next();
++            ServerLevel level = entry.getValue().level();
++            int ticks = server.getTickCount() - entry.getValue().startTick();
++            level.getChunkSource().deactivateTicketsOnClosing();
++            if (level.getChunkSource().chunkMap.hasWork()) {
++                if (ticks >= BOUND_TICKS) {
++                    LOGGER.error("Unloading Vault {} (spike) failed: the chunk map still has work after {} ticks",
++                            level.dimension().identifier(), ticks);
++                    it.remove();
++                }
++                continue;
++            }
++            it.remove();
++            try {
++                level.save(null, true, false);
++                NeoForge.EVENT_BUS.post(new LevelEvent.Unload(level));
++                level.close();
++            } catch (IOException | RuntimeException e) {
++                LOGGER.error("Closing Vault {} (spike) failed", level.dimension().identifier(), e);
++                continue;
++            }
++            VaultLevels.remove(server, level.dimension());
++            LOGGER.info("Unloaded Vault {} of team {} (spike): drain {} ticks, removed at server tick {}",
++                    level.dimension().identifier(), entry.getKey(), ticks, server.getTickCount());
++        }
++    }
++
++    /** Check 2: move the folder aside and delete it, as ADR 0007 step 8 would. */
++    public static String delete(MinecraftServer server, UUID teamId) {
++        Path folder = DataPaths.vaultFolder(server, teamId);
++        if (server.getLevel(VaultDimensions.dimensionKey(teamId)) != null) {
++            return "delete team=" + teamId + " refused: still registered";
++        }
++        Path moved = folder.resolveSibling(folder.getFileName() + ".deleting");
++        try {
++            Files.move(folder, moved);
++            try (Stream<Path> walk = Files.walk(moved)) {
++                for (Path path : walk.sorted(Comparator.reverseOrder()).toList()) {
++                    Files.delete(path);
++                }
++            }
++        } catch (IOException e) {
++            LOGGER.error("Deleting {} (spike) failed", folder, e);
++            return "delete team=" + teamId + " failed: " + e;
++        }
++        LOGGER.info("Deleted Vault folder {} (spike) after moving it to {}", folder, moved);
++        return "delete team=" + teamId + " deleted";
++    }
++
++    public static String folder(MinecraftServer server, UUID teamId) {
++        Path folder = DataPaths.vaultFolder(server, teamId);
++        return "folder team=" + teamId + " exists=" + Files.exists(folder) + " deleting="
++                + Files.exists(folder.resolveSibling(folder.getFileName() + ".deleting"))
++                + " far_region=" + Files.exists(folder.resolve("region").resolve("r.1.1.mca"));
++    }
++}

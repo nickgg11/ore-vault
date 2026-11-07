@@ -6,6 +6,7 @@ import com.orevault.orevault.config.OreVaultServerConfig;
 import com.orevault.orevault.data.GenSnapshots;
 import com.orevault.orevault.data.PlayerAttachment;
 import com.orevault.orevault.debug.DebugCommands;
+import com.orevault.orevault.debug.VaultTickLog;
 import com.orevault.orevault.registry.ModBlocks;
 import com.orevault.orevault.registry.ModCreativeTabs;
 import com.orevault.orevault.registry.ModItems;
@@ -42,6 +43,7 @@ public final class OreVault {
         TeamHelper.register();
         VaultTeamEvents.register();
         VaultPlayerEvents.register();
+        VaultTickLog.register(OreVaultServerConfig::enableDebugCommands);
         container.registerConfig(ModConfig.Type.SERVER, OreVaultServerConfig.SPEC);
         modEventBus.addListener(ConfigReload::onReloading);
         NeoForge.EVENT_BUS.addListener(OreVault::registerCommands);

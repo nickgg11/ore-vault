@@ -1,0 +1,15 @@
+# Second lifetime of the Vault check. With nobody connected, the Vault was restored at start under its own type, its
+# forced chunk came back (ADR 0002 creation step 13), a command in its key reaches it, the S44 break removes a block in
+# it through a fake player, and the tick logger shows it ticking.
+
+log Restored 1 Vaults, skipped 0
+log Registered Vault orevault:vault_0000000a00004000800000000000000a \(orevault:ore_vault, Y=0\.\.319\) for team 0000000a-0000-4000-8000-00000000000a at server tick 0
+run execute in orevault:vault_0000000a00004000800000000000000a run forceload query 0 0
+expect marked for force loading
+reject not marked
+run execute in orevault:vault_0000000a00004000800000000000000a run orevault break 0 251 0
+expect break orevault:vault_0000000a00004000800000000000000a 0 251 0 minecraft:gold_block: destroyBlock=true gone=true
+log \[orevault-debug\] break orevault:vault_0000000a00004000800000000000000a 0 251 0 minecraft:gold_block: destroyBlock=true gone=true
+run execute in orevault:vault_0000000a00004000800000000000000a if block 0 251 0 minecraft:air
+expect Test passed
+log \[orevault-debug\] tick orevault:vault_0000000a00004000800000000000000a server_tick=

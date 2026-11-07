@@ -1,0 +1,15 @@
+# First lifetime of the Vault check, ADR 0002 "NeoForge bumps", headless line (#237, #245). A Vault is made by the S44
+# command after the first tick, which is the case markWorldsDirty() exists for (old #82, #89), and the tick logger shows
+# it ticks. A block is placed in it and its chunk is force-loaded, so the second lifetime can see both came back.
+
+sleep 2
+run orevault vault create 0000000a-0000-4000-8000-00000000000a base
+expect type=orevault:ore_vault$
+log Registered Vault orevault:vault_0000000a00004000800000000000000a \(orevault:ore_vault, Y=0\.\.319\) for team 0000000a-0000-4000-8000-00000000000a at server tick [1-9]
+log \[orevault-debug\] tick orevault:vault_0000000a00004000800000000000000a server_tick=
+run execute in orevault:vault_0000000a00004000800000000000000a run forceload add 0 0
+expect Marked chunk
+run execute in orevault:vault_0000000a00004000800000000000000a run setblock 0 251 0 minecraft:gold_block
+expect Changed the block
+run execute in orevault:vault_0000000a00004000800000000000000a if block 0 251 0 minecraft:gold_block
+expect Test passed

@@ -58,6 +58,11 @@ public final class VaultPortalBlock extends Block implements Portal, LiquidBlock
         return tier.rank();
     }
 
+    /** The signet tier that opened this portal, which the return portal is raised to (§3.2). */
+    public SignetTier signetTier() {
+        return tier;
+    }
+
     @Override
     protected MapCodec<VaultPortalBlock> codec() {
         return codec;

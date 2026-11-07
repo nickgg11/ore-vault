@@ -1,0 +1,13 @@
+# E3-S11 (#245) spike, lifetime 2: the remade Vault restores under its new type with its new terrain.
+log Registered Vault orevault:vault_0000000a00004000800000000000000a \(orevault:ore_vault_expanded,
+run orevault vault create 0000000a-0000-4000-8000-00000000000a
+expect type=orevault:ore_vault_expanded$
+run execute in orevault:vault_0000000a00004000800000000000000a if block 0 -64 0 minecraft:bedrock
+expect Test passed
+run execute in orevault:vault_0000000a00004000800000000000000a if block 0 250 0 minecraft:air
+expect Test passed
+run execute in orevault:vault_0000000a00004000800000000000000a run orevault break 0 249 0
+expect gone=true
+log \[orevault-debug\] tick orevault:vault_0000000a00004000800000000000000a server_tick=
+log \[orevault-debug\] tick orevault:vault_0000000b00004000800000000000000b server_tick=
+nolog Exception
