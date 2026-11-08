@@ -15,6 +15,11 @@ and end portal eye placing and beacon activate peak at -9 to -13 dB. Every candi
 quieter than the trigger, which puts the peaks at -7.5 to -9.5 dB for the open sounds and -12 to -14 dB for the
 charge sounds, in the range of the vanilla block sounds above.
 
+The travel candidates replace vanilla's nether portal travel sound on the teleport, after the charge. Vanilla's
+`portal/travel.ogg` is 9.5 s long with a mean of -17.3 dB and a peak of -0.6 dB, measured from the asset index in the
+Gradle cache (the same file hash appears in NeoForm's 26.1.1 index). The travel candidates follow the same -25 dB
+mean, so they are about 8 dB quieter than vanilla's and much shorter; their peaks are -6 to -10 dB.
+
 - `open_a_chime`: 1.3 s. A soft stone tap under a bell on G4 with inharmonic partials, dying away.
 - `open_b_mechanism`: 1.45 s. A short stone grind, a low clunk, then a low G and D swelling and fading, like a
   mechanism unlocking.
@@ -28,8 +33,14 @@ charge sounds, in the range of the vanilla block sounds above.
   Mean -25 dB, peak -15 dB, like the others.
 - `charge_c_wind_up`: 4.0 s. Four clicks a second apart, each adding a rising note (G, B, D, F sharp), resolving to
   a G major chord at 3.6 s.
-- `sound-spectrograms.png`: waveform and spectrogram of each, open sounds on the left (A, B, C top to bottom),
-  charge sounds on the right.
+- `travel_a_swell_shimmer`: 2.6 s. The settled unison drone from B2 swells, a whoosh falls through four noise bands
+  from high to low, and a glassy shimmer on G5 rings out with a slow tremolo.
+- `travel_b_sweep_resolve`: 1.9 s. A rising sweep from C4 to G6 in a third of a second, with a breath of high noise,
+  resolving on open C's G an octave up and ringing out.
+- `travel_c_air_thump`: 2.3 s. A soft low thump of displaced air (a falling 90 to 45 Hz pulse and a muffled noise
+  burst), then open C's resonant G5 over C5 rings out.
+- `sound-spectrograms.png`: waveform and spectrogram of the first six candidates, open sounds on the left (A, B, C
+  top to bottom), charge sounds on the right. It does not include B2 or the travel candidates.
 
 The charge sounds resolve at 3.6 s (B2 settles there and fades from 3.75 s) and end at 4.0 s, matching the 80-tick charge. If the player steps out early
 the sound must be stopped, which is the developer's part.

@@ -11,7 +11,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**
  * The mod's own sounds (§3.2; Nick, 2026-11-08; #407). Each id needs an entry in {@code assets/orevault/sounds.json} and
- * its subtitle key in {@code en_us}; the vanilla portal travel sound stays vanilla.
+ * its subtitle key in {@code en_us}.
  */
 public final class ModSounds {
     private static final DeferredRegister<SoundEvent> SOUNDS = DeferredRegister.create(Registries.SOUND_EVENT, OreVault.MOD_ID);
@@ -20,6 +20,8 @@ public final class ModSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> PORTAL_OPEN = register("block.vault_portal.open");
     /** Standing in a Vault portal: a drone whose beating slows to unison over the 4-second charge. */
     public static final DeferredHolder<SoundEvent, SoundEvent> PORTAL_CHARGE = register("block.vault_portal.charge");
+    /** Travelling through a Vault portal: the drone swells, a whoosh falls away and a glassy shimmer rings out. */
+    public static final DeferredHolder<SoundEvent, SoundEvent> PORTAL_TRAVEL = register("block.vault_portal.travel");
 
     private ModSounds() {
     }

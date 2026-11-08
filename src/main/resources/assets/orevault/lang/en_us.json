@@ -22,6 +22,7 @@
   "orevault.configuration.title": "Ore Vault Configuration",
   "subtitles.orevault.block.vault_portal.charge": "Vault portal charges",
   "subtitles.orevault.block.vault_portal.open": "Vault portal opens",
+  "subtitles.orevault.block.vault_portal.travel": "Vault portal carries you through",
   "tooltip.orevault.signet.entry_point": "Right-click a block in your Vault to set your entry point",
   "tooltip.orevault.signet.entry_points": "Right-click blocks in your Vault to set up to %s entry points",
   "tooltip.orevault.signet.instant_travel": "Instant travel: no portal wait and no re-entry cooldown",

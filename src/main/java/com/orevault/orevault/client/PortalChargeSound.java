@@ -5,6 +5,7 @@ import com.orevault.orevault.registry.ModSounds;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -20,7 +21,8 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>The vanilla trigger comes from {@code LocalPlayer#handlePortalTransitionEffect} when the intensity leaves zero in any
  * portal with the confusion transition, so it is dropped in {@link PlaySoundEvent} while the processor names a Vault portal.
- * The portal travel sound stays vanilla.
+ * The vanilla travel sound (level event 1032, played after the teleport) is swapped for ours when the local player stood in a
+ * Vault portal within the last two seconds; a nether portal trip keeps vanilla's.
  */
 final class PortalChargeSound extends AbstractTickableSoundInstance {
     /** Volume lost a tick after stepping out: four ticks to silence, so the cut does not click. */
@@ -31,6 +33,15 @@ final class PortalChargeSound extends AbstractTickableSoundInstance {
 
     /** The drone now playing, so a pause or a quick re-entry never layers a second one over it. */
     private static @Nullable PortalChargeSound live;
+
+    /** Client ticks counted here, and the last one the local player stood in a Vault portal, to claim the travel sound. */
+    private static int clientTicks;
+    private static int lastInVaultPortal = Integer.MIN_VALUE / 2;
+
+    /** How long after leaving a Vault portal the vanilla travel sound is still ours: the teleport and respawn fit well inside. */
+    private static final int TRAVEL_WINDOW_TICKS = 40;
+    /** Our sound is levelled to vanilla block sounds; vanilla plays its louder travel sound at 0.25. */
+    private static final float TRAVEL_VOLUME = 0.7F;
 
     private final LocalPlayer owner;
     private boolean fading;
@@ -49,6 +60,10 @@ final class PortalChargeSound extends AbstractTickableSoundInstance {
     static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;
+        clientTicks++;
+        if (player != null && PortalOverlay.vaultTier(player.portalProcess) > 0) {
+            lastInVaultPortal = clientTicks;
+        }
         boolean charging = player != null && charging(player);
         if (charging && !wasCharging) {
             boolean playing = live != null && minecraft.getSoundManager().isActive(live);
@@ -67,9 +82,15 @@ final class PortalChargeSound extends AbstractTickableSoundInstance {
     static void dropVanillaTrigger(PlaySoundEvent event) {
         SoundInstance sound = event.getSound();
         LocalPlayer player = Minecraft.getInstance().player;
-        if (sound != null && player != null && sound.getIdentifier().equals(SoundEvents.PORTAL_TRIGGER.location())
+        if (sound == null) {
+            return;
+        }
+        if (player != null && sound.getIdentifier().equals(SoundEvents.PORTAL_TRIGGER.location())
                 && PortalOverlay.vaultTier(player.portalProcess) > 0) {
             event.setSound(null);
+        } else if (sound.getIdentifier().equals(SoundEvents.PORTAL_TRAVEL.location())
+                && clientTicks - lastInVaultPortal <= TRAVEL_WINDOW_TICKS) {
+            event.setSound(SimpleSoundInstance.forLocalAmbience(ModSounds.PORTAL_TRAVEL.value(), 1.0F, TRAVEL_VOLUME));
         }
     }
 

@@ -90,6 +90,42 @@ C["charge_c_wind_up"] = (4.0, -6.0, [
 ], "afade=t=out:st=3.85:d=0.15")
 
 
+# ---- TRAVEL (played on the teleport, after the charge). Same family as open C and charge B2. ----
+def win(t0, t1, k):
+    """Envelope that rises fast at t0 and decays at rate k, zero before t0."""
+    return f"if(gte(t,{t0}),(1-exp(-(t-{t0})*40))*exp(-(t-{t0})*{k}),0)"
+
+# A: the settled unison drone swells, a whoosh falls through four noise bands, a glassy shimmer rings out
+whoosh = [(f"(2*random(0)-1)*{win(0.6 + 0.12 * i, 0, 9)}*0.9", f"bandpass=f={fc}:width_type=q:w=1.4")
+          for i, fc in enumerate([3200, 1900, 1100, 600])]
+C["travel_a_swell_shimmer"] = (2.6, -6.0, [
+    (f"min(t/0.7,1)*if(lt(t,0.8),1,exp(-(t-0.8)*5))*(sin({PI2}*98*t)+sin({PI2}*98*t)+0.6*sin({PI2}*147*t)+0.6*sin({PI2}*147*t)+0.25*sin({PI2}*294*t))*0.25",
+     "lowpass=f=1200"),
+    *whoosh,
+    (f"{win(1.0, 0, 2.2)}*(1-0.35*(0.5+0.5*sin({PI2}*9*t)))*(sin({PI2}*784*t)+0.6*sin({PI2}*784*1.003*t)+0.4*sin({PI2}*1568*t)+0.15*sin({PI2}*2352*t))*0.22",
+     "lowpass=f=6000"),
+], "afade=t=in:d=0.05,afade=t=out:st=2.35:d=0.25")
+
+# B: a short rising sweep (262 to 1568 Hz over 0.35 s) that resolves on the open C tone an octave up
+Tg, f0, f1 = 0.35, 262, 1568
+swp = f"if(lt(t,{Tg}),{f0 * Tg}/log({f1 / f0})*(pow({f1 / f0},t/{Tg})-1),{f0 * Tg}/log({f1 / f0})*({f1 / f0}-1)+{f1}*(t-{Tg}))"
+C["travel_b_sweep_resolve"] = (1.9, -6.0, [
+    (f"(1-exp(-t*30))*if(lt(t,{Tg}),0.5+0.5*t/{Tg},exp(-(t-{Tg})*2.6))*(sin({PI2}*{swp})+0.5*sin({PI2}*1.003*{swp})+0.2*sin(2*{PI2}*{swp}))*0.3",
+     "lowpass=f=5000"),
+    (f"if(lt(t,{Tg}+0.1),(t/({Tg}+0.1))*(t/({Tg}+0.1)),exp(-(t-{Tg}-0.1)*14))*(2*random(0)-1)*0.4",
+     "highpass=f=1500,lowpass=f=6000"),
+    (f"{win(Tg, 0, 3.2)}*sin({PI2}*1046*t)*0.12", "anull"),
+], "afade=t=out:st=1.65:d=0.25")
+
+# C: a soft low thump of displaced air, then the resonant tone (G5 over C5) ringing out
+C["travel_c_air_thump"] = (2.3, -6.0, [
+    ("sin(2*PI*(45*t+45*(1-exp(-t*12))/12))*exp(-t*11)", "lowpass=f=300"),
+    ("(2*random(0)-1)*(1-exp(-t*200))*exp(-t*16)*0.8", "lowpass=f=220,lowpass=f=220,volume=2"),
+    (f"{win(0.06, 0, 1.9)}*(sin({PI2}*784*t)+0.5*sin({PI2}*784*1.003*t)+0.45*sin({PI2}*523*t)+0.1*sin({PI2}*1568*t))*0.2",
+     "lowpass=f=4000"),
+], "afade=t=out:st=2.05:d=0.25")
+
+
 def run(args):
     r = subprocess.run([FF, "-nostdin", "-hide_banner", "-y"] + args, capture_output=True, text=True)
     if r.returncode:
