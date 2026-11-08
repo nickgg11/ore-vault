@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.orevault.orevault.core.ore.Rarity;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -96,5 +97,16 @@ class OreBaselineTest {
 
     private static void assertPoints(double expected, double actual) {
         assertTrue(Math.abs(actual - expected) <= 0.02, "expected " + expected + " within 2 points, got " + actual);
+    }
+
+    /** PR419-RV-1: iteration follows the enums' order, so a chunk seed places the same veins after a restart (ADR 0003). */
+    @Test
+    void theMapsIterateInEnumOrder() {
+        assertEquals(List.of(Band.values()), List.copyOf(BASE.ore().keySet()));
+        assertEquals(List.of(Band.values()), List.copyOf(BASE.gravel().keySet()));
+        assertEquals(List.of(Band.values()), List.copyOf(BASE.clay().keySet()));
+        for (Band band : Band.values()) {
+            assertEquals(List.of(Rarity.values()), List.copyOf(BASE.ore().get(band).keySet()));
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.orevault.orevault.core.gen;
 
 import com.orevault.orevault.core.ore.Rarity;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Map;
@@ -39,6 +40,7 @@ public record OreBaseline(Map<Band, Map<Rarity, Veins>> ore, Map<Band, Blobs> gr
             Map.of(Band.STONE, new Blobs(9, BLOB_SIZE), Band.DEEPSLATE, new Blobs(2, BLOB_SIZE)),
             Map.of(Band.STONE, new Blobs(3, BLOB_SIZE), Band.DEEPSLATE, new Blobs(1, BLOB_SIZE)));
 
+    /** EnumMaps, not {@code Map.copyOf}: the placer iterates these, and a {@code Map.copyOf} map's order changes per JVM run (ADR 0003). */
     public OreBaseline {
         EnumMap<Band, Map<Rarity, Veins>> copy = new EnumMap<>(Band.class);
         for (Band band : Band.values()) {
@@ -46,14 +48,14 @@ public record OreBaseline(Map<Band, Map<Rarity, Veins>> ore, Map<Band, Blobs> gr
             if (byRarity == null || !byRarity.keySet().containsAll(EnumSet.allOf(Rarity.class))) {
                 throw new IllegalArgumentException("Every rarity needs veins in the " + band + " band");
             }
-            copy.put(band, Map.copyOf(new EnumMap<>(byRarity)));
+            copy.put(band, Collections.unmodifiableMap(new EnumMap<>(byRarity)));
             if (!gravel.containsKey(band) || !clay.containsKey(band)) {
                 throw new IllegalArgumentException("Gravel and clay need a count in the " + band + " band");
             }
         }
-        ore = Map.copyOf(copy);
-        gravel = Map.copyOf(gravel);
-        clay = Map.copyOf(clay);
+        ore = Collections.unmodifiableMap(copy);
+        gravel = Collections.unmodifiableMap(new EnumMap<>(gravel));
+        clay = Collections.unmodifiableMap(new EnumMap<>(clay));
     }
 
     /**
