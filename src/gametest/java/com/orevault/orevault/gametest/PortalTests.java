@@ -8,6 +8,7 @@ import com.orevault.orevault.core.frame.VaultPortalShape.Kind;
 import com.orevault.orevault.core.signet.SignetTier;
 import com.orevault.orevault.registry.ModBlocks;
 import com.orevault.orevault.registry.ModItems;
+import com.orevault.orevault.registry.ModSounds;
 import com.orevault.orevault.registry.ModTags;
 import com.orevault.orevault.vault.VaultDoorBlock;
 import com.orevault.orevault.vault.VaultOpenings;
@@ -69,8 +70,6 @@ final class PortalTests {
 
     /** Where each sound played, so a test reads only its own. The server thread writes and reads it. */
     private static final Map<BlockPos, Set<SoundEvent>> SOUNDS = new ConcurrentHashMap<>();
-    /** The volume each sound played at, by place, so a test can check a sound is not played at full volume. */
-    private static final Map<BlockPos, Map<SoundEvent, Float>> VOLUMES = new ConcurrentHashMap<>();
 
     private PortalTests() {
     }
@@ -79,8 +78,6 @@ final class PortalTests {
     static void onSound(PlayLevelSoundEvent.AtPosition event) {
         SOUNDS.computeIfAbsent(BlockPos.containing(event.getPosition()), pos -> ConcurrentHashMap.newKeySet())
                 .add(event.getSound().value());
-        VOLUMES.computeIfAbsent(BlockPos.containing(event.getPosition()), pos -> new ConcurrentHashMap<>())
-                .put(event.getSound().value(), event.getOriginalVolume());
     }
 
     /**
@@ -255,9 +252,9 @@ final class PortalTests {
         InteractionResult pressed = use(helper, new ItemStack(ModItems.WORN_SIGNET.get()), ring.lastSide(), Direction.SOUTH);
         check(helper, pressed.consumesAction(), "pressing returned " + pressed);
         ring.assertAll(ModBlocks.VAULT_PORTAL_COMMON.get());
-        assertSoundAt(helper, ring.lastSide(), SoundEvents.PORTAL_TRIGGER);
-        Float volume = VOLUMES.getOrDefault(helper.absolutePos(ring.lastSide()), Map.of()).get(SoundEvents.PORTAL_TRIGGER);
-        check(helper, Float.valueOf(0.25F).equals(volume), "the trigger played at " + volume + ", not a quarter (#407)");
+        assertSoundAt(helper, ring.lastSide(), ModSounds.PORTAL_OPEN.value());
+        check(helper, !SOUNDS.getOrDefault(helper.absolutePos(ring.lastSide()), Set.of()).contains(SoundEvents.PORTAL_TRIGGER),
+                "the vanilla trigger still plays on a press (#407)");
         helper.succeed();
     }
 
