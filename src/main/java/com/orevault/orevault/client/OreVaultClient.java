@@ -27,6 +27,7 @@ public final class OreVaultClient {
         container.registerExtensionPoint(IConfigScreenFactory.class,
                 (mod, parent) -> new ConfigurationScreen(mod, parent));
         modEventBus.addListener(OreVaultClient::registerTints);
+        modEventBus.addListener(VaultTitleLanguage::register);
         // Last, so a listener that cancels the layer has already done so and the intensity is never left at zero.
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, PortalOverlayTint::before);
         NeoForge.EVENT_BUS.addListener(PortalOverlayTint::after);

@@ -2594,6 +2594,7 @@ The flavour notables of §6.1 reach other mods in Nick's pack without a compile-
 | Mystical Agriculture, Cucumber | `#minecraft:pickaxes`, `cucumber:paxels` | Ascending Edge, Hammer and Paxel Affinity |
 | Energy tools (Just Dire Things, Mining Gadgets, Ender IO, Oritech) | NeoForge `Capabilities.Energy.ITEM` on the item, which gives an `EnergyHandler` queried with an `ItemAccess` (`ItemAccess.forPlayerSlot`); `insert(int, TransactionContext)` inside a `Transaction` that commits (`docs/research/neoforge-26.1-sources.md`); no soft dependency | Tool charge, Resonant Dynamo, Galvanic Seam |
 | Hammer and paxel mods | `c:ore_hammers`, `c:tools/paxel`, `c:tools/mining_tool` | Hammer and Paxel Affinity |
+| Traveler's Titles | Its dimension title key is `travelerstitles.<namespace>.<path>`, different for every Vault; the client answers a Vault's key with `travelerstitles.orevault.vault` ("Ore Vault") by wrapping `Language` after each resource reload (#414) | none |
 
 Hephaestus tools are not generated as Ascension rungs. Doing so would need a `compileOnly` dependency on Hephaestus to call its tool-building code for every part combination, which `CLAUDE.md` rule 5 does not list, and a pick that climbed into a Hephaestus tool would then stop, since those are excluded (`DESIGN_LOG.md` 2026-10-26).
 
