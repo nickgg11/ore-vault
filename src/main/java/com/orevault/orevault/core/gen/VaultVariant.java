@@ -57,6 +57,20 @@ public enum VaultVariant {
         return STONE_TOP_Y;
     }
 
+    /**
+     * A band's layers in this type (ADR 0009: the bounds are per type, on the variant). Derived from the fields above, so
+     * no new copy of the heights appears (rule 8): stone is every stone layer, deepslate everything between bedrock and
+     * the stone band, which the base type does not have.
+     */
+    public Optional<BandBounds> band(Band band) {
+        return switch (band) {
+            case STONE -> Optional.of(new BandBounds(stoneBottomY, STONE_TOP_Y));
+            case DEEPSLATE -> stoneBottomY - 1 >= minY + 1
+                    ? Optional.of(new BandBounds(minY + 1, stoneBottomY - 1))
+                    : Optional.empty();
+        };
+    }
+
     public static Optional<VaultVariant> byId(String id) {
         return Arrays.stream(values()).filter(variant -> variant.id().equals(id)).findFirst();
     }
