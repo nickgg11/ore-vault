@@ -8,32 +8,28 @@ package com.orevault.orevault.core.gen;
  * with {@link GenRandom} and fails, printing this file's arrays, if they differ. They are not computed at start-up (ADR
  * 0009 rejects figures computed by running the placer at runtime). A change here moves the level curve with it, which is
  * the point: the curve and the generator read one source.
- *
- * <p>PROVISIONAL until that test has run once on Nick's PC: the values below come from the Python port
- * ({@code docs/research/vanilla-ore/orefeature.py}, 4,000 rolls a size), so the regeneration test fails until they are
- * replaced with its printout.
  */
 final class VeinShapeTables {
     static final int MAX_SIZE = 40;
 
     /** Mean blocks a vein places in solid rock. */
     static final double[] MEAN_BLOCKS = {
-            0.0, 0.000, 0.000, 0.462, 1.988, 3.135, 4.065, 4.954,
-            5.685, 6.786, 8.402, 10.087, 11.591, 13.416, 15.272, 17.245,
-            19.565, 22.164, 25.350, 29.003, 32.864, 36.747, 40.945, 45.671,
-            50.603, 55.977, 61.380, 67.191, 73.650, 80.427, 87.939, 95.800,
-            103.591, 112.127, 121.030, 131.064, 141.768, 152.638, 164.049, 175.199,
-            187.038,
+            0.000, 0.000, 0.000, 0.450, 1.999, 3.135, 4.054, 4.969,
+            5.677, 6.798, 8.387, 10.035, 11.632, 13.399, 15.214, 17.262,
+            19.565, 22.192, 25.318, 28.935, 32.851, 36.801, 40.981, 45.690,
+            50.767, 55.862, 61.367, 67.220, 73.843, 80.543, 87.846, 95.633,
+            103.781, 112.160, 121.477, 130.975, 141.550, 152.540, 163.671, 175.287,
+            187.638,
     };
 
     /** E[blocks × box height] / E[blocks]. */
     static final double[] BLOCK_WEIGHTED_BOX_HEIGHT = {
-            0.0, 0.000, 0.000, 1.100, 1.754, 1.907, 2.016, 2.146,
-            2.224, 2.386, 2.503, 2.638, 2.740, 2.820, 2.873, 2.876,
-            2.903, 2.921, 3.054, 3.236, 3.366, 3.477, 3.515, 3.546,
-            3.605, 3.806, 3.989, 4.176, 4.319, 4.382, 4.491, 4.614,
-            4.730, 4.810, 4.996, 5.148, 5.297, 5.396, 5.459, 5.511,
-            5.548,
+            0.000, 0.000, 0.000, 1.104, 1.745, 1.906, 2.039, 2.140,
+            2.239, 2.387, 2.508, 2.645, 2.745, 2.833, 2.866, 2.891,
+            2.901, 2.924, 3.051, 3.233, 3.369, 3.468, 3.518, 3.550,
+            3.631, 3.798, 3.992, 4.174, 4.302, 4.381, 4.497, 4.621,
+            4.727, 4.813, 4.983, 5.164, 5.294, 5.397, 5.473, 5.509,
+            5.553,
     };
 
     private VeinShapeTables() {
