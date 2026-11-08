@@ -54,4 +54,13 @@ class VaultVariantTest {
     void anUnknownIdIsNoVariant() {
         assertEquals(Optional.empty(), VaultVariant.byId("orevault:nonsense"));
     }
+
+    /** ADR 0009: the bands are per type, derived from the fields the variant already has. */
+    @Test
+    void theBandsArePerType() {
+        assertEquals(Optional.of(new BandBounds(1, 245)), VaultVariant.BASE.band(Band.STONE));
+        assertEquals(Optional.empty(), VaultVariant.BASE.band(Band.DEEPSLATE));
+        assertEquals(Optional.of(new BandBounds(0, 245)), VaultVariant.EXPANDED.band(Band.STONE));
+        assertEquals(Optional.of(new BandBounds(-63, -1)), VaultVariant.EXPANDED.band(Band.DEEPSLATE));
+    }
 }
