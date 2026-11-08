@@ -1,0 +1,14 @@
+{
+  "block.vault_portal.charge": {
+    "sounds": [
+      "orevault:portal_charge"
+    ],
+    "subtitle": "subtitles.orevault.block.vault_portal.charge"
+  },
+  "block.vault_portal.open": {
+    "sounds": [
+      "orevault:portal_open"
+    ],
+    "subtitle": "subtitles.orevault.block.vault_portal.open"
+  }
+}

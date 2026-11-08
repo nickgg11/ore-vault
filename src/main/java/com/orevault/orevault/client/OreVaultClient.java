@@ -29,8 +29,10 @@ public final class OreVaultClient {
         modEventBus.addListener(OreVaultClient::registerTints);
         modEventBus.addListener(VaultTitleLanguage::register);
         // Last, so a listener that cancels the layer has already done so and the intensity is never left at zero.
-        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, PortalOverlayTint::before);
-        NeoForge.EVENT_BUS.addListener(PortalOverlayTint::after);
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, PortalOverlay::before);
+        NeoForge.EVENT_BUS.addListener(PortalOverlay::after);
+        NeoForge.EVENT_BUS.addListener(PortalChargeSound::onClientTick);
+        NeoForge.EVENT_BUS.addListener(PortalChargeSound::dropVanillaTrigger);
     }
 
     /** One list entry per {@code tintindex}. All four portals share one near-white texture (§3.2). */

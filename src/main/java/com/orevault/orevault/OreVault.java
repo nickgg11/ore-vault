@@ -10,6 +10,7 @@ import com.orevault.orevault.debug.VaultTickLog;
 import com.orevault.orevault.registry.ModBlocks;
 import com.orevault.orevault.registry.ModCreativeTabs;
 import com.orevault.orevault.registry.ModItems;
+import com.orevault.orevault.registry.ModSounds;
 import com.orevault.orevault.team.TeamHelper;
 import com.orevault.orevault.vault.VaultDimensions;
 import com.orevault.orevault.vault.VaultOpenings;
@@ -39,6 +40,7 @@ public final class OreVault {
         ModBlocks.register(modEventBus);
         ModItems.register(modEventBus);
         ModCreativeTabs.register(modEventBus);
+        ModSounds.register(modEventBus);
         PlayerAttachment.register(modEventBus);
         TeamHelper.register();
         VaultTeamEvents.register();
