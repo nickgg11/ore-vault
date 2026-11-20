@@ -14,8 +14,9 @@ import java.util.Map;
  * the 2026-09-27 lesson: the first build priced a curve for a Vault nobody had generated.
  *
  * <p>The numbers are §3.1's and the Balancer's; a change to them is a §3.1 change in the same PR. Counts are fractional,
- * as vanilla's are, and are rolled per chunk by the placer. The closed form ignores overlap between veins, about 1.5% of
- * blocks at 3%; the 81-chunk placer test holds it against the real placement.
+ * as vanilla's are, and are rolled per chunk by the placer. The closed form ignores overlap between veins, which leaves
+ * placed blocks about 1.7% under it in stone and 3.3% in deepslate; the 81-chunk placer test holds it against the real
+ * placement within S12.
  *
  * @param ore veins per chunk and size range, by band and rarity
  * @param gravel gravel blobs per chunk, by band
@@ -130,7 +131,7 @@ public record OreBaseline(Map<Band, Map<Rarity, Veins>> ore, Map<Band, Blobs> gr
      * 0009 "Height"). A box {@code h} layers tall, whose lowest layer is drawn from the {@code H + h - 1} positions that
      * leave a layer inside the band, keeps on average {@code H / (H + h - 1)} of its blocks; the factor is the inverse of
      * that, averaged over the rarity's sizes weighted by blocks. It is about +0.4 to +0.65% in the stone band and +1.6 to
-     * +2.5% in deepslate (Balancer, BAL-E4-5); placed blocks then match the closed form.
+     * +2.5% in deepslate (Balancer, BAL-E4-5); placed blocks then match the closed form less the overlap.
      */
     public double edgeFactor(Band band, Rarity rarity, VaultVariant variant) {
         int height = bounds(band, variant).layers();
