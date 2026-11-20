@@ -138,8 +138,8 @@ overhang every layer is covered equally. The positions that fall outside the ban
 count: a vein whose box is `h` layers tall, in a band of `H` layers, places on average `H / (H + h − 1)` of
 its blocks, so each rarity's count in a band is multiplied by its edge factor, the inverse of the
 block-weighted mean of `H / (H + h − 1)` over the rarity's configured sizes, a method on `OreBaseline`
-computed from `VeinShape`. With mean box heights of 2.0 (rare) to 2.5 (common) that is about +0.4 to +0.6%
-veins in the stone band and about +1.6 to +2.4% in deepslate. The closed form's blocks, the band densities,
+computed from `VeinShape`. With block-weighted mean box heights of 2.0 (rare) to 2.6 (common) that is about +0.4 to +0.65%
+veins in the stone band and about +1.6 to +2.5% in deepslate (Balancer, BAL-E4-5). The closed form's blocks, the band densities,
 the shares and the curve do not change; §3.1's vein counts stay the counts the closed form uses. The
 Balancer confirms the factor.
 
@@ -154,7 +154,7 @@ density, the shares or the curve, since Resonance is paid by rarity and a vein's
 rarity and its layer.
 
 The profiles and the map. Each classified ore carries a block-weighted height profile over the overworld's
-generation range, in 24 bins of 16 layers (Y-64..319), summed over the features the classifier uses for it
+generation range, per layer (Y-64..319; amended 2026-11-20, below), summed over the features the classifier uses for it
 (below), and the profiles are mapped onto the Vault by one linear map: the overworld
 range Y-64..319 onto the expanded type's mineralizable column, Y-63..245, the same map for both dimension
 types, so an ore sits at the same Vault height whichever type a team has. In the base type, whose column
@@ -162,7 +162,7 @@ starts at Y=1, the mass the map puts below Y=1 goes into the stone band's lowest
 and the group id are below.
 
 The rule. Once a vein has its rarity and its layer, its ore is drawn from that rarity's ores in proportion
-to each ore's weight × its mapped profile at the layer's bin. Where no ore of the rarity has mass at that
+to each ore's weight × its mapped profile in the layer's slab. Where no ore of the rarity has mass in that
 bin, the draw uses the nearest bin in the band that has some (the lower one on a tie). Nothing in the pick
 reads the band-wide mix on its own.
 
@@ -341,7 +341,7 @@ cannot come back through a default.
   figures in that section: diamond, gold and redstone only in the base type's lowest 16 stone layers or in
   deepslate, emerald and lapis almost everywhere else. A player who wants diamonds strip-mines the floor,
   though the curve pays no more there. Nick's T4 ten-minute mine looks at the mix by height.
-- Veins at a band's edge are partly cut, and the count is about 0.4 to 2.4% higher than §3.1's figures to
+- Veins at a band's edge are partly cut, and the count is about 0.4 to 2.5% higher than §3.1's figures to
   make up the cut blocks; placed blocks match the closed form.
 - A pack whose ores are placed by a feature type that is not `OreConfiguration`-based (Mekanism's custom
   config is the known case, research section 7) generates those ores only through an override.
@@ -486,3 +486,23 @@ Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md
 in a clean 26.1.2.95, so the fallback's AT lines stand, and the tag key is `Tags.Blocks.ORES`. Nothing else changed.
 
 Amended 2026-11-01 for E3-S5 (#233) (Architect): the expanded stone band is Y0..245, 246 layers ("One pure record", Tests). The generator's stack was right and this record was short by one layer; a load check written from the old text would have failed the correct expanded stack. The Balancer confirms the 0.4% in E4-S1 (#234). If it is refused, the one alternative is the expanded count × 246/245, the same bounds. The Writer adds the expanded top slab to §3.1's per-slab sentence, in E4-S1 at the latest.
+
+Amended 2026-11-20 for E4-S1b (#234), from the Epic 4 plan's reviews and the Manager's triage (Architect, Balancer):
+- Profiles are held per overworld layer, not in 24 bins of 16. Vanilla ranges end on bin edges (diamond at 16, gold at
+  32, buried lapis at 64), and binning spread a sliver of each over the next 12.9 Vault layers: in the expanded type's
+  stone band rare came out about 97% emerald against the 99% above, and some gold appeared above Y=16 in the base type
+  (BAL-E4-4). Each overworld layer's mass is spread over the stretch it maps to and split between slabs by exact
+  overlap. Memory only, so no save shape changes.
+- "The layer's bin" is the 16-layer slab counted up from the band's floor, the top partial slab merged, the same slabs
+  as the per-slab test (ARCH-E4-5, BAL-E4-3). A vein's layer is its rolled box's middle layer, `minY + (sizeY - 1) / 2`
+  before the cut, clamped into the band; with it diamond is about 6.8% of the base type's rare veins rather than 6.5%,
+  and about 6.5% by placed blocks.
+- The edge factor averages `H / (H + h - 1)` weighted by blocks, with `h` the block-weighted box height of each size;
+  the figures in "Height" are corrected to +0.4 to +0.65% and +1.6 to +2.5% (BAL-E4-5).
+- A pack with no ore of a rarity: that rarity's veins keep their count and size and take their ore from the nearest
+  rarity that has ores (rare from uncommon, then common; uncommon from common, then rare; common from uncommon, then
+  rare), so density does not change. Resonance per ore falls, about 15% with no rare ore and 22% with no uncommon; the
+  curve is not re-derived for it (Manager's triage ruling 5, confirmed by the Balancer). The classifier logs a WARN
+  naming the empty rarity (E4-S2).
+- Where no ore of a rarity maps into a band at all, though the pack has some, every slab of that band draws the rarity's
+  ores by weight alone. Vanilla never reaches it.

@@ -98,7 +98,7 @@ mean blocks per vein, and the placer picks the configured size whose `VeinShape.
 the inverse of the shape table; size bonuses sum (Vein Expansion at tier 5 with Volatile Veins is +125%);
 Abundance's −20% multiplies after; Guide Veins take no generation node's size or count bonus and stay at
 configured size 24. On that reading the largest request in 1.0 is a common vein of about 26 blocks, about
-configured size 15, so nothing in 1.0 reaches 37. The split stays as a safety net: a request above 37 is
+configured size 18 (Balancer, BAL-E4-8), so nothing in 1.0 reaches 37. The split stays as a safety net: a request above 37 is
 split into the fewest veins of equal size at or under 37 whose expected block total matches the request
 (blocks per vein grow faster than size, so this is not `s / n`; the table from the shape port is the
 oracle). A 4,000-roll estimate from the port puts the largest observed span at 12 blocks for size 37 and 16
@@ -756,3 +756,18 @@ and the Designer's, with no change to the wire.
 Round 2 (2026-10-31) is in the record's Reviews block, which covers this amendment: COMPASS_MARGIN set,
 the compass and cell cases listed (QA-14), the credit's hook named (DEV2-2), the stale conditional removed
 (DEV2-1, WRITER-19) and the key renamed `chunks_entered` (WRITER-21).
+
+## Amendment 2 (E4-S1b, #234, 2026-11-20): what the size gate measures
+
+"Every generation node at its top tier" cannot be computed until T9 pins the nodes (S13, BAL-4), so the Manager's
+Epic 4 triage (ruling 1) pinned it now as the 1.0 tree's heaviest stack, the Balancer's (BAL-E4-1): Vein Proliferation
+5 times Abundance as ×4.4 on every count; ×1.8 blocks a vein (Vein Expansion 5 with Volatile Veins, then Abundance's
+-20%); Deep Veins 2 adding as many veins again in the deepslate band's lowest 30 layers, with the deepslate clip at
+0.6092; 12 Guide Veins of configured size 24; and Stone Reduction counted as every vein's box grown by one layer on
+every side. Expanded type, 81 chunks, a fixed team id; the maximum decides against 73,728 bytes. The Balancer's
+estimate is about 40.5 KB. The bitsets are counted concatenated, as "Encoding" stores them, not padded per vein
+(BAL-E4-2). `core.vein.VeinIndexSize` does the arithmetic, and E9-S4's encoder asserts it writes exactly that many
+bytes. The test also prints both bands at the 60% ceiling at baseline sizes (about 85%) and at Abundance's sizes alone
+(about 103%), a request no 1.0 tree reaches, so the headroom is on record. The Architect's proposal to gate on that last
+setup was ruled against: the section's own wording is a 1.0 tree. The measured figures are added here by the E4-S1b PR.
+The largest 1.0 request is about configured size 18, not 15 (BAL-E4-8).
