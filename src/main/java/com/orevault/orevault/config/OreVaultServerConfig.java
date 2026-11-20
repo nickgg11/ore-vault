@@ -1,5 +1,6 @@
 package com.orevault.orevault.config;
 
+import java.util.List;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
@@ -9,9 +10,23 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public final class OreVaultServerConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.BooleanValue ENABLE_DEBUG_COMMANDS;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> ORE_CLASSIFICATION_OVERRIDES;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+        builder.translation("orevault.configuration.ore_classification").push("ore_classification");
+        // The list check is only "a string": NeoForge resets the whole list when one element fails it, so each entry is
+        // validated by core.ore.Overrides instead, and a bad one is logged and skipped on its own (§10).
+        ORE_CLASSIFICATION_OVERRIDES = builder
+                .comment("Override the automatic rarity classification for specific ore blocks.",
+                        "A list of \"modid:block_id=common|uncommon|rare\" strings, for example",
+                        "\"minecraft:diamond_ore=rare\". Each entry is validated: a malformed entry, an unknown rarity or a",
+                        "block outside the #c:ores tag is rejected with a warning in the server log.",
+                        "Read once at server start; takes effect on the next world load.")
+                .translation("orevault.configuration.ore_classification.overrides")
+                .worldRestart()
+                .defineListAllowEmpty("overrides", List.of(), () -> "", value -> value instanceof String);
+        builder.pop();
         builder.translation("orevault.configuration.debug").push("debug");
         ENABLE_DEBUG_COMMANDS = builder
                 .comment("Whether the debug subcommands of /orevault are usable. Off by default.",
@@ -35,5 +50,10 @@ public final class OreVaultServerConfig {
      */
     public static boolean enableDebugCommands() {
         return SPEC.isLoaded() && ENABLE_DEBUG_COMMANDS.getAsBoolean();
+    }
+
+    /** Read once, by the ore classifier at server start (§10, §11); empty if the config has not loaded. */
+    public static List<String> oreClassificationOverrides() {
+        return SPEC.isLoaded() ? List.copyOf(ORE_CLASSIFICATION_OVERRIDES.get()) : List.of();
     }
 }

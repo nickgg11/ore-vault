@@ -204,8 +204,9 @@ The classifier's table and the profiles are built on the main thread at server s
 generator's worker threads. The classifier publishes them as one immutable object through a `volatile`
 field, written once, before ADR 0002's restore registers any Vault level, so no chunk of any Vault can
 generate before it. The volatile write happens-before every later read, so a worker that sees the object
-sees all of it. Nothing writes the field again in the session; `/reload` does not reclassify. `OreBaseline`
-itself is a constant record.
+sees all of it. Nothing writes the field again in the session; `/reload` does not reclassify. The field is cleared at
+`ServerStoppedEvent`, so a second world in one client classifies its own pack. `OreBaseline` itself is a constant
+record.
 
 ### The ore group's id
 
@@ -231,6 +232,11 @@ memory for the session, never on disk (§11). A `/reload` does not reclassify.
    indexed by `GenerationStep.Decoration` ordinal (`BiomeGenerationSettings.java` lines 80–81). A placed
    feature counts when its configured feature's config is an `OreConfiguration`; both `minecraft:ore` and
    `minecraft:scattered_ore` use it (`levelgen/feature/Feature.java` lines 105 and 134).
+   When that overworld's biome source has a single biome, or the classification it gives leaves some rarity with
+   no ore, the classifier classifies against the `minecraft:normal` world preset's overworld instead, with that
+   preset's dimension type for its heights, and the result replaces the first (Manager's triage ruling 6, amended
+   2026-11-20 below). The preset is read from the server's own registries, so its biomes are the same holders and
+   biome modifiers still reach them.
 3. A feature is all-biome when more than half of those biomes list it. An ore uses its all-biome features;
    only when it has none does it use its biome-only ones. A strict "every biome" reading would fail on
    copper: `ore_copper` is absent from dripstone caves, so copper would fall to its biome-only features and
@@ -252,7 +258,8 @@ memory for the session, never on disk (§11). A `/reload` does not reclassify.
    DEV-20). All three fields are codec fields (`CountPlacement.java` line 11, `RarityFilter.java` line 9,
    `HeightRangePlacement.java` lines 14–15), so no access transformer is needed. A modifier type the
    classifier does not know is passed over and logged once per type.
-6. Heights are sampled, not switched on by provider type: 4,096 draws from a fixed seed per feature, with
+6. Heights are sampled, not switched on by provider type: 4,096 draws from a seed fixed by the feature's id
+   (FNV-1a 64 over its UTF-8 bytes, `core.ore.SamplingSeed`), with
    the public `HeightProvider#sample(RandomSource, WorldGenerationContext)` (`HeightProvider.java` line 19),
    against `new WorldGenerationContext(overworldGenerator, overworld)`, whose public constructor takes the
    real overworld's limits (`WorldGenerationContext.java` lines 10–13) rather than hard-coded -64 and 384.
@@ -509,3 +516,32 @@ Amended 2026-11-20 for E4-S1b (#234), from the Epic 4 plan's reviews and the Man
   naming the empty rarity (E4-S2).
 - Where no ore of a rarity maps into a band at all, though the pack has some, every slab of that band draws the rarity's
   ores by weight alone. Vanilla never reaches it.
+
+Amended 2026-11-20 for E4-S2 (#238) (Developer, for the Architect to confirm), from the Manager's triage ruling 6 and its
+round 2 conditions:
+- A non-noise overworld. A skyblock or superflat overworld lists one biome or none, which would classify almost nothing
+  and bring back the empty Vault. When the server's overworld's biome source has a single biome (or none), or its
+  classification leaves a rarity with no ore, the classifier classifies against the `minecraft:normal` preset's
+  overworld (`WorldPresets.NORMAL`, its `LevelStem`'s generator, and heights from that stem's dimension type), logs a
+  WARN naming the reason and the source, and the result replaces the first; it is not merged with it. If the preset is
+  missing, the classifier logs an ERROR and keeps the server's own overworld, never crashes. A rarity still empty after
+  that is a WARN naming it (triage ruling 5 covers its veins); no ore at all is an ERROR. The published record names its
+  source. The gametest classifies the preset's overworld directly and checks the published source when the gametest
+  server's overworld has one biome.
+- The sampling seed is a fixed function of the feature id (step 6), and biomes and features are iterated sorted by id, so
+  every start gives the same table (Epic 4 triage, DEV-E4-5, RV-E4-6).
+- Placement modifiers are encoded through `RegistryOps` over `JsonOps` (step 5) in a method generic in the element type,
+  so the `ore` package names no JSON class (ADR 0001's `ore` row allows Minecraft and `core` only).
+- What is passed over, each logged at WARN: an unnamed placed feature (no id to seed from), a feature with no
+  `height_range` modifier, a `minecraft:ore` feature whose size is past the vein shape's table (size 40), and a feature
+  whose modifier does not encode or whose count, chance or height does not decode. An unknown modifier type is passed over
+  and the feature kept, logged once per type (step 5). A feature that expects no blocks (every height draw outside the
+  overworld) is not usable for step 9. A target outside `#c:ores` is not an ore, and a feature with no target in the tag
+  is not read further.
+- A group none of whose targets matches stone or deepslate takes its least block id as its id and places it in both
+  bands, as a single-variant ore does.
+- Overrides (§10): an entry naming a block of a grouped ore moves the whole group; two entries naming one ore with two
+  rarities apply neither, and a block named twice with two rarities is rejected at parse. An override naming an ore with
+  no feature data takes the median weight of the feature-backed ores of its rarity, or of all of them when its rarity has
+  none, or 1 when there are none. The config's default is no override: §10's former default, `minecraft:diamond_ore=rare`,
+  would hide a classifier that got diamond wrong, and stays in the comment as the example.
