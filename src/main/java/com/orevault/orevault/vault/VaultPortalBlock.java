@@ -18,6 +18,7 @@ import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.LiquidBlockContainer;
 import net.minecraft.world.level.block.Portal;
+import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -76,6 +77,21 @@ public final class VaultPortalBlock extends Block implements Portal, LiquidBlock
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return VaultOpenings.SHAPES.get(state.getValue(VaultOpenings.AXIS));
+    }
+
+    /**
+     * No model: the client draws the portal, and the door over it, itself (§3.2, E3-S13, #401; {@code PortalDoorRenderer}).
+     * A model in the chunk mesh cannot be hidden while the door is shut, and its faces would tint the leaves.
+     */
+    @Override
+    protected RenderShape getRenderShape(BlockState state) {
+        return RenderShape.INVISIBLE;
+    }
+
+    /** Called on the client too, for every cell a packet sets; the client's door renderer listens (#401). */
+    @Override
+    public void onBlockStateChange(LevelReader level, BlockPos pos, BlockState oldState, BlockState newState) {
+        PortalCellChanges.changed(level, pos);
     }
 
     @Override

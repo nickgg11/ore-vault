@@ -4,6 +4,7 @@ import com.orevault.orevault.OreVault;
 import com.orevault.orevault.core.frame.FrameLight;
 import com.orevault.orevault.core.signet.SignetTier;
 import com.orevault.orevault.registry.ModBlocks;
+import com.orevault.orevault.vault.PortalCellChanges;
 import java.util.List;
 import net.minecraft.client.color.block.BlockTintSources;
 import net.neoforged.api.distmarker.Dist;
@@ -33,6 +34,13 @@ public final class OreVaultClient {
         NeoForge.EVENT_BUS.addListener(PortalOverlay::after);
         NeoForge.EVENT_BUS.addListener(PortalChargeSound::onClientTick);
         NeoForge.EVENT_BUS.addListener(PortalChargeSound::dropVanillaTrigger);
+        PortalCellChanges.listen(PortalDoors::cellChanged);
+        NeoForge.EVENT_BUS.addListener(PortalDoors::onSectionCompile);
+        NeoForge.EVENT_BUS.addListener(PortalDoors::onChunkLoad);
+        NeoForge.EVENT_BUS.addListener(PortalDoors::onChunkUnload);
+        NeoForge.EVENT_BUS.addListener(PortalDoors::onLevelUnload);
+        NeoForge.EVENT_BUS.addListener(PortalDoors::onClientTick);
+        NeoForge.EVENT_BUS.addListener(PortalDoorRenderer::submit);
     }
 
     /** One list entry per {@code tintindex}. All four portals share one near-white texture (§3.2). */

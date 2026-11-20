@@ -30,7 +30,7 @@ public enum DoorPart {
     private static final double RUN_BETWEEN_STRAPS = 5.0;
 
     /** The row directly above the bottom strap, at every size (Nick, 2026-11-07; it was min(height / 2, 2)). */
-    private static final int SEAT_ROW = 1;
+    public static final int SEAT_ROW = 1;
 
     private final int id;
     private final String tile;
