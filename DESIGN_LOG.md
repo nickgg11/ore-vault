@@ -14,6 +14,31 @@ Newest first.
 
 ---
 
+## 2026-11-08 — Our own portal sounds and overlay; the door swings open on approach
+
+**Where this came from.** Nick picked from synthesized candidates and rendered previews (`docs/previews/e3-s15/`,
+`docs/previews/e3-s13/`). On the sounds: "For the opening sound lets go with c", and for the charge, "I'd do option
+B but not have it end with a chime", then on the cut without the chime: "I'd like for the charge to grow to a bigger
+crescendo but for now it's fine." On the overlay: "Overlay looks good, just needs to be higher res", then "Overlay
+textures look good" on the redraw at four times the density. On the door: "For the door it all looks good, ensure
+the final texture has the same thickness as minecraft doors and paper thin like in the animations." That last
+sentence was read as "not paper thin": the leaves are a vanilla door's 3 px, where the preview drew them as planes.
+The reading was told to Nick in the thread.
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| Pressing a signet plays our open sound, a glassy tone gliding up a fifth (`open_c_resonant`) | The vanilla trigger at a quarter volume | Nick's pick. |
+| Standing in a portal plays our charge sound, a detuned drone whose beating slows to unison over 4 s, with no closing chime (`charge_b2_no_chime`); it stops when the player steps out | The vanilla portal ambience and trigger | Nick's pick. He would like a bigger crescendo later; this one stands for now. |
+| The trip plays our travel sound: the drone swells, a whoosh falls away and a glassy shimmer rings out (`travel_a_swell_shimmer`) | Vanilla's nether portal travel sound | Nick noticed the vanilla sound after testing the others; it was kept vanilla by the spec writer, not by him. His pick of three: "lets go with sounds a". |
+| The charging overlay is our own: a stepped veil of the tier colour closing in from the screen edges behind a line of rune studs, the centre clear, frame chosen by charge progress | The vanilla portal texture tinted per tier | Nick's yes on the 640x2880 strip. The first strip was a quarter the density and he asked for more. |
+| A lit portal is drawn behind a two-leaf door that swings toward the player as they come near, per player and client-side only | A portal that shows its colour from any distance | Nick's 2026-11-01 idea, his yes on the preview. Swinging away hid the leaves behind the portal's alpha, so the motion was lost. |
+| Leaves are 3 px thick, as a vanilla door | The planes drawn in the preview | Nick's words above, as read. |
+| Opens at 6 blocks, or half the interior width plus 2 if more, and closes 2 blocks further out | Any fixed distance | A leaf never sweeps through the player at 21 wide; the gap stops flicker at the edge. |
+| A closed lit door shows the tier in the frame runes and a coloured gem in the seat; a sealed door has grey runes and an empty seat | A closed door that looks the same lit or sealed | So a far portal still says it is open and which tier. |
+| Entry, the 80-tick charge and Tier 3's instant travel are unchanged; the return portal has no door | — | You arrive 3 blocks from the return portal, inside the open distance, and it is built lit. |
+
+Not ticked in §13: none of this has been seen in a client yet.
+
 ## 2026-11-07 — Dense Stone: no one-hit breaks, tool power becomes ore
 
 Nick: "We should add a node or series of nodes that increases everything harder to mine in the ore vault but make it drop more stuff, that way crazy powerful tools don't one shot stone and stuff as it feels bad while still rewarding really powerful tools." Shown two versions, he chose the break-time floor with power turned into ore.

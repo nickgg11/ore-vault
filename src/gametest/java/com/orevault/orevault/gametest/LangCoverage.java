@@ -7,6 +7,7 @@ import com.orevault.orevault.OreVault;
 import com.orevault.orevault.core.key.DimensionTitleKeys;
 import com.orevault.orevault.core.signet.SignetTier;
 import com.orevault.orevault.registry.ModCreativeTabs;
+import com.orevault.orevault.registry.ModSounds;
 import com.orevault.orevault.vault.VaultTravel;
 import java.io.IOException;
 import java.io.InputStream;
@@ -64,6 +65,7 @@ final class LangCoverage {
         keys.addAll(SignetTier.everyTooltipKey());
         keys.addAll(VaultTravel.messageKeys());
         keys.add(DimensionTitleKeys.TITLE);
+        keys.addAll(ModSounds.subtitleKeys());
         keys.addAll(CONFIG_SCREEN_KEYS);
         ModConfigs.getModConfigs(OreVault.MOD_ID).stream()
                 .map(ModConfig::getSpec)
