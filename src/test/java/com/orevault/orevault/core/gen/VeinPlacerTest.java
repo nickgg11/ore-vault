@@ -103,8 +103,8 @@ class VeinPlacerTest {
         }
     }
 
-    /** Pinned from the first run on Nick's PC. */
-    private static final int PINNED_FINGERPRINT = 0;
+    /** Pinned 2026-11-20 from the first run on Nick's PC. */
+    private static final int PINNED_FINGERPRINT = 1853940645;
 
     /** ADR 0009: the fractional roll's mean over 10,000 seeds is c within three standard errors. */
     @Test
