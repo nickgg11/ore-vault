@@ -31,6 +31,27 @@ class OreVaultServerConfigTest {
         assertEquals(ModConfigSpec.RestartType.NONE, value.restartType());
     }
 
+    /** §10: the classifier builds its table at server start, so the screen must warn that an edit waits for a reload. */
+    @Test
+    void oreOverridesNeedAWorldRestart() {
+        ModConfigSpec.ValueSpec value = OreVaultServerConfig.SPEC.getSpec().get(List.of("ore_classification", "overrides"));
+        assertEquals(ModConfigSpec.RestartType.WORLD, value.restartType());
+    }
+
+    /** No override by default: one on diamond would hide a classifier that got diamond wrong. */
+    @Test
+    void oreOverridesAreEmptyByDefaultAndUnloadedReadsEmpty() {
+        assertEquals(List.of(), OreVaultServerConfig.ORE_CLASSIFICATION_OVERRIDES.getDefault());
+        assertEquals(List.of(), OreVaultServerConfig.oreClassificationOverrides());
+    }
+
+    /** One bad entry must not reset the list: the spec's own check takes any string, and {@code Overrides} rejects. */
+    @Test
+    void theListCheckTakesAnyString() {
+        ModConfigSpec.ValueSpec value = OreVaultServerConfig.SPEC.getSpec().get(List.of("ore_classification", "overrides"));
+        assertTrue(value.test(List.of("not an override", "minecraft:stone=common")));
+    }
+
     /** Old #121: the screen shows a guessed key when one is left to NeoForge's derivation. */
     @Test
     void everyValueAndSectionHasAnExplicitTranslationKey() {

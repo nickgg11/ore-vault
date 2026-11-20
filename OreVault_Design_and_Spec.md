@@ -2641,9 +2641,11 @@ Each value below is added to the config in the ticket that first reads it, never
 
 [ore_classification]
     # Override the automatic rarity classification for specific ore blocks.
-    # A list of "modid:block_id=common|uncommon|rare" strings; each entry is
-    # validated, and a malformed entry or unknown rarity is rejected.
-    overrides = ["minecraft:diamond_ore=rare"]
+    # A list of "modid:block_id=common|uncommon|rare" strings, for example
+    # "minecraft:diamond_ore=rare"; each entry is validated, and a malformed
+    # entry, an unknown rarity or a block outside #c:ores is rejected.
+    # Read once at server start; takes effect on the next world load.
+    overrides = []
 
 [disturbed_zones]
     # Maximum number of Disturbed Zone blocks placeable per team.
@@ -2809,7 +2811,7 @@ A chunk of the team's current Vault is credited to `chunks_entered` of the first
 
 ### Ore Rarity Classification
 
-Run at every server start (not cached to disk), before any Vault is restored. The candidates are the blocks in the `#c:ores` block tag, not blocks of a particular class: a modded ore is an ore because its mod tags it as one. The features are the `OreConfiguration` placed features in the underground-ores step of the overworld biome source's biomes, after NeoForge biome modifiers. A feature listed by more than half of those biomes is all-biome; an ore uses its all-biome features, and its biome-only ones only when it has none. Blocks targeted by the same feature are one ore, so stone and deepslate variants are not counted twice. Placement fields are read by encoding each modifier through `PlacementModifier.CODEC`, not through access transformers. Heights are sampled, about 4,096 fixed-seed draws per height provider against the real overworld's generation context, so every provider type, modded ones included, goes through one path. Apply the §4.2 rule on expected blocks per chunk and mean blocks per vein. The details and the tests are in `docs/adr/0009-baseline-ore-model-and-classifier.md`.
+Run at every server start (not cached to disk), before any Vault is restored. The candidates are the blocks in the `#c:ores` block tag, not blocks of a particular class: a modded ore is an ore because its mod tags it as one. The features are the `OreConfiguration` placed features in the underground-ores step of the overworld biome source's biomes, after NeoForge biome modifiers. An overworld whose biome source has a single biome (superflat, skyblock), or whose classification leaves a rarity with no ore, is classified against the `minecraft:normal` world preset's overworld instead, with a warning in the server log naming why; that result replaces the first. A feature listed by more than half of those biomes is all-biome; an ore uses its all-biome features, and its biome-only ones only when it has none. Blocks targeted by the same feature are one ore, so stone and deepslate variants are not counted twice. Placement fields are read by encoding each modifier through `PlacementModifier.CODEC`, not through access transformers. Heights are sampled, about 4,096 fixed-seed draws per height provider against the real overworld's generation context, so every provider type, modded ones included, goes through one path. Apply the §4.2 rule on expected blocks per chunk and mean blocks per vein. The details and the tests are in `docs/adr/0009-baseline-ore-model-and-classifier.md`.
 
 An ore in `#c:ores` with no overworld `PlacedFeature` is not classified, and so not placed, unless an override names it. Ancient debris is handled by Ancient Traces (§6.1), not by the classifier.
 
@@ -3031,8 +3033,8 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] `VaultLevels.register` is the only world-map insert and calls `server.markWorldsDirty()` (§11) — E3-S6a (#237)
 - [ ] Level-unload spike for reset and disband, its result written into ADR 0002: the headless half passed in both variant orders on 2026-11-07; the two-client half is still to run, and ADR 0002 and 0007 stay proposed until it has — E3-S11 (#245)
 - [ ] Vault tick logger `debug.VaultTickLog`, read by the headless restart check's Vault lists (`tools/restart-check/vault-*.txt`) — E3-S11 (#245)
-- [ ] Ore rarity classifier over `#c:ores` from sampled placement data, at every server start (§4.2, §11, ADR 0009) — E4-S2 (#238)
-- [ ] Admin override for rarity classification (`ore_classification.overrides`, §10) — E4-S2 (#238)
+- [x] Ore rarity classifier over `#c:ores` from sampled placement data, at every server start (§4.2, §11, ADR 0009) — E4-S2 (#238)
+- [x] Admin override for rarity classification (`ore_classification.overrides`, §10) — E4-S2 (#238)
 - [ ] Baseline ore distribution: density, rarity mix, depth and vein size (§3.1) — E4-S1 (#234), E4-S3 (#247); measured by `/orevault density` — E4-S4 (#254); mined for ten minutes — E4-S5 (#261)
 - [ ] 40% stone floor, enforced by scaling every rarity's count by one factor held in the snapshot (§3.1) — E4-S3 (#247)
 - [ ] Generation snapshot rebuilt on every trigger ADR 0003 names, so generation nodes change newly generated chunks (§11 Dynamic Chunk Generator) — E9-S3 (#307); each generation node in its own story below
@@ -3279,7 +3281,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [x] `orevault-server.toml` generated with defaults; each value added with its reader by the story that uses it (`CLAUDE.md` rule 7), the first being `[debug]` — E3-S1 (#205)
 - [ ] `vault_presence_enabled` toggle — E10-S3 (#373)
 - [ ] `max_loaded_chunks_per_team` ceiling — E10-S3 (#373)
-- [ ] `ore_classification.overrides` map — E4-S2 (#238)
+- [x] `ore_classification.overrides` list, each entry validated against `#c:ores`, `worldRestart()` — E4-S2 (#238)
 - [ ] `allow_backup_on_reset` toggle — E11-S4 (#267)
 - [ ] Client config `hud.show_resonance_bar` — E5-S13 (#288)
 

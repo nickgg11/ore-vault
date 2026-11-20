@@ -131,6 +131,11 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> ARRIVAL_PILLAR = function("travel/arrival_stands_on_a_pillar");
     private static final ResourceKey<Consumer<GameTestHelper>> RETURN_BLOCKED = function("travel/blocked_return_portal_says_so");
     private static final ResourceKey<Consumer<GameTestHelper>> ARRIVAL_TORCH = function("travel/arrival_beside_a_torch_over_a_tunnel");
+    private static final ResourceKey<Consumer<GameTestHelper>> ORE_CLASSES = function("ore/classifies_the_eight_vanilla_ores");
+    private static final ResourceKey<Consumer<GameTestHelper>> ORE_FEATURES = function("ore/uses_the_right_features");
+    private static final ResourceKey<Consumer<GameTestHelper>> ORE_NO_ENTRY = function("ore/non_ores_and_ancient_debris_have_no_entry");
+    private static final ResourceKey<Consumer<GameTestHelper>> ORE_TWO_RUNS = function("ore/two_runs_give_the_same_table");
+    private static final ResourceKey<Consumer<GameTestHelper>> ORE_PUBLISHED = function("ore/published_at_start_with_both_types_pickers");
 
     private GameTests() {
     }
@@ -263,6 +268,11 @@ public final class GameTests {
             registry.register(ARRIVAL_PILLAR, ReturnPortalTests::arrivalStandsOnAPillarOverTheAnchor);
             registry.register(RETURN_BLOCKED, ReturnPortalTests::aBlockedReturnPortalSaysSo);
             registry.register(ARRIVAL_TORCH, ReturnPortalTests::arrivalStandsBesideATorchOverATunnel);
+            registry.register(ORE_CLASSES, OreClassifierTests::classifiesTheEightVanillaOres);
+            registry.register(ORE_FEATURES, OreClassifierTests::usesTheRightFeatures);
+            registry.register(ORE_NO_ENTRY, OreClassifierTests::nonOresAndAncientDebrisHaveNoEntry);
+            registry.register(ORE_TWO_RUNS, OreClassifierTests::twoRunsGiveTheSameTable);
+            registry.register(ORE_PUBLISHED, OreClassifierTests::publishedAtStartWithBothTypesPickers);
         });
     }
 
@@ -290,7 +300,7 @@ public final class GameTests {
                 TRAVEL_BOUNCED, TRAVEL_HOME, TRAVEL_FAKE, PLAYER_ROUND_TRIP, PLAYER_NO_IN_VAULT, PLAYER_DEATH,
                 PLAYER_RESPAWN, PLAYER_LOGIN_HOME, PLAYER_LOGIN_OTHER, LIFE_RESTORE_NO_FOLDER, PLAYER_LOGIN_STUCK,
                 RETURN_BUILT, RETURN_ONE, RETURN_TIERS, RETURN_REBUILT, ARRIVAL_PILLAR, RETURN_BLOCKED, ARRIVAL_TORCH,
-                FROZEN_IDS)) {
+                FROZEN_IDS, ORE_CLASSES, ORE_FEATURES, ORE_NO_ENTRY, ORE_TWO_RUNS, ORE_PUBLISHED)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
         }
         event.registerTest(DELIBERATE_FAILURE.identifier(),

@@ -25,6 +25,8 @@ import java.util.SplittableRandom;
 public final class VeinShape {
     /** The largest size whose box always fits in a chunk's 16 columns (ADR 0004); a larger request is split. */
     public static final int MAX_IN_CHUNK = 37;
+    /** The largest size {@link #meanBlocks} has a row for; the classifier passes over a feature above it (E4-S2). */
+    public static final int MAX_TABLED_SIZE = VeinShapeTables.MAX_SIZE;
 
     private static final double PI_F = (float) Math.PI;
 
