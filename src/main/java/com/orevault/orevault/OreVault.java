@@ -82,8 +82,10 @@ public final class OreVault {
     }
 
     /**
-     * A failure here must not stop the restore, or a player who logged out inside a Vault reloads in the Overworld sky
-     * (rule 2), so it is logged and nothing is published; S3's generator refuses to build without a table.
+     * A feature that cannot be read is passed over inside the classifier, so an exception that reaches here is a bug in
+     * the mod. It stops the server rather than starting without a table: restoring Vaults without one would either leave
+     * a player who logged out inside a Vault in the Overworld sky (rule 2) or generate chunks with no ore, and generated
+     * chunks never change (S2-AR-1, ADR 0009 "Publication").
      */
     private static void classifyOres(MinecraftServer server) {
         try {
@@ -91,7 +93,8 @@ public final class OreVault {
                     OreVaultServerConfig.oreClassificationOverrides());
             OreClassifier.publish(OreClassifier.classifyServer(server, overrides));
         } catch (RuntimeException e) {
-            LOGGER.error("The ore classifier failed, so no ore table is published for this session", e);
+            LOGGER.error("The ore classifier failed; the server stops rather than generate Vaults without an ore table", e);
+            throw e;
         }
     }
 

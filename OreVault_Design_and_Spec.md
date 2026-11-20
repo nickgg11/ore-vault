@@ -3033,8 +3033,8 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] `VaultLevels.register` is the only world-map insert and calls `server.markWorldsDirty()` (§11) — E3-S6a (#237)
 - [ ] Level-unload spike for reset and disband, its result written into ADR 0002: the headless half passed in both variant orders on 2026-11-07; the two-client half is still to run, and ADR 0002 and 0007 stay proposed until it has — E3-S11 (#245)
 - [ ] Vault tick logger `debug.VaultTickLog`, read by the headless restart check's Vault lists (`tools/restart-check/vault-*.txt`) — E3-S11 (#245)
-- [ ] Ore rarity classifier over `#c:ores` from sampled placement data, at every server start (§4.2, §11, ADR 0009) — E4-S2 (#238)
-- [ ] Admin override for rarity classification (`ore_classification.overrides`, §10) — E4-S2 (#238)
+- [x] Ore rarity classifier over `#c:ores` from sampled placement data, at every server start (§4.2, §11, ADR 0009) — E4-S2 (#238)
+- [x] Admin override for rarity classification (`ore_classification.overrides`, §10) — E4-S2 (#238)
 - [ ] Baseline ore distribution: density, rarity mix, depth and vein size (§3.1) — E4-S1 (#234), E4-S3 (#247); measured by `/orevault density` — E4-S4 (#254); mined for ten minutes — E4-S5 (#261)
 - [ ] 40% stone floor, enforced by scaling every rarity's count by one factor held in the snapshot (§3.1) — E4-S3 (#247)
 - [ ] Generation snapshot rebuilt on every trigger ADR 0003 names, so generation nodes change newly generated chunks (§11 Dynamic Chunk Generator) — E9-S3 (#307); each generation node in its own story below
@@ -3281,7 +3281,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [x] `orevault-server.toml` generated with defaults; each value added with its reader by the story that uses it (`CLAUDE.md` rule 7), the first being `[debug]` — E3-S1 (#205)
 - [ ] `vault_presence_enabled` toggle — E10-S3 (#373)
 - [ ] `max_loaded_chunks_per_team` ceiling — E10-S3 (#373)
-- [ ] `ore_classification.overrides` map — E4-S2 (#238)
+- [x] `ore_classification.overrides` list, each entry validated against `#c:ores`, `worldRestart()` — E4-S2 (#238)
 - [ ] `allow_backup_on_reset` toggle — E11-S4 (#267)
 - [ ] Client config `hud.show_resonance_bar` — E5-S13 (#288)
 

@@ -206,7 +206,9 @@ field, written once, before ADR 0002's restore registers any Vault level, so no 
 generate before it. The volatile write happens-before every later read, so a worker that sees the object
 sees all of it. Nothing writes the field again in the session; `/reload` does not reclassify. The field is cleared at
 `ServerStoppedEvent`, so a second world in one client classifies its own pack. `OreBaseline` itself is a constant
-record.
+record. A feature the classifier cannot read (a size below 1, a provider or rule test that throws) is passed over with a
+WARN; an exception that still escapes the classifier is a bug, and it stops the server start rather than let any Vault
+be restored or generate without a table (E4-S2 review, S2-AR-1).
 
 ### The ore group's id
 

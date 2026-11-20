@@ -164,7 +164,13 @@ public final class OreClassifier {
         List<FeatureSample> samples = new ArrayList<>();
         for (Map.Entry<String, PlacedFeature> feature : features.entrySet()) {
             double share = listedBy.get(feature.getKey()) / (double) biomes;
-            sample(ops, context, oreTag, feature.getKey(), feature.getValue(), share, warned).ifPresent(samples::add);
+            try {
+                sample(ops, context, oreTag, feature.getKey(), feature.getValue(), share, warned).ifPresent(samples::add);
+            } catch (RuntimeException e) {
+                // One feature a pack or another mod made unreadable must not cost every other ore its table (S2-RV-1).
+                LOGGER.warn("{} could not be sampled, so it is passed over and its ore needs an override to be placed",
+                        feature.getKey(), e);
+            }
         }
         return samples;
     }
@@ -222,6 +228,11 @@ public final class OreClassifier {
             return Optional.empty();
         }
 
+        if (ore.size < 1) {
+            // A size of 0 is how a datapack switches an ore off; the vein shape has no blocks to count (S2-RV-1).
+            LOGGER.warn("{} has vein size {}, so it places nothing and is passed over", id, ore.size);
+            return Optional.empty();
+        }
         double blocksPerVein;
         if (configured.feature() == Feature.SCATTERED_ORE) {
             // ScatteredOreFeature tries random.nextInt(size + 1) placements, each in solid rock (step 7).
