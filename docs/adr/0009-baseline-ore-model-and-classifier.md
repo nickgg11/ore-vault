@@ -80,7 +80,9 @@ each `Rarity`'s base Resonance (§4.2). No 0.68/0.25/0.07 constant exists beside
 reads the same record. A change to any count or size moves the curve with it, which is the point of the
 2026-09-27 lesson.
 
-The closed form ignores overlap between veins (about 1.5% of blocks at 3%, §3.1 "Veins per chunk"). A JUnit test
+The closed form ignores overlap between veins: a later vein takes an earlier one's positions, so placed blocks come out
+about 1.7% under it in the stone band and about 3.3% in deepslate (modelled by the Reviewer for E4-S1b; §3.1 "Veins per
+chunk"). A JUnit test
 runs the real pure placer over at least 81 chunks with a fixed team id and checks placed blocks against
 the closed form within S12's tolerances: each band's density within 5% relative, each rarity share within
 2 points. If it fails, the counts are re-derived; the curve's input is not patched. The same test reports
@@ -163,7 +165,7 @@ and the group id are below.
 
 The rule. Once a vein has its rarity and its layer, its ore is drawn from that rarity's ores in proportion
 to each ore's weight × its mapped profile in the layer's slab. Where no ore of the rarity has mass in that
-bin, the draw uses the nearest bin in the band that has some (the lower one on a tie). Nothing in the pick
+slab, the draw uses the nearest slab in the band that has some (the lower one on a tie). Nothing in the pick
 reads the band-wide mix on its own.
 
 What the rule gives on vanilla, measured by the Balancer (derived, unplaytested), in place of the "some
@@ -174,7 +176,7 @@ type:
 - Rare: above Y=16 only emerald has mass, so emerald is about 93.5% of rare veins and diamond about 6.5%,
   all in Y1..16, where diamond is about 99.6% of rare. About 9 diamond blocks a chunk against about 124
   emerald.
-- Uncommon: above about Y=40 no uncommon ore has mass and the nearest bin with mass holds lapis only, so
+- Uncommon: above about Y=40 no uncommon ore has mass and the nearest slab with mass holds lapis only, so
   lapis is about 95% of uncommon veins, gold about 2% and redstone about 3%, those two all in Y1..16.
 - Expanded type: deepslate is almost all diamond for rare and mixed for uncommon; its stone band is about
   99% emerald for rare and about 98% lapis for uncommon.
@@ -317,8 +319,8 @@ cannot come back through a default.
   positions, and no position outside the band is placed or indexed; the edge factor at `h` = 1 is 1. The
   group id is the stone-band block, and the deepslate one for a group with none.
 - Identity unit cases in `core.ore`, for Nick's answer to question 4 (option A): the base type's below-Y=1
-  mass lands in the identity profile of the lowest 16 stone layers (QA-29's band-floor case); a bin where
-  a rarity has no ore mass draws from the nearest bin with mass, the lower on a tie; and on the golden
+  mass lands in the identity profile of the lowest 16 stone layers (QA-29's band-floor case); a slab where
+  a rarity has no ore mass draws from the nearest slab with mass, the lower on a tie; and on the golden
   fixture's profiles, a base-type rare pick at any layer above Y=16 (Y17..245) is emerald with
   probability 1.
 - The placer count above, the clip test above, and a test that a block with no entry pays 0.
@@ -342,7 +344,8 @@ cannot come back through a default.
   deepslate, emerald and lapis almost everywhere else. A player who wants diamonds strip-mines the floor,
   though the curve pays no more there. Nick's T4 ten-minute mine looks at the mix by height.
 - Veins at a band's edge are partly cut, and the count is about 0.4 to 2.5% higher than §3.1's figures to
-  make up the cut blocks; placed blocks match the closed form.
+  make up the cut blocks; placed blocks then match the closed form less the overlap (about 1.7% stone,
+  3.3% deepslate), inside S12.
 - A pack whose ores are placed by a feature type that is not `OreConfiguration`-based (Mekanism's custom
   config is the known case, research section 7) generates those ores only through an override.
 - The classifier's sampling costs 4,096 draws per height provider at start-up, a few hundred features in a

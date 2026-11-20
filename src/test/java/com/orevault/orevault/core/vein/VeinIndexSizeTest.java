@@ -59,6 +59,13 @@ class VeinIndexSizeTest {
     void theHeaviestOneDotZeroStackFitsTheComparator() {
         Map<Band, OrePicker> pickers = OrePickers.forVariant(EXPANDED, VanillaOres.candidates());
         List<VeinRequest> stack = heaviestStack();
+        // Triage round 2: the stack is printed, so the bytes can be checked against the same inputs. The deepslate counts
+        // carry the edge factor, about 2% over BAL-E4-1's, which errs towards more bytes.
+        for (VeinRequest request : stack) {
+            System.out.printf(Locale.ROOT, "Vein index stack: %s %s, %.2f a chunk, sizes %s, Y%d..%d%s%n", request.band(), request.rarity(),
+                    request.perChunk(), java.util.Arrays.toString(request.sizes()), request.regionBottomY(), request.regionTopY(),
+                    request.guide() ? ", guide" : "");
+        }
         long max = 0;
         long maxUngrown = 0;
         double sum = 0;

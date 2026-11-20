@@ -44,6 +44,23 @@ class VeinPlacerTest {
         tally.assertSlabs(Band.DEEPSLATE);
     }
 
+    /**
+     * ADR 0009 "Height", BAL-15: the band's outermost layers hold the band's density. Without the overhang the two layers
+     * at each edge come out at about 64% of it, which the 16-layer slab test averages away (seen on Nick's PC 2026-11-20).
+     */
+    @Test
+    void theEdgeLayersHoldTheBandDensity() {
+        for (VaultVariant variant : VaultVariant.values()) {
+            Tally tally = run(variant, VanillaOres.candidates(), 0);
+            for (Band band : Band.values()) {
+                variant.band(band).ifPresent(bounds -> {
+                    tally.assertLayers(band, bounds.bottomY(), bounds.bottomY() + 1);
+                    tally.assertLayers(band, bounds.topY() - 1, bounds.topY());
+                });
+            }
+        }
+    }
+
     /** #234, ruling 5: no rare ore in the pack, and the density and every slab hold; the mix is not checked (BAL round 2). */
     @Test
     void densityHoldsWithNoRareOre() {
@@ -170,6 +187,7 @@ class VeinPlacerTest {
         final VaultVariant variant;
         final Map<Band, Map<Rarity, Long>> byRarity = new EnumMap<>(Band.class);
         final Map<Band, long[]> bySlab = new EnumMap<>(Band.class);
+        final Map<Band, Map<Integer, Long>> byLayer = new EnumMap<>(Band.class);
         int chunks;
 
         Tally(VaultVariant variant) {
@@ -191,7 +209,11 @@ class VeinPlacerTest {
                 byRarity.get(vein.band()).merge(rarity, (long) vein.blocks(), Long::sum);
                 BandBounds bounds = variant.band(vein.band()).orElseThrow();
                 long[] slabs = bySlab.get(vein.band());
-                forEachPosition(vein, (x, y, z) -> slabs[slabOf(y, bounds)]++);
+                Map<Integer, Long> layers = byLayer.computeIfAbsent(vein.band(), b -> new java.util.HashMap<>());
+                forEachPosition(vein, (x, y, z) -> {
+                    slabs[slabOf(y, bounds)]++;
+                    layers.merge(y, 1L, Long::sum);
+                });
             }
         }
 
@@ -212,6 +234,16 @@ class VeinPlacerTest {
                 double expected = OreBaseline.BASE.share(band, rarity);
                 assertTrue(Math.abs(share - expected) <= 0.02, band + " " + rarity + " share " + share + " against " + expected);
             }
+        }
+
+        /** Layers {@code fromY..toY} against the band's density, within 25%: the missing overhang is about -36%. */
+        void assertLayers(Band band, int fromY, int toY) {
+            double density = total(band) / (256.0 * chunks * variant.band(band).orElseThrow().layers());
+            double measured = byLayer.getOrDefault(band, Map.of()).entrySet().stream()
+                    .filter(e -> e.getKey() >= fromY && e.getKey() <= toY).mapToLong(Map.Entry::getValue).sum()
+                    / (256.0 * chunks * (toY - fromY + 1));
+            assertTrue(Math.abs(measured - density) <= 0.25 * density,
+                    variant.id() + " " + band + " Y" + fromY + ".." + toY + " at " + measured + " against the band's " + density);
         }
 
         void assertSlabs(Band band) {

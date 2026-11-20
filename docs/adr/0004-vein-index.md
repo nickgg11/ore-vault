@@ -767,7 +767,11 @@ Epic 4 triage (ruling 1) pinned it now as the 1.0 tree's heaviest stack, the Bal
 every side. Expanded type, 81 chunks, a fixed team id; the maximum decides against 73,728 bytes. The Balancer's
 estimate is about 40.5 KB. The bitsets are counted concatenated, as "Encoding" stores them, not padded per vein
 (BAL-E4-2). `core.vein.VeinIndexSize` does the arithmetic, and E9-S4's encoder asserts it writes exactly that many
-bytes. The test also prints both bands at the 60% ceiling at baseline sizes (about 85%) and at Abundance's sizes alone
-(about 103%), a request no 1.0 tree reaches, so the headroom is on record. The Architect's proposal to gate on that last
-setup was ruled against: the section's own wording is a 1.0 tree. The measured figures are added here by the E4-S1b PR.
+bytes. The test also prints both bands at the 60% ceiling at baseline sizes and at Abundance's sizes alone, a request no 1.0
+tree reaches, so the headroom is on record. The Balancer estimated about 85% and 103%; the placer's hard stop refuses
+veins past 60% of the band in those setups, so they print under that. The Architect's proposal to gate on that last
+setup was ruled against: the section's own wording is a 1.0 tree. Measured on Nick's PC (2026-11-20): the gate stack over 81 chunks has a mean of 40,117 bytes and a maximum of 40,525,
+55.0% of 73,728, with 19,613 bytes at most without Stone Reduction's growth, about 1,714 veins a chunk and no hard stop.
+Both bands at 60% at baseline sizes: at most 61,597 bytes (83.5%); at Abundance's sizes: at most 73,085 (99.1%), both
+capped by the hard stop.
 The largest 1.0 request is about configured size 18, not 15 (BAL-E4-8).
