@@ -108,6 +108,8 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_RESTORE_NO_TABLE = function("vault/restore_without_an_ore_table_stops");
     private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_VAULT_CREATE = function("debug/vault_create_then_break_in_it");
     private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_BREAK_RESTORED = function("debug/break_in_a_restored_vault");
+    private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_DENSITY_REFUSES = function("debug/density_refuses_a_level_that_is_not_a_vault");
+    private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_DENSITY_PLAN = function("debug/density_tallies_what_the_plan_placed");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_LOGIN = function("vault/login_creates_no_vault");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_TICKS = function("vault/created_after_the_first_tick_ticks");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_IDEMPOTENT = function("vault/find_or_create_is_idempotent");
@@ -249,6 +251,8 @@ public final class GameTests {
             registry.register(LIFE_RESTORE_NO_TABLE, unchecked(VaultLifecycleTests::restoreWithoutAnOreTableStops));
             registry.register(DEBUG_VAULT_CREATE, DebugCommandTests::vaultCreateMakesAVaultTheBreakWorksIn);
             registry.register(DEBUG_BREAK_RESTORED, unchecked(DebugCommandTests::breakWorksInARestoredVault));
+            registry.register(DEBUG_DENSITY_REFUSES, DebugCommandTests::densityRefusesALevelThatIsNotAVault);
+            registry.register(DEBUG_DENSITY_PLAN, DebugCommandTests::densityTalliesWhatThePlanPlaced);
             registry.register(LIFE_LOGIN, VaultLifecycleTests::aLoginCreatesNoVault);
             registry.register(LIFE_TICKS, VaultLifecycleTests::aVaultCreatedAfterTheFirstTickTicks);
             registry.register(LIFE_IDEMPOTENT, VaultLifecycleTests::findOrCreateIsIdempotentAndWritesOnlyTheTypeFile);
@@ -309,7 +313,8 @@ public final class GameTests {
                 TRAVEL_BOUNCED, TRAVEL_HOME, TRAVEL_FAKE, PLAYER_ROUND_TRIP, PLAYER_NO_IN_VAULT, PLAYER_DEATH,
                 PLAYER_RESPAWN, PLAYER_LOGIN_HOME, PLAYER_LOGIN_OTHER, LIFE_RESTORE_NO_FOLDER, PLAYER_LOGIN_STUCK,
                 RETURN_BUILT, RETURN_ONE, RETURN_TIERS, RETURN_REBUILT, ARRIVAL_PILLAR, RETURN_BLOCKED, ARRIVAL_TORCH,
-                FROZEN_IDS, ORE_CLASSES, ORE_FEATURES, ORE_NO_ENTRY, ORE_TWO_RUNS, ORE_PUBLISHED)) {
+                FROZEN_IDS, ORE_CLASSES, ORE_FEATURES, ORE_NO_ENTRY, ORE_TWO_RUNS, ORE_PUBLISHED, DEBUG_DENSITY_REFUSES,
+                DEBUG_DENSITY_PLAN)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
         }
         event.registerTest(DELIBERATE_FAILURE.identifier(),

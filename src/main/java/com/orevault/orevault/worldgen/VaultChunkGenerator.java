@@ -283,6 +283,11 @@ public final class VaultChunkGenerator extends ChunkGenerator {
         return filledThisSession.size();
     }
 
+    /** The dimension type this generator fills, which fixes the bands {@code /orevault density} counts (E4-S4). */
+    public VaultVariant variant() {
+        return variant;
+    }
+
     /** The ore inputs the generator was built with, for the gametest that checks the world against the plan. */
     public OreInputs ores() {
         return ores;
