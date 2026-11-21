@@ -14,8 +14,10 @@ import java.util.List;
  *
  * <p>Densities are the closed form, count times mean blocks over the region's volume, before the edge factor: the edge
  * factor only makes up blocks cut at the band's edges, so placed blocks match the closed form, and the cap is on placed
- * blocks. A per-chunk outcome such as a Vein Singularity chunk is one more request set to compute this over; it joins
- * with its node (T9).
+ * blocks. This is exact for a request spread through its whole band. A request over part of a band spills its overhang
+ * into the neighbouring layers of the band, so its densest layer comes out under the closed form and the factor is
+ * conservative there (S3-AR-3). A per-chunk outcome such as a Vein Singularity chunk is one more request set to compute
+ * this over; it joins with its node (T9).
  *
  * @param stone the stone band's factor
  * @param deepslate the deepslate band's factor, carried but never read in the base type
@@ -23,6 +25,15 @@ import java.util.List;
 public record ClipFactors(double stone, double deepslate) {
     /** §3.1: the Vault is never more than 60% ore by volume. The placer's hard stop counts against the same figure. */
     public static final double CEILING = 0.60;
+
+    /**
+     * How far past {@link #CEILING} the placer's hard stop sits (S3-BAL-1). A correct clip puts the mean in-band request
+     * exactly on the ceiling, and the spread of vein sizes is about 1.4% of it in a fully clipped deepslate band (derived),
+     * so a stop on the ceiling itself would refuse the rare veins placed last in about half of clipped chunks. At 1.10 the
+     * stop is about seven standard deviations out: it fires only when a clip is wrong by more than 10%, and placed ore after
+     * overlap stays at most about 48%. If the clip test's printed spread is above 2%, this becomes 1 + 5 sigma.
+     */
+    public static final double HARD_STOP_HEADROOM = 1.10;
 
     public static final ClipFactors NONE = new ClipFactors(1, 1);
 

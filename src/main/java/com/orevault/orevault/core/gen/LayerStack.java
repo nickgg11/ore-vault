@@ -59,26 +59,37 @@ public record LayerStack(List<Layer> layers) {
         };
     }
 
-    /**
-     * The stack in {@code json} if it is well formed, names only blocks that exist and fills the variant's height exactly,
-     * and otherwise the built-in stack, with one line to {@code error} saying why (§3.1, rule 8). The height is summed as a
-     * long before anything is expanded, so a huge thickness is a bad file and not an {@link OutOfMemoryError}.
-     */
+    /** As {@link #fromJson(Reader, VaultVariant, Predicate, Predicate, Consumer)}, knowing only the two spellings of air. */
     public static LayerStack fromJson(Reader json, VaultVariant variant, Predicate<String> blockExists, Consumer<String> error) {
+        return fromJson(json, variant, blockExists, id -> false, error);
+    }
+
+    /**
+     * The stack in {@code json} if it is well formed, names only blocks that exist, fills the variant's height exactly and
+     * fills each band with one block that can take ore, and otherwise the built-in stack, with one line to {@code error}
+     * saying why (§3.1, rule 8). The height is summed as a long before anything is expanded, so a huge thickness is a bad
+     * file and not an {@link OutOfMemoryError}.
+     *
+     * @param cannotFill asked only of blocks that exist: whether a band cannot be filled with it, any air or a fluid. The
+     *     caller resolves the block, so {@code cave_air} or a modded air falls back here instead of failing the generator
+     *     at restore (S3-RV-2)
+     */
+    public static LayerStack fromJson(Reader json, VaultVariant variant, Predicate<String> blockExists, Predicate<String> cannotFill,
+            Consumer<String> error) {
         try {
             LayerStack stack = parse(json);
             long total = stack.layers.stream().mapToLong(Layer::thickness).sum();
             if (total != variant.height()) {
                 throw new IllegalArgumentException("sums to " + total + ", expected the height " + variant.height());
             }
-            stack.bandFillerProblem(variant).ifPresent(problem -> {
-                throw new IllegalArgumentException(problem);
-            });
             for (Layer layer : stack.layers) {
                 if (!blockExists.test(layer.block)) {
                     throw new IllegalArgumentException("names an unknown block " + layer.block);
                 }
             }
+            stack.bandFillerProblem(variant, cannotFill).ifPresent(problem -> {
+                throw new IllegalArgumentException(problem);
+            });
             return stack;
         } catch (RuntimeException e) {
             error.accept("Layer stack for " + variant.id() + " is bad, using the built-in stack: " + e.getMessage());
@@ -98,11 +109,15 @@ public record LayerStack(List<Layer> layers) {
     /**
      * Why the stack's mineralizable bands cannot take ore, or empty when they can (§3.1, ADR 0004; Architect, ARCH-E4-8).
      * The generator writes every position of every vein and blob with no check, so every layer of each band the variant has
-     * must be one solid block, the band's filler; a custom file may choose which block (#76). A dirt layer inside the stone
-     * band would otherwise turn into ore, and an air layer would hold floating ore. The column must fill the variant's
-     * height first. A bad file falls back to the built-in stack for this reason too, so a Vault is never refused over it.
+     * must be one block, not air and not a fluid: the band's filler. A custom file may choose which block (#76). A dirt
+     * layer inside the stone band would otherwise turn into ore, and an air layer would hold floating ore. Ids are compared
+     * with the default namespace filled in, so {@code stone} and {@code minecraft:stone} are one block (S3-RV-3). The
+     * column must fill the variant's height first. A bad file falls back to the built-in stack for this reason too, so a
+     * Vault is never refused over it.
+     *
+     * @param cannotFill whether a band cannot be filled with a block, beyond the two spellings of air this class knows
      */
-    public Optional<String> bandFillerProblem(VaultVariant variant) {
+    public Optional<String> bandFillerProblem(VaultVariant variant, Predicate<String> cannotFill) {
         List<String> column = column();
         if (column.size() != variant.height()) {
             return Optional.of("has " + column.size() + " layers, expected " + variant.height());
@@ -112,12 +127,12 @@ public record LayerStack(List<Layer> layers) {
             if (bounds == null) {
                 continue;
             }
-            String filler = column.get(bounds.bottomY() - variant.minY());
-            if (isAir(filler)) {
-                return Optional.of("has air at Y=" + bounds.bottomY() + " in the " + band + " band");
+            String filler = normalize(column.get(bounds.bottomY() - variant.minY()));
+            if (AIR.equals(filler) || cannotFill.test(filler)) {
+                return Optional.of("has air or a fluid, " + filler + ", at Y=" + bounds.bottomY() + " in the " + band + " band");
             }
             for (int y = bounds.bottomY(); y <= bounds.topY(); y++) {
-                String block = column.get(y - variant.minY());
+                String block = normalize(column.get(y - variant.minY()));
                 if (!block.equals(filler)) {
                     return Optional.of("has " + block + " at Y=" + y + " in the " + band + " band, which is " + filler + " below it");
                 }
@@ -126,14 +141,19 @@ public record LayerStack(List<Layer> layers) {
         return Optional.empty();
     }
 
-    /** The block filling a band, checked by {@link #bandFillerProblem}; empty for a band the variant does not have. */
-    public Optional<String> filler(VaultVariant variant, Band band) {
-        return variant.band(band).map(bounds -> column().get(bounds.bottomY() - variant.minY()));
+    /** {@link #bandFillerProblem(VaultVariant, Predicate)} knowing only the two spellings of air. */
+    public Optional<String> bandFillerProblem(VaultVariant variant) {
+        return bandFillerProblem(variant, id -> false);
     }
 
-    /** {@code air} and {@code minecraft:air}; a modded air is caught by the generator, which sees the block. */
-    private static boolean isAir(String id) {
-        return AIR.equals(id) || "air".equals(id);
+    /** The block filling a band, normalized, checked by {@link #bandFillerProblem}; empty for a band the variant lacks. */
+    public Optional<String> filler(VaultVariant variant, Band band) {
+        return variant.band(band).map(bounds -> normalize(column().get(bounds.bottomY() - variant.minY())));
+    }
+
+    /** An id with the default namespace filled in, as {@code Identifier.parse} reads it; pure string work. */
+    static String normalize(String id) {
+        return id.indexOf(':') < 0 ? "minecraft:" + id : id;
     }
 
     /** The block id at each height, bottom-up: index 0 is the variant's {@code min_y}. */

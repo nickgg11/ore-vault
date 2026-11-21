@@ -3,6 +3,7 @@ package com.orevault.orevault.vault;
 import com.orevault.orevault.OreVault;
 import com.orevault.orevault.core.gen.LayerStack;
 import com.orevault.orevault.core.gen.VaultVariant;
+import com.orevault.orevault.worldgen.VaultChunkGenerator;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Optional;
@@ -36,11 +37,16 @@ public final class VaultLayerConfig {
             return LayerStack.builtIn(variant);
         }
         try (Reader reader = resource.get().openAsReader()) {
-            return LayerStack.fromJson(reader, variant, VaultLayerConfig::blockExists, LOGGER::error);
+            return LayerStack.fromJson(reader, variant, VaultLayerConfig::blockExists, VaultLayerConfig::cannotFill, LOGGER::error);
         } catch (IOException e) {
             LOGGER.error("Layer stack {} cannot be read, using the built-in stack", file, e);
             return LayerStack.builtIn(variant);
         }
+    }
+
+    /** Air of any kind, or a fluid: asked only of ids {@link #blockExists} accepted (S3-RV-2). */
+    private static boolean cannotFill(String id) {
+        return VaultChunkGenerator.cannotFill(BuiltInRegistries.BLOCK.getValue(Identifier.parse(id)).defaultBlockState());
     }
 
     private static boolean blockExists(String id) {

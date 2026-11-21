@@ -3,10 +3,12 @@ package com.orevault.orevault.core.gen;
 import com.orevault.orevault.core.ore.OrePicker;
 import com.orevault.orevault.core.ore.Rarity;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.SplittableRandom;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Rolls a chunk's ore veins and returns them as values (ADR 0004 "Placement returns extents"; ADR 0009; S13, S20). The
@@ -31,8 +33,12 @@ import java.util.SplittableRandom;
  * so the extents match the world exactly and the generator writes every bit of every extent (ADR 0004; ARCH-E4-8). A
  * vein left with no position is dropped.
  *
- * <p>The hard stop is a safety net only: it counts requested blocks, before overwrites, against 60% of the band, and
- * refuses any vein past it (BAL-E4-13). The clip factors are what really hold the floor.
+ * <p>The hard stop is a safety net only: it counts requested blocks inside the band, before overwrites, against 60% of
+ * the band times {@link ClipFactors#HARD_STOP_HEADROOM}, and refuses any vein past it (BAL-E4-13). The clip factors are
+ * what hold the floor: a correct clip puts the mean request exactly on 60%, so a stop at 60% would refuse the veins
+ * placed last, which are rare, in about half of clipped chunks (S3-RV-1, S3-BAL-1). With the headroom it fires only when
+ * the clip is wrong by more than 10%, and placed ore, after overlap, stays under 60%. It bounds a band's total, not a
+ * slab; the clip test checks the slabs.
  */
 public final class VeinPlacer {
     private VeinPlacer() {
@@ -42,12 +48,35 @@ public final class VeinPlacer {
      * What the placer returns.
      *
      * @param veins every placed vein, in ordinal order
-     * @param hardStopped whether the safety net refused a vein in this chunk
+     * @param firstStop the band and rarity of the first vein the safety net refused in this chunk, or {@code null}
+     * @param requested per band the variant has, the blocks requested inside the band before overwrites, which is what the
+     *     hard stop counts; for the clip test's spread (S3-QA-1) and the density readout
      */
-    public record Placement(List<VeinExtent> veins, boolean hardStopped) {
+    public record Placement(List<VeinExtent> veins, @Nullable HardStop firstStop, Map<Band, Long> requested) {
         public Placement {
             veins = List.copyOf(veins);
+            EnumMap<Band, Long> copy = new EnumMap<>(Band.class);
+            copy.putAll(requested);
+            requested = Collections.unmodifiableMap(copy);
         }
+
+        /** Whether the safety net refused a vein in this chunk. */
+        public boolean hardStopped() {
+            return firstStop != null;
+        }
+
+        /** Requested blocks inside a band over its volume, {@code 0} for a band the chunk has none in. */
+        public double requestedDensity(Band band, VaultVariant variant) {
+            BandBounds bounds = variant.band(band).orElse(null);
+            return bounds == null ? 0 : requested.getOrDefault(band, 0L) / (256.0 * bounds.layers());
+        }
+    }
+
+    /**
+     * Where the hard stop first refused a vein (RV-E4-10, S3-RV-4): requests run stone then deepslate, common to rare, so
+     * this names the request that ran into the ceiling.
+     */
+    public record HardStop(Band band, Rarity rarity) {
     }
 
     /** The baseline's veins for a chunk, from the seed of {@link GenSalts#BASELINE_ORE}. */
@@ -84,7 +113,7 @@ public final class VeinPlacer {
         int[] owner = new int[256 * variant.height()];
         List<Builder> placed = new ArrayList<>();
         Map<Band, Long> requested = new EnumMap<>(Band.class);
-        boolean hardStopped = false;
+        HardStop firstStop = null;
 
         for (VeinRequest request : requests) {
             BandBounds bounds = variant.band(request.band())
@@ -96,7 +125,7 @@ public final class VeinPlacer {
             if (request.regionBottomY() < bounds.bottomY() || request.regionTopY() > bounds.topY()) {
                 throw new IllegalArgumentException("A region outside the " + request.band() + " band");
             }
-            long ceiling = (long) Math.floor(ClipFactors.CEILING * 256 * bounds.layers());
+            long ceiling = (long) Math.floor(ClipFactors.CEILING * ClipFactors.HARD_STOP_HEADROOM * 256 * bounds.layers());
             int count = rollCount(request.perChunk(), random);
             int regionLayers = request.regionTopY() - request.regionBottomY() + 1;
             for (int v = 0; v < count; v++) {
@@ -128,7 +157,9 @@ public final class VeinPlacer {
                 }
                 long soFar = requested.getOrDefault(request.band(), 0L);
                 if (soFar + inside > ceiling) {
-                    hardStopped = true;
+                    if (firstStop == null) {
+                        firstStop = new HardStop(request.band(), request.rarity());
+                    }
                     continue;
                 }
                 requested.put(request.band(), soFar + inside);
@@ -164,7 +195,7 @@ public final class VeinPlacer {
                 veins.add(vein.build());
             }
         }
-        return new Placement(veins, hardStopped);
+        return new Placement(veins, firstStop, requested);
     }
 
     /** {@code floor(c)} veins, plus one when a draw falls under the fraction (ADR 0009). Always takes one draw. */

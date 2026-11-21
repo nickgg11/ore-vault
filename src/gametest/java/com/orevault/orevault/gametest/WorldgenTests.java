@@ -224,6 +224,27 @@ final class WorldgenTests {
         helper.fail(Component.literal("a generator with ore to place took a stone band with air in it"));
     }
 
+    /**
+     * Mutation 15 of the S3 review: a hand-built stack whose band is an air other than {@code minecraft:air} passes the
+     * string check, and only the constructor's resolved-state check refuses it. (A layer file like it falls back in
+     * {@code VaultLayerConfig}, S3-RV-2.)
+     */
+    static void refusesABandOfAnotherAir(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        VaultVariant base = VaultVariant.BASE;
+        LayerStack caveAir = new LayerStack(List.of(new LayerStack.Layer("minecraft:bedrock", 1),
+                new LayerStack.Layer("minecraft:cave_air", 245), new LayerStack.Layer("minecraft:dirt", 4),
+                new LayerStack.Layer("minecraft:grass_block", 1), new LayerStack.Layer("minecraft:air", 69)));
+        check(helper, "the string check passes it", java.util.Optional.empty(), caveAir.bandFillerProblem(base));
+        try {
+            VaultChunkGenerator.forVault(TEAM, vaultBiome(level), base, caveAir, () -> GenSnapshot.of(base, 0, GenerationTiers.NONE));
+        } catch (IllegalArgumentException e) {
+            helper.succeed();
+            return;
+        }
+        helper.fail(Component.literal("a generator with ore to place took a stone band of cave air"));
+    }
+
     /** ADR 0003: one supplier call a chunk, so no chunk can straddle a purchase. */
     static void readsTheSnapshotOnceAChunk(GameTestHelper helper) {
         AtomicInteger reads = new AtomicInteger();

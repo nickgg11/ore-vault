@@ -136,15 +136,23 @@ class VeinPlacerTest {
         assertEquals(mean, sum / 10_000, 3 * standardError);
     }
 
-    /** The safety net: a request past 60% is refused at the ceiling, and no band is ever placed over it. */
+    /**
+     * The safety net: a request past 60% times the headroom is refused there, the refusal names its band and rarity, and
+     * no band is ever placed over §3.1's 60% (S3-RV-1, S3-RV-4). The request is past the stop by far, so the requested
+     * blocks land within one vein of it.
+     */
     @Test
     void theHardStopHoldsTheCeiling() {
         BandBounds stone = VaultVariant.BASE.band(Band.STONE).orElseThrow();
         List<VeinRequest> flood = List.of(new VeinRequest(Band.STONE, Rarity.COMMON, 20_000, new double[] {12}, stone.bottomY(), stone.topY(), false));
         VeinPlacer.Placement placement = VeinPlacer.place(flood, VaultVariant.BASE, pickers(VaultVariant.BASE, VanillaOres.candidates()), 1L);
         assertTrue(placement.hardStopped());
+        assertEquals(new VeinPlacer.HardStop(Band.STONE, Rarity.COMMON), placement.firstStop());
+        double stop = ClipFactors.CEILING * ClipFactors.HARD_STOP_HEADROOM;
+        double requested = placement.requestedDensity(Band.STONE, VaultVariant.BASE);
+        assertTrue(requested <= stop && requested > stop - 0.001, "requested " + requested + " against the stop at " + stop);
         long placed = placement.veins().stream().mapToLong(VeinExtent::blocks).sum();
-        assertTrue(placed <= 0.60 * 256 * stone.layers(), "placed " + placed);
+        assertTrue(placed <= ClipFactors.CEILING * 256 * stone.layers(), "placed " + placed);
     }
 
     private static Tally run(VaultVariant variant, List<OrePicker.Candidate> ores, int offset) {

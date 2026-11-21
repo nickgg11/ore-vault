@@ -7,11 +7,13 @@ import com.orevault.orevault.core.gen.BandBounds;
 import com.orevault.orevault.core.gen.BlobPlacer;
 import com.orevault.orevault.core.gen.ChunkPlan;
 import com.orevault.orevault.core.gen.ChunkSeed;
+import com.orevault.orevault.core.gen.ClipFactors;
 import com.orevault.orevault.core.gen.GenSnapshot;
 import com.orevault.orevault.core.gen.LayerStack;
 import com.orevault.orevault.core.gen.OreBaseline;
 import com.orevault.orevault.core.gen.VaultVariant;
 import com.orevault.orevault.core.gen.VeinExtent;
+import com.orevault.orevault.core.gen.VeinPlacer;
 import com.orevault.orevault.ore.ClassifiedOres;
 import com.orevault.orevault.ore.OreClassifier;
 import java.util.List;
@@ -71,7 +73,7 @@ import org.slf4j.LoggerFactory;
  * <p>The ore inputs are resolved on the main thread, by {@link #forVault} from the classifier's published record, and
  * passed in, so the worker never reads the classifier's {@code volatile} and the gametests can build the bare stack with
  * {@link OreInputs#EMPTY} (ARCH-E4-2). Every position of every extent is written with no check of what is there: the
- * constructor has already checked that each band of the stack is one solid filler, and the placer has already cleared an
+ * constructor has already checked that each band of the stack is one filler, not air and not a fluid, and the placer has already cleared an
  * earlier vein's bit where a later vein took the position, so the world matches the extents exactly (ARCH-E4-8).
  *
  * <p>The codec is still {@code MapCodec.unit(this)}: the ore inputs are not encoded, so nothing about a Vault on disk
@@ -111,6 +113,21 @@ public final class VaultChunkGenerator extends ChunkGenerator {
         return new VaultChunkGenerator(teamId, biome, variant, layers, snapshots, OreInputs.from(publishedOres(), variant));
     }
 
+    /**
+     * The whole-table steps every Vault's generator takes, run once for both types before any Vault is restored
+     * (S3-AR-1). They are the same for every team, so a bug in them would otherwise throw inside the restore's per-team
+     * catch for every Vault, skip them all, and start the server with players stranded (rule 2). Run outside that catch,
+     * the exception leaves {@code ServerStartedEvent} and the server does not start (S2-AR-1).
+     *
+     * @throws IllegalStateException when nothing is published or the table names a block that does not exist
+     */
+    public static void checkOreInputs() {
+        ClassifiedOres published = publishedOres();
+        for (VaultVariant variant : VaultVariant.values()) {
+            OreInputs.from(published, variant);
+        }
+    }
+
     /** The classifier's published record, or an {@link IllegalStateException} naming the bug. */
     public static ClassifiedOres publishedOres() {
         ClassifiedOres published = OreClassifier.published();
@@ -148,8 +165,9 @@ public final class VaultChunkGenerator extends ChunkGenerator {
     }
 
     /**
-     * ARCH-E4-8: extents are written with no per-block check, so each band must be one solid block. The layer config
-     * already falls back to the built-in stack on a file that fails this, so only a hand-built stack can reach the throw.
+     * ARCH-E4-8: extents are written with no per-block check, so each band must be one block, not air and not a fluid. The
+     * layer config resolves the blocks and falls back to the built-in stack on a file that fails this (S3-RV-2), so only a
+     * hand-built stack can reach the throw.
      */
     private static void checkBandFiller(LayerStack layers, VaultVariant variant, BlockState[] column) {
         layers.bandFillerProblem(variant).ifPresent(problem -> {
@@ -157,10 +175,15 @@ public final class VaultChunkGenerator extends ChunkGenerator {
         });
         for (Band band : Band.values()) {
             BandBounds bounds = variant.band(band).orElse(null);
-            if (bounds != null && column[bounds.bottomY() - variant.minY()].isAir()) {
-                throw new IllegalArgumentException("The " + band + " band of " + variant.id() + " is filled with an air block");
+            if (bounds != null && cannotFill(column[bounds.bottomY() - variant.minY()])) {
+                throw new IllegalArgumentException("The " + band + " band of " + variant.id() + " is filled with air or a fluid");
             }
         }
+    }
+
+    /** A block a band cannot be filled with: any air, cave and modded air included, or a block holding a fluid (S3-RV-2). */
+    public static boolean cannotFill(BlockState state) {
+        return state.isAir() || !state.getFluidState().isEmpty();
     }
 
     /** From the resolved states: a layer file may say {@code air} or a modded air, and only the block can tell. */
@@ -219,9 +242,12 @@ public final class VaultChunkGenerator extends ChunkGenerator {
      * below the stack's surface and in place of a solid block, so neither generation heightmap moves.
      */
     private void place(ChunkPlan plan, ChunkAccess chunk, BlockPos.MutableBlockPos pos, ChunkPos at) {
-        if (plan.ore().hardStopped() && hardStopLogged.compareAndSet(false, true)) {
-            LOGGER.warn("The ore hard stop refused veins in chunk {} of team {}'s Vault ({}). It bounds a band's total only and "
-                    + "is a safety net: the clip factors should have held the 60% cap. Logged once a session", at, teamId, variant.id());
+        VeinPlacer.HardStop stop = plan.ore().firstStop();
+        if (stop != null && hardStopLogged.compareAndSet(false, true)) {
+            LOGGER.warn("The ore hard stop refused {} {} veins in chunk {} of team {}'s Vault ({}). It fires only when a clip "
+                    + "factor is wrong by more than {}%, so the clip did not hold this band. Logged once a session",
+                    stop.band(), stop.rarity(), at, teamId, variant.id(),
+                    Math.round((ClipFactors.HARD_STOP_HEADROOM - 1) * 100));
         }
         for (VeinExtent vein : plan.ore().veins()) {
             BlockState state = ores.state(vein.oreGroup(), vein.band());

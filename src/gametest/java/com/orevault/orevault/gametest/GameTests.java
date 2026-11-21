@@ -104,6 +104,8 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_FIRST_FREE = function("worldgen/first_free_block_from_the_state");
     private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_PLAN_WRITTEN = function("worldgen/writes_every_planned_block");
     private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_FILLER = function("worldgen/refuses_a_band_that_is_not_one_filler");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_OTHER_AIR = function("worldgen/refuses_a_band_of_another_air");
+    private static final ResourceKey<Consumer<GameTestHelper>> LIFE_RESTORE_NO_TABLE = function("vault/restore_without_an_ore_table_stops");
     private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_VAULT_CREATE = function("debug/vault_create_then_break_in_it");
     private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_BREAK_RESTORED = function("debug/break_in_a_restored_vault");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_LOGIN = function("vault/login_creates_no_vault");
@@ -243,6 +245,8 @@ public final class GameTests {
             registry.register(WORLDGEN_FIRST_FREE, WorldgenTests::theFirstFreeBlockComesFromTheResolvedState);
             registry.register(WORLDGEN_PLAN_WRITTEN, WorldgenTests::writesEveryPlannedBlock);
             registry.register(WORLDGEN_FILLER, WorldgenTests::refusesABandThatIsNotOneFiller);
+            registry.register(WORLDGEN_OTHER_AIR, WorldgenTests::refusesABandOfAnotherAir);
+            registry.register(LIFE_RESTORE_NO_TABLE, unchecked(VaultLifecycleTests::restoreWithoutAnOreTableStops));
             registry.register(DEBUG_VAULT_CREATE, DebugCommandTests::vaultCreateMakesAVaultTheBreakWorksIn);
             registry.register(DEBUG_BREAK_RESTORED, unchecked(DebugCommandTests::breakWorksInARestoredVault));
             registry.register(LIFE_LOGIN, VaultLifecycleTests::aLoginCreatesNoVault);
@@ -299,6 +303,7 @@ public final class GameTests {
                 WORLDGEN_NO_MOBS, WORLDGEN_SEED, WORLDGEN_HEIGHTS, WORLDGEN_CODEC, WORLDGEN_DIMENSION_TYPES,
                 WORLDGEN_BIOME, WORLDGEN_LAYERS, TEAM_DATA_FAILED_COPY,
                 TEAM_DATA_DISBAND_LOST, WORLDGEN_NO_FEATURES, WORLDGEN_FIRST_FREE, WORLDGEN_PLAN_WRITTEN, WORLDGEN_FILLER,
+                WORLDGEN_OTHER_AIR, LIFE_RESTORE_NO_TABLE,
                 DEBUG_VAULT_CREATE, DEBUG_BREAK_RESTORED, LIFE_LOGIN, LIFE_TICKS, LIFE_IDEMPOTENT, LIFE_DAMAGED,
                 LIFE_RESTORE_TYPE, LIFE_RESTORE_DISBANDED, LIFE_RESTORE_UNREADABLE, LIFE_ABSENT, TRAVEL_SAVED_AFTER,
                 TRAVEL_BOUNCED, TRAVEL_HOME, TRAVEL_FAKE, PLAYER_ROUND_TRIP, PLAYER_NO_IN_VAULT, PLAYER_DEATH,

@@ -74,9 +74,11 @@ class ClipFactorsTest {
     }
 
     /**
-     * The placer over 81 chunks with the clip applied: every deepslate slab at or under 60% within S12's 5% relative. The
-     * hard stop is printed, not asserted: it counts requested blocks against 60% of the band, and an exact clip puts the
-     * mean request on 60%, so it can fire in about half the chunks (BAL-E4-13; the per-slab average is the real check).
+     * The placer over 81 chunks with the clip applied: every deepslate slab at or under 60% within S12's 5% relative, and
+     * the hard stop never fired (QA-E4-2, S3-QA-1). With the headroom (S3-RV-1) a correct clip never reaches the stop. The
+     * slab assertion alone cannot catch a broken clip, since overlap keeps placed ore near 45% whatever is requested;
+     * {@link #withoutTheClipTheStopFires} and the request-level tests are what can. The largest per-chunk request over the
+     * ceiling is printed for S3-BAL-1: the headroom must stay at least five times its spread above 1.
      */
     @ParameterizedTest
     @ValueSource(doubles = {0.9, 1.0, 1.32})
@@ -89,12 +91,19 @@ class ClipFactorsTest {
         long[] slabs = new long[slabCount];
         int stopped = 0;
         int chunks = 0;
+        double largest = 0;
+        double sum = 0;
+        double squares = 0;
         for (int x = -CHUNKS / 2; x <= CHUNKS / 2; x++) {
             for (int z = -CHUNKS / 2; z <= CHUNKS / 2; z++) {
                 VeinPlacer.Placement placement = VeinPlacer.placeOre(greedy, VaultVariant.EXPANDED, pickers, clip,
                         ChunkSeed.of(TEAM, 0, x, z, GenSalts.BASELINE_ORE));
                 chunks++;
                 stopped += placement.hardStopped() ? 1 : 0;
+                double ratio = placement.requestedDensity(Band.DEEPSLATE, VaultVariant.EXPANDED) / ClipFactors.CEILING;
+                largest = Math.max(largest, ratio);
+                sum += ratio;
+                squares += ratio * ratio;
                 for (VeinExtent vein : placement.veins()) {
                     if (vein.band() == Band.DEEPSLATE) {
                         VeinPlacerTest.forEachPosition(vein, (px, py, pz) ->
@@ -103,13 +112,37 @@ class ClipFactorsTest {
                 }
             }
         }
-        System.out.println("Deepslate asking " + asked + ": clip " + clip.deepslate() + ", hard stop in " + stopped + " of " + chunks + " chunks");
+        double mean = sum / chunks;
+        double sigma = Math.sqrt(Math.max(0, squares / chunks - mean * mean));
+        System.out.println("Deepslate asking " + asked + ": clip " + clip.deepslate() + ", request over the ceiling mean " + mean
+                + ", sigma " + sigma + ", largest " + largest + "; hard stop in " + stopped + " of " + chunks + " chunks");
         for (int slab = 0; slab < slabCount; slab++) {
             int layers = slab == slabCount - 1 ? deepslate.layers() - 16 * slab : 16;
             double measured = slabs[slab] / (256.0 * chunks * layers);
             System.out.println("  slab " + slab + ": " + measured);
             assertTrue(measured <= ClipFactors.CEILING * 1.05, "slab " + slab + " at " + measured);
         }
+        assertEquals(0, stopped, "the hard stop fired under a correct clip");
+        assertTrue(largest < ClipFactors.HARD_STOP_HEADROOM, "largest request ratio " + largest);
+    }
+
+    /** S3-QA-1 (b): the same chunks with no clip ask 90% or 132% against a stop at 66%, and every chunk stops. */
+    @ParameterizedTest
+    @ValueSource(doubles = {0.9, 1.32})
+    void withoutTheClipTheStopFires(double asked) {
+        OreBaseline greedy = deepslateAsking(asked);
+        Map<Band, OrePicker> pickers = OrePickers.forVariant(VaultVariant.EXPANDED, VanillaOres.candidates());
+        int stopped = 0;
+        for (int x = -CHUNKS / 2; x <= CHUNKS / 2; x++) {
+            for (int z = -CHUNKS / 2; z <= CHUNKS / 2; z++) {
+                VeinPlacer.Placement placement = VeinPlacer.placeOre(greedy, VaultVariant.EXPANDED, pickers, ClipFactors.NONE,
+                        ChunkSeed.of(TEAM, 0, x, z, GenSalts.BASELINE_ORE));
+                stopped += placement.hardStopped() ? 1 : 0;
+                assertTrue(placement.requestedDensity(Band.DEEPSLATE, VaultVariant.EXPANDED)
+                        <= ClipFactors.CEILING * ClipFactors.HARD_STOP_HEADROOM);
+            }
+        }
+        assertEquals(CHUNKS * CHUNKS, stopped);
     }
 
     /**

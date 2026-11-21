@@ -12,6 +12,8 @@ import com.orevault.orevault.data.PlayerData;
 import com.orevault.orevault.data.PlayerData.InVault;
 import com.orevault.orevault.data.PlayerData.ReturnPos;
 import com.orevault.orevault.data.VaultTypeFile;
+import com.orevault.orevault.ore.ClassifiedOres;
+import com.orevault.orevault.ore.OreClassifier;
 import com.orevault.orevault.vault.VaultDimensions;
 import com.orevault.orevault.vault.VaultDimensions.Restore;
 import com.orevault.orevault.vault.VaultPlayerEvents;
@@ -466,5 +468,32 @@ final class VaultLifecycleTests {
     /** The key a debug line names, for the restart script: {@code orevault:vault_<hex>}. */
     static String dimension(UUID team) {
         return OreVault.MOD_ID + ":" + VaultKeys.dimensionPath(team);
+    }
+
+    /**
+     * S3-QA-4, rule 2: with no ore table published, the restore throws before touching any Vault, so the exception leaves
+     * {@code ServerStartedEvent} and the server does not start, rather than skipping every Vault and stranding a player who
+     * logged out inside one (S2-AR-1). The table is put back in {@code finally}; the body runs on the server thread and no
+     * worker reads the classifier's {@code volatile}, so no other test sees it missing.
+     */
+    static void restoreWithoutAnOreTableStops(GameTestHelper helper) throws IOException {
+        MinecraftServer server = server(helper);
+        UUID team = UUID.randomUUID();
+        VaultTypeFile.write(DataPaths.vaultFolder(server, team), VaultVariant.BASE);
+        ClassifiedOres saved = Objects.requireNonNull(OreClassifier.published(), "no table published at start");
+        boolean threw = false;
+        try {
+            OreClassifier.clear();
+            try {
+                VaultDimensions.restoreAll(server, java.util.List.of());
+            } catch (IllegalStateException e) {
+                threw = true;
+            }
+        } finally {
+            OreClassifier.publish(saved);
+        }
+        check(helper, "restore threw", true, threw);
+        check(helper, "no level registered", null, server.getLevel(VaultDimensions.dimensionKey(team)));
+        helper.succeed();
     }
 }

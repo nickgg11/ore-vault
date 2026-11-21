@@ -16,7 +16,7 @@ import java.util.UUID;
  * @param blobs gravel and clay, from the seeds of {@link GenSalts#GRAVEL} and {@link GenSalts#CLAY}
  */
 public record ChunkPlan(VeinPlacer.Placement ore, BlobPlacer.Placement blobs) {
-    private static final VeinPlacer.Placement NO_ORE = new VeinPlacer.Placement(List.of(), false);
+    private static final VeinPlacer.Placement NO_ORE = new VeinPlacer.Placement(List.of(), null, Map.of());
 
     public ChunkPlan {
         Objects.requireNonNull(ore);
