@@ -102,6 +102,8 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_DISBAND_LOST = function("team_data/unrecorded_disband_logs_an_error");
     private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_NO_FEATURES = function("worldgen/no_features_and_no_structures");
     private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_FIRST_FREE = function("worldgen/first_free_block_from_the_state");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_PLAN_WRITTEN = function("worldgen/writes_every_planned_block");
+    private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_FILLER = function("worldgen/refuses_a_band_that_is_not_one_filler");
     private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_VAULT_CREATE = function("debug/vault_create_then_break_in_it");
     private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_BREAK_RESTORED = function("debug/break_in_a_restored_vault");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_LOGIN = function("vault/login_creates_no_vault");
@@ -239,6 +241,8 @@ public final class GameTests {
             registry.register(TEAM_DATA_DISBAND_LOST, unchecked(TeamDataTests::aDisbandThatCouldNotBeRecordedLogsAnError));
             registry.register(WORLDGEN_NO_FEATURES, WorldgenTests::placesNoFeaturesAndNoStructures);
             registry.register(WORLDGEN_FIRST_FREE, WorldgenTests::theFirstFreeBlockComesFromTheResolvedState);
+            registry.register(WORLDGEN_PLAN_WRITTEN, WorldgenTests::writesEveryPlannedBlock);
+            registry.register(WORLDGEN_FILLER, WorldgenTests::refusesABandThatIsNotOneFiller);
             registry.register(DEBUG_VAULT_CREATE, DebugCommandTests::vaultCreateMakesAVaultTheBreakWorksIn);
             registry.register(DEBUG_BREAK_RESTORED, unchecked(DebugCommandTests::breakWorksInARestoredVault));
             registry.register(LIFE_LOGIN, VaultLifecycleTests::aLoginCreatesNoVault);
@@ -294,7 +298,7 @@ public final class GameTests {
                 TEAM_DATA_UNREADABLE, WORLDGEN_BASE, WORLDGEN_EXPANDED, WORLDGEN_ONE_READ, WORLDGEN_VARIANT,
                 WORLDGEN_NO_MOBS, WORLDGEN_SEED, WORLDGEN_HEIGHTS, WORLDGEN_CODEC, WORLDGEN_DIMENSION_TYPES,
                 WORLDGEN_BIOME, WORLDGEN_LAYERS, TEAM_DATA_FAILED_COPY,
-                TEAM_DATA_DISBAND_LOST, WORLDGEN_NO_FEATURES, WORLDGEN_FIRST_FREE,
+                TEAM_DATA_DISBAND_LOST, WORLDGEN_NO_FEATURES, WORLDGEN_FIRST_FREE, WORLDGEN_PLAN_WRITTEN, WORLDGEN_FILLER,
                 DEBUG_VAULT_CREATE, DEBUG_BREAK_RESTORED, LIFE_LOGIN, LIFE_TICKS, LIFE_IDEMPOTENT, LIFE_DAMAGED,
                 LIFE_RESTORE_TYPE, LIFE_RESTORE_DISBANDED, LIFE_RESTORE_UNREADABLE, LIFE_ABSENT, TRAVEL_SAVED_AFTER,
                 TRAVEL_BOUNCED, TRAVEL_HOME, TRAVEL_FAKE, PLAYER_ROUND_TRIP, PLAYER_NO_IN_VAULT, PLAYER_DEATH,

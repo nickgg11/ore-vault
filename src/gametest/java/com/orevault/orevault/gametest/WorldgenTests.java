@@ -1,14 +1,28 @@
 package com.orevault.orevault.gametest;
 
 import com.orevault.orevault.OreVault;
+import com.orevault.orevault.core.gen.Band;
+import com.orevault.orevault.core.gen.BandBounds;
+import com.orevault.orevault.core.gen.BlobPlacer;
+import com.orevault.orevault.core.gen.ChunkPlan;
 import com.orevault.orevault.core.gen.ChunkSeed;
 import com.orevault.orevault.core.gen.GenSnapshot;
+import com.orevault.orevault.core.gen.GenerationTiers;
 import com.orevault.orevault.core.gen.LayerStack;
+import com.orevault.orevault.core.gen.OreBaseline;
 import com.orevault.orevault.core.gen.VaultVariant;
+import com.orevault.orevault.core.gen.VeinExtent;
+import com.orevault.orevault.core.ore.OreTable;
+import com.orevault.orevault.ore.ClassifiedOres;
+import com.orevault.orevault.worldgen.OreInputs;
 import com.orevault.orevault.vault.VaultLayerConfig;
 import com.orevault.orevault.worldgen.VaultChunkGenerator;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -60,11 +74,11 @@ final class WorldgenTests {
     }
 
     private static VaultChunkGenerator generator(ServerLevel level, VaultVariant variant, Supplier<GenSnapshot> snapshots) {
-        return new VaultChunkGenerator(TEAM, vaultBiome(level), variant, LayerStack.builtIn(variant), snapshots);
+        return new VaultChunkGenerator(TEAM, vaultBiome(level), variant, LayerStack.builtIn(variant), snapshots, OreInputs.EMPTY);
     }
 
     private static VaultChunkGenerator generator(ServerLevel level, VaultVariant variant) {
-        return generator(level, variant, () -> new GenSnapshot(variant, 0));
+        return generator(level, variant, () -> GenSnapshot.of(variant, 0, GenerationTiers.NONE));
     }
 
     private static ProtoChunk emptyChunk(ServerLevel level, VaultVariant variant) {
@@ -81,7 +95,7 @@ final class WorldgenTests {
         return BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
     }
 
-    /** Every block of the chunk against the stack, so an ore anywhere fails it (§3.1, no ore until T4). */
+    /** Every block of the chunk against the stack, so an ore anywhere fails it: {@link OreInputs#EMPTY} places nothing. */
     private static void fillsTheWholeStack(GameTestHelper helper, VaultVariant variant) {
         ProtoChunk chunk = filled(helper, generator(helper.getLevel(), variant), variant);
         List<String> column = LayerStack.builtIn(variant).column();
@@ -111,12 +125,111 @@ final class WorldgenTests {
         fillsTheWholeStack(helper, VaultVariant.EXPANDED);
     }
 
+    /**
+     * QA-E4-5, RV-E4-3.3: the generator writes exactly the plan. A fixed chunk of a Vault built the way every Vault is, from
+     * the published table, against the pure plan computed here from the same table, team, snapshot and chunk: every
+     * position of every vein holds its ore in its band's block, every gravel and clay position holds gravel or clay, every
+     * other band position is the filler, every layer outside the bands is the stack, and the chunk's ore count is the
+     * plan's. A generator that used another seed, salt, band block or variant fails it; so does one that skipped a bit.
+     */
+    static void writesEveryPlannedBlock(GameTestHelper helper) {
+        ClassifiedOres published = VaultChunkGenerator.publishedOres();
+        Map<String, String[]> blocks = new HashMap<>();
+        Set<String> oreIds = new HashSet<>();
+        for (OreTable.Entry entry : published.table().entries()) {
+            blocks.put(entry.groupId(), new String[] {entry.stoneBlock(), entry.deepslateBlock()});
+            oreIds.add(entry.stoneBlock());
+            oreIds.add(entry.deepslateBlock());
+        }
+        for (VaultVariant variant : VaultVariant.values()) {
+            GenSnapshot snapshot = GenSnapshot.of(variant, 1, GenerationTiers.NONE);
+            LayerStack stack = LayerStack.builtIn(variant);
+            VaultChunkGenerator generator = VaultChunkGenerator.forVault(TEAM, vaultBiome(helper.getLevel()), variant, stack, () -> snapshot);
+            ProtoChunk chunk = filled(helper, generator, variant);
+            ChunkPlan plan = ChunkPlan.of(OreBaseline.BASE, variant, published.pickers(variant), snapshot, TEAM, 3, -2);
+            check(helper, variant.id() + " plan has ore", true, plan.oreBlocks() > 0);
+            check(helper, variant.id() + " filled this session", true, generator.filledThisSession(3, -2));
+
+            Map<Long, String> expected = new HashMap<>();
+            BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+            for (VeinExtent vein : plan.ore().veins()) {
+                String block = blocks.get(vein.oreGroup())[vein.band() == Band.STONE ? 0 : 1];
+                for (int y = 0; y < vein.sizeY(); y++) {
+                    for (int z = 0; z < vein.sizeZ(); z++) {
+                        for (int x = 0; x < vein.sizeX(); x++) {
+                            if (vein.isSet(x, y, z)) {
+                                expected.put(pos.set(vein.minX() + x, vein.minY() + y, vein.minZ() + z).asLong(), block);
+                            }
+                        }
+                    }
+                }
+            }
+            for (int cell : plan.blobs().gravel()) {
+                expected.put(pos.set(BlobPlacer.x(cell), BlobPlacer.y(variant, cell), BlobPlacer.z(cell)).asLong(), "minecraft:gravel");
+            }
+            for (int cell : plan.blobs().clay()) {
+                expected.put(pos.set(BlobPlacer.x(cell), BlobPlacer.y(variant, cell), BlobPlacer.z(cell)).asLong(), "minecraft:clay");
+            }
+
+            List<String> column = stack.column();
+            long ore = 0;
+            for (int index = 0; index < column.size(); index++) {
+                int y = variant.minY() + index;
+                for (int x = 0; x < 16; x++) {
+                    for (int z = 0; z < 16; z++) {
+                        pos.set(x, y, z);
+                        String want = expected.getOrDefault(pos.asLong(), column.get(index));
+                        String found = idOf(chunk.getBlockState(pos));
+                        if (!found.equals(want)) {
+                            helper.fail(Component.literal(variant.id() + " " + pos.toShortString() + ": expected " + want + ", got " + found));
+                            return;
+                        }
+                        ore += oreIds.contains(found) ? 1 : 0;
+                        if (expected.containsKey(pos.asLong()) && !inABand(variant, y)) {
+                            helper.fail(Component.literal(variant.id() + " planned a block outside the bands at " + pos.toShortString()));
+                            return;
+                        }
+                    }
+                }
+            }
+            check(helper, variant.id() + " ore blocks", plan.oreBlocks(), ore);
+            for (Heightmap.Types type : List.of(Heightmap.Types.WORLD_SURFACE_WG, Heightmap.Types.OCEAN_FLOOR_WG)) {
+                check(helper, variant.id() + " " + type.name(), SURFACE_TOP, chunk.getOrCreateHeightmapUnprimed(type).getFirstAvailable(5, 9));
+            }
+        }
+        helper.succeed();
+    }
+
+    private static boolean inABand(VaultVariant variant, int y) {
+        for (Band band : Band.values()) {
+            BandBounds bounds = variant.band(band).orElse(null);
+            if (bounds != null && y >= bounds.bottomY() && y <= bounds.topY()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** ARCH-E4-8: with ore to place, a band that is not one solid filler is refused at construction, not written into. */
+    static void refusesABandThatIsNotOneFiller(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        VaultVariant base = VaultVariant.BASE;
+        LayerStack shortAir = new LayerStack(List.of(new LayerStack.Layer("minecraft:stone", 100), new LayerStack.Layer("air", 220)));
+        try {
+            VaultChunkGenerator.forVault(TEAM, vaultBiome(level), base, shortAir, () -> GenSnapshot.of(base, 0, GenerationTiers.NONE));
+        } catch (IllegalArgumentException e) {
+            helper.succeed();
+            return;
+        }
+        helper.fail(Component.literal("a generator with ore to place took a stone band with air in it"));
+    }
+
     /** ADR 0003: one supplier call a chunk, so no chunk can straddle a purchase. */
     static void readsTheSnapshotOnceAChunk(GameTestHelper helper) {
         AtomicInteger reads = new AtomicInteger();
         VaultChunkGenerator generator = generator(helper.getLevel(), VaultVariant.BASE, () -> {
             reads.incrementAndGet();
-            return new GenSnapshot(VaultVariant.BASE, 0);
+            return GenSnapshot.of(VaultVariant.BASE, 0, GenerationTiers.NONE);
         });
         check(helper, "reads building the generator", 0, reads.get());
         filled(helper, generator, VaultVariant.BASE);
@@ -126,7 +239,7 @@ final class WorldgenTests {
 
     /** ADR 0003: the generator is built per variant and asserts that the snapshot agrees. */
     static void refusesASnapshotOfTheOtherVariant(GameTestHelper helper) {
-        VaultChunkGenerator generator = generator(helper.getLevel(), VaultVariant.BASE, () -> new GenSnapshot(VaultVariant.EXPANDED, 0));
+        VaultChunkGenerator generator = generator(helper.getLevel(), VaultVariant.BASE, () -> GenSnapshot.of(VaultVariant.EXPANDED, 0, GenerationTiers.NONE));
         try {
             filled(helper, generator, VaultVariant.BASE);
         } catch (RuntimeException e) {
@@ -166,18 +279,20 @@ final class WorldgenTests {
         VaultVariant base = VaultVariant.BASE;
         LevelHeightAccessor heights = LevelHeightAccessor.create(base.minY(), base.height());
         LayerStack shortAir = new LayerStack(List.of(new LayerStack.Layer("minecraft:stone", 100), new LayerStack.Layer("air", 220)));
-        VaultChunkGenerator generator = new VaultChunkGenerator(TEAM, vaultBiome(level), base, shortAir, () -> new GenSnapshot(base, 0));
+        VaultChunkGenerator generator = new VaultChunkGenerator(TEAM, vaultBiome(level), base, shortAir, () -> GenSnapshot.of(base, 0, GenerationTiers.NONE),
+                OreInputs.EMPTY);
         check(helper, "short air id", 100, generator.getBaseHeight(0, 0, Heightmap.Types.WORLD_SURFACE_WG, heights, null));
 
         LayerStack solid = new LayerStack(List.of(new LayerStack.Layer("minecraft:stone", 320)));
-        VaultChunkGenerator noAir = new VaultChunkGenerator(TEAM, vaultBiome(level), base, solid, () -> new GenSnapshot(base, 0));
+        VaultChunkGenerator noAir = new VaultChunkGenerator(TEAM, vaultBiome(level), base, solid, () -> GenSnapshot.of(base, 0, GenerationTiers.NONE),
+                OreInputs.EMPTY);
         check(helper, "no air", 320, noAir.getBaseHeight(0, 0, Heightmap.Types.WORLD_SURFACE_WG, heights, null));
         helper.succeed();
     }
 
     /** The team, the reset count, the chunk and a salt, and no way for a world seed to get in (§3.1). */
     static void theSeedComesFromTheTeamAndTheChunk(GameTestHelper helper) {
-        GenSnapshot snapshot = new GenSnapshot(VaultVariant.BASE, 4);
+        GenSnapshot snapshot = GenSnapshot.of(VaultVariant.BASE, 4, GenerationTiers.NONE);
         VaultChunkGenerator generator = generator(helper.getLevel(), VaultVariant.BASE, () -> snapshot);
         ChunkPos pos = new ChunkPos(3, -2);
         check(helper, "seed", ChunkSeed.of(TEAM, 4, 3, -2, 7L), generator.chunkSeed(snapshot, pos, 7L));

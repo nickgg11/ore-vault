@@ -241,6 +241,9 @@ final class DebugCommandTests {
         UUID team = UUID.randomUUID();
         VaultTypeFile.write(DataPaths.vaultFolder(server, team), VaultVariant.BASE);
         check(helper, "restored", true, VaultDimensions.restoreOne(server, team).restored());
+        // Since E4-S3 the Vault has ore, gravel and clay, and the team is random, so Y=1 may not be stone: make it stone.
+        ServerLevel vault = Objects.requireNonNull(server.getLevel(VaultDimensions.dimensionKey(team)));
+        vault.setBlock(new BlockPos(0, 1, 0), Blocks.STONE.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_ALL);
         String dim = VaultLifecycleTests.dimension(team);
         List<String> lines = new ArrayList<>();
         CommandSourceStack source = source(helper, LevelBasedPermissionSet.OWNER).withSource(recordingTo(lines));

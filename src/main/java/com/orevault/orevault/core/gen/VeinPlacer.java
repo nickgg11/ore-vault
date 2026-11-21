@@ -35,8 +35,6 @@ import java.util.SplittableRandom;
  * refuses any vein past it (BAL-E4-13). The clip factors are what really hold the floor.
  */
 public final class VeinPlacer {
-    private static final double CEILING = 0.60;
-
     private VeinPlacer() {
     }
 
@@ -98,7 +96,7 @@ public final class VeinPlacer {
             if (request.regionBottomY() < bounds.bottomY() || request.regionTopY() > bounds.topY()) {
                 throw new IllegalArgumentException("A region outside the " + request.band() + " band");
             }
-            long ceiling = (long) Math.floor(CEILING * 256 * bounds.layers());
+            long ceiling = (long) Math.floor(ClipFactors.CEILING * 256 * bounds.layers());
             int count = rollCount(request.perChunk(), random);
             int regionLayers = request.regionTopY() - request.regionBottomY() + 1;
             for (int v = 0; v < count; v++) {

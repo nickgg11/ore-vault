@@ -7,6 +7,7 @@ import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -70,6 +71,9 @@ public record LayerStack(List<Layer> layers) {
             if (total != variant.height()) {
                 throw new IllegalArgumentException("sums to " + total + ", expected the height " + variant.height());
             }
+            stack.bandFillerProblem(variant).ifPresent(problem -> {
+                throw new IllegalArgumentException(problem);
+            });
             for (Layer layer : stack.layers) {
                 if (!blockExists.test(layer.block)) {
                     throw new IllegalArgumentException("names an unknown block " + layer.block);
@@ -89,6 +93,47 @@ public record LayerStack(List<Layer> layers) {
             layers.add(new Layer(layer.get("block").getAsString(), layer.get("thickness").getAsInt()));
         }
         return new LayerStack(layers);
+    }
+
+    /**
+     * Why the stack's mineralizable bands cannot take ore, or empty when they can (§3.1, ADR 0004; Architect, ARCH-E4-8).
+     * The generator writes every position of every vein and blob with no check, so every layer of each band the variant has
+     * must be one solid block, the band's filler; a custom file may choose which block (#76). A dirt layer inside the stone
+     * band would otherwise turn into ore, and an air layer would hold floating ore. The column must fill the variant's
+     * height first. A bad file falls back to the built-in stack for this reason too, so a Vault is never refused over it.
+     */
+    public Optional<String> bandFillerProblem(VaultVariant variant) {
+        List<String> column = column();
+        if (column.size() != variant.height()) {
+            return Optional.of("has " + column.size() + " layers, expected " + variant.height());
+        }
+        for (Band band : Band.values()) {
+            BandBounds bounds = variant.band(band).orElse(null);
+            if (bounds == null) {
+                continue;
+            }
+            String filler = column.get(bounds.bottomY() - variant.minY());
+            if (isAir(filler)) {
+                return Optional.of("has air at Y=" + bounds.bottomY() + " in the " + band + " band");
+            }
+            for (int y = bounds.bottomY(); y <= bounds.topY(); y++) {
+                String block = column.get(y - variant.minY());
+                if (!block.equals(filler)) {
+                    return Optional.of("has " + block + " at Y=" + y + " in the " + band + " band, which is " + filler + " below it");
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** The block filling a band, checked by {@link #bandFillerProblem}; empty for a band the variant does not have. */
+    public Optional<String> filler(VaultVariant variant, Band band) {
+        return variant.band(band).map(bounds -> column().get(bounds.bottomY() - variant.minY()));
+    }
+
+    /** {@code air} and {@code minecraft:air}; a modded air is caught by the generator, which sees the block. */
+    private static boolean isAir(String id) {
+        return AIR.equals(id) || "air".equals(id);
     }
 
     /** The block id at each height, bottom-up: index 0 is the variant's {@code min_y}. */

@@ -3,6 +3,7 @@ package com.orevault.orevault.data;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.orevault.orevault.core.gen.ClipFactors;
 import com.orevault.orevault.core.gen.GenSnapshot;
 import com.orevault.orevault.core.gen.VaultVariant;
 import java.util.Optional;
@@ -15,6 +16,11 @@ import org.junit.jupiter.api.Test;
 class GenSnapshotsTest {
     private static final UUID TEAM = UUID.fromString("00000000-0000-0000-0000-0000000000c1");
 
+    /** With no generation node both clip factors are 1 (§3.1), so the filled snapshot carries {@link ClipFactors#NONE}. */
+    private static GenSnapshot baseline(VaultVariant variant, int vaultGeneration) {
+        return new GenSnapshot(variant, vaultGeneration, ClipFactors.NONE);
+    }
+
     @AfterEach
     void clear() {
         GenSnapshots.clear();
@@ -23,8 +29,8 @@ class GenSnapshotsTest {
     @Test
     void theSupplierAnswersTheFilledSnapshot() {
         Supplier<GenSnapshot> supplier = GenSnapshots.fill(TEAM, VaultVariant.BASE, 3);
-        assertEquals(new GenSnapshot(VaultVariant.BASE, 3), supplier.get());
-        assertEquals(Optional.of(new GenSnapshot(VaultVariant.BASE, 3)), GenSnapshots.current(TEAM));
+        assertEquals(baseline(VaultVariant.BASE, 3), supplier.get());
+        assertEquals(Optional.of(baseline(VaultVariant.BASE, 3)), GenSnapshots.current(TEAM));
     }
 
     /** A generator still draining across a reset keeps its own snapshot, so its variant check cannot trip. */
@@ -32,15 +38,15 @@ class GenSnapshotsTest {
     void aSecondFillLeavesTheFirstSupplierAlone() {
         Supplier<GenSnapshot> old = GenSnapshots.fill(TEAM, VaultVariant.BASE, 0);
         Supplier<GenSnapshot> fresh = GenSnapshots.fill(TEAM, VaultVariant.EXPANDED, 1);
-        assertEquals(new GenSnapshot(VaultVariant.BASE, 0), old.get());
-        assertEquals(new GenSnapshot(VaultVariant.EXPANDED, 1), fresh.get());
+        assertEquals(baseline(VaultVariant.BASE, 0), old.get());
+        assertEquals(baseline(VaultVariant.EXPANDED, 1), fresh.get());
     }
 
     @Test
     void aRebuildKeepsTheVariantAndReadsTheGeneration() {
         Supplier<GenSnapshot> supplier = GenSnapshots.fill(TEAM, VaultVariant.EXPANDED, 0);
         GenSnapshots.rebuild(TEAM, () -> 4);
-        assertEquals(new GenSnapshot(VaultVariant.EXPANDED, 4), supplier.get());
+        assertEquals(baseline(VaultVariant.EXPANDED, 4), supplier.get());
     }
 
     @Test
@@ -48,7 +54,7 @@ class GenSnapshotsTest {
         Supplier<GenSnapshot> old = GenSnapshots.fill(TEAM, VaultVariant.BASE, 0);
         GenSnapshots.fill(TEAM, VaultVariant.BASE, 0);
         GenSnapshots.rebuild(TEAM, () -> 9);
-        assertEquals(new GenSnapshot(VaultVariant.BASE, 0), old.get());
+        assertEquals(baseline(VaultVariant.BASE, 0), old.get());
     }
 
     @Test
