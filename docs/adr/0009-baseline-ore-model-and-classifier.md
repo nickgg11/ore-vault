@@ -586,9 +586,9 @@ Amended 2026-11-21 for E4-S3 (#247) (Developer, for the Architect and Balancer t
   empty pickers, and its Vaults get gravel and clay and no ore (the classifier has logged an ERROR).
 
 
-Amended 2026-11-21 after Nick's playtest of the generator (#422) (Balancer, for the Architect to confirm; the surface Y
-is Nick's to confirm). The figures are the Balancer's, closed form from the counts and the repo's port of vanilla's
-`OreFeature`, derived and unplaytested; the script is `docs/research/vanilla-ore/heights.py` and its output
+Amended 2026-11-21 after Nick's playtest of the generator (#422) and his choice of a surface at Y=100 the same day
+(Balancer, for the Architect to confirm). The figures are the Balancer's, closed form from the counts and the repo's port
+of vanilla's `OreFeature`, derived and unplaytested; the script is `docs/research/vanilla-ore/heights.py` and its output
 `heights.txt`.
 
 - What Nick saw. Lapis at Y=220. That was question 4's option A working as written: each rarity's veins were spread
@@ -606,11 +606,11 @@ is Nick's to confirm). The figures are the Balancer's, closed form from the coun
   re-pinned (ARCH-E4-7).
 - Edge factor. Drawing the middle from the profile does not remove it: any ore with mass at a band's floor or top
   loses the box's overhang there. It stays one factor per band and rarity, now computed from the profiles: the
-  blocks the rarity's ores keep inside the band, mixed by their pick shares. Under 1% in the stone band and at most
-  about 2.6% (deepslate common, whose iron peaks at the band's top). A factor per ore is not needed: the largest
-  difference between an ore's kept share and its rarity's is 4.4%, on copper and emerald at the deepslate top, where
-  emerald is 0.1% of rare. `OreBaseline.edgeFactor`'s uniform form `H / (H + h - 1)` is replaced; it reads the pickers'
-  profiles, built on the main thread and published with them.
+  blocks the rarity's ores keep inside the band, mixed by their pick shares. Under 1% in the stone band (common 0.55%,
+  uncommon 0.27%, rare 0.63%) and at most about 2.6% in deepslate (common, whose iron peaks at the band's top). A factor
+  per ore is not needed: the largest difference between an ore's kept share and its rarity's is 4.4%, on copper and
+  emerald at the deepslate top, where emerald is 0.1% of rare. `OreBaseline.edgeFactor`'s uniform form
+  `H / (H + h - 1)` is replaced; it reads the pickers' profiles, built on the main thread and published with them.
 - Mass outside a band. Dropped, in both types. An ore with no mass in a band is never picked there. Where no ore of a
   rarity has mass in a band though the pack has some, that rarity's veins draw by weight alone and spread evenly
   through the band (the existing fallback, now also for height). A pack with no ore of a rarity keeps the
@@ -619,12 +619,11 @@ is Nick's to confirm). The figures are the Balancer's, closed form from the coun
 - Measured first on the old column, the rule failed Nick's 2026-10-27 answer. With stone to Y=245 and the overworld
   stretched onto Y-63..245, the base type's lowest 16 layers came out 15.9% ore (68% uncommon, 17% rare), 8.7 times the
   curve's rate, about 11.5 hours for the 100: the rarity-placed-by-profile floor rejected on 2026-10-27 (about 15%,
-  13 hours) returns, because a rarity's veins placed by its ores' profiles are placed by the rarity's profile. Every
-  slab above Y=32 came out 1.5 to 2.5%, and the expanded stone band's lowest slab 8.4%.
-- Nick then asked, the same day, for the Vault to start at about Y=64 or Y=100 and grow deeper. Three layouts were
-  modelled, each with the rule above and §3.1's densities (3% stone, 6% deepslate) held:
+  13 hours) returns, because a rarity's veins placed by its ores' profiles are placed by the rarity's profile.
+- Nick then asked, the same day, for the Vault to start at about Y=64 or Y=100 and grow deeper, and chose Y=100 from
+  this comparison (each with the rule above and §3.1's densities, 3% stone and 6% deepslate, held):
 
-  | | Old column shifted down (min_y -192) | Surface Y=100 | Surface Y=64 |
+  | | Old column shifted down (min_y -192) | Surface Y=100 (chosen) | Surface Y=64 |
   |---|---|---|---|
   | Stone band, base / expanded | Y-191..53 / Y-192..53 | Y1..95 / Y0..95 | Y1..59 / Y0..59 |
   | Height map | linear, as now | vanilla Y, 1:1 | vanilla Y, 1:1 |
@@ -637,48 +636,45 @@ is Nick's to confirm). The figures are the Balancer's, closed form from the coun
 
   The shift keeps every count and test but changes only the numbers on the F3 screen: the map stays linear, since
   245 layers of stone cannot hold vanilla's -64..319 one to one, so diamonds stay at the bottom and the floor stays at
-  8.7 times. It does not bring the good ore nearer. Y=100 and Y=64 both read vanilla's heights at vanilla's Y; Y=64
-  is the nearer, the flatter, holds more iron, and its band is vanilla's own Y0..63, whose mix §3.1's 68/25/7 already
-  copies. The Balancer recommends Y=64. The deepslate band is the same in all three: 4.7%, 3.7% and 8.3% by slab
-  under 1:1 (2.4, 1.9 and 2.5 times the stone curve's rate, against its band average of 2.33, already accepted for
-  Vault Expansion and measured in T14).
-- The layout, if Nick confirms Y=64. Base: bedrock Y=0, stone Y1..59, dirt Y60..63, grass Y=64, air Y65..319.
-  Expanded: bedrock Y=-64, deepslate Y-63..-1, stone Y0..59, the same above. The dimension type files keep `min_y` and
-  `height`; the layer stacks (`vault_layers/*.json`, `LayerStack`'s built-ins), `VaultVariant.STONE_TOP_Y` (59) and
-  `OreBaseline.STONE_BAND_LAYERS` (59) change together (rule 8), and the stone-band counts become 33.96, 19.75 and 7.95
-  veins, gravel 2.17 and clay 0.72 blobs. `OrePickers` maps the profiles at vanilla's Y (column -64..319 onto itself);
+  8.7 times. The Balancer recommended Y=64 as nearer and flatter; Nick chose Y=100.
+- The floor at Y=100, accepted. Base type by slab: Y1..16 4.57% (28/58/14, 2.25 times the curve's rate), Y17..32 2.95%
+  (0.90), Y33..48 2.74% (0.74), Y49..64 2.84% (0.79), Y65..95 2.56% (0.65). The best 1 by 2 tunnel, Y2..3, is 2.95
+  times. Mining only Y1..16 takes the 100 hours in about 44 (32 for a team of five against its 71); the tunnel in about
+  34 (24). Nick was told the floor pays about 2.3 times with no mitigation and that it would stand unless he asked for it
+  flatter; he did not ask, so it stands, as the deepslate band's 2.33 times average was accepted for Vault Expansion.
+  T14 measures both. The deepslate band is 4.7%, 3.7% and 8.3% by slab under 1:1 (2.4, 1.9 and 2.5 times).
+- The layout. Base: bedrock Y=0, stone Y1..95, dirt Y96..99, grass Y=100, air Y101..319. Expanded: bedrock Y=-64,
+  deepslate Y-63..-1, stone Y0..95, the same above. The dimension type files keep `min_y` and `height`; the layer stacks
+  (`vault_layers/*.json`, `LayerStack`'s built-ins), `VaultVariant.STONE_TOP_Y` (95) and
+  `OreBaseline.STONE_BAND_LAYERS` (95) change together (rule 8), and the stone-band counts become 54.67, 31.80 and 12.80
+  veins, gravel 3.49 and clay 1.16 blobs. `OrePickers` maps the profiles at vanilla's Y (column -64..319 onto itself);
   a pack whose overworld is taller or deeper than vanilla's maps at its own Y as well, and what lies outside a band is
-  dropped. `SafeArrival.DEFAULT_FEET_Y` becomes 65; `SafeArrivalTest`, `LayerStackTest` and the lifecycle gametest's
-  arrival move with it. The expanded type spreads the base counts over 60 stone layers, 1.7% thinner, inside S12's 5%.
+  dropped. `SafeArrival.DEFAULT_FEET_Y` becomes 101; `SafeArrivalTest`, `LayerStackTest` and the lifecycle gametest's
+  arrival move with it. The expanded type spreads the base counts over 96 stone layers, 1.0% thinner, inside S12's 5%.
 - Tests. S12's per-slab rule changes from "within ±10% of the band's density" to "within ±10% of the slab's expected
   density, and rarity shares within ±3 points of the slab's expected shares", the expected figures computed from the
-  pickers' profiles by the same code the placer reads, over 81 chunks. At Y=64 the largest slab standard deviation over
-  81 chunks is about 3.1% of its expected blocks, so ±10% is above three; on the old column it was 4.4% on the thinnest
-  slab. Band density ±5% and band shares ±2 points stand. The identity unit cases of question 4 (a rare pick above
-  Y=16 is emerald with probability 1; the below-Y=1 fold) are replaced by: on the golden fixture, base type, the pick
-  shares by ore and the expected slab densities above, each within 0.5 points; no vein of an ore lands where its
-  profile has no mass; the layer draw's histogram over 10,000 draws matches the profile.
+  pickers' profiles by the same code the placer reads, over 81 chunks. At Y=100 the largest slab standard deviation over
+  81 chunks is about 3.2% of its expected blocks, so ±10% is above three. Band density ±5% and band shares ±2 points
+  stand. Slabs: base Y1..16, 17..32, 33..48, 49..64 and 65..95 (31 layers, merged); expanded Y0..15 to Y80..95, six;
+  deepslate unchanged. The identity unit cases of question 4 (a rare pick above Y=16 is emerald with probability 1; the
+  below-Y=1 fold) are replaced by: on the golden fixture, base type, the pick shares by ore and the expected slab
+  densities above, each within 0.5 points; no vein of an ore lands where its profile has no mass; the layer draw's
+  histogram over 10,000 draws matches the profile.
 - The floor clip. `ClipFactors.densest` adds the baseline's requests layer by layer as height now spreads them, from
   the profiles, not as flat bands, so a node that concentrates ore low (Deep Veins) is summed on top of the densest
-  baseline layer. No baseline slab is near 60%: the densest is 3.7% in the base stone band at Y=64 (15.9% on the old
-  column), 8.3% in deepslate.
+  baseline layer. No baseline slab is near 60%: the densest is 4.6% in the base stone band, 8.3% in deepslate.
 - What moves with it. §4.3's ore an hour and curve do not move, since the band densities and shares are unchanged; the
-  pacing session (S11) names the layers it mines. Seismic Sense's `COMPASS_MARGIN` was derived for 245 stone layers
-  and falls to about 2.5 standard deviations in the base type; the Balancer re-derives it in E9-S32a. ADR 0004's size
-  gate gets easier (a quarter of the stone band's veins a chunk), and its comparator (the chunk's block data at the
-  type's full height) does not change. Node anchors re-set in §6.1: Shallow Grace's deepest Y above 100 becomes above
-  32; Bedrock Communion's penalty band Y=32..245 becomes Y=32..59 and its exemption Y=246 becomes Y=60; Stratified's
-  bands become Y≤16, 17..36 and 37..59 with blends of 4 and 2 blocks. Deep Breath's Y=32 and Highwater Mark's Y=64 stand
-  (below Y=32 is now the lower half of the base stone band, where the deep ores are; Highwater Mark reaches 3 steps at
-  the base floor and 7 at expanded bedrock, as before).
-- Existing Vaults. The dimension type is shared by every Vault of its type, so a change to `min_y` or `height` would
-  apply to every Vault on disk at the next start; Y=64 changes neither, so old Vaults would keep their generated chunks
-  with stone to Y=245 and new chunks would generate 186 blocks lower beside them. Proposed for the Architect (ADR 0002,
-  0005): the type file gains `layout`, an int, absent meaning the old stack, written once with the folder as now; a
-  folder whose layout is not the current one is refused at restore and on the portal path with the existing
+  pacing session (S11) names the layers it mines, and Y1..16 is about 329 ore an hour, above S11's 264. Seismic Sense's
+  `COMPASS_MARGIN` was derived for 245 stone layers and falls to about 3.2 standard deviations in the base type; the
+  Balancer re-derives it in E9-S32a. ADR 0004's size gate gets easier (95/245 of the stone band's veins a chunk), and its
+  comparator (the chunk's block data at the type's full height) does not change. Node anchors re-set in §6.1, each with
+  its reason there and in `DESIGN_LOG.md`: Shallow Grace's deepest Y above 100 becomes above 32; Bedrock Communion's
+  penalty band Y=32..245 becomes Y=32..95 and its exemption Y=246 becomes Y=96; Stratified's bands become Y≤24, 25..58
+  and 59..95 with blends of 6 and 2 blocks. Deep Breath's Y=32 and Highwater Mark's Y=64 stand.
+- Existing Vaults, for the Architect (ADR 0002, 0005). The dimension type is shared by every Vault of its type, so a
+  change to `min_y` or `height` would apply to every Vault on disk at the next start; Y=100 changes neither, so old
+  Vaults would keep their generated chunks with stone to Y=245 and new chunks would generate 150 blocks lower beside
+  them. Proposed: the type file gains `layout`, an int, absent meaning the old stack, written once with the folder as
+  now; a folder whose layout is not the current one is refused at restore and on the portal path with the existing
   unknown-type refusal and a message, and an admin resets it. The mod is unreleased and the only such Vaults are Nick's
-  development worlds, so the cheaper alternative, deleting them by hand with no check, is also open; the check costs
-  one field and keeps a stale Vault from silently growing a cliff.
-- Floor-mining at Y=64: 1.73 times in Y1..16 (58 hours for the 100 solo, about 41 for a team of five against its 71)
-  and 2.27 times in the best tunnel (44 and 31). Whether that is acceptable, with counts and Resonance unchanged, or
-  needs a mitigation, is Nick's; the options are in `DESIGN_LOG.md`, 2026-11-21.
+  development worlds; the check costs one field and keeps a stale Vault from silently growing a cliff.

@@ -14,28 +14,33 @@ Newest first.
 
 ---
 
-## 2026-11-21 — Generator playtest (#422): each ore picks its own height, and the Vault starts lower
+## 2026-11-21 — Generator playtest (#422): each ore picks its own height, and the Vault starts at Y=100
 
 **Where this came from.** Nick playtested the generator from #422 and saw lapis at Y=220. That was the rule of
 2026-10-31 (question 4, option A) working as written: each rarity's veins were spread evenly over the band and a vein's
 ore was then picked by its height, with the nearest slab's ores where none of its rarity had mass there. Uncommon veins
 above about Y=40 were about 95% lapis and rare veins above Y=16 were emerald. He was offered four options on a card and
 chose "Each ore picks its own height". Within the hour he asked, in his own words, for the Vault to "start at y of 100
-or 64 or something then it get's deeper instead of the stone getting higher". The surface height is his to confirm; the
-Balancer recommends Y=64. The figures below are the Balancer's, closed form from the baseline counts and the repo's
-port of vanilla's `OreFeature`, derived and unplaytested (`docs/research/vanilla-ore/heights.py`, output in
-`heights.txt`). The spec changed in §3.1, §4.3 (pacing check) and §6.1 (Shallow Grace, Stratified, Bedrock Communion,
-Seismic Sense's open margin), with an amendment to ADR 0009.
+or 64 or something then it get's deeper instead of the stone getting higher". Both surfaces and a shifted column were
+modelled, and he chose Y=100 on a second card (03:53 UTC). The figures below are the Balancer's, closed form from the
+baseline counts and the repo's port of vanilla's `OreFeature`, derived and unplaytested
+(`docs/research/vanilla-ore/heights.py`, output in `heights.txt`). The spec changed in §3.1, §4.3 (pacing check) and
+§6.1 (Shallow Grace, Stratified, Bedrock Communion, Seismic Sense's open margin), with an amendment to ADR 0009.
 
 **Decisions.**
 
 | Decision | Replaced | Reasoning |
 |---|---|---|
-| Each ore picks its own height. A vein's rarity comes from the band's count; its ore is drawn from that rarity's ores by weight × the ore's profile mass inside the band; its box middle is drawn from that ore's profile inside the band. Counts, band densities, rarity shares and §4.3's curve are unchanged; the low stone is denser and the upper stone thinner | Veins spread evenly through the band, the ore picked by the vein's height (question 4, 2026-10-31), and with it the density half of Nick's 2026-10-27 answer, "same density at every height" | The written rule put lapis at Y=220 and left the band above Y=40 with almost no gold, redstone or diamond. Nick chose ore at its own height knowing the low stone gets denser. On the old column that cost more than the card said: the base type's lowest 16 layers came out 15.9% ore at 68% uncommon and 17% rare, 8.7 times the curve's rate, so floor-mining finished the 100 hours in about 11.5. That is the floor rejected on 2026-10-27 (about 15%, 13 hours) back again, since a rarity's veins placed by its ores' profiles are placed by the rarity's own profile. The surface decision below is what holds it to 1.7 times. |
-| The Vault starts at Y=64 and grows deeper: stone Y1..59 under a grass surface at Y=64 in both types, deepslate Y-63..-1 below it in the expanded type, and ore at vanilla's own Y, one to one. The stone band's counts per chunk scale with its height (× 59/245) so its density stays 3%. **Surface Y is Nick's to confirm** | Stone Y1..245 (base) and Y0..245 (expanded) under grass at Y=250, with the overworld's Y-64..319 stretched linearly onto Y-63..245 | Nick's reason: the high surface puts the player far from the good ore. At Y=64 the diamond, redstone and gold layers are 48 to 63 blocks under the grass, against about 234 before. The lowest slab is 3.7% ore at 1.73 times the curve's rate (about 58 hours for the 100 solo, 41 for a team of five), the best 1 by 2 tunnel 2.27 times (44 and 31 hours), and Y17..59 earns 0.71 to 0.76 times. The band is vanilla's own Y0..63, whose mix §3.1's 68/25/7 already copies. Ore an hour and the curve do not move because the density is what they price. |
-| Mass outside a band is dropped, not folded | The base type folded the map's mass below Y=1 into its lowest slab | At vanilla's Y that mass is the deepslate band's, which is what Vault Expansion opens. Folding the upper features into the top slab instead was modelled: it leaves Y17..32 at 0.5% ore between a 3.4% floor and a 4.4% top. |
-| S12's per-slab check: each slab within ±10% of its own expected density from the profiles, rarity shares within ±3 points of its expected shares, over 81 chunks | Each slab within ±10% of the band's density | The band is no longer flat by design. The largest slab standard deviation over 81 chunks is about 3.1% at Y=64, so ±10% is above three. |
-| Node anchors re-set to the new column: Shallow Grace deepest Y above 32 (was 100); Bedrock Communion penalty Y=32..59 (was 32..245), exemption from Y=60 (was 246); Stratified bands Y≤16, 17..36, 37..59, blends 4 and 2 blocks (were Y≤60, 61..150, 151..245, 16 and 4); `SafeArrival` falls back to Y=65 (was 251) | The old column's values | Each keeps what it meant: Shallow Grace is outgrown on reaching the deep-ore layers, Bedrock Communion exempts the dirt and surface, Stratified's bands are the old ones scaled by 59/245. Deep Breath's Y=32 and Highwater Mark's Y=64 stand. Unplaytested; T9 confirms each with its node. |
+| Each ore picks its own height. A vein's rarity comes from the band's count; its ore is drawn from that rarity's ores by weight × the ore's profile mass inside the band; its box middle is drawn from that ore's profile inside the band. Counts, band densities, rarity shares and §4.3's curve are unchanged; the low stone is denser and the upper stone thinner | Veins spread evenly through the band, the ore picked by the vein's height (question 4, 2026-10-31), and with it the density half of Nick's 2026-10-27 answer, "same density at every height" | The written rule put lapis at Y=220 and left the band above Y=40 with almost no gold, redstone or diamond. Nick chose ore at its own height knowing the low stone gets denser. On the old column that cost more than the card said: the base type's lowest 16 layers came out 15.9% ore at 68% uncommon and 17% rare, 8.7 times the curve's rate, so floor-mining finished the 100 hours in about 11.5. That is the floor rejected on 2026-10-27 (about 15%, 13 hours) back again, since a rarity's veins placed by its ores' profiles are placed by the rarity's own profile. The surface decision below is what holds it to 2.25 times. |
+| The Vault starts at Y=100 and grows deeper: stone Y1..95 under dirt Y96..99 and a grass surface at Y=100 in both types, deepslate Y-63..-1 below it in the expanded type, and ore at vanilla's own Y, one to one. The stone band's counts per chunk scale with its height (× 95/245: 54.67, 31.80 and 12.80 veins) so its density stays 3% | Stone Y1..245 (base) and Y0..245 (expanded) under grass at Y=250, with the overworld's Y-64..319 stretched linearly onto Y-63..245 | Nick's reason: the high surface puts the player far from the good ore. At Y=100 the diamond and redstone layers (Y1..16) are 84 to 99 blocks under the grass and gold reaches up to Y=32, against about 234 blocks before; expanded deepslate starts 101 blocks down. Ore an hour and the curve do not move because the density is what they price. The Balancer recommended Y=64 (48 blocks to diamond, floor 1.73 times, more iron); Nick chose Y=100. |
+| The floor at Y=100 is accepted as it is: Y1..16 is 4.57% ore at 2.25 times the curve's rate (about 44 hours for the 100 solo, 32 for a team of five against its 71), and the best 1 by 2 tunnel, Y2..3, 2.95 times (34 and 24 hours). Y17..95 earns 0.65 to 0.90 times | No floor premium: the same density and mix at every height | Nick was told the floor at Y=100 pays about 2.3 times with no mitigation and that it would stand unless he asked for it flatter, and he did not ask. The expanded type's deepslate band already pays 2.33 times the stone curve's rate on average, accepted for Vault Expansion, so a floor at 2.25 is within what the curve already tolerates. T14 measures both. Mining Y1..16 is about 329 ore an hour, above the S11 pacing band, so the pacing session mines Y17..95 and names its layers. |
+| Mass outside a band is dropped, not folded | The base type folded the map's mass below Y=1 into its lowest slab | At vanilla's Y that mass is the deepslate band's, which is what Vault Expansion opens. Folding the upper features into the top slab instead was modelled at Y=64: it leaves a 0.5% slab between a 3.4% floor and a 4.4% top. |
+| S12's per-slab check: each slab within ±10% of its own expected density from the profiles, rarity shares within ±3 points of its expected shares, over 81 chunks | Each slab within ±10% of the band's density | The band is no longer flat by design. The largest slab standard deviation over 81 chunks is about 3.2% at Y=100, so ±10% is above three. |
+| Shallow Grace pays while every member inside has an all-time deepest Y above 32 (was 100) | Y=100, 150 blocks under the old grass | Y=100 is now the grass itself, so the node would be outgrown on the first block dug. Shallow means not yet down among the deep ores: gold reaches Y=32 and diamond and redstone lie below it. Scaling the old line by its share of the stone (61% of the way down) would give about Y=37; the line is set on the ore instead, and on the same Y as Bedrock Communion's and Deep Breath's. |
+| Bedrock Communion's penalty band is Y=32..95 and its exemption starts at Y=96 (were Y=32..245 and Y=246) | The old column's values | The exemption exists so surface builds and machine floors are untouched, and it follows the base of the dirt band, now Y=96. The lower line stays at Y=32, so the deep-ore layers below it carry neither penalty nor bonus, as the old stone's lowest 31 layers did. |
+| Stratified's bands are rare Y≤24, uncommon Y=25..58, common Y=59..95, blending over 6 blocks and 2 at Vein Shaping tier 2 (were Y≤60, 61..150, 151..245, blends 16 and 4) | The old column's values | The old bands scaled by 95/245 (23.3 and 58.2; blends 6.2 and 1.6), rounded to whole layers, so each band keeps its share of the stone's height. The baseline already puts diamond, redstone and gold in Y1..16, so the rare band mostly pulls emerald down; T9's stacking review checks Stratified does more than the baseline does. |
+| `SafeArrival` falls back to Y=101, the feet above the grass at Y=100 (was 251) | Y=251 | The stack gives it: grass at Y=100. |
+| Deep Breath's Y=32 and Highwater Mark's Y=64 stand | Unchanged | Below Y=32 is now the deep-ore third of the base stone band, which is what Deep Breath protects. Highwater Mark counts 16-block steps below Y=64, now the middle of the band: 3 steps at the base floor and 7 at expanded bedrock, as before. |
 
 **Rejected.**
 
@@ -46,27 +51,22 @@ Seismic Sense's open margin), with an amendment to ADR 0009.
   layers of stone cannot hold vanilla's -64..319 one to one: diamonds stay at the bottom, about 234 blocks under the
   grass, and the floor stays at 8.7 times. It changes the numbers on the F3 screen and not the distance to the good ore,
   which is what Nick asked to fix. It would also change `min_y`, which every existing Vault of the type reads.
-- A surface at Y=100 (stone Y1..95). Diamonds 84 blocks under the grass; the lowest slab 4.6% at 2.25 times the curve's
-  rate (about 44 hours), the best tunnel 2.95 times (34 hours); and the band adds coal and copper but almost no iron,
-  so iron falls to 17% of common veins against 27% at Y=64. Nick named it as one of his two figures; the Balancer
-  recommends Y=64 on these numbers, and Nick confirms.
-- The card's other options, at the time it was shown: keeping the rule of 2026-10-31 (lapis at Y=220); lowering the
-  surface to vanilla's Y without changing the pick; doing both. Nick's message after the card asks for the lower
-  surface on top of his choice, which is the card's "both" in substance; this entry records it as his later answer, to
-  be confirmed with the surface Y.
+- A surface at Y=64 (stone Y1..59), the Balancer's recommendation: diamonds 48 blocks under the grass, the floor 3.7%
+  at 1.73 times (about 58 hours), the best tunnel 2.27 times (44 hours), iron 27% of common veins against 17% at Y=100.
+  Nick chose Y=100.
+- A mitigation for the floor (half the height drawn evenly, which takes Y=64's floor to about 1.37 times; a per-slab
+  cap; a curve priced on a mix of heights). Offered, not asked for.
+- The card's other options: keeping the rule of 2026-10-31 (lapis at Y=220); lowering the surface to vanilla's Y without
+  changing the pick; doing both. Nick's message after the card asked for the lower surface on top of his choice, which
+  is the card's "both" in substance, and it replaces the card's declined "lower to 1:1" and "both".
 - An edge factor per ore. The largest gap between an ore's kept share and its rarity's is 4.4%, on ores that are 0.1%
   of their rarity there.
 
 **Still open.**
 
-- Whether floor-mining at 1.73 times (2.27 in the best tunnel) is acceptable with counts and Resonance unchanged, or
-  needs a mitigation. Options, none decided: accept it, as deepslate's 2.33 times is accepted, and let T14 measure it;
-  blend each ore's profile with an even spread inside the band (half and half takes the lowest slab to about 1.37 times);
-  cap a slab's density at a multiple of the band's and move the excess up; price the curve on a mix of heights rather
-  than the band average. Each changes either what Nick chose or the curve, so it goes to him.
-- `COMPASS_MARGIN` falls to about 2.5 standard deviations in the base type with a quarter of the stone band's veins a
-  chunk; 0.20 restores 5.0 but stops Vein Expansion 1, Vein Proliferation 1 and Guide Vein each clearing it. The
-  Balancer re-derives it in E9-S32a.
+- `COMPASS_MARGIN` falls to about 3.2 standard deviations in the base type with 95/245 of the stone band's veins a
+  chunk; 0.16 restores 5.1 but stops Vein Expansion 1 and Guide Vein each clearing it. The Balancer re-derives it in
+  E9-S32a.
 - Vaults generated under the old stack. Proposed: the type file records its layout and a stale Vault is refused with a
   message until an admin resets it (ADR 0009 amendment; the Architect settles it in ADR 0002 and 0005). Only Nick's
   development worlds have one.
