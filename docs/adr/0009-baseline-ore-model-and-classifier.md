@@ -557,15 +557,26 @@ Amended 2026-11-21 for E4-S3 (#247) (Developer, for the Architect and Balancer t
   concentrates ore into is therefore counted on top of the band-wide veins. With no generation node both factors are 1.
 - The clip test runs on synthetic requests, the deepslate band asking for 90%, 100% and 132% (QA-E4-2; the full stack moves
   to the T9 ticket that pins Vein Shaping and Stone Reduction, and #247's criterion is amended to say so). It asserts the
-  factor is `0.60 / asked`, that the clipped requests keep the mix exactly (one factor per band), and that every deepslate
-  slab placed over 81 chunks is at or under 60% within 5% relative. Two of the "Counts per rarity, and the floor clip"
-  checks cannot hold at an exact clip and are not asserted: the hard stop counts requested blocks against 60% of the band,
-  and the clipped mean request is exactly 60%, so it fires in about half the chunks (it is printed instead; BAL-E4-13);
-  and the mix by placed blocks shifts toward rare at that density, because later veins overwrite earlier ones and rare is
-  placed last (an estimate from random overlap: about 53/34/13 by placed blocks for a 60/30/10 request at 60%). The mix is
-  held where the clip acts, on the requests.
+  factor is `0.60 / asked`, that the clipped requests keep the mix exactly (one factor per band), that the clipped closed
+  form sits on 60%, that every deepslate slab placed over 81 chunks is at or under 60% within 5% relative, that the hard
+  stop never fires with the clip, and that it fires in every chunk without it (S3-QA-1). It prints the largest per-chunk
+  request over the ceiling and its spread.
+- The hard stop counts requested blocks inside the band, before overwrites (triage, Hard stop), against
+  `ClipFactors.CEILING × ClipFactors.HARD_STOP_HEADROOM`, the headroom 1.10 (S3-RV-1, S3-BAL-1; Manager, S3 round 1). At
+  exactly 60% a correct clip puts the mean request on the stop, so it would fire in about half of clipped chunks and take
+  about 6% of deepslate rare there, a second clip aimed at the rarity placed last. At 1.10 it is about seven standard
+  deviations out (derived, sigma about 1.4% of the request); if the printed spread is above 2%, the headroom becomes
+  1 + 5 sigma and the figure is recorded here. Placed ore after overlap stays at most about 48%. The placement records the
+  band and rarity of the first refusal, and the generator logs them once a session. ADR 0004's printed (non-gate) "both
+  bands at 60%" bounds rise by at most 10%; the gate, the pinned full stack, is held by the clip and unaffected.
+- The mix by placed blocks shifts toward rare at high density, because later veins overwrite earlier ones and rare is
+  placed last: about 53/34/13 by placed blocks for a 60/30/10 request at 60%, and 59.3/30.5/10.3 in deepslate at the
+  baseline (derived, random overlap; Balancer, S3 review). The clip's contract is one factor per band, so the mix is held
+  and tested on the requests; §3.1 states the placed drift.
 - Publication: `VaultChunkGenerator.forVault` reads the published record and throws when there is none, and
-  `VaultDimensions.restoreAll` checks for it before touching any Vault, outside its per-team catch, so the exception leaves
+  `VaultDimensions.restoreAll` first runs `VaultChunkGenerator.checkOreInputs()`, which reads the record and resolves both
+  types' ore inputs, before touching any Vault and outside its per-team catch (S3-AR-1), a gametest showing it throws with
+  no table (S3-QA-4), so the exception leaves
   `ServerStartedEvent` and the server does not start, as for a classifier failure (S2-AR-1). Since the classifier stops the
   start when it fails, this is reachable only through a bug in the mod. A pack with no classified ore at all publishes
   empty pickers, and its Vaults get gravel and clay and no ore (the classifier has logged an ERROR).

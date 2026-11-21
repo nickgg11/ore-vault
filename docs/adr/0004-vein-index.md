@@ -781,7 +781,7 @@ The largest 1.0 request is about configured size 18, not 15 (BAL-E4-8).
 Amended 2026-11-21 for E4-S3 (#247) (Developer, for the Architect to confirm), from the Epic 4 triage (ARCH-E4-8, DEV-E4-8,
 RV-E4-1, open point 4):
 - "Gravel and clay ... replace stone only" now reads "replace the band's filler, never ore". The filler is whatever one
-  block fills each band of the layer stack; a layer file whose band is not one solid block falls back to the built-in stack
+  block fills each band of the layer stack; a layer file whose band is not one block, or is air (any air, resolved by `VaultLayerConfig`) or a fluid, falls back to the built-in stack
   (`LayerStack.bandFillerProblem`), and the generator's constructor refuses such a stack when it has ore to place, so the
   check sits at construction and `fillFromNoise` writes every extent bit unconditionally, in ordinal order.
 - Gravel and clay are `BlobPlacer`'s, pure and unit-tested, each kind from its own salt (ADR 0003), cut to its band like a
