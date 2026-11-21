@@ -27,7 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The debug subcommands of {@code /orevault} (S44; §10). The rest of S44 reads state that does not exist yet and lands
+ * The debug subcommands of {@code /orevault} (S44; §10); {@code density} is {@link DensityCommand} (E4-S4). The rest of S44 reads state that does not exist yet and lands
  * with it. All of this is removed at T14.
  *
  * <p>The guard sits on each subcommand, never the root: {@code reset vote} and {@code archive} live under the same
@@ -60,6 +60,7 @@ public final class DebugCommands {
                                 .then(Commands.literal("base").executes(context -> createVault(context, VaultVariant.BASE)))
                                 .then(Commands.literal("expanded")
                                         .executes(context -> createVault(context, VaultVariant.EXPANDED))))));
+        root.then(DensityCommand.node(allowed));
     }
 
     /**
