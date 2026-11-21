@@ -2,13 +2,26 @@ package com.orevault.orevault.worldgen;
 
 import com.mojang.serialization.MapCodec;
 import com.orevault.orevault.OreVault;
+import com.orevault.orevault.core.gen.Band;
+import com.orevault.orevault.core.gen.BandBounds;
+import com.orevault.orevault.core.gen.BlobPlacer;
+import com.orevault.orevault.core.gen.ChunkPlan;
 import com.orevault.orevault.core.gen.ChunkSeed;
+import com.orevault.orevault.core.gen.ClipFactors;
 import com.orevault.orevault.core.gen.GenSnapshot;
 import com.orevault.orevault.core.gen.LayerStack;
+import com.orevault.orevault.core.gen.OreBaseline;
 import com.orevault.orevault.core.gen.VaultVariant;
+import com.orevault.orevault.core.gen.VeinExtent;
+import com.orevault.orevault.core.gen.VeinPlacer;
+import com.orevault.orevault.ore.ClassifiedOres;
+import com.orevault.orevault.ore.OreClassifier;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -30,6 +43,7 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.biome.MobSpawnSettings;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
@@ -38,9 +52,12 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * A team's Vault terrain (§3.1, §11 Dynamic Chunk Generator): the layer stack, flat, with no ore until T4.
+ * A team's Vault terrain (§3.1, §11 Dynamic Chunk Generator): the layer stack, then the chunk's ore veins, gravel and clay
+ * from the pure {@link ChunkPlan}, written exactly as planned (ADR 0004 "Placement returns extents", ADR 0009).
  *
  * <p>{@link #fillFromNoise} runs on a background executor (rule 1). Everything it touches is final and immutable, and the
  * only team state it reads is the {@link GenSnapshot}, once a chunk, so one chunk cannot straddle a purchase (ADR 0003).
@@ -52,11 +69,21 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
  * structures, do nothing here, and they are also what would read the world seed. So a chunk's seed comes only from
  * {@link #chunkSeed}, and within one generation of the Vault a chunk comes out the same whenever it is first visited.
  * {@code createReferences} stays as it is: with no structure starts it has nothing to reference.
+ *
+ * <p>The ore inputs are resolved on the main thread, by {@link #forVault} from the classifier's published record, and
+ * passed in, so the worker never reads the classifier's {@code volatile} and the gametests can build the bare stack with
+ * {@link OreInputs#EMPTY} (ARCH-E4-2). Every position of every extent is written with no check of what is there: the
+ * constructor has already checked that each band of the stack is one filler, not air and not a fluid, and the placer has already cleared an
+ * earlier vein's bit where a later vein took the position, so the world matches the extents exactly (ARCH-E4-8).
+ *
+ * <p>The codec is still {@code MapCodec.unit(this)}: the ore inputs are not encoded, so nothing about a Vault on disk
+ * changes with this class (ADR 0003 "Generator plumbing").
  */
 public final class VaultChunkGenerator extends ChunkGenerator {
     public static final ResourceKey<Biome> BIOME =
             ResourceKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath(OreVault.MOD_ID, "vault"));
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(VaultChunkGenerator.class);
     private static final int NO_WATER = 0;
 
     private final UUID teamId;
@@ -64,20 +91,99 @@ public final class VaultChunkGenerator extends ChunkGenerator {
     private final BlockState[] column;
     private final int firstFreeY;
     private final Supplier<GenSnapshot> snapshots;
+    private final OreInputs ores;
+    private final BlockState gravel;
+    private final BlockState clay;
+    /** The first hard stop is logged, the rest are not: worker threads share the flag (RV-E4-5). */
+    private final AtomicBoolean hardStopLogged = new AtomicBoolean();
+    /**
+     * The chunks this generator filled, for {@code /orevault density} (E4-S4) to tell them from chunks already on disk
+     * (triage, open point 5). Memory only: a new generator each server start, so it holds this session's chunks only.
+     */
+    private final Set<Long> filledThisSession = ConcurrentHashMap.newKeySet();
 
-    /** On the main thread: this reads the block registry, so the generation thread never has to. */
-    public VaultChunkGenerator(UUID teamId, Holder<Biome> biome, VaultVariant variant, LayerStack layers, Supplier<GenSnapshot> snapshots) {
+    /**
+     * A Vault's generator, from the ore table the classifier published at this start (ADR 0009 "Publication"). Throws
+     * when nothing is published: the classifier runs before any Vault is restored and stops the server start if it
+     * fails, so this is reachable only through a bug in the mod, and building a Vault without a table would write chunks
+     * with no ore, which never change (S2-AR-1).
+     */
+    public static VaultChunkGenerator forVault(UUID teamId, Holder<Biome> biome, VaultVariant variant, LayerStack layers,
+            Supplier<GenSnapshot> snapshots) {
+        return new VaultChunkGenerator(teamId, biome, variant, layers, snapshots, OreInputs.from(publishedOres(), variant));
+    }
+
+    /**
+     * The whole-table steps every Vault's generator takes, run once for both types before any Vault is restored
+     * (S3-AR-1). They are the same for every team, so a bug in them would otherwise throw inside the restore's per-team
+     * catch for every Vault, skip them all, and start the server with players stranded (rule 2). Run outside that catch,
+     * the exception leaves {@code ServerStartedEvent} and the server does not start (S2-AR-1).
+     *
+     * @throws IllegalStateException when nothing is published or the table names a block that does not exist
+     */
+    public static void checkOreInputs() {
+        ClassifiedOres published = publishedOres();
+        for (VaultVariant variant : VaultVariant.values()) {
+            OreInputs.from(published, variant);
+        }
+    }
+
+    /** The classifier's published record, or an {@link IllegalStateException} naming the bug. */
+    public static ClassifiedOres publishedOres() {
+        ClassifiedOres published = OreClassifier.published();
+        if (published == null) {
+            throw new IllegalStateException("No ore table is published, so no Vault generator can be built. The classifier "
+                    + "runs in ServerStartedEvent before any Vault is restored; reaching this is a bug in the mod");
+        }
+        return published;
+    }
+
+    /**
+     * On the main thread: this reads the block registry, so the generation thread never has to.
+     *
+     * @param ores what is placed beyond the stack; {@link OreInputs#EMPTY} for the bare stack
+     */
+    public VaultChunkGenerator(UUID teamId, Holder<Biome> biome, VaultVariant variant, LayerStack layers, Supplier<GenSnapshot> snapshots,
+            OreInputs ores) {
         super(new FixedBiomeSource(biome));
         this.teamId = teamId;
         this.variant = variant;
         this.snapshots = snapshots;
+        this.ores = ores;
         this.column = layers.column().stream()
                 .map(id -> BuiltInRegistries.BLOCK.getValue(Identifier.parse(id)).defaultBlockState())
                 .toArray(BlockState[]::new);
         if (column.length != variant.height()) {
             throw new IllegalArgumentException("A stack of " + column.length + " for " + variant.id());
         }
+        if (ores.places()) {
+            checkBandFiller(layers, variant, column);
+        }
         this.firstFreeY = variant.minY() + firstAirIndex(column);
+        this.gravel = Blocks.GRAVEL.defaultBlockState();
+        this.clay = Blocks.CLAY.defaultBlockState();
+    }
+
+    /**
+     * ARCH-E4-8: extents are written with no per-block check, so each band must be one block, not air and not a fluid. The
+     * layer config resolves the blocks and falls back to the built-in stack on a file that fails this (S3-RV-2), so only a
+     * hand-built stack can reach the throw.
+     */
+    private static void checkBandFiller(LayerStack layers, VaultVariant variant, BlockState[] column) {
+        layers.bandFillerProblem(variant).ifPresent(problem -> {
+            throw new IllegalArgumentException("The stack for " + variant.id() + " " + problem);
+        });
+        for (Band band : Band.values()) {
+            BandBounds bounds = variant.band(band).orElse(null);
+            if (bounds != null && cannotFill(column[bounds.bottomY() - variant.minY()])) {
+                throw new IllegalArgumentException("The " + band + " band of " + variant.id() + " is filled with air or a fluid");
+            }
+        }
+    }
+
+    /** A block a band cannot be filled with: any air, cave and modded air included, or a block holding a fluid (S3-RV-2). */
+    public static boolean cannotFill(BlockState state) {
+        return state.isAir() || !state.getFluidState().isEmpty();
     }
 
     /** From the resolved states: a layer file may say {@code air} or a modded air, and only the block can tell. */
@@ -123,7 +229,63 @@ public final class VaultChunkGenerator extends ChunkGenerator {
                 }
             }
         }
+        ChunkPos at = chunk.getPos();
+        if (ores.places()) {
+            place(ChunkPlan.of(OreBaseline.BASE, variant, ores.pickers(), snapshot, teamId, at.x(), at.z()), chunk, pos, at);
+        }
+        filledThisSession.add(key(at.x(), at.z()));
         return CompletableFuture.completedFuture(chunk);
+    }
+
+    /**
+     * Writes the plan: every position of every vein, in ordinal order, then gravel, then clay. All of it lies inside a band,
+     * below the stack's surface and in place of a solid block, so neither generation heightmap moves.
+     */
+    private void place(ChunkPlan plan, ChunkAccess chunk, BlockPos.MutableBlockPos pos, ChunkPos at) {
+        VeinPlacer.HardStop stop = plan.ore().firstStop();
+        if (stop != null && hardStopLogged.compareAndSet(false, true)) {
+            LOGGER.warn("The ore hard stop refused {} {} veins in chunk {} of team {}'s Vault ({}). It fires only when a clip "
+                    + "factor is wrong by more than {}%, so the clip did not hold this band. Logged once a session",
+                    stop.band(), stop.rarity(), at, teamId, variant.id(),
+                    Math.round((ClipFactors.HARD_STOP_HEADROOM - 1) * 100));
+        }
+        for (VeinExtent vein : plan.ore().veins()) {
+            BlockState state = ores.state(vein.oreGroup(), vein.band());
+            for (int y = 0; y < vein.sizeY(); y++) {
+                for (int z = 0; z < vein.sizeZ(); z++) {
+                    for (int x = 0; x < vein.sizeX(); x++) {
+                        if (vein.isSet(x, y, z)) {
+                            chunk.setBlockState(pos.set(vein.minX() + x, vein.minY() + y, vein.minZ() + z), state);
+                        }
+                    }
+                }
+            }
+        }
+        for (int cell : plan.blobs().gravel()) {
+            chunk.setBlockState(pos.set(BlobPlacer.x(cell), BlobPlacer.y(variant, cell), BlobPlacer.z(cell)), gravel);
+        }
+        for (int cell : plan.blobs().clay()) {
+            chunk.setBlockState(pos.set(BlobPlacer.x(cell), BlobPlacer.y(variant, cell), BlobPlacer.z(cell)), clay);
+        }
+    }
+
+    private static long key(int chunkX, int chunkZ) {
+        return ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
+    }
+
+    /** Whether this generator filled the chunk in this server session (E4-S4's density command). */
+    public boolean filledThisSession(int chunkX, int chunkZ) {
+        return filledThisSession.contains(key(chunkX, chunkZ));
+    }
+
+    /** How many chunks this generator filled in this server session. */
+    public int chunksFilledThisSession() {
+        return filledThisSession.size();
+    }
+
+    /** The ore inputs the generator was built with, for the gametest that checks the world against the plan. */
+    public OreInputs ores() {
+        return ores;
     }
 
     /** §3.1: natural spawning asks the generator, and a biome modifier using {@code neoforge:any} can fill the biome's lists. */

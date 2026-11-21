@@ -122,8 +122,14 @@ public final class VaultDimensions {
      *
      * @param resetTeamIds the resets ADR 0007's start-of-server pass finished at this start, restored whether or not a folder
      *     exists; none until that pass exists (E11)
+     * @throws IllegalStateException when no ore table is published, or its blocks cannot be resolved, before any Vault is
+     *     touched. The classifier runs first
+     *     in the same listener and stops the start if it fails, so this is a bug in the mod. It is not caught per team:
+     *     skipping every Vault would leave a player who logged out inside one in the Overworld sky (rule 2), so the
+     *     exception leaves {@code ServerStartedEvent} and the server does not start, as S2-AR-1 decided for the classifier
      */
     public static List<Restore> restoreAll(MinecraftServer server, Collection<UUID> resetTeamIds) {
+        VaultChunkGenerator.checkOreInputs();
         Set<UUID> teamIds = new LinkedHashSet<>(foldersOnDisk(server));
         teamIds.addAll(resetTeamIds);
         List<Restore> results = new ArrayList<>();
@@ -208,7 +214,7 @@ public final class VaultDimensions {
                 .getOrThrow(ResourceKey.create(Registries.DIMENSION_TYPE, Identifier.parse(variant.id())));
         Holder.Reference<Biome> biome = server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(VaultChunkGenerator.BIOME);
         LayerStack layers = VaultLayerConfig.load(server, variant);
-        VaultChunkGenerator generator = new VaultChunkGenerator(teamId, biome, variant, layers, snapshots);
+        VaultChunkGenerator generator = VaultChunkGenerator.forVault(teamId, biome, variant, layers, snapshots);
         LevelStem stem = new LevelStem(dimensionType, generator);
         registerStem(server, ResourceKey.create(Registries.LEVEL_STEM, key.identifier()), stem);
 

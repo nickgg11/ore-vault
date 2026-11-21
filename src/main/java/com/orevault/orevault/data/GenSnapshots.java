@@ -1,6 +1,7 @@
 package com.orevault.orevault.data;
 
 import com.orevault.orevault.core.gen.GenSnapshot;
+import com.orevault.orevault.core.gen.GenerationTiers;
 import com.orevault.orevault.core.gen.VaultVariant;
 import java.util.HashMap;
 import java.util.Map;
@@ -35,7 +36,7 @@ public final class GenSnapshots {
     }
 
     static Supplier<GenSnapshot> fill(UUID teamId, VaultVariant variant, int vaultGeneration) {
-        AtomicReference<GenSnapshot> holder = new AtomicReference<>(new GenSnapshot(variant, vaultGeneration));
+        AtomicReference<GenSnapshot> holder = new AtomicReference<>(snapshot(variant, vaultGeneration));
         HOLDERS.put(teamId, holder);
         return holder::get;
     }
@@ -48,8 +49,16 @@ public final class GenSnapshots {
     static void rebuild(UUID teamId, IntSupplier vaultGeneration) {
         AtomicReference<GenSnapshot> holder = HOLDERS.get(teamId);
         if (holder != null) {
-            holder.set(new GenSnapshot(holder.get().variant(), vaultGeneration.getAsInt()));
+            holder.set(snapshot(holder.get().variant(), vaultGeneration.getAsInt()));
         }
+    }
+
+    /**
+     * Both paths build the snapshot here, with the clip factors from {@code ClipFactors.of} (Architect, ARCH-E4-16). No
+     * generation node exists yet, so the tiers are empty; E9-S3 (#307) reads the team's owned generation tiers here.
+     */
+    private static GenSnapshot snapshot(VaultVariant variant, int vaultGeneration) {
+        return GenSnapshot.of(variant, vaultGeneration, GenerationTiers.NONE);
     }
 
     /** The team's current snapshot, for the S44 readout. */

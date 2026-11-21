@@ -168,4 +168,63 @@ class LayerStackTest {
         LayerStack stack = LayerStack.builtIn(VaultVariant.BASE);
         org.junit.jupiter.api.Assertions.assertThrows(UnsupportedOperationException.class, () -> stack.column().set(0, "x"));
     }
+
+    /** ARCH-E4-8: the generator writes ore with no check, so each band must be one solid block. */
+    @Test
+    void theBuiltInBandsAreOneFillerEach() {
+        for (VaultVariant variant : VaultVariant.values()) {
+            assertEquals(java.util.Optional.empty(), LayerStack.builtIn(variant).bandFillerProblem(variant), variant.id());
+            assertEquals(java.util.Optional.of("minecraft:stone"), LayerStack.builtIn(variant).filler(variant, Band.STONE));
+        }
+        assertEquals(java.util.Optional.of("minecraft:deepslate"),
+                LayerStack.builtIn(VaultVariant.EXPANDED).filler(VaultVariant.EXPANDED, Band.DEEPSLATE));
+        assertEquals(java.util.Optional.empty(), LayerStack.builtIn(VaultVariant.BASE).filler(VaultVariant.BASE, Band.DEEPSLATE));
+    }
+
+    /** A dirt layer inside the stone band would become ore; the file falls back rather than refuse the Vault. */
+    @Test
+    void aMixedBandFallsBack() {
+        List<String> errors = new ArrayList<>();
+        String json = GOOD_BASE.replace("{\"block\": \"minecraft:cobblestone\", \"thickness\": 245},",
+                "{\"block\": \"minecraft:cobblestone\", \"thickness\": 200}, {\"block\": \"minecraft:dirt\", \"thickness\": 45},");
+        assertEquals(LayerStack.builtIn(VaultVariant.BASE), load(json, ANY_BLOCK, errors));
+        assertEquals(1, errors.size(), errors.toString());
+        assertTrue(errors.get(0).contains("STONE band"), errors.get(0));
+    }
+
+    @Test
+    void anAirBandIsAProblem() {
+        LayerStack hollow = new LayerStack(List.of(new LayerStack.Layer("minecraft:bedrock", 1), new LayerStack.Layer("air", 319)));
+        assertTrue(hollow.bandFillerProblem(VaultVariant.BASE).orElseThrow().contains("air"));
+    }
+
+    @Test
+    void aStackOfTheWrongHeightIsAProblem() {
+        LayerStack shortStack = new LayerStack(List.of(new LayerStack.Layer("minecraft:stone", 100)));
+        assertTrue(shortStack.bandFillerProblem(VaultVariant.BASE).isPresent());
+    }
+
+    /** S3-RV-3: {@code stone} and {@code minecraft:stone} are one block, so this band is one filler. */
+    @Test
+    void aBandSpelledTwoWaysIsOneFiller() {
+        List<String> errors = new ArrayList<>();
+        String json = GOOD_BASE.replace("{\"block\": \"minecraft:cobblestone\", \"thickness\": 245},",
+                "{\"block\": \"stone\", \"thickness\": 100}, {\"block\": \"minecraft:stone\", \"thickness\": 145},");
+        LayerStack stack = load(json, ANY_BLOCK, errors);
+        assertEquals(List.of(), errors);
+        assertEquals("stone", stack.column().get(1));
+        assertEquals(java.util.Optional.of("minecraft:stone"), stack.filler(VaultVariant.BASE, Band.STONE));
+    }
+
+    /** S3-RV-2: an air the caller resolves, such as {@code cave_air}, makes the file fall back rather than fail at restore. */
+    @Test
+    void aBandOfAnotherAirFallsBack() {
+        List<String> errors = new ArrayList<>();
+        String json = GOOD_BASE.replace("minecraft:cobblestone", "minecraft:cave_air");
+        LayerStack stack = LayerStack.fromJson(new StringReader(json), VaultVariant.BASE, ANY_BLOCK,
+                "minecraft:cave_air"::equals, errors::add);
+        assertEquals(LayerStack.builtIn(VaultVariant.BASE), stack);
+        assertEquals(1, errors.size(), errors.toString());
+        assertTrue(errors.get(0).contains("cave_air"), errors.get(0));
+    }
 }
