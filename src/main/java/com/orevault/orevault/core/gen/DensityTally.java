@@ -237,7 +237,7 @@ public final class DensityTally {
             }
             for (int slab = 0; slab < slabCount(band); slab++) {
                 if (!slabPasses(band, slab)) {
-                    failures.add(name(band) + " slab " + range(slabBounds(band, slab)));
+                    failures.add(name(band) + " slab Y" + range(slabBounds(band, slab)));
                 }
             }
         }

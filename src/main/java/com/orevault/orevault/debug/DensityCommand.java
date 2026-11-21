@@ -128,14 +128,23 @@ public final class DensityCommand {
         OreIndex ores = OreIndex.of(VaultChunkGenerator.publishedOres().table());
         int side = 2 * radius + 1;
         DensityTally tally = new DensityTally(OreBaseline.BASE, variant, side * side);
+        // Read who was filled before any chunk loads: loading one chunk at full status generates its neighbours too, so a
+        // per-chunk "before" taken inside the loop counts a neighbour this run generated as earlier.
+        boolean[][] filledBefore = new boolean[side][side];
+        for (int dx = 0; dx < side; dx++) {
+            for (int dz = 0; dz < side; dz++) {
+                filledBefore[dx][dz] = generator.filledThisSession(centreX - radius + dx, centreZ - radius + dz);
+            }
+        }
         int byThisRun = 0;
         int earlier = 0;
         int notThisSession = 0;
-        for (int chunkX = centreX - radius; chunkX <= centreX + radius; chunkX++) {
-            for (int chunkZ = centreZ - radius; chunkZ <= centreZ + radius; chunkZ++) {
-                boolean filledBefore = generator.filledThisSession(chunkX, chunkZ);
+        for (int dx = 0; dx < side; dx++) {
+            for (int dz = 0; dz < side; dz++) {
+                int chunkX = centreX - radius + dx;
+                int chunkZ = centreZ - radius + dz;
                 LevelChunk chunk = level.getChunk(chunkX, chunkZ);
-                if (filledBefore) {
+                if (filledBefore[dx][dz]) {
                     earlier++;
                 } else if (generator.filledThisSession(chunkX, chunkZ)) {
                     byThisRun++;
