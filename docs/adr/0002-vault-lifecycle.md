@@ -175,7 +175,8 @@ the other marks say where they came from.
 5. Load the layer config for the variant, validated against the heights duplicated in `Variant` (9fc3086,
    `CLAUDE.md` rule 8).
 6. Build the generator with the team id, the biome, the variant's heights, the snapshot `Supplier` and the
-   layer config; its codec is `MapCodec.unit(this)` (ADR 0003). Wrap it in `new LevelStem(type,
+   layer config, through `VaultChunkGenerator.forVault`, which adds the ore inputs from the classifier's published
+   record and throws if there is none (E4-S3, ADR 0009 "Publication"); its codec is `MapCodec.unit(this)` (ADR 0003). Wrap it in `new LevelStem(type,
    generator)`.
 7. Register the stem in the live `LEVEL_STEM` `MappedRegistry`, unless the key is already there:
    `unfreeze(false)`, then `register(stemKey, stem, RegistrationInfo.BUILT_IN)` inside `try`, with

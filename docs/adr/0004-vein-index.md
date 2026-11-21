@@ -105,8 +105,10 @@ oracle). A 4,000-roll estimate from the port puts the largest observed span at 1
 for size 48, so the formula is conservative.
 
 Within a chunk, veins are placed in ordinal order. A later vein that overwrites an earlier vein's block
-takes it: the earlier vein's bit is cleared before the extent is returned. Gravel and clay are placed after
-ore and replace stone only, and Molten Seam's shells are placed before ore and refuse it (§3.1, §6.1). So at
+takes it: the earlier vein's bit is cleared before the extent is returned. The generator writes every bit
+of every extent with no check of what is there (amended for E4-S3). Gravel and clay are placed after ore
+and replace the band's filler, never ore, and clay never replaces gravel; a pure `core.gen.BlobPlacer`
+returns their positions with every ore position skipped. Molten Seam's shells are placed before ore and refuse it (§3.1, §6.1). So at
 generation the index matches the world exactly.
 
 ### The attachment
@@ -775,3 +777,14 @@ setup was ruled against: the section's own wording is a 1.0 tree. Measured on Ni
 Both bands at 60% at baseline sizes: at most 61,597 bytes (83.5%); at Abundance's sizes: at most 73,085 (99.1%), both
 capped by the hard stop.
 The largest 1.0 request is about configured size 18, not 15 (BAL-E4-8).
+
+Amended 2026-11-21 for E4-S3 (#247) (Developer, for the Architect to confirm), from the Epic 4 triage (ARCH-E4-8, DEV-E4-8,
+RV-E4-1, open point 4):
+- "Gravel and clay ... replace stone only" now reads "replace the band's filler, never ore". The filler is whatever one
+  block fills each band of the layer stack; a layer file whose band is not one solid block falls back to the built-in stack
+  (`LayerStack.bandFillerProblem`), and the generator's constructor refuses such a stack when it has ore to place, so the
+  check sits at construction and `fillFromNoise` writes every extent bit unconditionally, in ordinal order.
+- Gravel and clay are `BlobPlacer`'s, pure and unit-tested, each kind from its own salt (ADR 0003), cut to its band like a
+  vein and not raised by an edge factor. The generator writes the `core.gen.ChunkPlan` of ore, then gravel, then clay, and
+  nothing else. A gametest generates a fixed chunk and checks every position of the plan against the world and the chunk's
+  ore count against the plan's.
