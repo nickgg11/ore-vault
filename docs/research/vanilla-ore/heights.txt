@@ -128,3 +128,51 @@ The old column shifted down by 192 (min_y -192, grass at Y=58) is the NOW rows w
 
 No slab in any case is above 60% ore, so the 40% floor clip never fires at the baseline (max slab above).
 Max slab density: (0.1588785295824927, 'NOW base (rule of 2026-11-21, current heights, linear map, fold below Y1)')
+
+## Requests with their own region, surface Y=100 (base Y1..95; expanded deepslate Y-63..-1)
+
+### Stratified tier 1, base (rare Y<=24, uncommon 25..58, common 59..95, no blend)
+ Y   1..  16   1.19%  Res/ore 12.500  rate x  1.41  diamond 46, emerald 3
+ Y  17..  32   1.51%  Res/ore 5.319  rate x  0.76  gold 13, lapis 47, emerald 3
+ Y  33..  48   1.87%  Res/ore 5.000  rate x  0.88  lapis 76
+ Y  49..  64   3.01%  Res/ore 3.196  rate x  0.91  coal 46, iron 2, copper 26, lapis 49
+ Y  65..  95   5.34%  Res/ore 2.000  rate x  1.01  coal 322, iron 13, copper 90
+  C: coal 73.8%, iron 3.0%, copper 23.2%
+  U: gold 6.9%, redstone 0.0%, lapis 93.1%
+  R: diamond 88.9%, emerald 11.1%
+
+### Deep Veins tier 1 on the baseline, stone Y1..95 (extra 0.5 x count x 30/95 in Y1..30)
+ Y   1..  16   6.12%  Res/ore 4.976  rate x  2.88  coal 14, iron 47, copper 26, gold 39, redstone 38, lapis 53, diamond 32, emerald 2
+ Y  17..  32   4.25%  Res/ore 3.040  rate x  1.22  coal 36, iron 46, copper 40, gold 14, lapis 33, emerald 4
+ Y  33..  48   2.74%  Res/ore 2.864  rate x  0.74  coal 38, iron 16, copper 36, lapis 18, emerald 4
+ Y  49..  64   2.84%  Res/ore 2.932  rate x  0.79  coal 53, iron 5, copper 35, lapis 18, emerald 5
+ Y  65..  95   2.56%  Res/ore 2.684  rate x  0.65  coal 144, iron 6, copper 40, emerald 13
+  C: coal 49.0%, iron 20.6%, copper 30.4%
+  U: gold 25.0%, redstone 17.6%, lapis 57.4%
+  R: diamond 53.1%, emerald 46.9%
+
+### Deep Veins tier 2 on the baseline, stone Y1..95 (extra 1.0 x count x 30/95 in Y1..30)
+ Y   1..  16   7.67%  Res/ore 4.829  rate x  3.50  coal 20, iron 66, copper 36, gold 46, redstone 44, lapis 62, diamond 39, emerald 3
+ Y  17..  32   5.55%  Res/ore 2.929  rate x  1.53  coal 50, iron 63, copper 55, gold 17, lapis 38, emerald 4
+ Y  33..  48   2.74%  Res/ore 2.864  rate x  0.74  coal 38, iron 16, copper 36, lapis 18, emerald 4
+ Y  49..  64   2.84%  Res/ore 2.932  rate x  0.79  coal 53, iron 5, copper 35, lapis 18, emerald 5
+ Y  65..  95   2.56%  Res/ore 2.684  rate x  0.65  coal 144, iron 6, copper 40, emerald 13
+  C: coal 45.9%, iron 23.5%, copper 30.5%
+  U: gold 25.7%, redstone 18.1%, lapis 56.2%
+  R: diamond 57.0%, emerald 43.0%
+
+### Deep Veins tier 1 on the baseline, deepslate Y-63..-1 (extra 0.5 x count x 30/63 in Y-63..-34)
+ Y -63.. -48   7.90%  Res/ore 4.890  rate x  3.65  iron 128, gold 26, redstone 109, lapis 14, diamond 47
+ Y -47.. -32   6.29%  Res/ore 4.712  rate x  2.80  iron 123, gold 26, redstone 56, lapis 14, diamond 39
+ Y -31..  -1   8.31%  Res/ore 3.222  rate x  2.53  iron 390, copper 99, gold 58, redstone 35, lapis 38, diamond 39
+  C: coal 0.0%, iron 86.6%, copper 13.4%
+  U: gold 29.2%, redstone 53.4%, lapis 17.3%
+  R: diamond 100.0%, emerald 0.0%
+
+### Deep Veins tier 2 on the baseline, deepslate Y-63..-1 (extra 1.0 x count x 30/63 in Y-63..-34)
+ Y -63.. -48  11.14%  Res/ore 4.655  rate x  4.90  iron 203, gold 34, redstone 142, lapis 18, diamond 60
+ Y -47.. -32   8.86%  Res/ore 4.454  rate x  3.72  iron 191, gold 33, redstone 72, lapis 17, diamond 50
+ Y -31..  -1   8.31%  Res/ore 3.222  rate x  2.53  iron 390, copper 99, gold 58, redstone 35, lapis 38, diamond 39
+  C: coal 0.0%, iron 88.7%, copper 11.3%
+  U: gold 27.8%, redstone 55.8%, lapis 16.3%
+  R: diamond 100.0%, emerald 0.0%

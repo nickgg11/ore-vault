@@ -99,13 +99,17 @@ Q11). It is on by default and each player can turn it off with `hud.show_resonan
 config (§10). The Tome header shows the same numbers from the same sync. Where the bar sits and how it shows
 the share that came from bonuses is decided on a rendered preview with Nick's yes (§8).
 
-### Level 1, at 7 to 11 minutes
+### Level 1, at 7 to 11 minutes (about 14 in the first stone)
 
 Level 1 costs about 113 Resonance, about 32 ore at the 68/25/7 mix and 3.48 Resonance an ore (S11 in
 `docs/TEAM_REQUIREMENTS.md`; the Balancer's figures from ADR 0009's closed form, 218.9 ore an hour). At that
 rate it arrives around minute 9; §4.3's pacing check sets the band at 7 to 11 minutes, and level 2 at 15 to
 23. About 32 ore is only four or five veins, so one player's level-1 time can easily land outside the band
-by luck (QA's estimate: about ±50%). A session records the time as an observation; pacing is judged on ore an
+by luck (QA's estimate: about ±50%). Those figures are the stone band's average. Ore now sits at its own height (§3.1, 2026-11-21), and the
+first stone under the dirt, Y65..95, pays about 0.65 times that rate (2.56% ore at about 2.7 Resonance an ore, mostly
+coal): a player who stays in the first 30 layers of stone needs about 42 ore and reaches level 1 at about minute 14
+(§4.3's band for those layers is 11 to 17), and level 2 at about 29. One who digs down to Y17..32 reaches level 1 at
+about minute 10. Derived, unplaytested; the session logs the Y it mined. A session records the time as an observation; pacing is judged on ore an
 hour from the per-minute readout (S44), not on a stopwatch. A toast tells every online member (§4.3 Skill
 point award; §8 Team). The pool is not reset (§4.3). The team now has 5 unspent points (§4.3 step 2,
 `POINTS_PER_LEVEL = 5`; §4.4: unspent is `5 × level − owned visible nodes`).

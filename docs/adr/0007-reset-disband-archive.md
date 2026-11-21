@@ -77,7 +77,15 @@ file it finds:
    snapshot before the classifier has run would give them nothing to read (ADR 0009). Restore registers
    every team on the list whether or not a folder exists (ADR 0002 restore step 1), so a player who logged
    out inside is placed at the team anchor (X=0, Z=0) by the login check, not sent home.
-4. Otherwise nothing; restore handles it.
+4. A Vault folder whose type file reads `layout` 1, absent included (ADR 0005 section 3a; added 2026-11-21
+   when the layer stack changed): move the folder alone, not the team file, to
+   `<world>/orevault_archive/<teamUuid>/layout-1-<time>/` with the same `VaultFolders` move as step 2, log
+   at WARN naming both paths, and add the team id to `layoutArchivedTeamIds`, which the pass hands to
+   restore beside `resetTeamIds` (ADR 0002 restore step 6). The team's tree, pool and stats stay. A type file
+   that cannot be read is left for restore, which refuses it as before. A failed move is logged at ERROR and
+   the folder left in place; restore then refuses it as a layout it cannot load. This runs after steps 2 and
+   3, so a disbanded or reset team is handled by those first.
+5. Otherwise nothing; restore handles it.
 
 This pass is the shared archive and regenerate code. The live reset calls the same `VaultFolders` helper
 for backup, delete and move, and the same `VaultDimensions#ensureTeamDimension` for the new Vault (ADR

@@ -59,6 +59,8 @@ def band_blocks(band, layers):
     return {r: COUNTS[band][r] * mean_blocks(r) * k for r in 'CUR'}
 
 # --- Vertical spread of a vein about its box middle, from the port ------------------------------------------------
+# The middle is lo + (hi - lo) // 2 of the placed blocks' extent. VeinShape.Rolled.of sets the box to that extent, so this
+# is the placer's y0 + (sizeY - 1) / 2, the definition VeinShapeTables.LAYER_KERNEL is to use (review of #424, D2).
 B2 = {}   # E[blocks^2] a vein per rarity, empty veins included, for the per-slab spread
 
 def kernels():
@@ -222,3 +224,68 @@ if __name__ == '__main__':
     print("The old column shifted down by 192 (min_y -192, grass at Y=58) is the NOW rows with 192 taken off every Y.")
     print("\nNo slab in any case is above 60% ore, so the 40% floor clip never fires at the baseline (max slab above).")
     print("Max slab density:", max((r[2], n) for n, m in out.items() for r in m['rows']))
+
+
+# --- Requests with a region of their own (Manager's ruling on D1 and W1, 2026-11-21) -------------------------------
+# A request over part of a band draws its ore by weight x the ore's profile mass inside the region, and its box middle
+# from that ore's profile cut to the region and renormalised; an ore with no mass in the region draws uniformly there
+# (and if no ore of the rarity has any, the ore is drawn by weight alone). Blocks are cut only at the band's edges.
+def region_request(col, b_floor, b_top, r, blocks, r_lo, r_hi):
+    n = b_top - b_floor + 1
+    ores = [o for o in ORES if RARITY[o] == r]
+    mass = {}
+    for o in ores:
+        lay, _ = mapped(o, col[0], col[1], b_floor, b_top, False, False)
+        cut = [lay[j] if r_lo <= b_floor + j <= r_hi else 0.0 for j in range(n)]
+        mass[o] = cut
+    tot = sum(WEIGHT[o] * sum(mass[o]) for o in ores)
+    out = {}
+    for o in ores:
+        p = (WEIGHT[o] * sum(mass[o]) / tot) if tot else WEIGHT[o] / sum(WEIGHT[x] for x in ores)
+        m = sum(mass[o])
+        prof = [x / m for x in mass[o]] if m else [1.0 / (r_hi - r_lo + 1) if r_lo <= b_floor + j <= r_hi else 0.0 for j in range(n)]
+        lay = [0.0] * n
+        for j, w in enumerate(prof):
+            if w:
+                for off, f in KERNEL[r].items():
+                    if 0 <= j + off < n:
+                        lay[j + off] += w * f
+        out[o] = [p * x * blocks for x in lay]
+    return out
+
+def slab_table(name, per_ore, b_floor, b_top):
+    print(f"\n### {name}")
+    for lo, hi in slabs(b_floor, b_top):
+        ob = {o: sum(per_ore[o][y - b_floor] for y in range(lo, hi + 1)) for o in ORES}
+        t = sum(ob.values()); L = hi - lo + 1
+        res = sum(v * RES[RARITY[o]] for o, v in ob.items()) / t if t else 0
+        print(f" Y{lo:4d}..{hi:4d} {100 * t / (256 * L):6.2f}%  Res/ore {res:5.3f}  rate x {t / (256 * L) * res / (0.0304 * 3.485):5.2f}  "
+              + ', '.join(f"{o} {v:.0f}" for o, v in ob.items() if v >= 0.5))
+    tot = {o: sum(v) for o, v in per_ore.items()}
+    for r in 'CUR':
+        t = sum(v for o, v in tot.items() if RARITY[o] == r)
+        print(f"  {r}: " + ', '.join(f"{o} {100 * v / t:.1f}%" for o, v in tot.items() if RARITY[o] == r and t))
+
+def add_into(acc, part):
+    for o, v in part.items():
+        acc[o] = [a + b for a, b in zip(acc.get(o, [0.0] * len(v)), v)]
+    return acc
+
+if __name__ == '__main__':
+    one = (-64, 319)
+    print("\n## Requests with their own region, surface Y=100 (base Y1..95; expanded deepslate Y-63..-1)")
+    # Stratified tier 1: each rarity's band count placed in its own band (blends left out)
+    blocks = band_blocks('stone', 95)
+    strat = {}
+    for r, lo, hi in (('R', 1, 24), ('U', 25, 58), ('C', 59, 95)):
+        add_into(strat, region_request(one, 1, 95, r, blocks[r], lo, hi))
+    slab_table('Stratified tier 1, base (rare Y<=24, uncommon 25..58, common 59..95, no blend)', strat, 1, 95)
+    # Deep Veins: extra veins of each rarity, k x the band's count x 30 / band layers, in the lowest 30 layers
+    for band, lo, hi, n in (('stone', 1, 95, 95), ('deepslate', -63, -1, 63)):
+        base = model('x', one, lo, hi, band)['per_ore']
+        for k, tier in ((0.5, 1), (1.0, 2)):
+            b = band_blocks(band, n)
+            acc = {o: list(v) for o, v in base.items()}
+            for r in 'CUR':
+                add_into(acc, region_request(one, lo, hi, r, k * b[r] * 30 / n, lo, lo + 29))
+            slab_table(f'Deep Veins tier {tier} on the baseline, {band} Y{lo}..{hi} (extra {k} x count x 30/{n} in Y{lo}..{lo + 29})', acc, lo, hi)
