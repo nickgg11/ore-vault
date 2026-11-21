@@ -64,21 +64,22 @@ so a player who punches out a misplaced frame by hand loses 8 stone bricks and a
 ### Arrival
 
 They step in. The screen wobbles for four seconds, and they can still step back out (§3.2, 80 ticks). They
-arrive at X=0, Z=0, standing on grass at Y=250 under full daylight, with the return portal, a 4 by 5 frame,
+arrive at X=0, Z=0, standing on grass at Y=100 under full daylight, with the return portal, a 4 by 5 frame,
 standing on the same spot (§3.1 Entry point; §3.2 Teleportation Logic). Open air above, no mobs, no torches
 needed (§3.1 shared attributes). Every later trip lands on the same block (§3.2). It should feel theirs,
 safe and quiet.
 
 ### The first minute of mining
 
-They dig down through four blocks of dirt (Y=246 to 249) into stone, which runs from Y=245 to the bedrock
+They dig down through four blocks of dirt (Y=96 to 99) into stone, which runs from Y=95 to the bedrock
 floor at Y=0 (§3.1 Base stack). Ore sits only in the stone. At the 3% baseline and about 7,200 blocks an hour
 (§3.1, §4.3 step 4), a player breaks about 120 blocks a minute, of which about 3.6 are ore. At about 7.45
 blocks a vein that is about one vein broken into every two minutes, while a 1 by 2 tunnel exposes about two
-veins a minute in its walls (the Balancer's figures, BAL-12). So a vein shows in the tunnel wall within about
-a minute; the first one broken into takes about two. The session logs the time of the first ore broken. This
-rests on the same ore density at every height, which Nick chose on 2026-10-27 (same density everywhere, ore
-type still by height). Gravel and clay are in the rock too
+veins a minute in its walls (the Balancer's figures, BAL-12). Ore sits at its own height (Nick, 2026-11-21), so
+the first stone under the dirt, Y65..95, is a little thinner, about 2.6% and almost all coal and copper: about
+3.1 ore a minute there, a vein in the tunnel wall within about a minute and the first one broken into in two to
+three. The lowest 16 layers, 84 to 99 blocks down, are about 4.6% and hold the diamond, redstone and most of the
+gold. The session logs the time of the first ore broken and its Y. Gravel and clay are in the rock too
 (§3.1, Gravel and clay), so the odd blob of gravel falls on a player digging under it.
 
 There are no caves, aquifers or lava (§3.1), so the only things that can hurt them are a fall into their
@@ -98,13 +99,17 @@ Q11). It is on by default and each player can turn it off with `hud.show_resonan
 config (§10). The Tome header shows the same numbers from the same sync. Where the bar sits and how it shows
 the share that came from bonuses is decided on a rendered preview with Nick's yes (§8).
 
-### Level 1, at 7 to 11 minutes
+### Level 1, at 7 to 11 minutes (about 14 in the first stone)
 
 Level 1 costs about 113 Resonance, about 32 ore at the 68/25/7 mix and 3.48 Resonance an ore (S11 in
 `docs/TEAM_REQUIREMENTS.md`; the Balancer's figures from ADR 0009's closed form, 218.9 ore an hour). At that
 rate it arrives around minute 9; §4.3's pacing check sets the band at 7 to 11 minutes, and level 2 at 15 to
 23. About 32 ore is only four or five veins, so one player's level-1 time can easily land outside the band
-by luck (QA's estimate: about ±50%). A session records the time as an observation; pacing is judged on ore an
+by luck (QA's estimate: about ±50%). Those figures are the stone band's average. Ore now sits at its own height (§3.1, 2026-11-21), and the
+first stone under the dirt, Y65..95, pays about 0.65 times that rate (2.56% ore at about 2.7 Resonance an ore, mostly
+coal): a player who stays in the first 30 layers of stone needs about 42 ore and reaches level 1 at about minute 14
+(§4.3's band for those layers is 11 to 17), and level 2 at about 29. One who digs down to Y17..32 reaches level 1 at
+about minute 10. Derived, unplaytested; the session logs the Y it mined. A session records the time as an observation; pacing is judged on ore an
 hour from the per-minute readout (S44), not on a stopwatch. A toast tells every online member (§4.3 Skill
 point award; §8 Team). The pool is not reset (§4.3). The team now has 5 unspent points (§4.3 step 2,
 `POINTS_PER_LEVEL = 5`; §4.4: unspent is `5 × level − owned visible nodes`).
@@ -128,7 +133,7 @@ The ring-0 nodes in §6.1:
 | Miner's Constitution, tier 1 | small | −20% hunger drain inside the Vault | Barely. Nothing shows in ten minutes |
 | Novice's Luck | growth | `(30 − teamLevel)%` bonus ore drops: +29% at level 1 | Yes, as extra drops on about one ore in three or four |
 | Apprentice's Ledger | growth | The first 100 ore of each trip pay double Resonance | Yes, on the on-screen bar |
-| Shallow Grace | growth | +50% Resonance from all ore while every member inside has an all-time deepest Y above 100 | Yes on the bar, but only if nobody inside has been below Y=100 |
+| Shallow Grace | growth | +50% Resonance from all ore while every member inside has an all-time deepest Y above 32 | Yes on the bar, but only if nobody inside has been below Y=32 |
 | Guide Vein | growth | 12 extra copper or iron veins of about 51 blocks per newly generated chunk | No. Generation node |
 
 Also buyable at level 1 if the layout puts them within reach, both ring 1: Gravel Purge (no gravel or clay
@@ -151,8 +156,9 @@ play:
 
 Two traps a new player can walk into:
 
-- Shallow Grace can be outgrown before it is bought. Y=100 is 150 blocks below the arrival point, and
-  players dig straight down (`DESIGN_LOG.md` 2026-10-26, baseline entry). A player who went below Y=100
+- Shallow Grace can be outgrown before it is bought. Y=32 is 68 blocks below the arrival point, the top of
+  the deep-ore layers, and players dig straight down (`DESIGN_LOG.md` 2026-10-26, baseline entry; 2026-11-21
+  for the line). A player who went below Y=32
   in their first nine minutes buys a node that will never pay them. §8 labels a growth node Outgrown
   "once its condition can no longer be met"; the tooltip has to say so before purchase too, not only once
   it is owned.

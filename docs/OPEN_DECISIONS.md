@@ -92,7 +92,7 @@ Blocks: freezing the node list for the T8 layout, since node costs set the tree 
 
 Gravel Purge removes gravel and clay, but the Vault never generates either, so it does nothing, yet Stone
 Reduction requires it. Guide Vein guarantees one copper or iron vein per chunk; it was written when the
-Vault held two coal veins per chunk, and at 3% a chunk already holds about 250 veins, so one more is
+Vault held two coal veins per chunk, and at 3% a chunk already holds about 100 veins in the base type's stone band (about 250 before the surface came down to Y=100 on 2026-11-21), so one more is
 invisible.
 
 - Remove both. The tree drops to 352 points; Mastery's gate moves from 160 to 159; Stone Reduction loses
@@ -113,7 +113,7 @@ Blocks: T9's Prospecting cluster, and the §6 wording.
 
 Growth nodes are meant to be strong early and retire on their own. Apprentice's Ledger (first 100 ore of
 each trip pay double) resets every trip, so it never retires; a Tier 3 signet makes trips free, so it
-stays a permanent bonus. Shallow Grace (+50% while your deepest Y is above 100) reads each player's depth
+stays a permanent bonus. Shallow Grace (+50% while your deepest Y is above 32) reads each player's depth
 but pays the team, so one member who stays shallow keeps it on for everyone. Separately, a retired node
 currently says so only by greying out in the Tome.
 
