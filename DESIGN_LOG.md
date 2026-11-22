@@ -67,16 +67,20 @@ baseline counts and the repo's port of vanilla's `OreFeature`, derived and unpla
 - An edge factor per ore. The largest gap between an ore's kept share and its rarity's is 4.4%, on ores that are 0.1%
   of their rarity there.
 
+**Decided after the card.**
+
+- The expanded deepslate's top slab. Under ore at vanilla's Y, deepslate Y-31..-1 is 8.31% ore (iron 390 blocks a
+  chunk), 2.53 times the stone curve's rate, and its best 1 by 2 tunnel, Y-4..-3, is about 15.5% ore at 3.74 times: a
+  team mining only there finishes the 100 hours in about 27. The 2.33 times accepted for Vault Expansion was the band's
+  average, and this tunnel is near the 15% turned down on 2026-10-27, so it was put to Nick on its own card on
+  2026-11-22. He accepted it, to be measured in his E4-S5 ten-minute mine; the counts are retuned if it plays too fast.
+  Flattening it was the other option.
+
 **Still open.**
 
 - `COMPASS_MARGIN` falls to about 3.2 standard deviations in the base type with 95/245 of the stone band's veins a
   chunk; 0.16 restores 5.1 but stops Vein Expansion 1 and Guide Vein each clearing it. The Balancer re-derives it in
   E9-S32a.
-- The expanded deepslate's top slab, pending Nick's answer. Under ore at vanilla's Y, deepslate Y-31..-1 is 8.31% ore
-  (iron 390 blocks a chunk), 2.53 times the stone curve's rate, and its best 1 by 2 tunnel, Y-4..-3, is about 15.5% ore
-  at 3.74 times: a team mining only there finishes the 100 hours in about 27. The 2.33 times accepted for Vault
-  Expansion was the band's average, this tunnel is near the 15% turned down on 2026-10-27, and it was not on the card
-  Nick answered. The Manager puts it to him: accept, or flatten it.
 - Stratified's bands under ore at its own height (above): T9 redesigns them or states the cost.
 
 **What this supersedes.**

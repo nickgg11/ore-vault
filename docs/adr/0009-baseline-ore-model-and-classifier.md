@@ -708,10 +708,9 @@ of vanilla's `OreFeature`, derived and unplaytested; the script is `docs/researc
   and 59..95 with blends of 6 and 2 blocks. Deep Breath's Y=32 and Highwater Mark's Y=64 stand. Deep Veins is restated
   (above). ADR 0004's gate: with the stone band at 95 layers the gate stack's stone veins fall to 95/245 of today's;
   `VeinIndexSizeTest`'s figures are re-measured and its bound changed on purpose in the code PR, not loosened.
-- The expanded deepslate's top slab, pending Nick (P1). Y-31..-1 is 8.31% ore (iron 390 blocks a chunk), 2.53 times
-  the stone curve's rate, and its best 1 by 2 tunnel, Y-4..-3, is about 15.5% ore at 3.74 times, the 100 hours in
-  about 27. The 2.33 times accepted for Vault Expansion was the band's average; this tunnel is near the 15% Nick turned
-  down on 2026-10-27, and it was not on the card he answered. The Manager puts it to him.
+- The expanded deepslate's top slab (P1), accepted by Nick on 2026-11-22. Y-31..-1 is 8.31% ore (iron 390 blocks a
+  chunk), 2.53 times the stone curve's rate, and its best 1 by 2 tunnel, Y-4..-3, is about 15.5% ore at 3.74 times, the
+  100 hours in about 27. E4-S5 measures it; the counts are retuned if it plays too fast.
 - Existing Vaults (A1; Architect to confirm). The dimension type is shared by every Vault of its type, so a change to
   `min_y` or `height` would apply to every Vault on disk at the next start; Y=100 changes neither, so old Vaults would
   keep their generated chunks with stone to Y=245 and new chunks would generate 150 blocks lower beside them. The type
