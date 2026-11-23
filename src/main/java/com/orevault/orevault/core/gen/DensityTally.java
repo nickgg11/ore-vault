@@ -1,10 +1,12 @@
 package com.orevault.orevault.core.gen;
 
 import com.orevault.orevault.core.ore.HeightProfile;
+import com.orevault.orevault.core.ore.OrePicker;
 import com.orevault.orevault.core.ore.Rarity;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
@@ -31,9 +33,12 @@ import java.util.TreeMap;
  *   <li>Rarity shares, by placed blocks and by the rarity of the ore placed, within 2 points of {@link OreBaseline#share}
  *       (68.0/25.0/7.0 stone, 59.7/30.2/10.1 deepslate). Overlap moves the placed mix toward the rarities placed later by
  *       under a point at the baseline (ADR 0009, amended for E4-S3), so the shares are not corrected for it.</li>
- *   <li>Every slab, within 10% relative of its band's measured density. Slabs are counted up from the band's floor with
- *       the partial top slab merged into the one below, through {@link HeightProfile#slabOf}, the same function the
- *       identity pick uses, so the command and the generator cannot disagree on a slab's bounds.</li>
+ *   <li>Every slab, within 10% relative of its own expected density, and its rarity shares within 3 points of its
+ *       expected shares (ADR 0009, amended 2026-11-21: ore density follows height, so a slab is no longer held to its
+ *       band's). The expected figures are the closed form from the pickers' profiles and the generated kernel, through
+ *       {@link LayerSpread}, the code the placer's edge factor and the floor clip read, times one minus the band's
+ *       overlap, never a table typed beside it. Slabs are counted up from the band's floor with the partial top slab
+ *       merged into the one below, through {@link HeightProfile#slabOf}.</li>
  * </ul>
  * Identity shares (each ore's share of its rarity's placed blocks, per band) are printed with no verdict: S12 sets none,
  * and §3.1's identity figures are about veins and stated as "about".
@@ -46,6 +51,7 @@ public final class DensityTally {
     public static final double DENSITY_TOLERANCE = 0.05;
     public static final double SHARE_TOLERANCE = 0.02;
     public static final double SLAB_TOLERANCE = 0.10;
+    public static final double SLAB_SHARE_TOLERANCE = 0.03;
 
     private static final int BLOCKS_PER_LAYER = 256;
 
@@ -56,29 +62,60 @@ public final class DensityTally {
     private final Map<Band, long[][]> counts = new EnumMap<>(Band.class);
     /** Per band and rarity: blocks by ore group id, sorted for a stable print. */
     private final Map<Band, Map<Rarity, Map<String, Long>>> identities = new EnumMap<>(Band.class);
+    /** Per band the variant has: expected placed blocks a chunk by slab, then by rarity ordinal, after overlap. */
+    private final Map<Band, double[][]> expected = new EnumMap<>(Band.class);
+    /** Per band and rarity: the rarity's edge factor there, from its picker; printed. */
+    private final Map<Band, double[]> edgeFactors = new EnumMap<>(Band.class);
 
     /**
      * @param baseline what the Vault was generated from
      * @param variant the Vault's dimension type, which fixes its bands
+     * @param pickers the variant's published pickers, whose profiles give each slab's expected ore; a band with none (a
+     *     pack with no classified ore) expects its closed form spread evenly
      * @param chunks how many whole chunks the counts come from
      */
-    public DensityTally(OreBaseline baseline, VaultVariant variant, int chunks) {
+    public DensityTally(OreBaseline baseline, VaultVariant variant, Map<Band, OrePicker> pickers, int chunks) {
         if (chunks < 1) {
             throw new IllegalArgumentException(chunks + " chunks");
         }
         this.baseline = baseline;
         this.variant = variant;
         this.chunks = chunks;
+        List<VeinRequest> nominal = ClipFactors.nominalRequests(baseline, variant, GenerationTiers.NONE);
         for (Band band : Band.values()) {
             variant.band(band).ifPresent(bounds -> {
-                counts.put(band, new long[slabCount(bounds)][Rarity.values().length]);
+                int slabs = slabCount(bounds);
+                counts.put(band, new long[slabs][Rarity.values().length]);
                 Map<Rarity, Map<String, Long>> byRarity = new EnumMap<>(Rarity.class);
                 for (Rarity rarity : Rarity.values()) {
                     byRarity.put(rarity, new TreeMap<>());
                 }
                 identities.put(band, byRarity);
+                OrePicker picker = pickers.get(band);
+                double[][] bySlab = new double[slabs][Rarity.values().length];
+                double[] edges = new double[Rarity.values().length];
+                for (VeinRequest request : nominal) {
+                    if (request.band() != band) {
+                        continue;
+                    }
+                    double[] layers = picker == null ? evenly(request, bounds) : LayerSpread.placedByLayer(request, picker, bounds);
+                    for (int i = 0; i < layers.length; i++) {
+                        int slab = HeightProfile.slabOf(bounds.bottomY() + i, bounds.bottomY(), bounds.topY());
+                        bySlab[slab][request.rarity().ordinal()] += layers[i] * (1 - overlap(band));
+                    }
+                    edges[request.rarity().ordinal()] = picker == null ? 1.0 : baseline.edgeFactor(band, request.rarity(), picker);
+                }
+                expected.put(band, bySlab);
+                edgeFactors.put(band, edges);
             });
         }
+    }
+
+    /** A request's closed form spread evenly through its band, for a band with no picker. */
+    private static double[] evenly(VeinRequest request, BandBounds bounds) {
+        double[] layers = new double[bounds.layers()];
+        Arrays.fill(layers, request.perChunk() * ClipFactors.meanBlocks(request) / bounds.layers());
+        return layers;
     }
 
     /** The band a layer lies in for this dimension type, or empty for bedrock, the surface and the air. */
@@ -159,9 +196,10 @@ public final class DensityTally {
 
     /** The band's edge factor, the rarities' averaged by their closed-form blocks: printed, and cancelled by the cut. */
     public double edgeFactor(Band band) {
+        bounds(band);
         double weighted = 0;
         for (Rarity rarity : Rarity.values()) {
-            weighted += baseline.blocksPerChunk(band, rarity) * baseline.edgeFactor(band, rarity, variant);
+            weighted += baseline.blocksPerChunk(band, rarity) * edgeFactors.get(band)[rarity.ordinal()];
         }
         return weighted / baseline.blocksPerChunk(band);
     }
@@ -213,9 +251,43 @@ public final class DensityTally {
         return slabBlocks(band, slab) / ((double) BLOCKS_PER_LAYER * chunks * slabBounds(band, slab).layers());
     }
 
+    /** A slab's expected density: the closed form from the profiles, less the band's overlap (class comment). */
+    public double expectedSlabDensity(Band band, int slab) {
+        double sum = 0;
+        for (double blocks : expectedRow(band, slab)) {
+            sum += blocks;
+        }
+        return sum / (BLOCKS_PER_LAYER * slabBounds(band, slab).layers());
+    }
+
+    /** A rarity's expected share of a slab's ore, by placed blocks. */
+    public double expectedSlabShare(Band band, int slab, Rarity rarity) {
+        double[] row = expectedRow(band, slab);
+        double sum = 0;
+        for (double blocks : row) {
+            sum += blocks;
+        }
+        return sum == 0 ? 0 : row[rarity.ordinal()] / sum;
+    }
+
+    /** A rarity's share of a slab's placed ore; 0 when the slab has none. */
+    public double slabShare(Band band, int slab, Rarity rarity) {
+        long total = slabBlocks(band, slab);
+        return total == 0 ? 0 : slabs(band)[slab][rarity.ordinal()] / (double) total;
+    }
+
     public boolean slabPasses(Band band, int slab) {
-        double bandDensity = density(band);
-        return Math.abs(slabDensity(band, slab) - bandDensity) <= SLAB_TOLERANCE * bandDensity;
+        double expectedDensity = expectedSlabDensity(band, slab);
+        return Math.abs(slabDensity(band, slab) - expectedDensity) <= SLAB_TOLERANCE * expectedDensity;
+    }
+
+    public boolean slabSharePasses(Band band, int slab, Rarity rarity) {
+        return Math.abs(slabShare(band, slab, rarity) - expectedSlabShare(band, slab, rarity)) <= SLAB_SHARE_TOLERANCE;
+    }
+
+    private double[] expectedRow(Band band, int slab) {
+        slabBounds(band, slab);
+        return expected.get(band)[slab];
     }
 
     /** Placed blocks of each ore of one rarity in one band, by group id. */
@@ -239,6 +311,11 @@ public final class DensityTally {
                 if (!slabPasses(band, slab)) {
                     failures.add(name(band) + " slab Y" + range(slabBounds(band, slab)));
                 }
+                for (Rarity rarity : Rarity.values()) {
+                    if (!slabSharePasses(band, slab, rarity)) {
+                        failures.add(name(band) + " slab Y" + range(slabBounds(band, slab)) + " " + name(rarity) + " share");
+                    }
+                }
             }
         }
         return failures;
@@ -252,8 +329,8 @@ public final class DensityTally {
     public List<String> lines() {
         List<String> lines = new ArrayList<>();
         lines.add(String.format(Locale.ROOT, "density %s over %d chunks; S12: each band within %s relative, shares within %s"
-                + " points, every slab within %s of its band", variant.id(), chunks, percent(DENSITY_TOLERANCE),
-                points(SHARE_TOLERANCE), percent(SLAB_TOLERANCE)));
+                + " points, every slab within %s of its expected density and %s points of its expected shares", variant.id(),
+                chunks, percent(DENSITY_TOLERANCE), points(SHARE_TOLERANCE), percent(SLAB_TOLERANCE), points(SLAB_SHARE_TOLERANCE)));
         for (Band band : bands()) {
             BandBounds bounds = bounds(band);
             double expected = expectedDensity(band);
@@ -273,9 +350,16 @@ public final class DensityTally {
             }
             lines.add(name(band) + " shares by placed blocks: " + String.join("; ", shares));
             for (int slab = 0; slab < slabCount(band); slab++) {
-                lines.add(String.format(Locale.ROOT, "%s slab Y%s: %.4f%% (%+.2f%% of the band) %s", name(band),
-                        range(slabBounds(band, slab)), slabDensity(band, slab) * 100,
-                        relative(slabDensity(band, slab), density(band)) * 100, verdict(slabPasses(band, slab))));
+                List<String> slabShares = new ArrayList<>();
+                for (Rarity rarity : Rarity.values()) {
+                    slabShares.add(String.format(Locale.ROOT, "%s %.1f%% (expected %.1f%%) %s", name(rarity),
+                            slabShare(band, slab, rarity) * 100, expectedSlabShare(band, slab, rarity) * 100,
+                            verdict(slabSharePasses(band, slab, rarity))));
+                }
+                lines.add(String.format(Locale.ROOT, "%s slab Y%s: %.4f%%; expected %.4f%%; %+.2f%%: %s; shares %s", name(band),
+                        range(slabBounds(band, slab)), slabDensity(band, slab) * 100, expectedSlabDensity(band, slab) * 100,
+                        relative(slabDensity(band, slab), expectedSlabDensity(band, slab)) * 100, verdict(slabPasses(band, slab)),
+                        String.join("; ", slabShares)));
             }
             for (Rarity rarity : Rarity.values()) {
                 Map<String, Long> ores = identityMap(band).get(rarity);
@@ -326,7 +410,7 @@ public final class DensityTally {
                 () -> new IllegalArgumentException(variant.id() + " has no " + name(band) + " band"));
     }
 
-    /** Through the one rule the identity pick uses: 16-layer slabs, the partial top one merged. */
+    /** Through {@link HeightProfile#slabOf}: 16-layer slabs, the partial top one merged. */
     private static int slabCount(BandBounds bounds) {
         return HeightProfile.slabOf(bounds.topY(), bounds.bottomY(), bounds.topY()) + 1;
     }

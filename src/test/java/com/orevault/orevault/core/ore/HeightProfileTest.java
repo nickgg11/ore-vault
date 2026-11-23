@@ -2,15 +2,15 @@ package com.orevault.orevault.core.ore;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
-/** ADR 0009 "Which ore a vein is", with the Epic 4 triage's per-layer profiles and Vault-side slabs (rulings 3 and 4). */
+/**
+ * ADR 0009 "Which ore a vein is", with the Epic 4 triage's per-layer profiles (ruling 4), read at the overworld's own Y
+ * since 2026-11-21 (ADR 0009 amendment): no linear map and no fold.
+ */
 class HeightProfileTest {
-    /** The Vault column both dimension types map the overworld onto, and the bands, as {@code VaultVariant} gives them. */
-    private static final int COLUMN_FLOOR = -63;
-    private static final int COLUMN_TOP = 245;
-
     @Test
     void theMassesAreNormalized() {
         HeightProfile profile = new HeightProfile(-64, new double[] {2, 6});
@@ -23,48 +23,72 @@ class HeightProfileTest {
         assertThrows(IllegalArgumentException.class, () -> new HeightProfile(-64, new double[3]));
     }
 
-    /** The base type's mass below Y=1 lands in its lowest stone slab, so nothing is lost (QA-29's band-floor case). */
+    /** One to one: the mass at overworld Y is the mass at Vault Y, and nothing outside the overworld. */
     @Test
-    void theBaseStoneBandKeepsAllTheMass() {
+    void massIsReadAtItsOwnY() {
+        HeightProfile profile = new HeightProfile(-64, new double[] {1, 0, 3});
+        assertEquals(0.25, profile.massAt(-64), 1e-12);
+        assertEquals(0.0, profile.massAt(-63), 1e-12);
+        assertEquals(0.75, profile.massAt(-62), 1e-12);
+        assertEquals(0.0, profile.massAt(-65), 1e-12);
+        assertEquals(0.0, profile.massAt(-61), 1e-12);
+    }
+
+    /** A band's layers hold exactly the profile's mass there; what lies outside is dropped, not folded in (§3.1). */
+    @Test
+    void aBandKeepsOnlyItsOwnMass() {
         for (OrePicker.Candidate ore : VanillaOres.candidates()) {
-            double[] slabs = ore.profile().slabs(COLUMN_FLOOR, COLUMN_TOP, 1, 245, true);
-            assertEquals(1.0, sum(slabs), 1e-9, ore.groupId());
+            double[] base = ore.profile().layers(1, 95);
+            double inside = 0;
+            for (int y = 1; y <= 95; y++) {
+                inside += ore.profile().massAt(y);
+                assertEquals(ore.profile().massAt(y), base[y - 1], 1e-15, ore.groupId() + " Y=" + y);
+            }
+            assertEquals(inside, sum(base), 1e-12, ore.groupId());
         }
     }
 
-    /** In the expanded type the deepslate and stone bands share the mass between them. */
+    /** The expanded type's bands share vanilla's Y-63..95, and the rest of the overworld is outside both. */
     @Test
-    void theExpandedBandsShareTheMass() {
+    void theExpandedBandsAreVanillasOwnLayers() {
         for (OrePicker.Candidate ore : VanillaOres.candidates()) {
-            double deepslate = sum(ore.profile().slabs(COLUMN_FLOOR, COLUMN_TOP, -63, -1, false));
-            double stone = sum(ore.profile().slabs(COLUMN_FLOOR, COLUMN_TOP, 0, 245, false));
-            assertEquals(1.0, deepslate + stone, 1e-9, ore.groupId());
+            double all = sum(ore.profile().layers(-64, 319));
+            double deepslate = sum(ore.profile().layers(-63, -1));
+            double stone = sum(ore.profile().layers(0, 95));
+            assertEquals(1.0, all, 1e-9, ore.groupId());
+            assertEquals(1.0 - ore.profile().massAt(-64) - sum(ore.profile().layers(96, 319)), deepslate + stone, 1e-9,
+                    ore.groupId());
         }
     }
 
-    /** Architect, round 2: a range end inside a slab still conserves mass, split by exact overlap. */
+    /** §3.1: diamond, redstone and gold sit low; most of coal, iron and emerald lies above Y=95 and is not the band's. */
     @Test
-    void aRangeEndInsideASlabIsSplitExactly() {
-        double[] masses = new double[100];
-        for (int i = 0; i < 40; i++) {
-            masses[i] = 1;
-        }
-        double[] slabs = new HeightProfile(0, masses).slabs(0, 99, 0, 99, false);
-        assertEquals(1.0, sum(slabs), 1e-12);
-        assertEquals(16 / 40.0, slabs[0], 1e-12);
-        assertEquals(16 / 40.0, slabs[1], 1e-12);
-        assertEquals(8 / 40.0, slabs[2], 1e-12);
-        assertEquals(0.0, slabs[3], 1e-12);
+    void vanillasOresSitWhereVanillaPutsThem() {
+        java.util.Map<String, HeightProfile> profiles = new java.util.HashMap<>();
+        VanillaOres.candidates().forEach(ore -> profiles.put(ore.groupId(), ore.profile()));
+        assertEquals(0.0, sum(profiles.get("minecraft:diamond_ore").layers(17, 95)), 1e-12);
+        assertEquals(0.0, sum(profiles.get("minecraft:redstone_ore").layers(16, 95)), 1e-12);
+        assertEquals(0.0, sum(profiles.get("minecraft:gold_ore").layers(33, 95)), 1e-12);
+        assertTrue(sum(profiles.get("minecraft:coal_ore").layers(96, 319)) > 0.5);
+        assertTrue(sum(profiles.get("minecraft:iron_ore").layers(96, 319)) > 0.5);
+        assertTrue(sum(profiles.get("minecraft:emerald_ore").layers(96, 319)) > 0.5);
     }
 
-    /** §3.1: the stone band's top slab is Y225..245 in the base type, Y224..245 in the expanded one; deepslate's Y-31..-1. */
+    @Test
+    void anEmptyRangeIsRefused() {
+        HeightProfile profile = new HeightProfile(0, new double[] {1});
+        assertThrows(IllegalArgumentException.class, () -> profile.layers(5, 4));
+    }
+
+    /** §3.1: the base stone band's slabs are Y1..16 to Y49..64 and Y65..95 merged; expanded Y0..15 to Y80..95; deepslate's. */
     @Test
     void theTopSlabIsMerged() {
-        assertEquals(13, HeightProfile.slabOf(224, 1, 245));
-        assertEquals(14, HeightProfile.slabOf(225, 1, 245));
-        assertEquals(14, HeightProfile.slabOf(245, 1, 245));
-        assertEquals(14, HeightProfile.slabOf(224, 0, 245));
-        assertEquals(13, HeightProfile.slabOf(223, 0, 245));
+        assertEquals(3, HeightProfile.slabOf(64, 1, 95));
+        assertEquals(4, HeightProfile.slabOf(65, 1, 95));
+        assertEquals(4, HeightProfile.slabOf(95, 1, 95));
+        assertEquals(4, HeightProfile.slabOf(79, 0, 95));
+        assertEquals(5, HeightProfile.slabOf(80, 0, 95));
+        assertEquals(5, HeightProfile.slabOf(95, 0, 95));
         assertEquals(1, HeightProfile.slabOf(-32, -63, -1));
         assertEquals(2, HeightProfile.slabOf(-31, -63, -1));
         assertEquals(2, HeightProfile.slabOf(-1, -63, -1));

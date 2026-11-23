@@ -1,23 +1,26 @@
 package com.orevault.orevault.core.gen;
 
+import com.orevault.orevault.core.ore.OrePicker;
 import com.orevault.orevault.core.ore.Rarity;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The 40% stone floor's two factors (§3.1, ADR 0009 "Counts per rarity, and the floor clip"): every rarity's count in a
  * band is multiplied by its band's factor, {@code min(1, 0.60 / densest)}, so the mix never shifts. {@code densest} is the
- * highest ore density requested in any one region of the band, not the band's average: requests are summed layer by
- * layer, so a node that concentrates ore into the band's lowest 30 layers on top of the band-wide veins sets the factor by
- * those layers (Balancer, BAL-3). Computed on the main thread by {@link #of} and carried in the generation snapshot (ADR
- * 0003), so the generator never computes it from team state. With no generation nodes both are 1.
+ * highest ore density requested in any one layer of the band, not the band's average: requests are summed layer by layer,
+ * so a node that concentrates ore into the band's lowest 30 layers on top of the band-wide veins sets the factor by those
+ * layers (Balancer, BAL-3). Computed on the main thread by {@link #of} and carried in the generation snapshot (ADR 0003),
+ * so the generator never computes it from team state. With no generation nodes both are 1.
  *
- * <p>Densities are the closed form, count times mean blocks over the region's volume, before the edge factor: the edge
- * factor only makes up blocks cut at the band's edges, so placed blocks match the closed form, and the cap is on placed
- * blocks. This is exact for a request spread through its whole band. A request over part of a band spills its overhang
- * into the neighbouring layers of the band, so its densest layer comes out under the closed form and the factor is
- * conservative there (S3-AR-3). A per-chunk outcome such as a Vein Singularity chunk is one more request set to compute
- * this over; it joins with its node (T9).
+ * <p>Each request is spread over the layers as height now spreads it (ADR 0009, amended 2026-11-21): its veins' ores and
+ * box middles from the band's profiles, their blocks about the middle from the generated kernel, cut at the band's edges,
+ * and the whole scaled to the request's closed form, count times mean blocks ({@link LayerSpread#placedByLayer}). That is
+ * what the placer places once the count carries the edge factor, which only makes up the cut blocks. So the baseline
+ * itself is densest where its ores peak, not flat: on vanilla about 5.2% at Y=2 in the base stone band and 16% at Y=-2 in
+ * deepslate, far from 60%. A per-chunk outcome such as a Vein Singularity chunk is one more request set to compute this
+ * over; it joins with its node (T9).
  *
  * @param stone the stone band's factor
  * @param deepslate the deepslate band's factor, carried but never read in the base type
@@ -31,7 +34,10 @@ public record ClipFactors(double stone, double deepslate) {
      * exactly on the ceiling, and the spread of vein sizes is about 1.4% of it in a fully clipped deepslate band (derived),
      * so a stop on the ceiling itself would refuse the rare veins placed last in about half of clipped chunks. At 1.10 the
      * stop is about seven standard deviations out: it fires only when a clip is wrong by more than 10%, and placed ore after
-     * overlap stays at most about 48%. If the clip test's printed spread is above 2%, this becomes 1 + 5 sigma.
+     * overlap stays at most about 48%. If the clip test's printed spread is above 2%, this becomes 1 + 5 sigma. Since the
+     * clip reads the densest layer (ADR 0009, amended 2026-11-21), a band whose ore is not flat sits under the ceiling on
+     * average once clipped, so the stop, which counts the band's total, has more room than this still; the figure is kept
+     * for a request flat through the band, where the densest layer is the average.
      */
     public static final double HARD_STOP_HEADROOM = 1.10;
 
@@ -50,15 +56,21 @@ public record ClipFactors(double stone, double deepslate) {
     /**
      * The factors for a team: the baseline's requests with the team's generation nodes applied (ARCH-E4-16). No generation
      * node exists before E9, so {@code tiers} changes nothing yet; each node joins here as a change to the requests or as
-     * extra requests (ADR 0009 Consequences), and an owned node this method does not know changes nothing.
+     * extra requests (ADR 0009 Consequences), and an owned node this method does not know changes nothing. A pack with no
+     * classified ore has no pickers and places no ore, so nothing clips.
+     *
+     * @param pickers the variant's published pickers, one per band, or none at all
      */
-    public static ClipFactors of(OreBaseline baseline, VaultVariant variant, GenerationTiers tiers) {
-        return fromRequests(variant, nominalRequests(baseline, variant, tiers));
+    public static ClipFactors of(OreBaseline baseline, VaultVariant variant, Map<Band, OrePicker> pickers, GenerationTiers tiers) {
+        if (pickers.isEmpty()) {
+            return NONE;
+        }
+        return fromRequests(variant, nominalRequests(baseline, variant, tiers), pickers);
     }
 
     /**
-     * One request per band the variant has and per rarity, spread through the whole band, at the baseline count: no edge
-     * factor and no clip, which is what {@link #fromRequests} wants.
+     * One request per band the variant has and per rarity, over the whole band, at the baseline count: no edge factor and
+     * no clip, which is what {@link #fromRequests} wants.
      */
     static List<VeinRequest> nominalRequests(OreBaseline baseline, VaultVariant variant, GenerationTiers tiers) {
         List<VeinRequest> requests = new ArrayList<>();
@@ -78,39 +90,52 @@ public record ClipFactors(double stone, double deepslate) {
     }
 
     /**
-     * The factors for a set of requests, each read as its closed-form density over its own region: per band, the densest
-     * layer's summed density sets {@code min(1, 0.60 / densest)}. A band the variant does not have keeps 1.
+     * The factors for a set of requests: per band, the densest layer's summed density sets {@code min(1, 0.60 / densest)}.
+     * A band the variant does not have keeps 1.
      */
-    public static ClipFactors fromRequests(VaultVariant variant, List<VeinRequest> requests) {
-        return new ClipFactors(factor(variant, Band.STONE, requests), factor(variant, Band.DEEPSLATE, requests));
+    public static ClipFactors fromRequests(VaultVariant variant, List<VeinRequest> requests, Map<Band, OrePicker> pickers) {
+        return new ClipFactors(factor(variant, Band.STONE, requests, pickers), factor(variant, Band.DEEPSLATE, requests, pickers));
     }
 
-    /** The highest summed request density of any layer of the band, in closed form; 0 for a band the variant lacks. */
-    public static double densest(VaultVariant variant, Band band, List<VeinRequest> requests) {
+    /**
+     * Every layer's summed request density in the band, index 0 at the band's floor, in closed form before overlap; an
+     * empty array for a band the variant lacks.
+     *
+     * @throws IllegalArgumentException when a band with requests has no picker
+     */
+    public static double[] byLayer(VaultVariant variant, Band band, List<VeinRequest> requests, Map<Band, OrePicker> pickers) {
         BandBounds bounds = variant.band(band).orElse(null);
         if (bounds == null) {
-            return 0;
+            return new double[0];
         }
         double[] byLayer = new double[bounds.layers()];
         for (VeinRequest request : requests) {
             if (request.band() != band) {
                 continue;
             }
-            int regionLayers = request.regionTopY() - request.regionBottomY() + 1;
-            double density = request.perChunk() * meanBlocks(request) / (256.0 * regionLayers);
-            for (int y = Math.max(request.regionBottomY(), bounds.bottomY()); y <= Math.min(request.regionTopY(), bounds.topY()); y++) {
-                byLayer[y - bounds.bottomY()] += density;
+            OrePicker picker = pickers.get(band);
+            if (picker == null) {
+                throw new IllegalArgumentException("No ore picker for the " + band + " band");
+            }
+            double[] placed = LayerSpread.placedByLayer(request, picker, bounds);
+            for (int i = 0; i < byLayer.length; i++) {
+                byLayer[i] += placed[i] / 256.0;
             }
         }
+        return byLayer;
+    }
+
+    /** The highest summed request density of any layer of the band, in closed form; 0 for a band the variant lacks. */
+    public static double densest(VaultVariant variant, Band band, List<VeinRequest> requests, Map<Band, OrePicker> pickers) {
         double densest = 0;
-        for (double density : byLayer) {
+        for (double density : byLayer(variant, band, requests, pickers)) {
             densest = Math.max(densest, density);
         }
         return densest;
     }
 
-    private static double factor(VaultVariant variant, Band band, List<VeinRequest> requests) {
-        double densest = densest(variant, band, requests);
+    private static double factor(VaultVariant variant, Band band, List<VeinRequest> requests, Map<Band, OrePicker> pickers) {
+        double densest = densest(variant, band, requests, pickers);
         return densest > CEILING ? CEILING / densest : 1.0;
     }
 

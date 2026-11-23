@@ -3,22 +3,25 @@ package com.orevault.orevault.core.ore;
 import java.util.Arrays;
 
 /**
- * Where one ore sits in the overworld: its mass per overworld layer, block-weighted and normalized to a total of 1 (ADR
- * 0009 "Which ore a vein is"). The classifier fills it from sampled placement heights; the identity pick reads it mapped
- * onto the Vault's column. It never changes how many veins a band holds, only which ore of a rarity a vein is.
+ * Where one ore sits in the overworld: its mass per overworld layer, block-weighted and normalized to a total of 1 (§3.1
+ * "Where each ore sits"; ADR 0009, amended 2026-11-21). The classifier fills it from sampled placement heights. The Vault
+ * reads it at the overworld's own Y, one to one, in both dimension types: mass at overworld Y=10 belongs at Vault Y=10,
+ * and mass outside a band is not that band's, so it is dropped there rather than folded in. It never changes how many
+ * veins a band holds, only which ore of a rarity a vein is and where its middle sits.
  *
  * <p>Kept per layer, not in 24 bins of 16: vanilla ranges end on bin edges (diamond at 16, gold at 32, buried lapis at
- * 64), and binning smears a sliver of each into the next bin, which moved figures Nick chose on (Balancer, BAL-E4-4;
- * Epic 4 triage ruling 4). Memory only, never saved.
+ * 64), and binning smears a sliver of each into the next bin (Balancer, BAL-E4-4; Epic 4 triage ruling 4). Memory only,
+ * never saved.
  *
- * <p>This package imports nothing of {@code core.gen} (ADR 0001), so the Vault's heights come in as plain ints from the
- * caller, which reads them from {@code VaultVariant}: no copy of the heights lives here (rule 8).
+ * <p>This package imports nothing of {@code core.gen} (ADR 0001), so a band's heights come in as plain ints from the
+ * caller, which reads them from {@code VaultVariant}: no copy of the heights lives here (rule 8). The linear map onto the
+ * old Y-63..245 column and the fold of mass below Y=1 into the base type's lowest slab went with that column.
  *
  * @param sourceFloorY the overworld Y of {@code masses[0]}; -64 on vanilla
  * @param masses mass per overworld layer, upward
  */
 public record HeightProfile(int sourceFloorY, double[] masses) {
-    /** Height of each Vault slab the pick reads, counted up from a band's floor (ADR 0009 Tests). */
+    /** Height of each Vault slab the density check reads, counted up from a band's floor (ADR 0009 Tests). */
     public static final int SLAB = 16;
 
     public HeightProfile {
@@ -50,48 +53,31 @@ public record HeightProfile(int sourceFloorY, double[] masses) {
         return masses.clone();
     }
 
-    /** The overworld height the profile spans, the source of the linear map. */
+    /** The overworld height the profile spans. */
     public int sourceLayers() {
         return masses.length;
     }
 
+    /** The mass at one Y, read at the overworld's own Y; 0 outside the overworld the profile spans. */
+    public double massAt(int y) {
+        int index = y - sourceFloorY;
+        return index >= 0 && index < masses.length ? masses[index] : 0;
+    }
+
     /**
-     * The profile's mass in each 16-layer slab of one band, counted up from the band's floor, a partial top slab merged
-     * into the one below (ADR 0009 Tests). The overworld's whole range maps linearly onto the Vault column
-     * {@code columnFloorY..columnTopY} (Y-63..245 in both dimension types, so an ore sits at the same height whichever type
-     * a team has); each overworld layer's mass is spread evenly over the stretch it maps to, and split between slabs by
-     * exact overlap. Mass that maps below the band goes into its lowest slab when {@code foldBelow} (the base type's stone
-     * band, which has no deepslate below it) and is dropped otherwise, since it belongs to the band below; mass above the
-     * band is dropped.
+     * The mass at each layer of {@code bottomY..topY}, index 0 at {@code bottomY}: a band's or a region's in-band mass per
+     * layer, which the ore draw sums and the middle draw reads (ADR 0009, amended 2026-11-21). Not renormalized; mass
+     * outside the range is simply not in it.
      */
-    public double[] slabs(int columnFloorY, int columnTopY, int bandFloorY, int bandTopY, boolean foldBelow) {
-        if (columnTopY < columnFloorY || bandTopY < bandFloorY) {
-            throw new IllegalArgumentException("An empty column or band");
+    public double[] layers(int bottomY, int topY) {
+        if (topY < bottomY) {
+            throw new IllegalArgumentException("An empty range Y" + bottomY + ".." + topY);
         }
-        int bandLayers = bandTopY - bandFloorY + 1;
-        int slabCount = Math.max(1, bandLayers / SLAB);
-        double[] slabs = new double[slabCount];
-        double scale = (columnTopY + 1.0 - columnFloorY) / masses.length;
-        for (int i = 0; i < masses.length; i++) {
-            if (masses[i] == 0) {
-                continue;
-            }
-            double from = columnFloorY + i * scale;
-            double to = from + scale;
-            double density = masses[i] / scale;
-            if (foldBelow && from < bandFloorY) {
-                slabs[0] += density * (Math.min(to, bandFloorY) - from);
-            }
-            for (int slab = 0; slab < slabCount; slab++) {
-                double slabFrom = bandFloorY + slab * (double) SLAB;
-                double slabTo = slab == slabCount - 1 ? bandTopY + 1.0 : slabFrom + SLAB;
-                double overlap = Math.min(to, slabTo) - Math.max(from, slabFrom);
-                if (overlap > 0) {
-                    slabs[slab] += density * overlap;
-                }
-            }
+        double[] layers = new double[topY - bottomY + 1];
+        for (int y = bottomY; y <= topY; y++) {
+            layers[y - bottomY] = massAt(y);
         }
-        return slabs;
+        return layers;
     }
 
     /** Which slab of a band a layer falls in, the top partial slab merged; the layer is clamped into the band first. */

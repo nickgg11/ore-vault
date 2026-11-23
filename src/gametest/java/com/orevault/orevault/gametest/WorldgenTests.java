@@ -74,12 +74,17 @@ final class WorldgenTests {
         return level.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(VaultChunkGenerator.BIOME);
     }
 
+    /** The way the restore builds a snapshot: the clip from the published pickers (ADR 0009, amended 2026-11-21). */
+    private static GenSnapshot snapshot(VaultVariant variant, int vaultGeneration) {
+        return GenSnapshot.of(variant, vaultGeneration, VaultChunkGenerator.publishedPickers(variant), GenerationTiers.NONE);
+    }
+
     private static VaultChunkGenerator generator(ServerLevel level, VaultVariant variant, Supplier<GenSnapshot> snapshots) {
         return new VaultChunkGenerator(TEAM, vaultBiome(level), variant, LayerStack.builtIn(variant), snapshots, OreInputs.EMPTY);
     }
 
     private static VaultChunkGenerator generator(ServerLevel level, VaultVariant variant) {
-        return generator(level, variant, () -> GenSnapshot.of(variant, 0, GenerationTiers.NONE));
+        return generator(level, variant, () -> snapshot(variant, 0));
     }
 
     private static ProtoChunk emptyChunk(ServerLevel level, VaultVariant variant) {
@@ -143,7 +148,7 @@ final class WorldgenTests {
             oreIds.add(entry.deepslateBlock());
         }
         for (VaultVariant variant : VaultVariant.values()) {
-            GenSnapshot snapshot = GenSnapshot.of(variant, 1, GenerationTiers.NONE);
+            GenSnapshot snapshot = snapshot(variant, 1);
             LayerStack stack = LayerStack.builtIn(variant);
             VaultChunkGenerator generator = VaultChunkGenerator.forVault(TEAM, vaultBiome(helper.getLevel()), variant, stack, () -> snapshot);
             ProtoChunk chunk = filled(helper, generator, variant);
@@ -218,7 +223,7 @@ final class WorldgenTests {
         // Air from Y=50, inside the stone band Y1..95 (since 2026-11-21 a stone layer at Y=96 is refused too, as an old layout).
         LayerStack shortAir = new LayerStack(List.of(new LayerStack.Layer("minecraft:stone", 50), new LayerStack.Layer("air", 270)));
         try {
-            VaultChunkGenerator.forVault(TEAM, vaultBiome(level), base, shortAir, () -> GenSnapshot.of(base, 0, GenerationTiers.NONE));
+            VaultChunkGenerator.forVault(TEAM, vaultBiome(level), base, shortAir, () -> snapshot(base, 0));
         } catch (IllegalArgumentException e) {
             helper.succeed();
             return;
@@ -239,7 +244,7 @@ final class WorldgenTests {
                 new LayerStack.Layer("minecraft:grass_block", 1), new LayerStack.Layer("minecraft:air", 219)));
         check(helper, "the string check passes it", java.util.Optional.empty(), caveAir.bandFillerProblem(base));
         try {
-            VaultChunkGenerator.forVault(TEAM, vaultBiome(level), base, caveAir, () -> GenSnapshot.of(base, 0, GenerationTiers.NONE));
+            VaultChunkGenerator.forVault(TEAM, vaultBiome(level), base, caveAir, () -> snapshot(base, 0));
         } catch (IllegalArgumentException e) {
             helper.succeed();
             return;
@@ -252,7 +257,7 @@ final class WorldgenTests {
         AtomicInteger reads = new AtomicInteger();
         VaultChunkGenerator generator = generator(helper.getLevel(), VaultVariant.BASE, () -> {
             reads.incrementAndGet();
-            return GenSnapshot.of(VaultVariant.BASE, 0, GenerationTiers.NONE);
+            return snapshot(VaultVariant.BASE, 0);
         });
         check(helper, "reads building the generator", 0, reads.get());
         filled(helper, generator, VaultVariant.BASE);
@@ -262,7 +267,7 @@ final class WorldgenTests {
 
     /** ADR 0003: the generator is built per variant and asserts that the snapshot agrees. */
     static void refusesASnapshotOfTheOtherVariant(GameTestHelper helper) {
-        VaultChunkGenerator generator = generator(helper.getLevel(), VaultVariant.BASE, () -> GenSnapshot.of(VaultVariant.EXPANDED, 0, GenerationTiers.NONE));
+        VaultChunkGenerator generator = generator(helper.getLevel(), VaultVariant.BASE, () -> snapshot(VaultVariant.EXPANDED, 0));
         try {
             filled(helper, generator, VaultVariant.BASE);
         } catch (RuntimeException e) {
@@ -302,12 +307,12 @@ final class WorldgenTests {
         VaultVariant base = VaultVariant.BASE;
         LevelHeightAccessor heights = LevelHeightAccessor.create(base.minY(), base.height());
         LayerStack shortAir = new LayerStack(List.of(new LayerStack.Layer("minecraft:stone", 100), new LayerStack.Layer("air", 220)));
-        VaultChunkGenerator generator = new VaultChunkGenerator(TEAM, vaultBiome(level), base, shortAir, () -> GenSnapshot.of(base, 0, GenerationTiers.NONE),
+        VaultChunkGenerator generator = new VaultChunkGenerator(TEAM, vaultBiome(level), base, shortAir, () -> snapshot(base, 0),
                 OreInputs.EMPTY);
         check(helper, "short air id", 100, generator.getBaseHeight(0, 0, Heightmap.Types.WORLD_SURFACE_WG, heights, null));
 
         LayerStack solid = new LayerStack(List.of(new LayerStack.Layer("minecraft:stone", 320)));
-        VaultChunkGenerator noAir = new VaultChunkGenerator(TEAM, vaultBiome(level), base, solid, () -> GenSnapshot.of(base, 0, GenerationTiers.NONE),
+        VaultChunkGenerator noAir = new VaultChunkGenerator(TEAM, vaultBiome(level), base, solid, () -> snapshot(base, 0),
                 OreInputs.EMPTY);
         check(helper, "no air", 320, noAir.getBaseHeight(0, 0, Heightmap.Types.WORLD_SURFACE_WG, heights, null));
         helper.succeed();
@@ -315,7 +320,7 @@ final class WorldgenTests {
 
     /** The team, the reset count, the chunk and a salt, and no way for a world seed to get in (§3.1). */
     static void theSeedComesFromTheTeamAndTheChunk(GameTestHelper helper) {
-        GenSnapshot snapshot = GenSnapshot.of(VaultVariant.BASE, 4, GenerationTiers.NONE);
+        GenSnapshot snapshot = snapshot(VaultVariant.BASE, 4);
         VaultChunkGenerator generator = generator(helper.getLevel(), VaultVariant.BASE, () -> snapshot);
         ChunkPos pos = new ChunkPos(3, -2);
         check(helper, "seed", ChunkSeed.of(TEAM, 4, 3, -2, 7L), generator.chunkSeed(snapshot, pos, 7L));

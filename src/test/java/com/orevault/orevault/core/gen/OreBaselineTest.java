@@ -4,8 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.orevault.orevault.core.ore.HeightProfile;
+import com.orevault.orevault.core.ore.OrePicker;
 import com.orevault.orevault.core.ore.Rarity;
+import com.orevault.orevault.core.ore.VanillaOres;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -79,16 +83,48 @@ class OreBaselineTest {
     }
 
     /** BAL-E4-5: about +0.4 to +0.65% in stone and +1.6 to +2.5% in deepslate, common highest. */
+    /**
+     * ADR 0009, amended 2026-11-21: the edge factor is one over the blocks a rarity keeps in the band once each ore sits at
+     * its own height. The figures are {@code docs/research/vanilla-ore/heights.txt}'s B100 rows, from the same profiles and
+     * kernel: under 1% in stone, where only coal, diamond and emerald reach the band's edges, and highest for common in
+     * deepslate, whose iron peaks at the band's top.
+     */
     @Test
-    void theEdgeFactorsAreInTheBalancersRange() {
+    void theEdgeFactorsAreTheHeightsModelsOnes() {
+        Map<Band, OrePicker> base = OrePickers.forVariant(VaultVariant.BASE, VanillaOres.candidates());
+        Map<Band, OrePicker> expanded = OrePickers.forVariant(VaultVariant.EXPANDED, VanillaOres.candidates());
+        assertEdge(1.0055, BASE.edgeFactor(Band.STONE, Rarity.COMMON, base.get(Band.STONE)));
+        assertEdge(1.0028, BASE.edgeFactor(Band.STONE, Rarity.UNCOMMON, base.get(Band.STONE)));
+        assertEdge(1.0065, BASE.edgeFactor(Band.STONE, Rarity.RARE, base.get(Band.STONE)));
+        assertEdge(1.0054, BASE.edgeFactor(Band.STONE, Rarity.COMMON, expanded.get(Band.STONE)));
+        assertEdge(1.0027, BASE.edgeFactor(Band.STONE, Rarity.UNCOMMON, expanded.get(Band.STONE)));
+        assertEdge(1.0063, BASE.edgeFactor(Band.STONE, Rarity.RARE, expanded.get(Band.STONE)));
+        assertEdge(1.0250, BASE.edgeFactor(Band.DEEPSLATE, Rarity.COMMON, expanded.get(Band.DEEPSLATE)));
+        assertEdge(1.0073, BASE.edgeFactor(Band.DEEPSLATE, Rarity.UNCOMMON, expanded.get(Band.DEEPSLATE)));
+        assertEdge(1.0025, BASE.edgeFactor(Band.DEEPSLATE, Rarity.RARE, expanded.get(Band.DEEPSLATE)));
         for (Rarity rarity : Rarity.values()) {
-            double stone = BASE.edgeFactor(Band.STONE, rarity, VaultVariant.BASE) - 1;
-            double deepslate = BASE.edgeFactor(Band.DEEPSLATE, rarity, VaultVariant.EXPANDED) - 1;
-            assertTrue(stone > 0.0035 && stone < 0.0070, rarity + " stone " + stone);
-            assertTrue(deepslate > 0.0150 && deepslate < 0.0265, rarity + " deepslate " + deepslate);
+            double stone = BASE.edgeFactor(Band.STONE, rarity, base.get(Band.STONE)) - 1;
+            double deepslate = BASE.edgeFactor(Band.DEEPSLATE, rarity, expanded.get(Band.DEEPSLATE)) - 1;
+            assertTrue(stone > 0 && stone < 0.01, rarity + " stone " + stone);
+            assertTrue(deepslate > 0 && deepslate < 0.0265, rarity + " deepslate " + deepslate);
+            assertTrue(deepslate <= BASE.edgeFactor(Band.DEEPSLATE, Rarity.COMMON, expanded.get(Band.DEEPSLATE)) - 1);
         }
-        assertTrue(BASE.edgeFactor(Band.DEEPSLATE, Rarity.COMMON, VaultVariant.EXPANDED)
-                > BASE.edgeFactor(Band.DEEPSLATE, Rarity.RARE, VaultVariant.EXPANDED));
+    }
+
+    /** A picker whose ores sit in the middle of the band, far from both edges, needs no factor. */
+    @Test
+    void oresFarFromTheEdgesNeedNoFactor() {
+        double[] mass = new double[VanillaOres.LAYERS];
+        for (int y = 40; y <= 50; y++) {
+            mass[y - VanillaOres.FLOOR_Y] = 1;
+        }
+        HeightProfile middle = new HeightProfile(VanillaOres.FLOOR_Y, mass);
+        OrePicker picker = new OrePicker(List.of(new OrePicker.Candidate("test:ore", Rarity.COMMON, 1, middle)), 1, 95);
+        assertEquals(1.0, BASE.edgeFactor(Band.STONE, Rarity.COMMON, picker), 1e-12);
+    }
+
+    private static void assertEdge(double expected, double actual) {
+        assertEquals(expected, actual, 0.0003, "edge factor");
     }
 
     /** Rule 8 and ADR 0009: the third copy of the band heights agrees with the variant. */

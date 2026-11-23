@@ -5,10 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.orevault.orevault.core.ore.HeightProfile;
 import com.orevault.orevault.core.ore.OrePicker;
 import com.orevault.orevault.core.ore.Rarity;
 import com.orevault.orevault.core.ore.VanillaOres;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +20,10 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The pure placer against §3.1 and S12 over 81 chunks (ADR 0009 Tests): each band's density within 5% relative, the
- * rarity shares by placed blocks within 2 points, every 16-layer slab within 10% of its band's density. The density
- * command (E4-S4) checks the same against blocks the generator really wrote.
+ * rarity shares by placed blocks within 2 points, and every 16-layer slab within 10% of its own expected density and 3
+ * points of its expected shares, the figures {@link DensityTally} computes from the profiles (ADR 0009, amended
+ * 2026-11-21: ore density follows height). The density command (E4-S4) checks the same against blocks the generator
+ * really wrote.
  */
 class VeinPlacerTest {
     private static final UUID TEAM = UUID.fromString("6f1c2b8e-3d4a-4e5f-9a0b-1c2d3e4f5a6b");
@@ -31,6 +35,7 @@ class VeinPlacerTest {
         tally.assertBand(Band.STONE, OreBaseline.BASE.density(Band.STONE, VaultVariant.BASE));
         tally.assertShares(Band.STONE);
         tally.assertSlabs(Band.STONE);
+        tally.assertSlabShares(Band.STONE);
     }
 
     @Test
@@ -42,11 +47,15 @@ class VeinPlacerTest {
         tally.assertShares(Band.DEEPSLATE);
         tally.assertSlabs(Band.STONE);
         tally.assertSlabs(Band.DEEPSLATE);
+        tally.assertSlabShares(Band.STONE);
+        tally.assertSlabShares(Band.DEEPSLATE);
     }
 
     /**
-     * ADR 0009 "Height", BAL-15: the band's outermost layers hold the band's density. Without the overhang the two layers
-     * at each edge come out at about 64% of it, which the 16-layer slab test averages away (seen on Nick's PC 2026-11-20).
+     * ADR 0009 "Height", BAL-15: the band's outermost layers hold what the profiles put there, after the cut and the edge
+     * factor. Without the overhang the two layers at each edge come out at about 64% of it, which the 16-layer slab test
+     * averages away (seen on Nick's PC 2026-11-20). Since each ore sits at its own height the expected figure is per layer
+     * ({@link ClipFactors#byLayer}, less the overlap), not the band's density: deepslate's top layers hold about 16%.
      */
     @Test
     void theEdgeLayersHoldTheBandDensity() {
@@ -89,6 +98,39 @@ class VeinPlacerTest {
         }
     }
 
+    /**
+     * §3.1 "Where each ore sits": a vein's middle is drawn from its ore's profile, so none of its blocks sits farther than
+     * {@link VeinShape#KERNEL_REACH} from a layer where that ore has mass. Coal, which has none below Y=0, is never in
+     * deepslate, and diamond, which has none above Y=16, never above Y=20 in stone.
+     */
+    @Test
+    void noBlockLandsFarFromItsOresProfile() {
+        Map<String, HeightProfile> profiles = new HashMap<>();
+        for (OrePicker.Candidate candidate : VanillaOres.candidates()) {
+            profiles.put(candidate.groupId(), candidate.profile());
+        }
+        for (VaultVariant variant : VaultVariant.values()) {
+            for (int chunk = 0; chunk < 20; chunk++) {
+                for (VeinExtent vein : place(variant, VanillaOres.candidates(), chunk, 2 * chunk).veins()) {
+                    HeightProfile profile = profiles.get(vein.oreGroup());
+                    if (vein.band() == Band.DEEPSLATE) {
+                        assertFalse(vein.oreGroup().endsWith(":coal_ore"), vein.toString());
+                    }
+                    forEachPosition(vein, (x, y, z) -> {
+                        boolean near = false;
+                        for (int dy = -VeinShape.KERNEL_REACH; dy <= VeinShape.KERNEL_REACH; dy++) {
+                            near |= profile.massAt(y + dy) > 0;
+                        }
+                        assertTrue(near, vein.oreGroup() + " at Y=" + y + ", no mass within reach");
+                        if (vein.oreGroup().endsWith(":diamond_ore")) {
+                            assertTrue(y <= 16 + VeinShape.KERNEL_REACH, "diamond at Y=" + y);
+                        }
+                    });
+                }
+            }
+        }
+    }
+
     /** ARCH-E4-4: every extent fits ADR 0004's header fields. */
     @Test
     void everyExtentFitsTheHeader() {
@@ -120,13 +162,17 @@ class VeinPlacerTest {
         }
     }
 
-    /** Pinned 2026-11-20 from the first run on Nick's PC. */
-    private static final int PINNED_FINGERPRINT = 1853940645;
+    /**
+     * Not yet pinned for E4-S3b (#425): each ore at its own height draws two more doubles per vein and the surface moved
+     * to Y=100, so every vein changed on purpose. Pin from the first run on Nick's PC, the value this test prints. Was
+     * 1853940645, pinned 2026-11-20.
+     */
+    private static final int PINNED_FINGERPRINT = 0;
 
     /** ADR 0009: the fractional roll's mean over 10,000 seeds is c within three standard errors. */
     @Test
     void theFractionalRollMeetsItsMean() {
-        double mean = 141.37;
+        double mean = 54.67;
         double sum = 0;
         for (int seed = 0; seed < 10_000; seed++) {
             sum += VeinPlacer.rollCount(mean, GenRandom.of(seed));
@@ -156,7 +202,7 @@ class VeinPlacerTest {
     }
 
     private static Tally run(VaultVariant variant, List<OrePicker.Candidate> ores, int offset) {
-        Tally tally = new Tally(variant);
+        Tally tally = new Tally(variant, pickers(variant, ores));
         for (int x = -CHUNKS / 2; x <= CHUNKS / 2; x++) {
             for (int z = -CHUNKS / 2; z <= CHUNKS / 2; z++) {
                 tally.add(place(variant, ores, x + offset, z));
@@ -194,19 +240,21 @@ class VeinPlacerTest {
     private static final class Tally {
         final VaultVariant variant;
         final Map<Band, Map<Rarity, Long>> byRarity = new EnumMap<>(Band.class);
-        final Map<Band, long[]> bySlab = new EnumMap<>(Band.class);
         final Map<Band, Map<Integer, Long>> byLayer = new EnumMap<>(Band.class);
+        final Map<Band, OrePicker> pickers;
+        final DensityTally density;
         int chunks;
 
-        Tally(VaultVariant variant) {
+        Tally(VaultVariant variant, Map<Band, OrePicker> pickers) {
             this.variant = variant;
+            this.pickers = pickers;
+            this.density = new DensityTally(OreBaseline.BASE, variant, pickers, CHUNKS * CHUNKS);
             for (Band band : Band.values()) {
                 Map<Rarity, Long> zero = new EnumMap<>(Rarity.class);
                 for (Rarity rarity : Rarity.values()) {
                     zero.put(rarity, 0L);
                 }
                 byRarity.put(band, zero);
-                variant.band(band).ifPresent(b -> bySlab.put(band, new long[slabCount(b)]));
             }
         }
 
@@ -215,13 +263,19 @@ class VeinPlacerTest {
             for (VeinExtent vein : placement.veins()) {
                 Rarity rarity = VanillaOres.rarityOf(vein.oreGroup());
                 byRarity.get(vein.band()).merge(rarity, (long) vein.blocks(), Long::sum);
-                BandBounds bounds = variant.band(vein.band()).orElseThrow();
-                long[] slabs = bySlab.get(vein.band());
-                Map<Integer, Long> layers = byLayer.computeIfAbsent(vein.band(), b -> new java.util.HashMap<>());
-                forEachPosition(vein, (x, y, z) -> {
-                    slabs[slabOf(y, bounds)]++;
-                    layers.merge(y, 1L, Long::sum);
-                });
+                Map<Integer, Long> layers = byLayer.computeIfAbsent(vein.band(), b -> new HashMap<>());
+                forEachPosition(vein, (x, y, z) -> layers.merge(y, 1L, Long::sum));
+                for (int y = vein.minY(); y < vein.minY() + vein.sizeY(); y++) {
+                    long inLayer = 0;
+                    for (int z = 0; z < vein.sizeZ(); z++) {
+                        for (int x = 0; x < vein.sizeX(); x++) {
+                            inLayer += vein.isSet(x, y - vein.minY(), z) ? 1 : 0;
+                        }
+                    }
+                    if (inLayer > 0) {
+                        density.add(vein.band(), y, rarity, vein.oreGroup(), inLayer);
+                    }
+                }
             }
         }
 
@@ -244,34 +298,44 @@ class VeinPlacerTest {
             }
         }
 
-        /** Layers {@code fromY..toY} against the band's density, within 25%: the missing overhang is about -36%. */
+        /**
+         * Layers {@code fromY..toY} against what the profiles put there less the overlap, within 25%: the missing overhang
+         * is about -36%.
+         */
         void assertLayers(Band band, int fromY, int toY) {
-            double density = total(band) / (256.0 * chunks * variant.band(band).orElseThrow().layers());
+            BandBounds bounds = variant.band(band).orElseThrow();
+            double[] expectedByLayer = ClipFactors.byLayer(variant, band,
+                    ClipFactors.nominalRequests(OreBaseline.BASE, variant, GenerationTiers.NONE), pickers);
+            double expected = 0;
+            for (int y = fromY; y <= toY; y++) {
+                expected += expectedByLayer[y - bounds.bottomY()] * (1 - DensityTally.overlap(band));
+            }
+            expected /= toY - fromY + 1;
             double measured = byLayer.getOrDefault(band, Map.of()).entrySet().stream()
                     .filter(e -> e.getKey() >= fromY && e.getKey() <= toY).mapToLong(Map.Entry::getValue).sum()
                     / (256.0 * chunks * (toY - fromY + 1));
-            assertTrue(Math.abs(measured - density) <= 0.25 * density,
-                    variant.id() + " " + band + " Y" + fromY + ".." + toY + " at " + measured + " against the band's " + density);
+            assertTrue(Math.abs(measured - expected) <= 0.25 * expected,
+                    variant.id() + " " + band + " Y" + fromY + ".." + toY + " at " + measured + " against " + expected);
         }
 
+        /** Every slab's density against its own expected density, within 10% relative (DensityTally). */
         void assertSlabs(Band band) {
-            BandBounds bounds = variant.band(band).orElseThrow();
-            double density = total(band) / (256.0 * chunks * bounds.layers());
-            long[] slabs = bySlab.get(band);
-            for (int slab = 0; slab < slabs.length; slab++) {
-                int layers = slab == slabs.length - 1 ? bounds.layers() - 16 * slab : 16;
-                double measured = slabs[slab] / (256.0 * chunks * layers);
-                assertTrue(Math.abs(measured - density) <= 0.10 * density,
-                        band + " slab " + slab + " at " + measured + " against the band's " + density + " (10% relative)");
+            assertEquals(CHUNKS * CHUNKS, chunks);
+            for (int slab = 0; slab < density.slabCount(band); slab++) {
+                assertTrue(density.slabPasses(band, slab), band + " slab " + density.slabBounds(band, slab) + " at "
+                        + density.slabDensity(band, slab) + " against " + density.expectedSlabDensity(band, slab) + " (10% relative)");
             }
         }
 
-        static int slabCount(BandBounds bounds) {
-            return Math.max(1, bounds.layers() / 16);
-        }
-
-        static int slabOf(int y, BandBounds bounds) {
-            return Math.min(slabCount(bounds) - 1, (y - bounds.bottomY()) / 16);
+        /** Every slab's rarity shares against its expected shares, within 3 points (DensityTally). */
+        void assertSlabShares(Band band) {
+            for (int slab = 0; slab < density.slabCount(band); slab++) {
+                for (Rarity rarity : Rarity.values()) {
+                    assertTrue(density.slabSharePasses(band, slab, rarity), band + " slab " + density.slabBounds(band, slab)
+                            + " " + rarity + " share " + density.slabShare(band, slab, rarity) + " against "
+                            + density.expectedSlabShare(band, slab, rarity));
+                }
+            }
         }
     }
 

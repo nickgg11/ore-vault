@@ -326,7 +326,7 @@ final class DebugCommandTests {
         GenSnapshot snapshot = GenSnapshots.current(team).orElseThrow();
         ChunkPlan plan = ChunkPlan.of(OreBaseline.BASE, VaultVariant.EXPANDED, published.pickers(VaultVariant.EXPANDED), snapshot,
                 team, chunkX, chunkZ);
-        DensityTally planned = new DensityTally(OreBaseline.BASE, VaultVariant.EXPANDED, 1);
+        DensityTally planned = new DensityTally(OreBaseline.BASE, VaultVariant.EXPANDED, published.pickers(VaultVariant.EXPANDED), 1);
         for (VeinExtent vein : plan.ore().veins()) {
             OreTable.Entry entry = Objects.requireNonNull(published.table().lookup(vein.oreGroup()), vein.oreGroup());
             for (int y = 0; y < vein.sizeY(); y++) {

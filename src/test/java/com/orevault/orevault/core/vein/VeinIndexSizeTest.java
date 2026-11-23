@@ -32,8 +32,17 @@ import org.junit.jupiter.api.Test;
  * (Balancer, BAL-E4-1): Vein Proliferation 5 times Abundance as ×4.4 on every count; Vein Expansion 5 with Volatile
  * Veins and Abundance's -20% as ×1.8 blocks a vein; Deep Veins 2 doubling the deepslate count in its lowest 30 layers,
  * with the deepslate clip at 0.6092 (0.60 / 0.985); 12 Guide Veins of configured size 24; and Stone Reduction as every
- * box grown by one layer on every side. Expanded type, 81 chunks, the maximum deciding: at most 73,728 bytes. The
- * Balancer's estimate is about 40.5 KB. Two further setups are printed, not gated, so the headroom is on record.
+ * box grown by one layer on every side. Expanded type, 81 chunks, the maximum deciding: at most 73,728 bytes. Two further
+ * setups are printed, not gated, so the headroom is on record.
+ *
+ * <p>E4-S3b (#425) brought the surface down to Y=100: the stone band is 96 layers, not 246, and its counts are 95/245 of
+ * the old ones, so the stack has about 1,020 veins a chunk where it had 1,714. Measured on Nick's PC 2026-11-20 at the
+ * old height: mean 40,117 bytes, max 40,525, about 23.6 bytes a vein with the growth; at that rate the new stack is about
+ * 24 KB. {@link #EXPECTED_MAX_BYTES} gates it on purpose at 32,768, a third over the estimate, so a change that brings
+ * the old byte count back fails here, not only one past the comparator. To re-measure on the PC: the printed max, and
+ * this bound moved to it plus a third if it is far under. The deepslate clip stays 0.6092: since the clip reads the
+ * densest layer (ADR 0009, amended 2026-11-21), the real clip of this stack is lower, so 0.6092 places more veins than
+ * the stack would and errs towards more bytes.
  */
 class VeinIndexSizeTest {
     private static final UUID TEAM = UUID.fromString("0a1b2c3d-4e5f-4061-8728-394a5b6c7d8e");
@@ -44,6 +53,8 @@ class VeinIndexSizeTest {
     private static final int DEEP_VEINS_LAYERS = 30;
     private static final int GUIDE_VEINS = 12;
     private static final int GUIDE_SIZE = 24;
+    /** The estimate's bound, below the comparator on purpose (class comment); re-measure on the PC. */
+    private static final long EXPECTED_MAX_BYTES = 32_768;
 
     @Test
     void theArithmeticFollowsTheEncoding() {
@@ -58,9 +69,9 @@ class VeinIndexSizeTest {
     @Test
     void theHeaviestOneDotZeroStackFitsTheComparator() {
         Map<Band, OrePicker> pickers = OrePickers.forVariant(EXPANDED, VanillaOres.candidates());
-        List<VeinRequest> stack = heaviestStack();
+        List<VeinRequest> stack = heaviestStack(pickers);
         // Triage round 2: the stack is printed, so the bytes can be checked against the same inputs. The deepslate counts
-        // carry the edge factor, about 2% over BAL-E4-1's, which errs towards more bytes.
+        // carry the edge factor, about 2.5% at most over BAL-E4-1's, which errs towards more bytes.
         for (VeinRequest request : stack) {
             System.out.printf(Locale.ROOT, "Vein index stack: %s %s, %.2f a chunk, sizes %s, Y%d..%d%s%n", request.band(), request.rarity(),
                     request.perChunk(), java.util.Arrays.toString(request.sizes()), request.regionBottomY(), request.regionTopY(),
@@ -85,23 +96,26 @@ class VeinIndexSizeTest {
         System.out.printf(Locale.ROOT, "Vein index, heaviest 1.0 stack, 81 chunks: mean %.0f bytes, max %d (%.1f%% of %d); "
                         + "max without Stone Reduction's growth %d; %.0f veins a chunk; hard stops %d%n",
                 sum / 81, max, 100.0 * max / VeinIndexSize.COMPARATOR_BYTES, VeinIndexSize.COMPARATOR_BYTES, maxUngrown, veins / 81.0, hardStops);
-        printInformational();
+        printInformational(pickers);
         assertTrue(max <= VeinIndexSize.COMPARATOR_BYTES, "max " + max + " bytes over the comparator; back to the Manager before E4-S3");
+        assertTrue(max <= EXPECTED_MAX_BYTES, "max " + max + " bytes over the Y=100 estimate's bound of " + EXPECTED_MAX_BYTES
+                + "; the stone band's counts or the sizes have grown since E4-S3b (#425)");
     }
 
-    private static List<VeinRequest> heaviestStack() {
+    private static List<VeinRequest> heaviestStack(Map<Band, OrePicker> pickers) {
         OreBaseline base = OreBaseline.BASE;
         List<VeinRequest> requests = new ArrayList<>();
         BandBounds stone = EXPANDED.band(Band.STONE).orElseThrow();
         BandBounds deepslate = EXPANDED.band(Band.DEEPSLATE).orElseThrow();
         for (Rarity rarity : Rarity.values()) {
-            double count = base.veins(Band.STONE, rarity).perChunk() * PROLIFERATION_AND_ABUNDANCE * base.edgeFactor(Band.STONE, rarity, EXPANDED);
+            double count = base.veins(Band.STONE, rarity).perChunk() * PROLIFERATION_AND_ABUNDANCE
+                    * base.edgeFactor(Band.STONE, rarity, pickers.get(Band.STONE));
             requests.add(new VeinRequest(Band.STONE, rarity, count, scaledSizes(base.veins(Band.STONE, rarity), BLOCKS_A_VEIN), stone.bottomY(), stone.topY(), false));
         }
         requests.add(new VeinRequest(Band.STONE, Rarity.COMMON, GUIDE_VEINS, new double[] {GUIDE_SIZE}, stone.bottomY(), stone.topY(), true));
         for (Rarity rarity : Rarity.values()) {
             double count = base.veins(Band.DEEPSLATE, rarity).perChunk() * PROLIFERATION_AND_ABUNDANCE * DEEPSLATE_CLIP
-                    * base.edgeFactor(Band.DEEPSLATE, rarity, EXPANDED);
+                    * base.edgeFactor(Band.DEEPSLATE, rarity, pickers.get(Band.DEEPSLATE));
             double[] sizes = scaledSizes(base.veins(Band.DEEPSLATE, rarity), BLOCKS_A_VEIN);
             requests.add(new VeinRequest(Band.DEEPSLATE, rarity, count, sizes, deepslate.bottomY(), deepslate.topY(), false));
             requests.add(new VeinRequest(Band.DEEPSLATE, rarity, count * DEEP_VEINS_LAYERS / deepslate.layers(), sizes,
@@ -111,8 +125,7 @@ class VeinIndexSizeTest {
     }
 
     /** Not a gate: both bands at the 60% ceiling, at baseline sizes and at Abundance's -20% alone (BAL-E4-1, ARCH-E4-3). */
-    private static void printInformational() {
-        Map<Band, OrePicker> pickers = OrePickers.forVariant(EXPANDED, VanillaOres.candidates());
+    private static void printInformational(Map<Band, OrePicker> pickers) {
         for (double blocks : new double[] {1.0, 0.8}) {
             List<VeinRequest> requests = new ArrayList<>();
             for (Band band : Band.values()) {
@@ -120,7 +133,7 @@ class VeinIndexSizeTest {
                 double factor = 0.60 / (OreBaseline.BASE.density(band, EXPANDED) * blocks);
                 for (Rarity rarity : Rarity.values()) {
                     OreBaseline.Veins veins = OreBaseline.BASE.veins(band, rarity);
-                    requests.add(new VeinRequest(band, rarity, veins.perChunk() * factor * OreBaseline.BASE.edgeFactor(band, rarity, EXPANDED),
+                    requests.add(new VeinRequest(band, rarity, veins.perChunk() * factor * OreBaseline.BASE.edgeFactor(band, rarity, pickers.get(band)),
                             scaledSizes(veins, blocks), bounds.bottomY(), bounds.topY(), false));
                 }
             }

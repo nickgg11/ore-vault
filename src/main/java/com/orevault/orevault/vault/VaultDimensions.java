@@ -1,10 +1,12 @@
 package com.orevault.orevault.vault;
 
 import com.orevault.orevault.OreVault;
+import com.orevault.orevault.core.gen.Band;
 import com.orevault.orevault.core.gen.GenSnapshot;
 import com.orevault.orevault.core.gen.LayerStack;
 import com.orevault.orevault.core.gen.VaultVariant;
 import com.orevault.orevault.core.key.VaultKeys;
+import com.orevault.orevault.core.ore.OrePicker;
 import com.orevault.orevault.data.DataPaths;
 import com.orevault.orevault.data.GenSnapshots;
 import com.orevault.orevault.data.OreVaultTeamData;
@@ -209,7 +211,10 @@ public final class VaultDimensions {
             return Optional.empty();
         }
         VaultVariant variant = type.get();
-        Supplier<GenSnapshot> snapshots = GenSnapshots.fill(server, teamId, variant);
+        // The clip reads the published profiles (ADR 0009, amended 2026-11-21); this throws when nothing is published, as
+        // forVault below does. A pack with no classified ore has no pickers and places no ore.
+        Map<Band, OrePicker> pickers = VaultChunkGenerator.publishedPickers(variant);
+        Supplier<GenSnapshot> snapshots = GenSnapshots.fill(server, teamId, variant, pickers);
         Holder.Reference<DimensionType> dimensionType = server.registryAccess().lookupOrThrow(Registries.DIMENSION_TYPE)
                 .getOrThrow(ResourceKey.create(Registries.DIMENSION_TYPE, Identifier.parse(variant.id())));
         Holder.Reference<Biome> biome = server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(VaultChunkGenerator.BIOME);
