@@ -6,8 +6,12 @@ package com.orevault.orevault.core.frame;
  * anchor lands on top of it, or in the room under a roof, rather than inside it.
  */
 public final class SafeArrival {
-    /** The grass surface of both layer stacks is Y=250 (§3.1), so the anchor's feet stand at Y=251. */
-    public static final int DEFAULT_FEET_Y = 251;
+    /**
+     * The grass surface of both layer stacks is Y=100 (§3.1, since 2026-11-21; it was Y=250), so the anchor's feet stand at
+     * Y=101. {@code SafeArrivalTest} pins this to the first air above the built-in base stack's grass, so the two cannot
+     * drift apart.
+     */
+    public static final int DEFAULT_FEET_Y = 101;
 
     private SafeArrival() {
     }

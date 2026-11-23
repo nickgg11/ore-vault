@@ -25,21 +25,27 @@ import java.util.Map;
 public record OreBaseline(Map<Band, Map<Rarity, Veins>> ore, Map<Band, Blobs> gravel, Map<Band, Blobs> clay) {
     /**
      * The stone band's height in the base type and the deepslate band's, the third copy of the dimension heights (rule 8,
-     * ADR 0009): the dimension type files, {@link VaultVariant} and these. A test compares them, so they fail together.
-     * The curve reads the base type's figures; the expanded stone band spreads the same counts over 246 layers.
+     * ADR 0009): the layer files, {@link VaultVariant} and these. A test compares them, so they fail together. The curve
+     * reads the base type's figures; the expanded stone band spreads the same counts over 96 layers, 1.0% thinner.
+     * The stone band was 245 layers until the surface came down to Y=100 (ADR 0009, amended 2026-11-21).
      */
-    public static final int STONE_BAND_LAYERS = 245;
+    public static final int STONE_BAND_LAYERS = 95;
     public static final int DEEPSLATE_BAND_LAYERS = 63;
 
     private static final int BLOB_SIZE = 33;
 
-    /** §3.1's baseline. */
+    /**
+     * §3.1's baseline. The stone band's counts are the 245-layer band's, 141, 82 and 33 veins and 9 gravel and 3 clay
+     * blobs, times 95/245, written in that exact form so §3.1's density (3.04%, which §4.3 prices) stays exact: 54.67,
+     * 31.80 and 12.80 veins, 3.49 and 1.16 blobs (ADR 0009, amended 2026-11-21). The deepslate band did not move.
+     */
     public static final OreBaseline BASE = new OreBaseline(
             Map.of(
-                    Band.STONE, rarities(new Veins(141, 9, 12), new Veins(82, 7, 9), new Veins(33, 5, 7)),
+                    Band.STONE, rarities(new Veins(141 * 95 / 245.0, 9, 12), new Veins(82 * 95 / 245.0, 7, 9),
+                            new Veins(33 * 95 / 245.0, 5, 7)),
                     Band.DEEPSLATE, rarities(new Veins(65, 9, 12), new Veins(52, 7, 9), new Veins(25, 5, 7))),
-            Map.of(Band.STONE, new Blobs(9, BLOB_SIZE), Band.DEEPSLATE, new Blobs(2, BLOB_SIZE)),
-            Map.of(Band.STONE, new Blobs(3, BLOB_SIZE), Band.DEEPSLATE, new Blobs(1, BLOB_SIZE)));
+            Map.of(Band.STONE, new Blobs(9 * 95 / 245.0, BLOB_SIZE), Band.DEEPSLATE, new Blobs(2, BLOB_SIZE)),
+            Map.of(Band.STONE, new Blobs(3 * 95 / 245.0, BLOB_SIZE), Band.DEEPSLATE, new Blobs(1, BLOB_SIZE)));
 
     /** EnumMaps, not {@code Map.copyOf}: the placer iterates these, and a {@code Map.copyOf} map's order changes per JVM run (ADR 0003). */
     public OreBaseline {

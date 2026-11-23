@@ -2,16 +2,19 @@ package com.orevault.orevault.core.frame;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.orevault.orevault.core.gen.LayerStack;
+import com.orevault.orevault.core.gen.VaultVariant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.IntPredicate;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 /** §3.2 safe arrival (old #77): feet in a two-high pocket of air with something under it, searched down from the surface. */
 class SafeArrivalTest {
     private static final int MIN_Y = 0;
     private static final int MAX_Y = 319;
-    private static final int GRASS = 250;
+    private static final int GRASS = 100;
 
     /** A column solid from the bottom to {@code top} inclusive, air above, with any extra solid blocks named. */
     private static SafeArrival.Column column(int top, int... alsoSolid) {
@@ -39,17 +42,15 @@ class SafeArrivalTest {
 
     @Test
     void aRoofLeavesThePocketUnderIt() {
-        // Built over the anchor: the heightmap is above the roof at 260, and the room under it is the first pocket that fits.
-        SafeArrival.Column roofed = column(GRASS, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274,
-                275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297,
-                298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319);
+        // Built over the anchor: the heightmap is above the roof at 110, and the room under it is the first pocket that fits.
+        SafeArrival.Column roofed = column(GRASS, IntStream.rangeClosed(110, MAX_Y).toArray());
         assertEquals(GRASS + 1, SafeArrival.feetY(MAX_Y + 1, MIN_Y, MAX_Y, roofed));
     }
 
     @Test
     void aOneHighGapIsNotAPocket() {
-        // Air at 251 only, stone from 252 to 255, air above: the player stands on the stone.
-        assertEquals(256, SafeArrival.feetY(256, MIN_Y, MAX_Y, column(GRASS, 252, 253, 254, 255)));
+        // Air at 101 only, stone from 102 to 105, air above: the player stands on the stone.
+        assertEquals(106, SafeArrival.feetY(106, MIN_Y, MAX_Y, column(GRASS, 102, 103, 104, 105)));
     }
 
     @Test
@@ -70,31 +71,31 @@ class SafeArrivalTest {
 
     @Test
     void aTorchAtTheFeetIsStoodBesideNotFallenThrough() {
-        // Grass at 250, a torch on it at 251 (no collision, not motion-blocking, so the heightmap is 251), and a tunnel dug
-        // at 240 to 241 under the grass: the arrival is on the grass, by the torch, not down in the tunnel.
-        SafeArrival.Column torch = y -> y == 251 || y > 251 || y == 240 || y == 241 ? SafeArrival.Space.OPEN
+        // Grass at 100, a torch on it at 101 (no collision, not motion-blocking, so the heightmap is 101), and a tunnel dug
+        // at 90 to 91 under the grass: the arrival is on the grass, by the torch, not down in the tunnel.
+        SafeArrival.Column torch = y -> y == 101 || y > 101 || y == 90 || y == 91 ? SafeArrival.Space.OPEN
                 : SafeArrival.Space.SOLID;
-        assertEquals(251, SafeArrival.feetY(251, MIN_Y, MAX_Y, torch));
+        assertEquals(101, SafeArrival.feetY(101, MIN_Y, MAX_Y, torch));
     }
 
     @Test
     void lavaIsNoFloor() {
-        // A lava pool on the grass at 251, open above it: the search goes past the lava to the pocket under the pool's
-        // stone bed at 245, never stands on the lava.
+        // A lava pool on the grass at 101, open above it: the search goes past the lava to the pocket under the pool's
+        // stone bed at 95, never stands on the lava.
         SafeArrival.Column pool = y -> {
-            if (y == 251) {
+            if (y == 101) {
                 return SafeArrival.Space.FLUID;
             }
-            return y > 251 || y == 246 || y == 247 ? SafeArrival.Space.OPEN : SafeArrival.Space.SOLID;
+            return y > 101 || y == 96 || y == 97 ? SafeArrival.Space.OPEN : SafeArrival.Space.SOLID;
         };
-        assertEquals(246, SafeArrival.feetY(252, MIN_Y, MAX_Y, pool));
+        assertEquals(96, SafeArrival.feetY(102, MIN_Y, MAX_Y, pool));
     }
 
     @Test
     void feetAndHeadInWaterAreNoPocket() {
-        SafeArrival.Column flooded = y -> y > 250 && y < 260 ? SafeArrival.Space.FLUID
-                : y >= 260 ? SafeArrival.Space.OPEN : SafeArrival.Space.SOLID;
-        // Open from 260 up, but the floor at 259 is water: no pocket in the column, so the default.
+        SafeArrival.Column flooded = y -> y > 100 && y < 110 ? SafeArrival.Space.FLUID
+                : y >= 110 ? SafeArrival.Space.OPEN : SafeArrival.Space.SOLID;
+        // Open from 110 up, but the floor at 109 is water: no pocket in the column, so the default.
         assertEquals(SafeArrival.DEFAULT_FEET_Y, SafeArrival.feetY(MAX_Y + 1, MIN_Y, MAX_Y, flooded));
     }
 
@@ -129,5 +130,19 @@ class SafeArrivalTest {
     @Test
     void theExpandedVaultHasTheSameSurface() {
         assertEquals(GRASS + 1, SafeArrival.feetY(GRASS + 1, -64, MAX_Y, column(GRASS)));
+    }
+
+    /**
+     * The default is the first air above the grass of the built-in base stack (§3.1; ADR 0009, amended 2026-11-21), so it
+     * cannot drift from the stack when the surface moves again.
+     */
+    @Test
+    void theDefaultIsTheFirstAirAboveTheBuiltInGrass() {
+        VaultVariant base = VaultVariant.BASE;
+        java.util.List<String> column = LayerStack.builtIn(base).column();
+        int grass = column.lastIndexOf("minecraft:grass_block") + base.minY();
+        assertEquals(GRASS, grass);
+        assertEquals(LayerStack.AIR, column.get(grass + 1 - base.minY()));
+        assertEquals(grass + 1, SafeArrival.DEFAULT_FEET_Y);
     }
 }

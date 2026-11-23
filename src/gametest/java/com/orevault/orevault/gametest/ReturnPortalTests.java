@@ -31,8 +31,8 @@ import net.neoforged.neoforge.common.util.FakePlayer;
  * trip is read for where it goes and never taken: the portal is built before the teleport, as §3.2's order has it.
  */
 final class ReturnPortalTests {
-    /** The base stack's grass is at Y=250, so the ring's bottom row and the anchor's feet are at Y=251. */
-    private static final int BASE = 251;
+    /** The base stack's grass is at Y=100 (§3.1, since 2026-11-21), so the ring's bottom row and the anchor's feet are at Y=101. */
+    private static final int BASE = 101;
     /** Where the test stands its entry portal, relative to the test's origin. */
     private static final BlockPos ENTRY = new BlockPos(1, 1, 1);
     /** Flags 18, as a portal is filled: the lone entry block schedules no dissolve. */
@@ -204,8 +204,8 @@ final class ReturnPortalTests {
     static void arrivalStandsBesideATorchOverATunnel(GameTestHelper helper) {
         UUID team = UUID.randomUUID();
         ServerLevel vault = enter(helper, team, SignetTier.WORN).newLevel();
-        vault.setBlock(new BlockPos(0, 240, 0), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-        vault.setBlock(new BlockPos(0, 241, 0), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+        vault.setBlock(new BlockPos(0, BASE - 11, 0), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+        vault.setBlock(new BlockPos(0, BASE - 10, 0), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
         vault.setBlock(new BlockPos(0, BASE, 0), Blocks.TORCH.defaultBlockState(), Block.UPDATE_ALL);
         check(helper, "beside the torch", new Vec3(0.5, BASE, 0.5), VaultTravel.anchor(vault));
         helper.succeed();

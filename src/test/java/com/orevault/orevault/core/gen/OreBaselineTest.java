@@ -26,11 +26,34 @@ class OreBaselineTest {
         assertRelative(0.06, BASE.density(Band.DEEPSLATE, VaultVariant.EXPANDED), 0.05);
     }
 
-    /** BAL-E4-6: the same counts over 246 layers, 0.4% thinner, and compared against that. */
+    /** BAL-E4-6, at Y=100: the same counts over 96 layers, 1.0% thinner, and compared against that (§3.1). */
     @Test
     void theExpandedStoneBandIsOneLayerThinner() {
         double ratio = BASE.density(Band.STONE, VaultVariant.EXPANDED) / BASE.density(Band.STONE, VaultVariant.BASE);
-        assertEquals(245.0 / 246.0, ratio, 1e-12);
+        assertEquals(95.0 / 96.0, ratio, 1e-12);
+    }
+
+    /**
+     * ADR 0009, amended 2026-11-21: the stone counts follow the band's height, the 245-layer band's 141, 82 and 33 times
+     * 95/245, so the density §4.3 prices is exactly what it was over 245 layers (3.04%).
+     */
+    @Test
+    void theStoneCountsFollowTheBandsHeight() {
+        double[] old = {141, 82, 33};
+        for (Rarity rarity : Rarity.values()) {
+            assertEquals(old[rarity.ordinal()] * 95 / 245, BASE.veins(Band.STONE, rarity).perChunk(), 1e-12, rarity.toString());
+        }
+        assertEquals(54.67, BASE.veins(Band.STONE, Rarity.COMMON).perChunk(), 0.005);
+        assertEquals(31.80, BASE.veins(Band.STONE, Rarity.UNCOMMON).perChunk(), 0.005);
+        assertEquals(12.80, BASE.veins(Band.STONE, Rarity.RARE).perChunk(), 0.005);
+        double oldDensity = 0;
+        for (Rarity rarity : Rarity.values()) {
+            oldDensity += old[rarity.ordinal()] * BASE.veins(Band.STONE, rarity).meanBlocks();
+        }
+        assertEquals(oldDensity / (256.0 * 245), BASE.density(Band.STONE, VaultVariant.BASE), 1e-12);
+        assertEquals(0.03045, BASE.density(Band.STONE, VaultVariant.BASE), 0.00005);
+        assertEquals(9 * 95 / 245.0, BASE.gravel().get(Band.STONE).perChunk(), 1e-12);
+        assertEquals(3 * 95 / 245.0, BASE.clay().get(Band.STONE).perChunk(), 1e-12);
     }
 
     @Test

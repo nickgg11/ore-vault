@@ -58,7 +58,8 @@ import net.neoforged.neoforge.common.Tags;
  */
 final class WorldgenTests {
     private static final UUID TEAM = UUID.fromString("01234567-89ab-cdef-0123-456789abcdef");
-    private static final int SURFACE_TOP = 251;
+    /** The first air above the grass of both built-in stacks, Y=100 since 2026-11-21 (§3.1). */
+    private static final int SURFACE_TOP = 101;
 
     private WorldgenTests() {
     }
@@ -214,7 +215,8 @@ final class WorldgenTests {
     static void refusesABandThatIsNotOneFiller(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         VaultVariant base = VaultVariant.BASE;
-        LayerStack shortAir = new LayerStack(List.of(new LayerStack.Layer("minecraft:stone", 100), new LayerStack.Layer("air", 220)));
+        // Air from Y=50, inside the stone band Y1..95 (since 2026-11-21 a stone layer at Y=96 is refused too, as an old layout).
+        LayerStack shortAir = new LayerStack(List.of(new LayerStack.Layer("minecraft:stone", 50), new LayerStack.Layer("air", 270)));
         try {
             VaultChunkGenerator.forVault(TEAM, vaultBiome(level), base, shortAir, () -> GenSnapshot.of(base, 0, GenerationTiers.NONE));
         } catch (IllegalArgumentException e) {
@@ -233,8 +235,8 @@ final class WorldgenTests {
         ServerLevel level = helper.getLevel();
         VaultVariant base = VaultVariant.BASE;
         LayerStack caveAir = new LayerStack(List.of(new LayerStack.Layer("minecraft:bedrock", 1),
-                new LayerStack.Layer("minecraft:cave_air", 245), new LayerStack.Layer("minecraft:dirt", 4),
-                new LayerStack.Layer("minecraft:grass_block", 1), new LayerStack.Layer("minecraft:air", 69)));
+                new LayerStack.Layer("minecraft:cave_air", 95), new LayerStack.Layer("minecraft:dirt", 4),
+                new LayerStack.Layer("minecraft:grass_block", 1), new LayerStack.Layer("minecraft:air", 219)));
         check(helper, "the string check passes it", java.util.Optional.empty(), caveAir.bandFillerProblem(base));
         try {
             VaultChunkGenerator.forVault(TEAM, vaultBiome(level), base, caveAir, () -> GenSnapshot.of(base, 0, GenerationTiers.NONE));
@@ -328,7 +330,7 @@ final class WorldgenTests {
             check(helper, "depth", variant.height(), generator.getGenDepth());
             check(helper, "base height", SURFACE_TOP, generator.getBaseHeight(0, 0, Heightmap.Types.WORLD_SURFACE_WG, heights, null));
             NoiseColumn column = generator.getBaseColumn(0, 0, heights, null);
-            check(helper, "grass", "minecraft:grass_block", idOf(column.getBlock(250)));
+            check(helper, "grass", "minecraft:grass_block", idOf(column.getBlock(SURFACE_TOP - 1)));
             check(helper, "air", "minecraft:air", idOf(column.getBlock(SURFACE_TOP)));
         }
         helper.succeed();

@@ -65,8 +65,8 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 @EventBusSubscriber(modid = OreVault.MOD_ID)
 final class VaultLifecycleTests {
     private static final byte[] GARBAGE = {1, 2, 3, 4, 5, 6, 7, 8};
-    /** The base stack's grass is at Y=250, so the anchor stands at Y=251. */
-    private static final int BASE_SURFACE = 251;
+    /** The base stack's grass is at Y=100 (§3.1, since 2026-11-21), so the anchor stands at Y=101. */
+    private static final int BASE_SURFACE = 101;
 
     /** Every level that has ticked since the server started; the tick loop is the only writer. */
     private static final Set<ResourceKey<Level>> TICKED = ConcurrentHashMap.newKeySet();
@@ -415,7 +415,7 @@ final class VaultLifecycleTests {
     static void aLoginRecordedInAVaultThatDidNotLoadGoesHome(GameTestHelper helper) {
         ServerLevel overworld = server(helper).overworld();
         FakePlayer player = player(overworld, "orevault-stranded");
-        player.setPos(0.5, 251, 0.5);
+        player.setPos(0.5, BASE_SURFACE, 0.5);
         ReturnPos home = new ReturnPos("minecraft:overworld", 12, 70, -8);
         PlayerAttachment.update(player, data -> data.withReturnPos(home).withInVault(new InVault(UUID.randomUUID(), 0)));
 
