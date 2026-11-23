@@ -111,10 +111,18 @@ Get-CimInstance Win32_Process -Filter "Name='java.exe'" | Where-Object { $_.Comm
 - `smoke-fail.txt`: a list that must fail. Pass it as `-First` or `-Second` to see a failing run.
 - `vault-first.txt`, `vault-second.txt`: ADR 0002's headless NeoForge-bump line, run on a real Vault (#237, #245).
   Lifetime 1 makes Vault `0000000a-0000-4000-8000-00000000000a` with `/orevault vault create` after the first tick,
-  waits for its tick-logger line, force-loads its chunk 0 0 and places a gold block at 0 251 0. Lifetime 2, with nobody
+  waits for its tick-logger line, force-loads its chunk 0 0 and places a gold block at 0 101 0. Lifetime 2, with nobody
   connected, expects `Restored 1 Vaults, skipped 0`, the forced chunk back (`forceload query`), `destroyBlock=true
-  gone=true` from `execute in orevault:vault_0000000a00004000800000000000000a run orevault break 0 251 0`, air there
+  gone=true` from `execute in orevault:vault_0000000a00004000800000000000000a run orevault break 0 101 0`, air there
   after, and tick-logger lines for the key. No `-Between`.
+- `vault-layout-first.txt`, `vault-layout-between.ps1`, `vault-layout-second.txt`: an older layout's Vault met at a
+  real start (#425, case (g)). Lifetime 1 makes Vault `0000000c-0000-4000-8000-00000000000c`. While the server is down,
+  the `-Between` script overwrites its `orevault_vault.dat` with the type file a 2026-10 build wrote (`data_version` 1,
+  no `layout`, so layout 1); the bytes are in the script, written by hand, not by `NbtIo`. Lifetime 2 expects the
+  start-of-server pass's WARN (`was generated under layout 1 (stone to Y=245)`, archived under `orevault_archive`),
+  `Restored 0 Vaults, skipped 0, archived 1 of an older layout`, then a fresh Vault from `vault create` with grass at
+  Y=100 and air at Y=101. Run it with
+  `-First tools/restart-check/vault-layout-first.txt -Second tools/restart-check/vault-layout-second.txt -Between tools/restart-check/vault-layout-between.ps1`.
 
 The tick logger (`debug.VaultTickLog`) writes `[orevault-debug] tick <dimension> server_tick=<n>` once a second for
 each Vault the server ticks, only while `enable_debug_commands` is on, which the script sets.

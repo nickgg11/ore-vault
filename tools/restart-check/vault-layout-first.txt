@@ -1,0 +1,8 @@
+# First lifetime of the older-layout check, case (g) of #425 at a real start (ruling 4, R-5/A-2). A base Vault is made
+# under this build's layout. The -Between script then rewrites its type file as a layout-1 one, the shape a 2026-10 build
+# wrote (data_version 1, no layout), so the second start meets a Vault of the old layout on disk.
+
+sleep 2
+run orevault vault create 0000000c-0000-4000-8000-00000000000c base
+expect type=orevault:ore_vault$
+log Registered Vault orevault:vault_0000000c00004000800000000000000c \(orevault:ore_vault, Y=0\.\.319\) for team 0000000c-0000-4000-8000-00000000000c at server tick [1-9]
