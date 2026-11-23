@@ -199,6 +199,7 @@ the compound below, with no `data` wrapper.
 |---|---|---|---|
 | `data_version` | int | 1 | Shape version (section 6), from the first build that writes the file; `migrate()` from version 1 |
 | `variant` | dimension type id | a refusal, never a default | `orevault:ore_vault` or `orevault:ore_vault_expanded`: the type this folder's Vault was made under (old #93: restore hard-coded the base type and bedrock came back at Y=0) |
+| `layout` | int | 1 | The layer stack the folder was generated under. 1 is the stack of 2026-10 (stone to Y=245, grass at Y=250); 2 is the stack since 2026-11-21 (stone to Y=95, grass at Y=100; ADR 0009 amendment of that date). Written as 2 from that change |
 
 - Written once, by ADR 0002 creation step 2, when the folder is made (a team's first entry, or the
   re-registration after a reset, ADR 0007 step 10), before the level is registered: to `orevault_vault.dat.tmp` in the folder, then
@@ -210,6 +211,17 @@ the compound below, with no `data` wrapper.
   the folder (ADR 0002). Unlike every other shape's absent key this has no default, because a wrong guess
   costs terrain. A folder holding only the temp file is a creation cut short and is treated as no folder.
 - A newer `data_version` loads best-effort with one WARN (section 6); a known `variant` is used.
+- `layout` (added 2026-11-21, an addition under section 6, so no version bump; the type file's golden key set
+  becomes `data_version`, `variant`, `layout`). A file without it was written under layout 1, which is what
+  every file before this change was, so absent reads as 1 and is not a guess. A folder whose layout is below
+  the current one cannot be loaded beside new chunks (its terrain would stand 150 blocks above them), and
+  there is no migration for terrain: ADR 0007's start-of-server pass archives it, and the team's next
+  portal entry makes a fresh folder written with the current layout. A layout above the current one (a
+  newer mod version's folder) is a refusal like an unknown `variant`. The value records the mod's own stack
+  version, not the loaded stack: a datapack that overrides `vault_layers/<type>.json` changes the terrain of
+  every Vault under it, which is the pack maker's responsibility (Balancer and Manager, 2026-11-21; the
+  Architect may instead record a fingerprint of the loaded stack). A unit case: a file written without
+  `layout` reads as 1; a fresh file writes 2.
 - Backed up, deleted and archived with the folder (ADR 0007), so a backup restored by hand comes back with
   its own type.
 

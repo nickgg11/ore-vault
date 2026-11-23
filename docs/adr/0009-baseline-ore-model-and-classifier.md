@@ -48,6 +48,8 @@ nobody mines. The height decision below answers it.
 
 ### One pure record: `core.gen.OreBaseline`
 
+The stone band bounds and slabs below (Y1..245, Y0..245, Y225..245, Y224..245) are superseded 2026-11-21 by the stone band at Y1..95 and Y0..95 (amendment at the end).
+
 `OreBaseline` holds, for each band (stone, deepslate) and each rarity (common, uncommon, rare): veins per
 chunk as a `double` (counts are fractional, as vanilla's are), and the configured size range (minimum and
 maximum vanilla `size`, drawn uniformly per vein). It also holds the gravel and clay blob counts and size
@@ -123,6 +125,8 @@ re-derived, and the Balancer's estimate is 100 to 140% until T9 pins Vein Shapin
 
 ### Height: veins spread evenly through the band
 
+Superseded 2026-11-21 by Nick's playtest of #422: each ore picks its own height (amendment at the end).
+
 Nick's answer to question 1, 2026-10-27: "Same density at every height".
 
 A vein's height is drawn uniformly over its band, for every rarity, with the box allowed to overhang the
@@ -146,6 +150,8 @@ the shares and the curve do not change; §3.1's vein counts stay the counts the 
 Balancer confirms the factor.
 
 ### Which ore a vein is: by height, as first written
+
+Superseded 2026-11-21 by Nick's playtest of #422: each ore picks its own height (amendment at the end).
 
 Nick's answer to question 4, 2026-10-31: option A, "as written". Question 1 had been put to him with the
 consequence that, under this rule, "some gold or redstone appears high up". The Balancer's run of the
@@ -306,6 +312,8 @@ with no overworld feature have none. This is old PR #117's fix made the shape of
 cannot come back through a default.
 
 ### Tests
+
+The stone band bounds and slabs below (Y1..245, Y0..245, Y225..245, Y224..245) are superseded 2026-11-21 by the stone band at Y1..95 and Y0..95 (amendment at the end).
 
 - Pure golden fixture: vanilla 26.1.2's 21 features from research section 2, entered as plain numbers,
   give coal, iron and copper Common, gold, redstone and lapis Uncommon, diamond and emerald Rare, with
@@ -581,3 +589,159 @@ Amended 2026-11-21 for E4-S3 (#247) (Developer, for the Architect and Balancer t
   start when it fails, this is reachable only through a bug in the mod. A pack with no classified ore at all publishes
   empty pickers, and its Vaults get gravel and clay and no ore (the classifier has logged an ERROR).
 
+
+Amended 2026-11-21 after Nick's playtest of the generator (#422) and his choice of a surface at Y=100 the same day
+(Balancer, for the Architect to confirm). The figures are the Balancer's, closed form from the counts and the repo's port
+of vanilla's `OreFeature`, derived and unplaytested; the script is `docs/research/vanilla-ore/heights.py` and its output
+`heights.txt`.
+
+- What Nick saw. Lapis at Y=220. That was question 4's option A working as written: each rarity's veins were spread
+  evenly over the band and a vein's ore was picked by its height, with the nearest slab's ores where none of the rarity
+  had mass, so uncommon veins above about Y=40 were about 95% lapis and rare veins above Y=16 were emerald.
+- Each ore picks its own height (Nick, 2026-11-21, on a card of four options). It supersedes question 4 and the
+  sections "Height: veins spread evenly through the band" and "Which ore a vein is: by height, as first written". A
+  vein's rarity comes from the band's count, unchanged. Its ore is drawn next from that rarity's ores in proportion to
+  weight × the ore's profile mass inside the band (the band-wide mix per rarity, read inside the band; nothing else
+  reads it). Its box middle layer is drawn last from that ore's profile inside the band, by inverse cumulative mass
+  per layer over one draw; the box may overhang the band and only its blocks inside are placed, as now. The draw
+  order becomes size index, size fraction, shape, origin x, origin z, the ore's `nextDouble`, then the middle layer's
+  `nextDouble`: today's layer draw, `nextInt(regionLayers + sizeY - 1)`, which `SplittableRandom` may serve with more
+  than one seed for a bound that is not a power of two, becomes a `nextDouble` drawn after the ore's. The golden
+  draw-sequence test is re-pinned (ARCH-E4-7). What holds is that the same pack and the same chunk always give the same
+  veins. A change of pack can move any vein in chunks generated after it: the edge factor now depends on the pack's
+  profiles and multiplies the count, and `VeinPlacer.rollCount` turns a changed fraction into a changed vein count,
+  which shifts every later draw in the chunk (Architect, A2). The earlier claim that a pack's ores never move a vein's
+  column is withdrawn.
+- Edge factor. Drawing the middle from the profile does not remove it: any ore with mass at a band's floor or top
+  loses the box's overhang there. It stays one factor per band and rarity, now computed from the profiles: the
+  blocks the rarity's ores keep inside the band, mixed by their pick shares. Under 1% in the stone band (base type: common
+  0.55%, uncommon 0.28%, rare 0.65%; expanded 0.54%, 0.27%, 0.63%) and at most about 2.6% in deepslate (common, whose iron peaks at the band's top). A factor
+  per ore is not needed: the largest difference between an ore's kept share and its rarity's is 4.4%, on copper and
+  emerald at the deepslate top, where emerald is 0.1% of rare. `OreBaseline.edgeFactor`'s uniform form
+  `H / (H + h - 1)` is replaced; it reads the pickers' profiles, built on the main thread and published with them.
+- The vertical kernel (D2). The edge factor, `ClipFactors.densest` and the expected slabs all need a vein's blocks by
+  layer about its box middle, not only the scalar `VeinShape.blockWeightedBoxHeight`. A new generated table,
+  `VeinShapeTables.LAYER_KERNEL`: per configured size, the mean blocks at each offset from the box middle
+  `y0 + (sizeY - 1) / 2`, written by the same fixed-seed run of the port that writes `MEAN_BLOCKS` and checked by
+  `VeinShapeTablesTest#theTablesMatchAFreshRun`. It is the one input of all three. The placer's box is the extent of the
+  placed blocks (`VeinShape.Rolled.of`), so its middle is the middle of the blocks' extent, which is how
+  `heights.py`'s kernel is defined; the figures here stand on it. A slab's expected placed blocks are the closed form,
+  profile × kernel summed over the slab, times one minus the band's overlap (about 1.7% in stone, 3.3% in
+  deepslate), so the slab check and the band check use one overlap figure.
+- Mass outside a band. Dropped, in both types. An ore with no mass in a band is never picked there. Where no ore of a
+  rarity has mass in a band though the pack has some, that rarity's veins draw by weight alone and spread evenly
+  through the band (the existing fallback, now also for height). A pack with no ore of a rarity keeps the
+  nearest-rarity rule of 2026-11-20. `foldBelow` is retired with the old column: it existed to fold the map's mass below
+  Y=1 into the base type's lowest slab, and at vanilla's own Y that mass is the deepslate band's.
+- Requests with a region of their own (D1, W1; Manager's ruling, 2026-11-21). A request over part of a band, such as
+  Deep Veins' lowest 30 layers, Stratified's bands, Guide Vein's veins or any T9 request, draws its ore by weight × the
+  ore's profile mass inside the region, and its box middle from that ore's profile cut to the region and renormalised.
+  An ore with no mass in the region draws its middle uniformly in the region; where no ore of the rarity has mass in
+  it, the ore is drawn by weight alone. The box may overhang the region into the band; only the band's edges cut it.
+  `VeinRequest`'s contract says so, and `ClipFactors.densest` sums each request by the same rule. Two consequences,
+  derived (`heights.txt`, last section):
+  - Deep Veins is restated as a request: tier 1 adds, per rarity, 0.5 × the band's count × 30 / the band's layers
+    veins in the lowest 30 layers of the band above bedrock; tier 2, 1.0 ×. That is the old "1.5× (2×) the band's
+    density" as an addition, now on top of a baseline that is already densest there. Base Y1..16: 6.1% at tier 1
+    (2.88 times the curve's rate), 7.7% at tier 2 (3.50). Deepslate Y-63..-48: 7.9% (3.65) and 11.1% (4.90). T9
+    (E9-S15, #320) pins the count and the 30 layers, now 32% of the base stone band.
+  - Stratified under this reading changes which ores a Vault has: base, tier 1, no blend, rare about 89% diamond,
+    uncommon about 93% lapis with no redstone (redstone lies only in Y1..15, inside the rare band), common about 74%
+    coal, 23% copper and 3% iron. The §6.1 note says so; T9 redesigns its bands or states the cost. The note it
+    replaces ("mostly pulls emerald down") held only if heights were uniform in a region, which is not the rule.
+- Measured first on the old column, the rule failed Nick's 2026-10-27 answer. With stone to Y=245 and the overworld
+  stretched onto Y-63..245, the base type's lowest 16 layers came out 15.9% ore (68% uncommon, 17% rare), 8.7 times the
+  curve's rate, about 11.5 hours for the 100: the rarity-placed-by-profile floor rejected on 2026-10-27 (about 15%,
+  13 hours) returns, because a rarity's veins placed by its ores' profiles are placed by the rarity's profile.
+- Nick then asked, the same day, for the Vault to start at about Y=64 or Y=100 and grow deeper, and chose Y=100 from
+  this comparison (each with the rule above and §3.1's densities, 3% stone and 6% deepslate, held):
+
+  | | Old column shifted down (min_y -192) | Surface Y=100 (chosen) | Surface Y=64 |
+  |---|---|---|---|
+  | Stone band, base / expanded | Y-191..53 / Y-192..53 | Y1..95 / Y0..95 | Y1..59 / Y0..59 |
+  | Height map | linear, as now | vanilla Y, 1:1 | vanilla Y, 1:1 |
+  | Grass to the diamond layers (top of Y1..16) | about 234 blocks | 84 | 48 |
+  | Base lowest slab, ore and rate × the curve | 15.9%, 8.7 | 4.6%, 2.25 | 3.7%, 1.73 |
+  | Curve's 100 h mining only there | about 11.5 h | about 44 h | about 58 h |
+  | Best 1 by 2 tunnel, rate and hours | 9.1, 11 h | 2.95, 34 h | 2.27, 44 h |
+  | Iron share of common veins, base | 34% | 17% | 27% |
+  | Stone-band counts per chunk | unchanged | × 95/245 | × 59/245 |
+
+  The shift keeps every count and test but changes only the numbers on the F3 screen: the map stays linear, since
+  245 layers of stone cannot hold vanilla's -64..319 one to one, so diamonds stay at the bottom and the floor stays at
+  8.7 times. The Balancer recommended Y=64 as nearer and flatter; Nick chose Y=100.
+- The floor at Y=100, accepted. Base type by slab: Y1..16 4.57% (28/58/14, 2.25 times the curve's rate), Y17..32 2.95%
+  (0.90), Y33..48 2.74% (0.74), Y49..64 2.84% (0.79), Y65..95 2.56% (0.65). The best 1 by 2 tunnel, Y2..3, is 2.95
+  times. Mining only Y1..16 takes the 100 hours in about 44 (32 for a team of five against its 71); the tunnel in about
+  34 (24). Nick was told the floor pays about 2.3 times with no mitigation and that it would stand unless he asked for it
+  flatter; he did not ask, so it stands, as the deepslate band's 2.33 times average was accepted for Vault Expansion.
+  T14 measures both. The deepslate band is 4.7%, 3.7% and 8.3% by slab under 1:1 (2.4, 1.9 and 2.5 times).
+- The layout. Base: bedrock Y=0, stone Y1..95, dirt Y96..99, grass Y=100, air Y101..319. Expanded: bedrock Y=-64,
+  deepslate Y-63..-1, stone Y0..95, the same above. The dimension type files keep `min_y` and `height`; the layer stacks
+  (`vault_layers/*.json`, `LayerStack`'s built-ins), `VaultVariant.STONE_TOP_Y` (95) and
+  `OreBaseline.STONE_BAND_LAYERS` (95) change together (rule 8), and the stone-band counts become 54.67, 31.80 and 12.80
+  veins, gravel 3.49 and clay 1.16 blobs, stored in the exact form, `141 * 95 / 245.0` and so on, with the 245-layer
+  originals in a comment, so §4.3's 3.04% stays exact. `OrePickers` maps the profiles at vanilla's Y (column -64..319 onto itself);
+  a pack whose overworld is taller or deeper than vanilla's maps at its own Y as well, and what lies outside a band is
+  dropped. `SafeArrival.DEFAULT_FEET_Y` becomes 101, and a test pins it to the first air
+  above the grass of `LayerStack`'s built-in base stack, so it cannot drift from the stack. The expanded type spreads the base counts over 96 stone layers, 1.0% thinner, inside S12's 5%.
+- Tests. S12's per-slab rule changes from "within ±10% of the band's density" to "within ±10% of the slab's expected
+  density, and rarity shares within ±3 points of the slab's expected shares", the expected figures computed from the
+  pickers' profiles by the same code the placer reads, over 81 chunks. At Y=100 the largest slab standard deviation over
+  81 chunks is about 3.4% of its expected blocks (the expanded type's Y64..79; 3.2% in the base type), so ±10% is about
+  three. Band density ±5% and band shares ±2 points
+  stand. Slabs: base Y1..16, 17..32, 33..48, 49..64 and 65..95 (31 layers, merged); expanded Y0..15 to Y80..95, six;
+  deepslate unchanged. The identity unit cases of question 4 (a rare pick above Y=16 is emerald with probability 1; the
+  below-Y=1 fold) are replaced by: on the golden fixture, base type, the pick shares by ore within 0.5 points of share and the
+  expected slab densities above within 2% relative; no vein of an ore lands where its profile has no mass; the layer draw's
+  histogram over 10,000 draws matches the profile.
+- The floor clip. `ClipFactors.densest` adds the baseline's requests layer by layer as height now spreads them, from
+  the profiles, not as flat bands, so a node that concentrates ore low (Deep Veins) is summed on top of the densest
+  baseline layer. No baseline slab is near 60%: the densest is 4.6% in the base stone band, 8.3% in deepslate.
+- What moves with it. §4.3's ore an hour and curve do not move, since the band densities and shares are unchanged; the
+  pacing session (S11) names the layers it mines, and Y1..16 is about 329 ore an hour, above S11's 264. Seismic Sense's
+  `COMPASS_MARGIN` was derived for 245 stone layers and falls to about 3.2 standard deviations in the base type; the
+  Balancer re-derives it in E9-S32a. ADR 0004's size gate gets easier (95/245 of the stone band's veins a chunk), and its
+  comparator (the chunk's block data at the type's full height) does not change. Node anchors re-set in §6.1, each with
+  its reason there and in `DESIGN_LOG.md`: Shallow Grace's deepest Y above 100 becomes above 32; Bedrock Communion's
+  penalty band Y=32..245 becomes Y=32..95 and its exemption Y=246 becomes Y=96; Stratified's bands become Y≤24, 25..58
+  and 59..95 with blends of 6 and 2 blocks. Deep Breath's Y=32 and Highwater Mark's Y=64 stand. Deep Veins is restated
+  (above). ADR 0004's gate: with the stone band at 95 layers the gate stack's stone veins fall to 95/245 of today's;
+  `VeinIndexSizeTest`'s figures are re-measured and its bound changed on purpose in the code PR, not loosened.
+- The expanded deepslate's top slab (P1), accepted by Nick on 2026-11-22. Y-31..-1 is 8.31% ore (iron 390 blocks a
+  chunk), 2.53 times the stone curve's rate, and its best 1 by 2 tunnel, Y-4..-3, is about 15.5% ore at 3.74 times, the
+  100 hours in about 27. E4-S5 measures it; the counts are retuned if it plays too fast.
+- Existing Vaults (A1; Architect to confirm). The dimension type is shared by every Vault of its type, so a change to
+  `min_y` or `height` would apply to every Vault on disk at the next start; Y=100 changes neither, so old Vaults would
+  keep their generated chunks with stone to Y=245 and new chunks would generate 150 blocks lower beside them. The type
+  file gains `layout`, an int: absent reads as 1, new files are written as 2 (ADR 0005 section 3a). ADR 0007's
+  start-of-server pass archives a layout-1 folder through the existing `VaultFolders` move to
+  `<world>/orevault_archive/<teamUuid>/layout-1-<time>/`, keeping its bytes and the team's data, and the team's next
+  portal entry makes a fresh Vault (ADR 0002 creation step 2, restore step 6). A player who logged out inside is sent to
+  their return position by login case 1 with the new key `message.orevault.vault_layout_archived` (§11 gives its text;
+  not "damaged", which would be untrue). ADR 0002's restore fixture gains case (g). The code PR's body tells Nick his
+  development Vaults are archived on first start.
+- Code and tests the change touches (D3), for sizing the code ticket:
+  - `core.gen`: `VaultVariant.STONE_TOP_Y`; `OreBaseline` (`STONE_BAND_LAYERS`, counts and blobs in exact form,
+    `edgeFactor` taking the pickers); `LayerStack` built-ins and a check that the layer at `stoneTopY + 1` is not the
+    stone filler, so an override written for the old column falls back loudly; `OrePickers` (column -64..319, no
+    `foldBelow`); `VeinPlacer` (the ore then middle draws, the region rule, its class Javadoc's draw order,
+    `baselineRequests`); `VeinRequest`'s contract; `ClipFactors.of` and `densest` (profiles and kernel);
+    `VeinShapeTables.LAYER_KERNEL`; `GenSnapshot.of` and `GenSnapshots` (they take the published pickers or an
+    immutable profile table from them, so the snapshot depends on classification, which ADR 0007 already orders first;
+    with no classifier output a rebuild throws, as `forVault` does).
+  - `core.ore`: `OrePicker` (constructor loses `columnFloorY`, `columnTopY`, `foldBelow`; `pick` becomes an ore draw
+    then a layer draw; exposes each ore's in-band and in-region cumulative mass and the edge factor's inputs);
+    `HeightProfile.slabs` (no linear map or fold; a per-layer in-band mass); both classes' Javadoc.
+  - Density readout: `DensityTally` (takes the pickers for expected slabs and shares; a per-slab share verdict with
+    `SLAB_SHARE_TOLERANCE` 0.03) and the `/orevault density` adapter.
+  - Persistence: `data.VaultTypeFile` (`layout`); ADR 0007's pass (the layout archive and `layoutArchivedTeamIds`);
+    login case 1's message; `frame.SafeArrival.DEFAULT_FEET_Y`; the two `vault_layers/*.json`; the lang key.
+  - Unit tests: `VaultVariantTest` (245; bounds 1..245, 0..245), `OreBaselineTest` (245/246 becomes 95/96),
+    `VeinPlacerTest` (golden sequence; the 141.37 mean), `ClipFactorsTest` (region 1..245), `DensityTallyTest` (14
+    slabs, Y225..245, Y224..245, Y=246), `HeightProfileTest`, `OrePickerTest` (`-63, 245, 1, 245, true`),
+    `VeinIndexSizeTest`, `VeinShapeTablesTest`, `ReturnPortalTest` (GRASS 250), `SafeArrivalTest` (GRASS 250, columns
+    240..260), `LayerStackTest`, `VaultDataFilesTest`, and the type file's key-set test.
+  - Gametests: `WorldgenTests` (SURFACE_TOP 251, grass at 250, the bad stack with 245 and 69), `ReturnPortalTests` (BASE
+    251), `VaultLifecycleTests` (BASE_SURFACE 251, `setPos(0.5, 251, 0.5)`), `DebugCommandTests` (`break 0 250 0`
+    expects grass; `density` positioned at Y=250).
