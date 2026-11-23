@@ -39,8 +39,9 @@ import org.junit.jupiter.api.Test;
  * the old ones, so the stack has about 1,020 veins a chunk where it had 1,714. Measured on Nick's PC 2026-11-20 at the
  * old height: mean 40,117 bytes, max 40,525, about 23.6 bytes a vein with the growth; at that rate the new stack is about
  * 24 KB. {@link #EXPECTED_MAX_BYTES} gates it on purpose at 32,768, a third over the estimate, so a change that brings
- * the old byte count back fails here, not only one past the comparator. To re-measure on the PC: the printed max, and
- * this bound moved to it plus a third if it is far under. The deepslate clip stays 0.6092: since the clip reads the
+ * the old byte count back fails here, not only one past the comparator. To re-measure on the PC: quote the printed mean
+ * and max; if the max is under about 22 KB, the bound moves to the max plus a third (Balancer, B-6). A max over the bound
+ * is a sizing question for the Architect, never a reason to raise it. The deepslate clip stays 0.6092: since the clip reads the
  * densest layer (ADR 0009, amended 2026-11-21), the real clip of this stack is lower, so 0.6092 places more veins than
  * the stack would and errs towards more bytes.
  */

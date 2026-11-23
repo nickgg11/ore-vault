@@ -146,7 +146,7 @@ public record LayerStack(List<Layer> layers) {
             if (band == Band.STONE && above - variant.minY() < column.size()
                     && normalize(column.get(above - variant.minY())).equals(filler)) {
                 return Optional.of("has " + filler + " at Y=" + above + ", above the " + band + " band, which ends at Y="
-                        + bounds.topY() + ": a stack written for an older layout");
+                        + bounds.topY() + ", as a stack written for the layout of 2026-10 (stone to Y=245) does");
             }
         }
         return Optional.empty();

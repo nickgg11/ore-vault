@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 /**
  * The S12 verdicts {@code /orevault density} prints (§3.1 "How the baseline is checked", E4-S4 #254): each band within 5%
  * relative of the closed form less overlap, the rarity shares by placed blocks within 2 points, and every 16-layer slab
- * within 10% of its own expected density and 3 points of its expected shares, the partial top slab merged into the one
+ * within 10% of its own expected density and 4 points of its expected shares, the partial top slab merged into the one
  * below. Since each ore sits at its own height (ADR 0009, amended 2026-11-21) a slab's expected figures come from the
  * profiles, so a band filled flat at its density now fails its lowest slab.
  */
@@ -43,21 +43,22 @@ class DensityTallyTest {
 
     /**
      * §3.1's table of the base type's slabs, which the Balancer derived in {@code docs/research/vanilla-ore/heights.py}:
-     * each slab's expected density, the overlap divided out, within 2% relative of the table, and its shares within the
-     * table's rounding. Deepslate against §3.1's 4.7%, 3.7% and 8.3%. The tally reads the same {@link LayerSpread} the
+     * each slab's expected density, the overlap divided out, within 2% relative of the table, and its shares, printed to one
+     * decimal, within 0.15 points. Deepslate against §3.1's 4.7%, 3.7% and 8.3%. The tally reads the same {@link LayerSpread} the
      * placer's edge factor and the clip read, so this ties all three to the spec's figures.
      */
     @Test
     void theExpectedSlabsAreSectionThreeOnes() {
         DensityTally base = tally(VaultVariant.BASE, CHUNKS);
         double[] stated = {0.0457, 0.0295, 0.0274, 0.0284, 0.0256};
-        int[][] mix = {{28, 58, 14}, {65, 33, 2}, {80, 16, 4}, {80, 16, 4}, {93, 0, 7}};
+        // §3.1's shares to one decimal (Balancer, B-4), so the window is the table's rounding, not a whole point.
+        double[][] mix = {{28.1, 57.7, 14.2}, {64.5, 33.0, 2.5}, {80.1, 16.3, 3.6}, {80.0, 15.6, 4.4}, {93.3, 0.2, 6.5}};
         assertEquals(stated.length, base.slabCount(Band.STONE));
         for (int slab = 0; slab < stated.length; slab++) {
             double closedForm = base.expectedSlabDensity(Band.STONE, slab) / (1 - DensityTally.STONE_OVERLAP);
             assertEquals(stated[slab], closedForm, 0.02 * stated[slab], "stone slab " + base.slabBounds(Band.STONE, slab));
             for (Rarity rarity : Rarity.values()) {
-                assertEquals(mix[slab][rarity.ordinal()] / 100.0, base.expectedSlabShare(Band.STONE, slab, rarity), 0.006,
+                assertEquals(mix[slab][rarity.ordinal()] / 100.0, base.expectedSlabShare(Band.STONE, slab, rarity), 0.0015,
                         "stone slab " + base.slabBounds(Band.STONE, slab) + " " + rarity);
             }
         }
@@ -133,14 +134,14 @@ class DensityTallyTest {
         assertTrue(stoneWithRareShift(-1, 0.023).failures().contains("stone rare share"));
     }
 
-    /** ADR 0009, amended 2026-11-21: a slab's rarity shares within 3 points of its expected shares. */
+    /** ADR 0009, amended 2026-11-21: a slab's rarity shares within 4 points of its expected shares (B-1). */
     @Test
-    void aSlabShareWithinThreePointsPassesAndOneOutsideFails() {
-        assertTrue(stoneWithRareShift(0, 0.027).slabSharePasses(Band.STONE, 0, Rarity.RARE));
-        assertTrue(stoneWithRareShift(0, -0.027).slabSharePasses(Band.STONE, 0, Rarity.RARE));
-        assertFalse(stoneWithRareShift(0, 0.033).slabSharePasses(Band.STONE, 0, Rarity.RARE));
-        assertFalse(stoneWithRareShift(0, -0.033).slabSharePasses(Band.STONE, 0, Rarity.RARE));
-        List<String> failures = stoneWithRareShift(0, 0.033).failures();
+    void aSlabShareWithinFourPointsPassesAndOneOutsideFails() {
+        assertTrue(stoneWithRareShift(0, 0.037).slabSharePasses(Band.STONE, 0, Rarity.RARE));
+        assertTrue(stoneWithRareShift(0, -0.037).slabSharePasses(Band.STONE, 0, Rarity.RARE));
+        assertFalse(stoneWithRareShift(0, 0.043).slabSharePasses(Band.STONE, 0, Rarity.RARE));
+        assertFalse(stoneWithRareShift(0, -0.043).slabSharePasses(Band.STONE, 0, Rarity.RARE));
+        List<String> failures = stoneWithRareShift(0, 0.043).failures();
         assertTrue(failures.contains("stone slab Y1..16 rare share"), failures.toString());
         assertTrue(failures.contains("stone slab Y1..16 common share"), failures.toString());
         assertFalse(failures.contains("stone rare share"), "one slab moves the band's share under 2 points: " + failures);
@@ -276,7 +277,7 @@ class DensityTallyTest {
         assertTrue(text.contains("expected 2.9928% = closed form 3.0446% less 1.7% overlap"), text);
         assertTrue(text.contains("edge factor 1.0049"), text);
         assertTrue(text.contains("§3.1 states 3%"), text);
-        assertTrue(text.contains("every slab within 10% of its expected density and 3 points of its expected shares"), text);
+        assertTrue(text.contains("every slab within 10% of its expected density and 4 points of its expected shares"), text);
         assertTrue(text.contains("stone slab Y1..16: "), text);
         assertTrue(text.contains("; expected 4.4966%;"), text);
         assertTrue(passing.lines().getLast().startsWith("verdict: PASS"), text);

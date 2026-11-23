@@ -238,7 +238,7 @@ class LayerStackTest {
         String json = GOOD_BASE.replace("\"thickness\": 95}", "\"thickness\": 245}").replace("\"thickness\": 219", "\"thickness\": 69");
         assertEquals(LayerStack.builtIn(VaultVariant.BASE), load(json, ANY_BLOCK, errors));
         assertEquals(1, errors.size(), errors.toString());
-        assertTrue(errors.getFirst().contains("Y=96") && errors.getFirst().contains("older layout"), errors.getFirst());
+        assertTrue(errors.getFirst().contains("Y=96") && errors.getFirst().contains("layout of 2026-10"), errors.getFirst());
     }
 
     /** The same check on the expanded stack: stone carried past Y=95 by one layer is refused. */

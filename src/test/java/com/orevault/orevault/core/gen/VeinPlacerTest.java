@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The pure placer against §3.1 and S12 over 81 chunks (ADR 0009 Tests): each band's density within 5% relative, the
- * rarity shares by placed blocks within 2 points, and every 16-layer slab within 10% of its own expected density and 3
+ * rarity shares by placed blocks within 2 points, and every 16-layer slab within 10% of its own expected density and 4
  * points of its expected shares, the figures {@link DensityTally} computes from the profiles (ADR 0009, amended
  * 2026-11-21: ore density follows height). The density command (E4-S4) checks the same against blocks the generator
  * really wrote.
@@ -327,7 +327,7 @@ class VeinPlacerTest {
             }
         }
 
-        /** Every slab's rarity shares against its expected shares, within 3 points (DensityTally). */
+        /** Every slab's rarity shares against its expected shares, within 4 points (DensityTally). */
         void assertSlabShares(Band band) {
             for (int slab = 0; slab < density.slabCount(band); slab++) {
                 for (Rarity rarity : Rarity.values()) {

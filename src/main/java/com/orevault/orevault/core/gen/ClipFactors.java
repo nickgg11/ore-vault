@@ -18,8 +18,13 @@ import java.util.Map;
  * box middles from the band's profiles, their blocks about the middle from the generated kernel, cut at the band's edges,
  * and the whole scaled to the request's closed form, count times mean blocks ({@link LayerSpread#placedByLayer}). That is
  * what the placer places once the count carries the edge factor, which only makes up the cut blocks. So the baseline
- * itself is densest where its ores peak, not flat: on vanilla about 5.2% at Y=2 in the base stone band and 16% at Y=-2 in
- * deepslate, far from 60%. A per-chunk outcome such as a Vein Singularity chunk is one more request set to compute this
+ * itself is densest where its ores peak, not flat. On vanilla, at Y=100 (heights.py's B100 rows, confirmed by the Balancer
+ * 2026-11-23), the densest single layer is 5.19% at Y=2 of the base stone band and 16.28% at Y=-2 of deepslate, far from
+ * 60%; {@code heights.txt}'s best two-layer tunnels are Y2..3 at about 5.2% and Y-4..-3 at about 15.5%.
+
+ * <p>Since the clip reads the densest layer, it fires once the band-wide request reaches about 0.60 over the densest-to-
+ * average ratio: 2.62 in deepslate and about 1.7 in stone, so about 23% and 35% band-wide, not 60% (Balancer, B-2). That
+ * is ADR 0009's rule, recorded in its Consequences; what it means for the full tree is T9's (#320). A per-chunk outcome such as a Vein Singularity chunk is one more request set to compute this
  * over; it joins with its node (T9).
  *
  * @param stone the stone band's factor
@@ -30,14 +35,16 @@ public record ClipFactors(double stone, double deepslate) {
     public static final double CEILING = 0.60;
 
     /**
-     * How far past {@link #CEILING} the placer's hard stop sits (S3-BAL-1). A correct clip puts the mean in-band request
-     * exactly on the ceiling, and the spread of vein sizes is about 1.4% of it in a fully clipped deepslate band (derived),
-     * so a stop on the ceiling itself would refuse the rare veins placed last in about half of clipped chunks. At 1.10 the
-     * stop is about seven standard deviations out: it fires only when a clip is wrong by more than 10%, and placed ore after
-     * overlap stays at most about 48%. If the clip test's printed spread is above 2%, this becomes 1 + 5 sigma. Since the
-     * clip reads the densest layer (ADR 0009, amended 2026-11-21), a band whose ore is not flat sits under the ceiling on
-     * average once clipped, so the stop, which counts the band's total, has more room than this still; the figure is kept
-     * for a request flat through the band, where the densest layer is the average.
+     * How far past {@link #CEILING} the placer's hard stop sits (S3-BAL-1). The stop counts the band's total requested
+     * blocks. For a request flat through its band, where the densest layer is the band's average, a correct clip puts the
+     * mean in-band request exactly on the ceiling, and the spread of vein sizes is about 1.4% of it in a fully clipped
+     * deepslate band (derived), so a stop on the ceiling itself would refuse the rare veins placed last in about half of
+     * clipped chunks. For such a flat request, at 1.10 the stop is about seven standard deviations out: it fires only when a
+     * clip is wrong by more than 10%, and placed ore after overlap stays at most about 48%. These figures hold for a flat
+     * request only. The clip reads the densest layer (ADR 0009, amended 2026-11-21), and the baseline is not flat: a
+     * correctly clipped deepslate band averages at most about 23%, so the stop catches only a clip wrong by about 2.9 times
+     * there (Balancer, B-3). Whether the stop becomes per slab is T9's. If the clip test's printed spread is above 2%, this
+     * becomes 1 + 5 sigma.
      */
     public static final double HARD_STOP_HEADROOM = 1.10;
 

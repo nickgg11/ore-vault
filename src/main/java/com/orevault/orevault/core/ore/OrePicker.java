@@ -17,7 +17,7 @@ import java.util.Objects;
  * by inverse cumulative mass per layer. An ore with no mass in a band is never picked there. Where no ore of the rarity has
  * mass in the band, though the pack has some, the ore is drawn by weight alone and its middle evenly through the band.
  *
- * <p>A request over part of a band (Deep Veins' lowest 30 layers, Stratified's bands, Guide Veins; {@code VeinRequest})
+ * <p>A request over part of a band (Deep Veins' lowest 30 layers, Stratified's bands, Guide Vein's veins; {@code VeinRequest})
  * follows the same rule inside its own region: the ore by weight times its mass inside the region, the middle from that
  * ore's profile cut to the region and renormalised, an ore with no mass there drawing its middle evenly in the region
  * (Manager, 2026-11-21). {@link #table(Rarity, int, int)} builds that table; the band-wide ones are built once here.

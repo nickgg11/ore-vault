@@ -33,7 +33,7 @@ import java.util.TreeMap;
  *   <li>Rarity shares, by placed blocks and by the rarity of the ore placed, within 2 points of {@link OreBaseline#share}
  *       (68.0/25.0/7.0 stone, 59.7/30.2/10.1 deepslate). Overlap moves the placed mix toward the rarities placed later by
  *       under a point at the baseline (ADR 0009, amended for E4-S3), so the shares are not corrected for it.</li>
- *   <li>Every slab, within 10% relative of its own expected density, and its rarity shares within 3 points of its
+ *   <li>Every slab, within 10% relative of its own expected density, and its rarity shares within 4 points of its
  *       expected shares (ADR 0009, amended 2026-11-21: ore density follows height, so a slab is no longer held to its
  *       band's). The expected figures are the closed form from the pickers' profiles and the generated kernel, through
  *       {@link LayerSpread}, the code the placer's edge factor and the floor clip read, times one minus the band's
@@ -51,7 +51,12 @@ public final class DensityTally {
     public static final double DENSITY_TOLERANCE = 0.05;
     public static final double SHARE_TOLERANCE = 0.02;
     public static final double SLAB_TOLERANCE = 0.10;
-    public static final double SLAB_SHARE_TOLERANCE = 0.03;
+    /**
+     * About three standard deviations on the worst slab over 81 chunks, as §3.1 sets every check: the common and uncommon
+     * shares of base Y17..32 spread by 1.2 to 1.3 points (Balancer, B-1). At 3 points a correct generator failed about one
+     * run in 16 to 20 of QA's fresh-Vault check.
+     */
+    public static final double SLAB_SHARE_TOLERANCE = 0.04;
 
     private static final int BLOCKS_PER_LAYER = 256;
 

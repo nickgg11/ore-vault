@@ -7,7 +7,7 @@ import java.util.Objects;
 /**
  * One batch of veins the placer rolls in a chunk: how many on average, which configured sizes, and the region their ore and
  * box middle are drawn over. The baseline is one request per band and rarity over the whole band; generation nodes (T9)
- * express themselves as changes to these or as extra requests, such as Deep Veins' lowest 30 layers or Guide Veins, which
+ * express themselves as changes to these or as extra requests, such as Deep Veins' lowest 30 layers or Guide Vein's veins, which
  * is what lets the floor clip be computed for them (ADR 0009 Consequences).
  *
  * <p>The region's contract (§3.1 "Where each ore sits"; ADR 0009, amended 2026-11-21; Manager's ruling on D1 and W1): a
