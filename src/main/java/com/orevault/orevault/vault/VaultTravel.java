@@ -48,6 +48,11 @@ public final class VaultTravel {
     static final String SENT_HOME_NOT_THEIR_TEAM = "message.orevault.sent_home.not_their_team";
     /** Login case 1 for a Vault the start-of-server pass archived for an older layout (ADR 0002 restore step 6). */
     static final String SENT_HOME_LAYOUT_ARCHIVED = "message.orevault.vault_layout_archived";
+    /**
+     * A Vault of an older layout whose move to the archive failed: refused at the portal, and the line at login. Not
+     * "damaged", which would be untrue: its save is intact (ADR 0009, amended 2026-11-21; §11).
+     */
+    static final String VAULT_LAYOUT_ARCHIVE_FAILED = "message.orevault.vault_layout_archive_failed";
     static final String ARRIVED_IN_VAULT = "message.orevault.arrived.vault";
     static final String ARRIVED_HOME = "message.orevault.arrived.home";
     static final String ARRIVED_IN_VAULT_BLOCKED = "message.orevault.arrived.vault_blocked";
@@ -59,7 +64,8 @@ public final class VaultTravel {
 
     /** Every line this class sends, chat and overlay, for the lang coverage gametest. */
     public static List<String> messageKeys() {
-        return List.of(VAULT_DAMAGED, SENT_HOME_DISBANDED, SENT_HOME_NOT_THEIR_TEAM, SENT_HOME_LAYOUT_ARCHIVED, ARRIVED_IN_VAULT,
+        return List.of(VAULT_DAMAGED, SENT_HOME_DISBANDED, SENT_HOME_NOT_THEIR_TEAM, SENT_HOME_LAYOUT_ARCHIVED,
+                VAULT_LAYOUT_ARCHIVE_FAILED, ARRIVED_IN_VAULT,
                 ARRIVED_HOME, ARRIVED_IN_VAULT_BLOCKED);
     }
 
@@ -93,7 +99,8 @@ public final class VaultTravel {
             vault = Optional.empty();
         }
         if (vault.isEmpty()) {
-            player.sendOverlayMessage(Component.translatable(VAULT_DAMAGED).withStyle(ChatFormatting.RED));
+            String why = VaultDimensions.olderLayoutLeftInPlace(server, teamId) ? VAULT_LAYOUT_ARCHIVE_FAILED : VAULT_DAMAGED;
+            player.sendOverlayMessage(Component.translatable(why).withStyle(ChatFormatting.RED));
             return null;
         }
         ReturnPos noted = returnPosition(player, from, portalEntryPos);

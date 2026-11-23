@@ -215,7 +215,13 @@ final class VaultLifecycleTests {
      * ADR 0002 restore fixture case (g), ADR 0007 pass step 4 (2026-11-21): a folder whose type file has no {@code layout}
      * was generated under the stack of 2026-10. Left in place, as after a failed move, restore and the portal refuse it;
      * the pass moves it to {@code orevault_archive/<team>/layout-1-<time>/} with its bytes, and the team's next portal
-     * entry makes a fresh folder of layout 2.
+     * entry makes a fresh folder of layout 2. A folder left in place is told apart from a damaged one, so the portal and
+     * the restore say it is an older layout (R-4).
+     *
+     * <p>It calls the pass mid-session, which sweeps every Vault folder on the gametest server while the rest of the batch
+     * runs. That is safe because no other test writes a type file without {@code layout}; a test that does must run in a
+     * batch of its own. The pass at a real start, its order and its log line are the restart check's
+     * ({@code tools/restart-check/vault-layout-*.txt}).
      */
     static void aFolderOfTheOldLayoutIsArchivedAndReplaced(GameTestHelper helper) throws IOException {
         MinecraftServer server = server(helper);
@@ -232,9 +238,11 @@ final class VaultLifecycleTests {
         check(helper, "restore refuses it in place", false, VaultDimensions.restoreOne(server, team).restored());
         check(helper, "portal refuses it in place", Optional.empty(), VaultDimensions.findOrCreate(server, team));
         check(helper, "not registered", null, server.getLevel(VaultDimensions.dimensionKey(team)));
+        check(helper, "an older layout, not damage", true, VaultDimensions.olderLayoutLeftInPlace(server, team));
 
         check(helper, "archived", true, VaultDimensions.archiveOldLayouts(server).contains(team));
         check(helper, "folder gone", false, Files.exists(folder));
+        check(helper, "nothing left in place", false, VaultDimensions.olderLayoutLeftInPlace(server, team));
         Path teamArchive = DataPaths.archiveFolder(DataPaths.worldRoot(server)).resolve(team.toString());
         Path archive;
         try (var entries = Files.list(teamArchive)) {
@@ -501,6 +509,32 @@ final class VaultLifecycleTests {
         check(helper, "left the Vault", false, player.level().dimension().equals(vault.dimension()));
         check(helper, "in_vault", Optional.empty(), PlayerAttachment.get(player).inVault());
         discard(player);
+        helper.succeed();
+    }
+
+    /**
+     * #425 (R-1, A-1): the two-player case. B logged out inside the team's layout-1 Vault; the start archived it; A
+     * re-entered, which made a fresh Vault under the same key and the same generation. B is loaded into it at old
+     * coordinates. B's {@code in_vault} was written under layout 1, so B is sent home, with the archive's line, and A,
+     * recorded under this layout, is judged by the other cases as before.
+     */
+    static void aLoginRecordedUnderAnOlderLayoutGoesHomeFromTheFreshVault(GameTestHelper helper) {
+        UUID team = UUID.randomUUID();
+        ServerLevel vault = createVault(helper, team);
+        FakePlayer oldEntry = player(vault, "orevault-old-layout");
+        oldEntry.setPos(0.5, 200, 0.5);
+        PlayerAttachment.update(oldEntry, data -> data.withInVault(new InVault(team, 0, 1)));
+        FakePlayer newEntry = player(vault, "orevault-new-layout");
+        newEntry.setPos(0.5, BASE_SURFACE, 0.5);
+        PlayerAttachment.update(newEntry, data -> data.withInVault(new InVault(team, 0)));
+
+        check(helper, "older layout", Outcome.SEND_HOME_OLDER_LAYOUT, VaultPlayerEvents.checkAtLogin(oldEntry));
+        check(helper, "left the Vault", false, oldEntry.level().dimension().equals(vault.dimension()));
+        check(helper, "in_vault cleared", Optional.empty(), PlayerAttachment.get(oldEntry).inVault());
+        // A fake player has no team of its own, so case 2 sends it home too: what matters is that it is not this case.
+        check(helper, "current layout", false, VaultPlayerEvents.checkAtLogin(newEntry) == Outcome.SEND_HOME_OLDER_LAYOUT);
+        discard(oldEntry);
+        discard(newEntry);
         helper.succeed();
     }
 

@@ -1,5 +1,6 @@
 package com.orevault.orevault.data;
 
+import com.orevault.orevault.core.key.VaultKeys;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -29,13 +30,23 @@ public record PlayerData(Optional<ReturnPos> returnPos, Optional<InVault> inVaul
     private static final String Z = "z";
     private static final String TEAM = "team";
     private static final String GENERATION = "generation";
+    private static final String LAYOUT = "layout";
 
     /** A block position in a named dimension; the dimension is an id string, parsed where it is used. */
     public record ReturnPos(String dim, int x, int y, int z) {
     }
 
-    /** The Vault's team and that team's {@code vault_generation} at entry. The dimension key follows from the team. */
-    public record InVault(UUID team, int generation) {
+    /**
+     * The Vault's team, that team's {@code vault_generation} at entry, and the layer stack the Vault was generated under
+     * ({@code layout}, ADR 0009 amended 2026-11-21). The dimension key follows from the team. {@code layout} was added
+     * with E4-S3b (#425): absent reads as 1, which is true of every entry written before it, and the login check sends a
+     * player whose entry is older than the current layout home (ADR 0002 restore step 6).
+     */
+    public record InVault(UUID team, int generation, int layout) {
+        /** An entry made by this build, under the current layout. */
+        public InVault(UUID team, int generation) {
+            this(team, generation, VaultKeys.CURRENT_LAYOUT);
+        }
     }
 
     /** @param warn takes one line for a tag from a newer build */
@@ -56,7 +67,8 @@ public record PlayerData(Optional<ReturnPos> returnPos, Optional<InVault> inVaul
 
     private static Optional<InVault> readInVault(CompoundTag tag) {
         return tag.getCompound(IN_VAULT).flatMap(inVault -> inVault.getString(TEAM).flatMap(PlayerData::uuid)
-                .flatMap(team -> inVault.getInt(GENERATION).map(generation -> new InVault(team, generation))));
+                .flatMap(team -> inVault.getInt(GENERATION).map(generation -> new InVault(team, generation,
+                        inVault.getIntOr(LAYOUT, VaultKeys.FIRST_LAYOUT)))));
     }
 
     private static Optional<UUID> uuid(String text) {
@@ -82,6 +94,7 @@ public record PlayerData(Optional<ReturnPos> returnPos, Optional<InVault> inVaul
             CompoundTag written = new CompoundTag();
             written.putString(TEAM, vault.team().toString());
             written.putInt(GENERATION, vault.generation());
+            written.putInt(LAYOUT, vault.layout());
             tag.put(IN_VAULT, written);
         });
         return tag;

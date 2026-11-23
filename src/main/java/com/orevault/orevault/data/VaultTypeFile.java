@@ -37,9 +37,9 @@ public final class VaultTypeFile {
     private static final String VARIANT = "variant";
     private static final String LAYOUT = "layout";
     /** The layer stack this build generates: the surface at Y=100 (ADR 0009, amended 2026-11-21). */
-    public static final int CURRENT_LAYOUT = 2;
+    public static final int CURRENT_LAYOUT = VaultKeys.CURRENT_LAYOUT;
     /** What a file written before {@code layout} existed holds: the stack of 2026-10, stone to Y=245. */
-    public static final int FIRST_LAYOUT = 1;
+    public static final int FIRST_LAYOUT = VaultKeys.FIRST_LAYOUT;
     private static final String TEMP_FILE = VaultKeys.VAULT_TYPE_FILE + ".tmp";
 
     private VaultTypeFile() {

@@ -55,7 +55,7 @@ class VaultFoldersTest {
     }
 
     private Set<UUID> archive() {
-        return VaultFolders.archiveOldLayouts(world, TIME, warnings::add, errors::add);
+        return VaultFolders.archiveOldLayouts(world, TIME, team -> false, warnings::add, errors::add);
     }
 
     @Test
@@ -72,6 +72,7 @@ class VaultFoldersTest {
         assertEquals(1, warnings.size(), warnings.toString());
         assertTrue(warnings.getFirst().contains(folder(OLD).toString()) && warnings.getFirst().contains(target.toString()),
                 warnings.getFirst());
+        assertTrue(warnings.getFirst().contains("layout 1 (stone to Y=245)"), warnings.getFirst());
         assertEquals(List.of(), errors);
     }
 
@@ -150,5 +151,46 @@ class VaultFoldersTest {
         Files.write(copy.resolve("region").resolve("r.0.0.mca"), REGION);
         Files.write(source.resolve("extra.dat"), REGION);
         assertThrows(IOException.class, () -> VaultFolders.verify(source, copy));
+    }
+
+    /** A-6: a folder whose level is loaded is never moved, whatever its layout; one ERROR names it. */
+    @Test
+    void aLoadedLevelsFolderIsNeverMoved() throws IOException {
+        oldFolder(OLD);
+        Set<UUID> archived = VaultFolders.archiveOldLayouts(world, TIME, OLD::equals, warnings::add, errors::add);
+        assertEquals(Set.of(), archived);
+        assertTrue(Files.exists(folder(OLD).resolve("region").resolve("r.0.0.mca")));
+        assertEquals(1, errors.size(), errors.toString());
+        assertTrue(errors.getFirst().contains(folder(OLD).toString()), errors.getFirst());
+    }
+
+    /** The copy path (another file store): every file arrives with its bytes, and the source is gone. */
+    @Test
+    void theCopyPathMovesEveryFileAndDeletesTheSource() throws IOException {
+        oldFolder(OLD);
+        byte[] typeBytes = Files.readAllBytes(folder(OLD).resolve(VaultKeys.VAULT_TYPE_FILE));
+        Path target = DataPaths.layoutArchive(world, OLD, 1, TIME);
+        Files.createDirectories(target.getParent());
+
+        VaultFolders.moveByCopy(folder(OLD), target);
+
+        assertFalse(Files.exists(folder(OLD)));
+        assertArrayEquals(typeBytes, Files.readAllBytes(target.resolve(VaultKeys.VAULT_TYPE_FILE)));
+        assertArrayEquals(REGION, Files.readAllBytes(target.resolve("region").resolve("r.0.0.mca")));
+    }
+
+    /** A copy that cannot be made keeps the source whole and leaves no partial copy. */
+    @Test
+    void aCopyThatFailsKeepsTheSource() throws IOException {
+        oldFolder(OLD);
+        Path blocker = world.resolve("not-a-folder");
+        Files.write(blocker, REGION);
+        Path target = blocker.resolve("layout-1-4242");
+
+        assertThrows(IOException.class, () -> VaultFolders.moveByCopy(folder(OLD), target));
+
+        assertArrayEquals(REGION, Files.readAllBytes(folder(OLD).resolve("region").resolve("r.0.0.mca")));
+        assertTrue(Files.isRegularFile(folder(OLD).resolve(VaultKeys.VAULT_TYPE_FILE)));
+        assertArrayEquals(REGION, Files.readAllBytes(blocker));
     }
 }

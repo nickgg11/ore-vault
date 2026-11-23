@@ -1,5 +1,6 @@
 package com.orevault.orevault.vault;
 
+import com.orevault.orevault.core.key.VaultKeys;
 import com.orevault.orevault.core.session.LoginCheck;
 import com.orevault.orevault.core.session.LoginCheck.Facts;
 import com.orevault.orevault.core.session.LoginCheck.Outcome;
@@ -70,15 +71,24 @@ public final class VaultPlayerEvents {
         Outcome outcome = LoginCheck.decide(new Facts(
                 recorded.map(InVault::team).orElse(null), recorded.map(InVault::generation).orElse(0),
                 levelTeam.orElse(null), levelTeamFields.disbandedAt().isPresent(), levelTeamFields.vaultGeneration(),
-                TeamHelper.teamId(player)));
+                TeamHelper.teamId(player), recorded.map(InVault::layout).orElse(VaultKeys.CURRENT_LAYOUT)));
         boolean moved = switch (outcome) {
+            case SEND_HOME_OLDER_LAYOUT -> {
+                UUID team = recorded.orElseThrow().team();
+                // The pass archived that folder, unless its move failed and the folder is still there (§11).
+                boolean leftInPlace = VaultDimensions.olderLayoutLeftInPlace(server, team);
+                LOGGER.info("{} logged in recorded as inside the Vault of team {} under layout {}, older than this build's {} "
+                        + "({}); sent to their return position", player.getGameProfile().name(), team,
+                        recorded.orElseThrow().layout(), VaultKeys.CURRENT_LAYOUT,
+                        leftInPlace ? "its move to the archive failed" : "it was archived");
+                yield VaultTravel.sendHome(player,
+                        leftInPlace ? VaultTravel.VAULT_LAYOUT_ARCHIVE_FAILED : VaultTravel.SENT_HOME_LAYOUT_ARCHIVED);
+            }
             case SEND_HOME -> {
-                // A Vault this start archived for an older layout says so; any other unloaded Vault sends no line (ADR 0002).
-                boolean archived = recorded.map(InVault::team).map(VaultDimensions::wasLayoutArchived).orElse(false);
-                LOGGER.info("{} logged in recorded as inside the Vault of team {}, which is not where they are ({}{}); sent to "
+                LOGGER.info("{} logged in recorded as inside the Vault of team {}, which is not where they are ({}); sent to "
                         + "their return position", player.getGameProfile().name(), recorded.map(InVault::team).orElse(null),
-                        player.level().dimension().identifier(), archived ? ", archived for an older layout" : "");
-                yield VaultTravel.sendHome(player, archived ? VaultTravel.SENT_HOME_LAYOUT_ARCHIVED : null);
+                        player.level().dimension().identifier());
+                yield VaultTravel.sendHome(player, null);
             }
             case SEND_HOME_DISBANDED -> {
                 LOGGER.info("{} logged in inside the Vault of disbanded team {}; sent home", player.getGameProfile().name(),
@@ -124,7 +134,8 @@ public final class VaultPlayerEvents {
         }
         int generation = OreVaultTeamData.read(level.getServer(), team.get()).vaultGeneration();
         Optional<InVault> current = data.inVault();
-        if (current.isEmpty() || !current.get().team().equals(team.get()) || current.get().generation() < generation) {
+        if (current.isEmpty() || !current.get().team().equals(team.get()) || current.get().generation() < generation
+                || current.get().layout() < VaultKeys.CURRENT_LAYOUT) {
             PlayerAttachment.update(player, d -> d.withInVault(new InVault(team.get(), generation)));
         }
     }

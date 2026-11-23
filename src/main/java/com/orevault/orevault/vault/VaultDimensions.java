@@ -19,7 +19,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -68,11 +67,6 @@ public final class VaultDimensions {
     private static final Logger LOGGER = LoggerFactory.getLogger(VaultDimensions.class);
     /** The type each Vault registered this session was made under. The key follows from the team id, so it is not kept. */
     private static final Map<UUID, VaultVariant> VARIANTS = new HashMap<>();
-    /**
-     * The teams whose Vault folder this start's pass archived for an older layout (ADR 0002 restore step 6), kept for the
-     * session so login case 1 can say why a player who logged out inside was sent home.
-     */
-    private static final Set<UUID> LAYOUT_ARCHIVED = new HashSet<>();
 
     /**
      * What restore did with one team id.
@@ -130,16 +124,26 @@ public final class VaultDimensions {
      * of an older layout is moved to the archive ({@link VaultFolders#archiveOldLayouts}). From the root
      * {@code ServerStartedEvent} listener, first, before the classifier and the restore, so no level holds the folder.
      *
-     * @return the teams archived, for {@link #restoreAll}
+     * <p>A team whose Vault level is loaded is never moved (A-6): the pass runs before any Vault is registered, and this
+     * makes "never move an open level" hold by structure, not only by timing. ArchUnit's named rule 7 keeps the call in
+     * the root start listener.
+     *
+     * @return the teams archived, for {@link #restoreAll}'s count
      */
     public static Set<UUID> archiveOldLayouts(MinecraftServer server) {
-        return VaultFolders.archiveOldLayouts(DataPaths.worldRoot(server), server.overworld().getGameTime(), LOGGER::warn,
-                LOGGER::error);
+        return VaultFolders.archiveOldLayouts(DataPaths.worldRoot(server), server.overworld().getGameTime(),
+                teamId -> server.getLevel(dimensionKey(teamId)) != null, LOGGER::warn, LOGGER::error);
     }
 
-    /** Whether this start's pass archived the team's Vault for an older layout: login case 1's message. */
-    public static boolean wasLayoutArchived(UUID teamId) {
-        return LAYOUT_ARCHIVED.contains(teamId);
+    /**
+     * Whether the team's folder is still here with a type file of an older layout: the start-of-server pass could not move
+     * it aside. The portal and the login check then say so, not that the save is damaged (ADR 0009, amended 2026-11-21).
+     * Reads the type file and logs nothing; the pass's ERROR already names the cause.
+     */
+    public static boolean olderLayoutLeftInPlace(MinecraftServer server, UUID teamId) {
+        Path typeFile = DataPaths.vaultTypeFile(server, teamId);
+        return Files.isRegularFile(typeFile) && VaultTypeFile.readType(typeFile, line -> { }, line -> { })
+                .map(type -> type.layout() < VaultTypeFile.CURRENT_LAYOUT).orElse(false);
     }
 
     /**
@@ -148,7 +152,8 @@ public final class VaultDimensions {
      * @param resetTeamIds the resets ADR 0007's start-of-server pass finished at this start, restored whether or not a folder
      *     exists; none until that pass exists (E11)
      * @param layoutArchivedTeamIds the teams whose folder the pass archived for an older layout: not registered, since they
-     *     have no folder until their next portal entry, and counted as archived, not skipped (restore step 6)
+     *     have no folder until their next portal entry, and counted as archived, not skipped (restore step 6). The login
+     *     message does not need them: it reads the layout in the player's own {@code in_vault}
      * @throws IllegalStateException when no ore table is published, or its blocks cannot be resolved, before any Vault is
      *     touched. The classifier runs first
      *     in the same listener and stops the start if it fails, so this is a bug in the mod. It is not caught per team:
@@ -158,7 +163,6 @@ public final class VaultDimensions {
     public static List<Restore> restoreAll(MinecraftServer server, Collection<UUID> resetTeamIds,
             Collection<UUID> layoutArchivedTeamIds) {
         VaultChunkGenerator.checkOreInputs();
-        LAYOUT_ARCHIVED.addAll(layoutArchivedTeamIds);
         Set<UUID> teamIds = new LinkedHashSet<>(foldersOnDisk(server));
         teamIds.addAll(resetTeamIds);
         List<Restore> results = new ArrayList<>();
@@ -222,8 +226,12 @@ public final class VaultDimensions {
         } else if (OreVaultTeamData.read(server, teamId).disbandedAt().isPresent()) {
             return new Restore(teamId, false, "the team has disbanded");
         }
-        return ensureTeamDimension(server, teamId, () -> variantForANewVault(server, teamId)).isPresent()
-                ? new Restore(teamId, true, "")
+        if (ensureTeamDimension(server, teamId, () -> variantForANewVault(server, teamId)).isPresent()) {
+            return new Restore(teamId, true, "");
+        }
+        return olderLayoutLeftInPlace(server, teamId)
+                ? new Restore(teamId, false, "it is from an older layout and could not be moved aside; the ERROR from the "
+                        + "start-of-server pass names why")
                 : new Restore(teamId, false, "its type file is missing, damaged or names no known type; the ERROR above names it");
     }
 
@@ -308,6 +316,5 @@ public final class VaultDimensions {
     /** At {@code ServerStoppedEvent}: the next world in this client starts with none of this one's entries. */
     public static void clear() {
         VARIANTS.clear();
-        LAYOUT_ARCHIVED.clear();
     }
 }

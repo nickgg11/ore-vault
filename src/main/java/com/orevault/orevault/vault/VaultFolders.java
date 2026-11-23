@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -20,6 +21,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
@@ -37,15 +39,19 @@ public final class VaultFolders {
 
     /**
      * Step 4: every Vault folder whose type file reads an older layout, absent included, is moved alone, not the team file,
-     * to {@code <world>/orevault_archive/<teamUuid>/layout-<n>-<time>/}, with one WARN naming both paths. A folder with no
-     * type file, or one that cannot be read, is left for the restore, which refuses it and logs it as before, so this logs
-     * nothing for it. A move that fails is one ERROR, and the folder stays: the restore then refuses it as a layout it
-     * cannot load.
+     * to {@code <world>/orevault_archive/<teamUuid>/layout-<n>-<time>/}, with one WARN naming both paths and the wall-clock
+     * time, as a disband archive's log line does (ADR 0007). A folder with no type file, or one that cannot be read, is
+     * left for the restore, which refuses it and logs it as before, so this logs nothing for it. A folder whose level is
+     * loaded is never moved: one ERROR, and the folder stays. A move that fails is one ERROR, and the folder stays: the
+     * restore and the portal then refuse it as an older layout that could not be moved aside.
      *
      * @param time the archive folder's time stamp, the overworld's game time at the start
-     * @return the teams whose folder was archived, for the restore's count and login case 1's message
+     * @param loaded whether a team's Vault level is registered now
+     * @return the teams whose folder was archived, for the restore's count; a copy whose source could not be fully deleted
+     *     counts, since its archive is complete
      */
-    public static Set<UUID> archiveOldLayouts(Path worldRoot, long time, Consumer<String> warn, Consumer<String> error) {
+    public static Set<UUID> archiveOldLayouts(Path worldRoot, long time, Predicate<UUID> loaded, Consumer<String> warn,
+            Consumer<String> error) {
         Set<UUID> archived = new LinkedHashSet<>();
         Path vaults = DataPaths.vaultsFolder(worldRoot);
         if (!Files.isDirectory(vaults)) {
@@ -69,31 +75,61 @@ public final class VaultFolders {
                 continue;
             }
             int layout = type.get().layout();
+            if (loaded.test(teamId.get())) {
+                error.accept("Vault folder " + folder + " is layout " + layout + " but its level is loaded, so it is not moved; "
+                        + "the start-of-server pass moves folders only before any Vault is registered");
+                continue;
+            }
             Path target = DataPaths.layoutArchive(worldRoot, teamId.get(), layout, time);
             if (Files.exists(target)) {
                 error.accept("Vault folder " + folder + " is layout " + layout + " but " + target + " already exists; the folder "
-                        + "is left in place and the restore refuses it");
+                        + "is left in place, and the restore and the portal refuse it");
                 continue;
             }
             try {
                 move(folder, target);
+            } catch (SourceLeftOver e) {
+                error.accept("Vault folder " + folder + " is layout " + layout + "; it was copied to " + target + " and every "
+                        + "file checked, but the source could not be fully deleted. The archive is complete. The leftover has "
+                        + "no type file, so it is not archived again; the restore refuses it until an operator deletes it: "
+                        + e.getCause());
+                archived.add(teamId.get());
+                continue;
             } catch (IOException | UncheckedIOException e) {
                 error.accept("Vault folder " + folder + " is layout " + layout + " and could not be moved to " + target
-                        + "; it is left in place and the restore refuses it: " + e);
+                        + "; it is left in place, and the restore and the portal refuse it: " + e);
                 continue;
             }
-            warn.accept("Vault folder " + folder + " was generated under layout " + layout + " (stone to Y=245), older than "
-                    + "this build's layout " + VaultTypeFile.CURRENT_LAYOUT + "; archived to " + target + ". The team's data "
-                    + "stays, and its next portal entry makes a fresh Vault");
+            warn.accept("Vault folder " + folder + " was generated under layout " + layout + describe(layout) + ", older than "
+                    + "this build's layout " + VaultTypeFile.CURRENT_LAYOUT + "; archived to " + target + " at " + Instant.now()
+                    + ". The team's data stays, and its next portal entry makes a fresh Vault");
             archived.add(teamId.get());
         }
         return archived;
     }
 
+    /** What the WARN says of the layout it read: only layout 1's stack is named, so a later archive never misstates it. */
+    private static String describe(int layout) {
+        return layout == VaultTypeFile.FIRST_LAYOUT ? " (stone to Y=245)" : "";
+    }
+
     /**
-     * Moves {@code source} to {@code target}, which must not exist, making its parents. A rename when both are on one file
-     * store; otherwise a copy, every file checked byte for byte against its source, then the source deleted. A copy that
-     * does not match is removed again and the source kept.
+     * A copy that was made and checked, whose source could not then be fully deleted: the archive is complete, the move is
+     * done, and what is left of the source has no type file (the cause is the delete's failure).
+     */
+    static final class SourceLeftOver extends IOException {
+        SourceLeftOver(Path source, IOException cause) {
+            super("The source " + source + " could not be fully deleted after its copy was checked", cause);
+        }
+    }
+
+    /**
+     * Moves the Vault folder {@code source} to {@code target}, which must not exist, making its parents. A rename (ADR
+     * 0007). Only when the file store cannot rename atomically, which is a move to another file store, it copies instead
+     * ({@link #moveByCopy}); any other refusal of the rename, such as a file another program holds, is a failed move and
+     * the folder stays.
+     *
+     * @throws SourceLeftOver when the copy is complete but the source could not be fully deleted
      */
     public static void move(Path source, Path target) throws IOException {
         if (Files.exists(target)) {
@@ -102,18 +138,37 @@ public final class VaultFolders {
         Files.createDirectories(target.getParent());
         try {
             Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
-            return;
         } catch (AtomicMoveNotSupportedException e) {
-            // Another file store: copy, check, delete.
+            moveByCopy(source, target);
         }
+    }
+
+    /**
+     * The copy path: copy the tree, check every file byte for byte, then delete the source, its type file first, so a cut
+     * delete leaves a folder that the restore refuses and the pass never archives again. A copy or check that fails
+     * removes the partial copy and keeps the source; a failure of that clean-up is attached to the cause, never in its
+     * place.
+     *
+     * @throws SourceLeftOver when the copy is complete but the source could not be fully deleted
+     */
+    static void moveByCopy(Path source, Path target) throws IOException {
         try {
             copyTree(source, target);
             verify(source, target);
         } catch (IOException | RuntimeException e) {
-            deleteTree(target);
+            try {
+                deleteTree(target);
+            } catch (IOException | RuntimeException cleanUp) {
+                e.addSuppressed(cleanUp);
+            }
             throw e;
         }
-        deleteTree(source);
+        try {
+            Files.deleteIfExists(source.resolve(VaultKeys.VAULT_TYPE_FILE));
+            deleteTree(source);
+        } catch (IOException e) {
+            throw new SourceLeftOver(source, e);
+        }
     }
 
     private static void copyTree(Path source, Path target) throws IOException {
