@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -207,6 +208,46 @@ final class VaultLifecycleTests {
         check(helper, "registered", true, vault != null);
         check(helper, "variant", Optional.of(VaultVariant.EXPANDED), VaultDimensions.variant(team));
         check(helper, "floor", -64, vault.getMinY());
+        helper.succeed();
+    }
+
+    /**
+     * ADR 0002 restore fixture case (g), ADR 0007 pass step 4 (2026-11-21): a folder whose type file has no {@code layout}
+     * was generated under the stack of 2026-10. Left in place, as after a failed move, restore and the portal refuse it;
+     * the pass moves it to {@code orevault_archive/<team>/layout-1-<time>/} with its bytes, and the team's next portal
+     * entry makes a fresh folder of layout 2.
+     */
+    static void aFolderOfTheOldLayoutIsArchivedAndReplaced(GameTestHelper helper) throws IOException {
+        MinecraftServer server = server(helper);
+        UUID team = UUID.randomUUID();
+        Path folder = DataPaths.vaultFolder(server, team);
+        CompoundTag oldType = new CompoundTag();
+        oldType.putInt("data_version", 1);
+        oldType.putString("variant", VaultVariant.BASE.id());
+        Files.createDirectories(folder.resolve("region"));
+        NbtIo.writeCompressed(oldType, folder.resolve(VaultKeys.VAULT_TYPE_FILE));
+        Files.write(folder.resolve("region").resolve("r.0.0.mca"), GARBAGE);
+        byte[] typeBytes = Files.readAllBytes(folder.resolve(VaultKeys.VAULT_TYPE_FILE));
+
+        check(helper, "restore refuses it in place", false, VaultDimensions.restoreOne(server, team).restored());
+        check(helper, "portal refuses it in place", Optional.empty(), VaultDimensions.findOrCreate(server, team));
+        check(helper, "not registered", null, server.getLevel(VaultDimensions.dimensionKey(team)));
+
+        check(helper, "archived", true, VaultDimensions.archiveOldLayouts(server).contains(team));
+        check(helper, "folder gone", false, Files.exists(folder));
+        Path teamArchive = DataPaths.archiveFolder(DataPaths.worldRoot(server)).resolve(team.toString());
+        Path archive;
+        try (var entries = Files.list(teamArchive)) {
+            archive = entries.findFirst().orElseThrow();
+        }
+        check(helper, "archive name", true, archive.getFileName().toString().startsWith("layout-1-"));
+        check(helper, "type file bytes", true, Arrays.equals(typeBytes, Files.readAllBytes(archive.resolve(VaultKeys.VAULT_TYPE_FILE))));
+        check(helper, "region bytes", true, Arrays.equals(GARBAGE, Files.readAllBytes(archive.resolve("region").resolve("r.0.0.mca"))));
+        check(helper, "restore without a folder", false, VaultDimensions.restoreOne(server, team).restored());
+
+        createVault(helper, team);
+        check(helper, "fresh layout", Optional.of(new VaultTypeFile.Type(VaultVariant.BASE, VaultTypeFile.CURRENT_LAYOUT)),
+                VaultTypeFile.readType(DataPaths.vaultTypeFile(server, team), line -> { }, line -> helper.fail(Component.literal(line))));
         helper.succeed();
     }
 
@@ -485,7 +526,7 @@ final class VaultLifecycleTests {
         try {
             OreClassifier.clear();
             try {
-                VaultDimensions.restoreAll(server, java.util.List.of());
+                VaultDimensions.restoreAll(server, java.util.List.of(), java.util.List.of());
             } catch (IllegalStateException e) {
                 threw = true;
             }

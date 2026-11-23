@@ -16,6 +16,7 @@ public final class DataPaths {
     private static final String DIMENSIONS_FOLDER = "dimensions";
     private static final String SAVED_DATA_SUFFIX = ".dat";
     private static final String UNREADABLE_SUFFIX = ".unreadable-";
+    private static final String ARCHIVE_FOLDER = "orevault_archive";
 
     private DataPaths() {
     }
@@ -37,19 +38,37 @@ public final class DataPaths {
         return vaultTypeFile(server.getWorldPath(LevelResource.ROOT), teamId);
     }
 
+    /** {@code <world>/}, which the start-of-server pass is handed so its file work runs on plain paths (ADR 0007). */
+    public static Path worldRoot(MinecraftServer server) {
+        return server.getWorldPath(LevelResource.ROOT);
+    }
+
+    /** {@code <world>/orevault_archive/}, apart from reset backups (§3.1, ADR 0007). */
+    public static Path archiveFolder(Path worldRoot) {
+        return worldRoot.resolve(ARCHIVE_FOLDER);
+    }
+
+    /**
+     * {@code <world>/orevault_archive/<teamUuid>/layout-<layout>-<time>/}, where a Vault folder of an older layout goes
+     * (ADR 0007 start-of-server pass step 4).
+     */
+    public static Path layoutArchive(Path worldRoot, UUID teamId, int layout, long time) {
+        return archiveFolder(worldRoot).resolve(teamId.toString()).resolve("layout-" + layout + "-" + time);
+    }
+
     static Path teamFile(Path dataFolder, UUID teamId) {
         return dataFolder.resolve(NAMESPACE_FOLDER).resolve(VaultKeys.teamDataPath(teamId) + SAVED_DATA_SUFFIX);
     }
 
-    static Path vaultsFolder(Path worldRoot) {
+    public static Path vaultsFolder(Path worldRoot) {
         return worldRoot.resolve(DIMENSIONS_FOLDER).resolve(NAMESPACE_FOLDER);
     }
 
-    static Path vaultFolder(Path worldRoot, UUID teamId) {
+    public static Path vaultFolder(Path worldRoot, UUID teamId) {
         return vaultsFolder(worldRoot).resolve(VaultKeys.dimensionPath(teamId));
     }
 
-    static Path vaultTypeFile(Path worldRoot, UUID teamId) {
+    public static Path vaultTypeFile(Path worldRoot, UUID teamId) {
         return vaultFolder(worldRoot, teamId).resolve(VaultKeys.VAULT_TYPE_FILE);
     }
 

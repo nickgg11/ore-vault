@@ -46,6 +46,8 @@ public final class VaultTravel {
     static final String VAULT_DAMAGED = "message.orevault.vault_damaged";
     static final String SENT_HOME_DISBANDED = "message.orevault.sent_home.disbanded";
     static final String SENT_HOME_NOT_THEIR_TEAM = "message.orevault.sent_home.not_their_team";
+    /** Login case 1 for a Vault the start-of-server pass archived for an older layout (ADR 0002 restore step 6). */
+    static final String SENT_HOME_LAYOUT_ARCHIVED = "message.orevault.vault_layout_archived";
     static final String ARRIVED_IN_VAULT = "message.orevault.arrived.vault";
     static final String ARRIVED_HOME = "message.orevault.arrived.home";
     static final String ARRIVED_IN_VAULT_BLOCKED = "message.orevault.arrived.vault_blocked";
@@ -57,8 +59,8 @@ public final class VaultTravel {
 
     /** Every line this class sends, chat and overlay, for the lang coverage gametest. */
     public static List<String> messageKeys() {
-        return List.of(VAULT_DAMAGED, SENT_HOME_DISBANDED, SENT_HOME_NOT_THEIR_TEAM, ARRIVED_IN_VAULT, ARRIVED_HOME,
-                ARRIVED_IN_VAULT_BLOCKED);
+        return List.of(VAULT_DAMAGED, SENT_HOME_DISBANDED, SENT_HOME_NOT_THEIR_TEAM, SENT_HOME_LAYOUT_ARCHIVED, ARRIVED_IN_VAULT,
+                ARRIVED_HOME, ARRIVED_IN_VAULT_BLOCKED);
     }
 
     /**

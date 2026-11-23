@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +68,11 @@ public final class VaultDimensions {
     private static final Logger LOGGER = LoggerFactory.getLogger(VaultDimensions.class);
     /** The type each Vault registered this session was made under. The key follows from the team id, so it is not kept. */
     private static final Map<UUID, VaultVariant> VARIANTS = new HashMap<>();
+    /**
+     * The teams whose Vault folder this start's pass archived for an older layout (ADR 0002 restore step 6), kept for the
+     * session so login case 1 can say why a player who logged out inside was sent home.
+     */
+    private static final Set<UUID> LAYOUT_ARCHIVED = new HashSet<>();
 
     /**
      * What restore did with one team id.
@@ -120,18 +126,39 @@ public final class VaultDimensions {
     }
 
     /**
+     * ADR 0007's start-of-server pass, step 4 only until E11 brings the disband and deferred-reset steps: every Vault folder
+     * of an older layout is moved to the archive ({@link VaultFolders#archiveOldLayouts}). From the root
+     * {@code ServerStartedEvent} listener, first, before the classifier and the restore, so no level holds the folder.
+     *
+     * @return the teams archived, for {@link #restoreAll}
+     */
+    public static Set<UUID> archiveOldLayouts(MinecraftServer server) {
+        return VaultFolders.archiveOldLayouts(DataPaths.worldRoot(server), server.overworld().getGameTime(), LOGGER::warn,
+                LOGGER::error);
+    }
+
+    /** Whether this start's pass archived the team's Vault for an older layout: login case 1's message. */
+    public static boolean wasLayoutArchived(UUID teamId) {
+        return LAYOUT_ARCHIVED.contains(teamId);
+    }
+
+    /**
      * ADR 0002's restore, from the root {@code ServerStartedEvent} listener. One team that fails never stops the others.
      *
      * @param resetTeamIds the resets ADR 0007's start-of-server pass finished at this start, restored whether or not a folder
      *     exists; none until that pass exists (E11)
+     * @param layoutArchivedTeamIds the teams whose folder the pass archived for an older layout: not registered, since they
+     *     have no folder until their next portal entry, and counted as archived, not skipped (restore step 6)
      * @throws IllegalStateException when no ore table is published, or its blocks cannot be resolved, before any Vault is
      *     touched. The classifier runs first
      *     in the same listener and stops the start if it fails, so this is a bug in the mod. It is not caught per team:
      *     skipping every Vault would leave a player who logged out inside one in the Overworld sky (rule 2), so the
      *     exception leaves {@code ServerStartedEvent} and the server does not start, as S2-AR-1 decided for the classifier
      */
-    public static List<Restore> restoreAll(MinecraftServer server, Collection<UUID> resetTeamIds) {
+    public static List<Restore> restoreAll(MinecraftServer server, Collection<UUID> resetTeamIds,
+            Collection<UUID> layoutArchivedTeamIds) {
         VaultChunkGenerator.checkOreInputs();
+        LAYOUT_ARCHIVED.addAll(layoutArchivedTeamIds);
         Set<UUID> teamIds = new LinkedHashSet<>(foldersOnDisk(server));
         teamIds.addAll(resetTeamIds);
         List<Restore> results = new ArrayList<>();
@@ -144,7 +171,9 @@ public final class VaultDimensions {
             }
         }
         long restored = results.stream().filter(Restore::restored).count();
-        LOGGER.info("Restored {} Vaults, skipped {}", restored, results.size() - restored);
+        // The "Restored N Vaults, skipped M" prefix is what the restart check matches (tools/restart-check).
+        LOGGER.info("Restored {} Vaults, skipped {}, archived {} of an older layout", restored, results.size() - restored,
+                layoutArchivedTeamIds.size());
         results.stream().filter(result -> !result.restored())
                 .forEach(result -> LOGGER.info("Skipped the Vault of team {}: {}", result.teamId(), result.reason()));
         return results;
@@ -279,5 +308,6 @@ public final class VaultDimensions {
     /** At {@code ServerStoppedEvent}: the next world in this client starts with none of this one's entries. */
     public static void clear() {
         VARIANTS.clear();
+        LAYOUT_ARCHIVED.clear();
     }
 }

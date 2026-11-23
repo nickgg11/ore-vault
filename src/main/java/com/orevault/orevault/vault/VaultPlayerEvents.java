@@ -73,10 +73,12 @@ public final class VaultPlayerEvents {
                 TeamHelper.teamId(player)));
         boolean moved = switch (outcome) {
             case SEND_HOME -> {
-                LOGGER.info("{} logged in recorded as inside the Vault of team {}, which is not where they are ({}); sent to "
+                // A Vault this start archived for an older layout says so; any other unloaded Vault sends no line (ADR 0002).
+                boolean archived = recorded.map(InVault::team).map(VaultDimensions::wasLayoutArchived).orElse(false);
+                LOGGER.info("{} logged in recorded as inside the Vault of team {}, which is not where they are ({}{}); sent to "
                         + "their return position", player.getGameProfile().name(), recorded.map(InVault::team).orElse(null),
-                        player.level().dimension().identifier());
-                yield VaultTravel.sendHome(player, null);
+                        player.level().dimension().identifier(), archived ? ", archived for an older layout" : "");
+                yield VaultTravel.sendHome(player, archived ? VaultTravel.SENT_HOME_LAYOUT_ARCHIVED : null);
             }
             case SEND_HOME_DISBANDED -> {
                 LOGGER.info("{} logged in inside the Vault of disbanded team {}; sent home", player.getGameProfile().name(),
