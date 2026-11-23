@@ -281,7 +281,7 @@ death marker without editing offline players' files (ADR 0007).
 |---|---|---|---|
 | `data_version` | int | 1 | |
 | `return_pos` | {dim, x, y, z} | none (world spawn is the fallback, §3.2) | Saved only after the teleport in succeeds |
-| `in_vault` | {team, generation} | not in a Vault | The Vault the player is in, as its team id and that team's `vault_generation` at entry; the login check reads it (ADR 0002). The dimension key follows from the team id |
+| `in_vault` | {team, generation, layout} | not in a Vault | The Vault the player is in, as its team id, that team's `vault_generation` at entry and the layout it was entered under; the login check reads it (ADR 0002). The dimension key follows from the team id. `layout` was added by #425 with no `data_version` bump (additive): a tag written without it reads as 1, and every new entry writes 2 |
 | `tome_granted` | boolean | false | The Tome was given once (S18) |
 | `entry_points` | list of {team, generation, x, y, z}, at most 3 | empty | Tier 2 and 3 personal entry points; a Vault Anchor set as one takes a slot (Q15) |
 | `homeward` | {team, generation, x, y, z} | no anchor | Homeward Seam's anchor; cleared by a reset (§6.1) |

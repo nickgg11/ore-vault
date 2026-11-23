@@ -686,10 +686,12 @@ of vanilla's `OreFeature`, derived and unplaytested; the script is `docs/researc
   dropped. `SafeArrival.DEFAULT_FEET_Y` becomes 101, and a test pins it to the first air
   above the grass of `LayerStack`'s built-in base stack, so it cannot drift from the stack. The expanded type spreads the base counts over 96 stone layers, 1.0% thinner, inside S12's 5%.
 - Tests. S12's per-slab rule changes from "within ±10% of the band's density" to "within ±10% of the slab's expected
-  density, and rarity shares within ±3 points of the slab's expected shares", the expected figures computed from the
+  density, and rarity shares within ±4 points of the slab's expected shares", the expected figures computed from the
   pickers' profiles by the same code the placer reads, over 81 chunks. At Y=100 the largest slab standard deviation over
   81 chunks is about 3.4% of its expected blocks (the expanded type's Y64..79; 3.2% in the base type), so ±10% is about
-  three. Band density ±5% and band shares ±2 points
+  three. The shares are 4 points, not 3 (#425 review, B-1): over 81 chunks the common and uncommon shares of base
+  Y17..32 spread by 1.2 to 1.3 points, so ±3 was about 2.2 standard deviations, and a Monte Carlo of a correct generator
+  failed a slab in about 1 fresh-Vault run in 16 to 20; ±4 is about three. Band density ±5% and band shares ±2 points
   stand. Slabs: base Y1..16, 17..32, 33..48, 49..64 and 65..95 (31 layers, merged); expanded Y0..15 to Y80..95, six;
   deepslate unchanged. The identity unit cases of question 4 (a rare pick above Y=16 is emerald with probability 1; the
   below-Y=1 fold) are replaced by: on the golden fixture, base type, the pick shares by ore within 0.5 points of share and the
@@ -697,7 +699,18 @@ of vanilla's `OreFeature`, derived and unplaytested; the script is `docs/researc
   histogram over 10,000 draws matches the profile.
 - The floor clip. `ClipFactors.densest` adds the baseline's requests layer by layer as height now spreads them, from
   the profiles, not as flat bands, so a node that concentrates ore low (Deep Veins) is summed on top of the densest
-  baseline layer. No baseline slab is near 60%: the densest is 4.6% in the base stone band, 8.3% in deepslate.
+  baseline layer. No baseline slab is near 60%: the densest is 4.6% in the base stone band, 8.3% in deepslate. The
+  factors are computed once on the main thread into the generation snapshot (`EdgeFactors`, beside `ClipFactors`), not
+  per chunk (#425 review, R-6).
+- The clip's reach under height (#425 review, B-2; for T9, E9-S15 #320, where Nick is asked). Because `densest` is now
+  the densest layer, not the band average, the clip fires when the band-wide request is about 23% in deepslate and about
+  35% in stone, not at 60% band-wide: densest over average is 16.28 / 6.22 = 2.62 in deepslate, 1.71 in base stone and
+  1.68 in expanded stone. The "100 to 140%" estimate above was derived before the densest-layer rule, for a flat band.
+  Run through it, a full stack reads 260 to 370% at Y=-2, the clip comes out at 0.16 to 0.23, and the deepslate band
+  places about 23% ore on average; §3.1's "working toward the 40% floor" holds only at Y=-2. That is a lower ceiling on
+  late-game density than the tree was priced against, set by iron's peak rather than by a choice of Nick's. T9 puts it
+  to him when it pins Vein Shaping and Stone Reduction, and its full-stack test asserts on the layer, not the band.
+  `ClipFactors.HARD_STOP_HEADROOM`'s figures hold for a flat request only.
 - What moves with it. §4.3's ore an hour and curve do not move, since the band densities and shares are unchanged; the
   pacing session (S11) names the layers it mines, and Y1..16 is about 329 ore an hour, above S11's 264. Seismic Sense's
   `COMPASS_MARGIN` was derived for 245 stone layers and falls to about 3.2 standard deviations in the base type; the
@@ -718,9 +731,13 @@ of vanilla's `OreFeature`, derived and unplaytested; the script is `docs/researc
   start-of-server pass archives a layout-1 folder through the existing `VaultFolders` move to
   `<world>/orevault_archive/<teamUuid>/layout-1-<time>/`, keeping its bytes and the team's data, and the team's next
   portal entry makes a fresh Vault (ADR 0002 creation step 2, restore step 6). A player who logged out inside is sent to
-  their return position by login case 1 with the new key `message.orevault.vault_layout_archived` (§11 gives its text;
-  not "damaged", which would be untrue). ADR 0002's restore fixture gains case (g). The code PR's body tells Nick his
-  development Vaults are archived on first start.
+  their return position by login case 0 with the new key `message.orevault.vault_layout_archived` (§11 gives its text;
+  not "damaged", which would be untrue). The login reads `in_vault`'s own `layout`, added in #425 (absent reads 1, new
+  entries write 2; ADR 0005), so it holds at any later start and after a teammate has made the fresh Vault, which a
+  session list of archived teams did not (#425 review, R-1/A-1). A layout-1 folder the pass could not move aside is
+  refused at the portal and at login with `message.orevault.vault_layout_archive_failed` (§11), not as damaged. ADR
+  0002's restore fixture gains case (g), and `tools/restart-check/vault-layout-*.txt` runs it at a real start. The code
+  PR's body tells Nick his development Vaults are archived on first start.
 - Code and tests the change touches (D3), for sizing the code ticket:
   - `core.gen`: `VaultVariant.STONE_TOP_Y`; `OreBaseline` (`STONE_BAND_LAYERS`, counts and blobs in exact form,
     `edgeFactor` taking the pickers); `LayerStack` built-ins and a check that the layer at `stoneTopY + 1` is not the
@@ -734,9 +751,9 @@ of vanilla's `OreFeature`, derived and unplaytested; the script is `docs/researc
     then a layer draw; exposes each ore's in-band and in-region cumulative mass and the edge factor's inputs);
     `HeightProfile.slabs` (no linear map or fold; a per-layer in-band mass); both classes' Javadoc.
   - Density readout: `DensityTally` (takes the pickers for expected slabs and shares; a per-slab share verdict with
-    `SLAB_SHARE_TOLERANCE` 0.03) and the `/orevault density` adapter.
+    `SLAB_SHARE_TOLERANCE` 0.04, from 0.03 after the #425 review) and the `/orevault density` adapter.
   - Persistence: `data.VaultTypeFile` (`layout`); ADR 0007's pass (the layout archive and `layoutArchivedTeamIds`);
-    login case 1's message; `frame.SafeArrival.DEFAULT_FEET_Y`; the two `vault_layers/*.json`; the lang key.
+    `in_vault`'s `layout` and login case 0's message; `frame.SafeArrival.DEFAULT_FEET_Y`; the two `vault_layers/*.json`; the lang key.
   - Unit tests: `VaultVariantTest` (245; bounds 1..245, 0..245), `OreBaselineTest` (245/246 becomes 95/96),
     `VeinPlacerTest` (golden sequence; the 141.37 mean), `ClipFactorsTest` (region 1..245), `DensityTallyTest` (14
     slabs, Y225..245, Y224..245, Y=246), `HeightProfileTest`, `OrePickerTest` (`-63, 245, 1, 245, true`),
