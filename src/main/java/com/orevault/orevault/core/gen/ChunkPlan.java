@@ -35,7 +35,7 @@ public record ChunkPlan(VeinPlacer.Placement ore, BlobPlacer.Placement blobs) {
             throw new IllegalArgumentException("A plan for " + variant.id() + " from a snapshot of " + snapshot.variant().id());
         }
         VeinPlacer.Placement ore = pickers.isEmpty() ? NO_ORE
-                : VeinPlacer.placeOre(baseline, variant, pickers, snapshot.clip(),
+                : VeinPlacer.placeOre(baseline, variant, pickers, snapshot.edges(), snapshot.clip(),
                         ChunkSeed.of(teamId, snapshot.vaultGeneration(), chunkX, chunkZ, GenSalts.BASELINE_ORE));
         BlobPlacer.Placement blobs = BlobPlacer.place(baseline, variant, ore.veins(),
                 ChunkSeed.of(teamId, snapshot.vaultGeneration(), chunkX, chunkZ, GenSalts.GRAVEL),

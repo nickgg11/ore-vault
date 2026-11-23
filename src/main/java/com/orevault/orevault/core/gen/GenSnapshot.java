@@ -13,11 +13,14 @@ import java.util.Objects;
  * @param variant the dimension type; the generator is built per variant and checks that the two agree
  * @param vaultGeneration the reset count, part of every seed
  * @param clip the 40% floor's factors (§3.1), computed by {@link ClipFactors#of} when the snapshot is built
+ * @param edges each band's and rarity's edge factor, computed by {@link EdgeFactors#of} when the snapshot is built, so the
+ *     worker never recomputes it per chunk (R-6)
  */
-public record GenSnapshot(VaultVariant variant, int vaultGeneration, ClipFactors clip) {
+public record GenSnapshot(VaultVariant variant, int vaultGeneration, ClipFactors clip, EdgeFactors edges) {
     public GenSnapshot {
         Objects.requireNonNull(variant);
         Objects.requireNonNull(clip);
+        Objects.requireNonNull(edges);
     }
 
     /**
@@ -29,6 +32,7 @@ public record GenSnapshot(VaultVariant variant, int vaultGeneration, ClipFactors
      * @param pickers the variant's published pickers, or none for a pack with no classified ore
      */
     public static GenSnapshot of(VaultVariant variant, int vaultGeneration, Map<Band, OrePicker> pickers, GenerationTiers tiers) {
-        return new GenSnapshot(variant, vaultGeneration, ClipFactors.of(OreBaseline.BASE, variant, pickers, tiers));
+        return new GenSnapshot(variant, vaultGeneration, ClipFactors.of(OreBaseline.BASE, variant, pickers, tiers),
+                EdgeFactors.of(OreBaseline.BASE, variant, pickers));
     }
 }

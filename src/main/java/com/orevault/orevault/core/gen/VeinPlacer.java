@@ -87,6 +87,16 @@ public final class VeinPlacer {
     }
 
     /**
+     * The same, with the edge factors the snapshot carries, computed once on the main thread (R-6): what the generator
+     * calls for every chunk.
+     */
+    public static Placement placeOre(OreBaseline baseline, VaultVariant variant, Map<Band, OrePicker> pickers, EdgeFactors edges,
+            ClipFactors clip, long seed) {
+        requirePickers(variant, pickers);
+        return place(baselineRequests(baseline, variant, edges, clip), variant, pickers, seed);
+    }
+
+    /**
      * One request per band the variant has and per rarity, in that order: the count times the rarity's edge factor in the
      * band, from that band's picker, times the band's clip factor (ADR 0009), over the whole band.
      *
@@ -94,16 +104,27 @@ public final class VeinPlacer {
      */
     public static List<VeinRequest> baselineRequests(OreBaseline baseline, VaultVariant variant, Map<Band, OrePicker> pickers,
             ClipFactors clip) {
+        requirePickers(variant, pickers);
+        return baselineRequests(baseline, variant, EdgeFactors.of(baseline, variant, pickers), clip);
+    }
+
+    private static void requirePickers(VaultVariant variant, Map<Band, OrePicker> pickers) {
+        for (Band band : Band.values()) {
+            if (variant.band(band).isPresent() && !pickers.containsKey(band)) {
+                throw new IllegalArgumentException("No ore picker for the " + band + " band");
+            }
+        }
+    }
+
+    /** As {@link #baselineRequests(OreBaseline, VaultVariant, Map, ClipFactors)}, with the edge factors already computed. */
+    public static List<VeinRequest> baselineRequests(OreBaseline baseline, VaultVariant variant, EdgeFactors edges,
+            ClipFactors clip) {
         List<VeinRequest> requests = new ArrayList<>();
         for (Band band : Band.values()) {
             variant.band(band).ifPresent(bounds -> {
-                OrePicker picker = pickers.get(band);
-                if (picker == null) {
-                    throw new IllegalArgumentException("No ore picker for the " + band + " band");
-                }
                 for (Rarity rarity : Rarity.values()) {
                     OreBaseline.Veins veins = baseline.veins(band, rarity);
-                    double count = veins.perChunk() * baseline.edgeFactor(band, rarity, picker) * clip.of(band);
+                    double count = veins.perChunk() * edges.of(band, rarity) * clip.of(band);
                     double[] sizes = new double[veins.maxSize() - veins.minSize() + 1];
                     for (int i = 0; i < sizes.length; i++) {
                         sizes[i] = veins.minSize() + i;

@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.orevault.orevault.core.gen.Band;
 import com.orevault.orevault.core.gen.ClipFactors;
+import com.orevault.orevault.core.gen.EdgeFactors;
 import com.orevault.orevault.core.gen.GenSnapshot;
+import com.orevault.orevault.core.gen.OreBaseline;
 import com.orevault.orevault.core.gen.OrePickers;
 import com.orevault.orevault.core.gen.VaultVariant;
 import com.orevault.orevault.core.ore.OrePicker;
@@ -26,7 +28,7 @@ class GenSnapshotsTest {
      * deepslate, is far under 60%, so the filled snapshot carries {@link ClipFactors#NONE}.
      */
     private static GenSnapshot baseline(VaultVariant variant, int vaultGeneration) {
-        return new GenSnapshot(variant, vaultGeneration, ClipFactors.NONE);
+        return new GenSnapshot(variant, vaultGeneration, ClipFactors.NONE, EdgeFactors.of(OreBaseline.BASE, variant, pickers(variant)));
     }
 
     private static Map<Band, OrePicker> pickers(VaultVariant variant) {

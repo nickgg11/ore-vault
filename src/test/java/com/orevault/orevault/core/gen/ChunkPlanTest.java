@@ -103,8 +103,9 @@ class ChunkPlanTest {
     void theSnapshotsClipReachesThePlacer() {
         VaultVariant variant = VaultVariant.EXPANDED;
         Map<Band, OrePicker> pickers = OrePickers.forVariant(variant, VanillaOres.candidates());
-        ChunkPlan open = ChunkPlan.of(OreBaseline.BASE, variant, pickers, new GenSnapshot(variant, 0, ClipFactors.NONE), TEAM, 1, 1);
-        ChunkPlan clipped = ChunkPlan.of(OreBaseline.BASE, variant, pickers, new GenSnapshot(variant, 0, new ClipFactors(1, 0.5)), TEAM, 1, 1);
+        EdgeFactors edges = EdgeFactors.of(OreBaseline.BASE, variant, pickers);
+        ChunkPlan open = ChunkPlan.of(OreBaseline.BASE, variant, pickers, new GenSnapshot(variant, 0, ClipFactors.NONE, edges), TEAM, 1, 1);
+        ChunkPlan clipped = ChunkPlan.of(OreBaseline.BASE, variant, pickers, new GenSnapshot(variant, 0, new ClipFactors(1, 0.5), edges), TEAM, 1, 1);
         assertTrue(deepslateVeins(clipped) < 0.6 * deepslateVeins(open), deepslateVeins(clipped) + " against " + deepslateVeins(open));
     }
 
