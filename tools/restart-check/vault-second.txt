@@ -7,9 +7,9 @@ log Registered Vault orevault:vault_0000000a00004000800000000000000a \(orevault:
 run execute in orevault:vault_0000000a00004000800000000000000a run forceload query 0 0
 expect marked for force loading
 reject not marked
-run execute in orevault:vault_0000000a00004000800000000000000a run orevault break 0 251 0
-expect break orevault:vault_0000000a00004000800000000000000a 0 251 0 minecraft:gold_block: destroyBlock=true gone=true
-log \[orevault-debug\] break orevault:vault_0000000a00004000800000000000000a 0 251 0 minecraft:gold_block: destroyBlock=true gone=true
-run execute in orevault:vault_0000000a00004000800000000000000a if block 0 251 0 minecraft:air
+run execute in orevault:vault_0000000a00004000800000000000000a run orevault break 0 101 0
+expect break orevault:vault_0000000a00004000800000000000000a 0 101 0 minecraft:gold_block: destroyBlock=true gone=true
+log \[orevault-debug\] break orevault:vault_0000000a00004000800000000000000a 0 101 0 minecraft:gold_block: destroyBlock=true gone=true
+run execute in orevault:vault_0000000a00004000800000000000000a if block 0 101 0 minecraft:air
 expect Test passed
 log \[orevault-debug\] tick orevault:vault_0000000a00004000800000000000000a server_tick=

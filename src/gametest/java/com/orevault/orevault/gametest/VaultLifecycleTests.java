@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -65,8 +66,8 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 @EventBusSubscriber(modid = OreVault.MOD_ID)
 final class VaultLifecycleTests {
     private static final byte[] GARBAGE = {1, 2, 3, 4, 5, 6, 7, 8};
-    /** The base stack's grass is at Y=250, so the anchor stands at Y=251. */
-    private static final int BASE_SURFACE = 251;
+    /** The base stack's grass is at Y=100 (§3.1, since 2026-11-21), so the anchor stands at Y=101. */
+    private static final int BASE_SURFACE = 101;
 
     /** Every level that has ticked since the server started; the tick loop is the only writer. */
     private static final Set<ResourceKey<Level>> TICKED = ConcurrentHashMap.newKeySet();
@@ -207,6 +208,54 @@ final class VaultLifecycleTests {
         check(helper, "registered", true, vault != null);
         check(helper, "variant", Optional.of(VaultVariant.EXPANDED), VaultDimensions.variant(team));
         check(helper, "floor", -64, vault.getMinY());
+        helper.succeed();
+    }
+
+    /**
+     * ADR 0002 restore fixture case (g), ADR 0007 pass step 4 (2026-11-21): a folder whose type file has no {@code layout}
+     * was generated under the stack of 2026-10. Left in place, as after a failed move, restore and the portal refuse it;
+     * the pass moves it to {@code orevault_archive/<team>/layout-1-<time>/} with its bytes, and the team's next portal
+     * entry makes a fresh folder of layout 2. A folder left in place is told apart from a damaged one, so the portal and
+     * the restore say it is an older layout (R-4).
+     *
+     * <p>It calls the pass mid-session, which sweeps every Vault folder on the gametest server while the rest of the batch
+     * runs. That is safe because no other test writes a type file without {@code layout}; a test that does must run in a
+     * batch of its own. The pass at a real start, its order and its log line are the restart check's
+     * ({@code tools/restart-check/vault-layout-*.txt}).
+     */
+    static void aFolderOfTheOldLayoutIsArchivedAndReplaced(GameTestHelper helper) throws IOException {
+        MinecraftServer server = server(helper);
+        UUID team = UUID.randomUUID();
+        Path folder = DataPaths.vaultFolder(server, team);
+        CompoundTag oldType = new CompoundTag();
+        oldType.putInt("data_version", 1);
+        oldType.putString("variant", VaultVariant.BASE.id());
+        Files.createDirectories(folder.resolve("region"));
+        NbtIo.writeCompressed(oldType, folder.resolve(VaultKeys.VAULT_TYPE_FILE));
+        Files.write(folder.resolve("region").resolve("r.0.0.mca"), GARBAGE);
+        byte[] typeBytes = Files.readAllBytes(folder.resolve(VaultKeys.VAULT_TYPE_FILE));
+
+        check(helper, "restore refuses it in place", false, VaultDimensions.restoreOne(server, team).restored());
+        check(helper, "portal refuses it in place", Optional.empty(), VaultDimensions.findOrCreate(server, team));
+        check(helper, "not registered", null, server.getLevel(VaultDimensions.dimensionKey(team)));
+        check(helper, "an older layout, not damage", true, VaultDimensions.olderLayoutLeftInPlace(server, team));
+
+        check(helper, "archived", true, VaultDimensions.archiveOldLayouts(server).contains(team));
+        check(helper, "folder gone", false, Files.exists(folder));
+        check(helper, "nothing left in place", false, VaultDimensions.olderLayoutLeftInPlace(server, team));
+        Path teamArchive = DataPaths.archiveFolder(DataPaths.worldRoot(server)).resolve(team.toString());
+        Path archive;
+        try (var entries = Files.list(teamArchive)) {
+            archive = entries.findFirst().orElseThrow();
+        }
+        check(helper, "archive name", true, archive.getFileName().toString().startsWith("layout-1-"));
+        check(helper, "type file bytes", true, Arrays.equals(typeBytes, Files.readAllBytes(archive.resolve(VaultKeys.VAULT_TYPE_FILE))));
+        check(helper, "region bytes", true, Arrays.equals(GARBAGE, Files.readAllBytes(archive.resolve("region").resolve("r.0.0.mca"))));
+        check(helper, "restore without a folder", false, VaultDimensions.restoreOne(server, team).restored());
+
+        createVault(helper, team);
+        check(helper, "fresh layout", Optional.of(new VaultTypeFile.Type(VaultVariant.BASE, VaultTypeFile.CURRENT_LAYOUT)),
+                VaultTypeFile.readType(DataPaths.vaultTypeFile(server, team), line -> { }, line -> helper.fail(Component.literal(line))));
         helper.succeed();
     }
 
@@ -415,7 +464,7 @@ final class VaultLifecycleTests {
     static void aLoginRecordedInAVaultThatDidNotLoadGoesHome(GameTestHelper helper) {
         ServerLevel overworld = server(helper).overworld();
         FakePlayer player = player(overworld, "orevault-stranded");
-        player.setPos(0.5, 251, 0.5);
+        player.setPos(0.5, BASE_SURFACE, 0.5);
         ReturnPos home = new ReturnPos("minecraft:overworld", 12, 70, -8);
         PlayerAttachment.update(player, data -> data.withReturnPos(home).withInVault(new InVault(UUID.randomUUID(), 0)));
 
@@ -463,6 +512,32 @@ final class VaultLifecycleTests {
         helper.succeed();
     }
 
+    /**
+     * #425 (R-1, A-1): the two-player case. B logged out inside the team's layout-1 Vault; the start archived it; A
+     * re-entered, which made a fresh Vault under the same key and the same generation. B is loaded into it at old
+     * coordinates. B's {@code in_vault} was written under layout 1, so B is sent home, with the archive's line, and A,
+     * recorded under this layout, is judged by the other cases as before.
+     */
+    static void aLoginRecordedUnderAnOlderLayoutGoesHomeFromTheFreshVault(GameTestHelper helper) {
+        UUID team = UUID.randomUUID();
+        ServerLevel vault = createVault(helper, team);
+        FakePlayer oldEntry = player(vault, "orevault-old-layout");
+        oldEntry.setPos(0.5, 200, 0.5);
+        PlayerAttachment.update(oldEntry, data -> data.withInVault(new InVault(team, 0, 1)));
+        FakePlayer newEntry = player(vault, "orevault-new-layout");
+        newEntry.setPos(0.5, BASE_SURFACE, 0.5);
+        PlayerAttachment.update(newEntry, data -> data.withInVault(new InVault(team, 0)));
+
+        check(helper, "older layout", Outcome.SEND_HOME_OLDER_LAYOUT, VaultPlayerEvents.checkAtLogin(oldEntry));
+        check(helper, "left the Vault", false, oldEntry.level().dimension().equals(vault.dimension()));
+        check(helper, "in_vault cleared", Optional.empty(), PlayerAttachment.get(oldEntry).inVault());
+        // A fake player has no team of its own, so case 2 sends it home too: what matters is that it is not this case.
+        check(helper, "current layout", false, VaultPlayerEvents.checkAtLogin(newEntry) == Outcome.SEND_HOME_OLDER_LAYOUT);
+        discard(oldEntry);
+        discard(newEntry);
+        helper.succeed();
+    }
+
     // ---- the debug command -----------------------------------------------------------------------------------------
 
     /** The key a debug line names, for the restart script: {@code orevault:vault_<hex>}. */
@@ -485,7 +560,7 @@ final class VaultLifecycleTests {
         try {
             OreClassifier.clear();
             try {
-                VaultDimensions.restoreAll(server, java.util.List.of());
+                VaultDimensions.restoreAll(server, java.util.List.of(), java.util.List.of());
             } catch (IllegalStateException e) {
                 threw = true;
             }

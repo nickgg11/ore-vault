@@ -15,7 +15,12 @@ public enum VaultVariant {
     EXPANDED("ore_vault_expanded", -64, 384, 0);
 
     private static final String NAMESPACE = "orevault:";
-    private static final int STONE_TOP_Y = 245;
+    /**
+     * The stone band's top, vanilla's own Y=95 (§3.1; ADR 0009, amended 2026-11-21: the surface came down from Y=250 to
+     * Y=100 and the Vault grows deeper, not taller). Until then it was 245. The dimension types' {@code min_y} and
+     * {@code height} did not change, only the layer stacks, which is why a folder records its {@code layout}.
+     */
+    private static final int STONE_TOP_Y = 95;
 
     private final String path;
     private final int minY;

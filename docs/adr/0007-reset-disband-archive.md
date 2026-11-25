@@ -80,11 +80,23 @@ file it finds:
 4. A Vault folder whose type file reads `layout` 1, absent included (ADR 0005 section 3a; added 2026-11-21
    when the layer stack changed): move the folder alone, not the team file, to
    `<world>/orevault_archive/<teamUuid>/layout-1-<time>/` with the same `VaultFolders` move as step 2, log
-   at WARN naming both paths, and add the team id to `layoutArchivedTeamIds`, which the pass hands to
-   restore beside `resetTeamIds` (ADR 0002 restore step 6). The team's tree, pool and stats stay. A type file
-   that cannot be read is left for restore, which refuses it as before. A failed move is logged at ERROR and
-   the folder left in place; restore then refuses it as a layout it cannot load. This runs after steps 2 and
-   3, so a disbanded or reset team is handled by those first.
+   at WARN naming both paths, the layout it read and the wall-clock time, and add the team id to
+   `layoutArchivedTeamIds`, which the pass hands to restore beside `resetTeamIds` (ADR 0002 restore step 6),
+   for its count only. The team's tree, pool and stats stay; a player inside it is sent home at login by
+   `in_vault`'s own `layout` (ADR 0002 login case 0). A type file that cannot be read is left for restore,
+   which refuses it as before. A folder whose level is already loaded is never moved: it is logged at ERROR
+   and left, since the pass moves folders only before any Vault is registered. A move whose target exists,
+   or that fails, is logged at ERROR and the folder left in place; restore then skips it as a layout-1
+   folder that could not be moved aside, and the portal refuses it with
+   `message.orevault.vault_layout_archive_failed`. A copy that was made and checked, but whose source could
+   not then be fully deleted, is logged at ERROR apart from that and counts as archived: the source's type
+   file is deleted first, so the leftover is never archived again, and restore refuses it until an operator
+   deletes it. This runs after steps 2 and 3, so a disbanded or reset team is handled by those first.
+
+   Step 4 shipped first, with E4-S3b (#425); the `.deleting` sweep and steps 1 to 3 join with E11 and run
+   before it, as numbered. When steps 2 and 3 arrive, step 2 must accept a disbanded team whose folder is
+   already in the layout archive, and move only the team file (and any `.unreadable-` copies) to
+   `<disbandedAt>/` (A-3).
 5. Otherwise nothing; restore handles it.
 
 This pass is the shared archive and regenerate code. The live reset calls the same `VaultFolders` helper
@@ -244,9 +256,10 @@ data file, with any
 `team_<hex>.dat.unreadable-<gametime>` copies ADR 0005 set aside for it, into
 `<world>/orevault_archive/<teamUuid>/<disbandedAt>/`, where `<disbandedAt>` is the game time written in step
 1. The log line gives the wall-clock time beside it. Reset backups are kept apart, in
-`<world>/orevault_backups/<teamUuid>/<timestamp>/` (§3.5). A move is a rename on the same disk; if it fails
-the pass copies, checks the byte count and then deletes the source, and on any error leaves the source and
-logs.
+`<world>/orevault_backups/<teamUuid>/<timestamp>/` (§3.5). A move is an atomic rename on the same disk. The pass
+copies only when the atomic rename is unsupported: it copies, checks every file byte for byte, then deletes
+the source, its type file first; a copy that fails is deleted and the source left, with the clean-up's own
+failure kept as suppressed. Any other rename failure is a failed move, logged, folder left in place.
 
 Former members keep nothing from the party: their `PlayerStats` stay in the archived file (Q3).
 

@@ -21,7 +21,8 @@ import org.junit.jupiter.api.Test;
  */
 class ReturnPortalTest {
     private static final int MIN_Y = 0;
-    private static final int GRASS = 250;
+    /** The grass surface of both layer stacks, Y=100 since 2026-11-21 (§3.1). */
+    private static final int GRASS = 100;
     private static final int BASE = GRASS + 1;
     private static final int TOP = 320;
 

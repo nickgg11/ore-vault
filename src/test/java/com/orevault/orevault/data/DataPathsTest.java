@@ -37,4 +37,12 @@ class DataPathsTest {
         Path file = Path.of("world/data/orevault/team_" + HEX + ".dat");
         assertEquals(Path.of("world/data/orevault/team_" + HEX + ".dat.unreadable-1234"), DataPaths.unreadableCopy(file, 1234L));
     }
+
+    /** ADR 0007 step 4: the archive is apart from the dimensions folder, by team, then by the layout and the time. */
+    @Test
+    void anOldLayoutIsArchivedUnderTheTeamAndTheTime() {
+        assertEquals(Path.of("world/orevault_archive"), DataPaths.archiveFolder(Path.of("world")));
+        assertEquals(Path.of("world/orevault_archive/01234567-89ab-cdef-0123-456789abcdef/layout-1-5678"),
+                DataPaths.layoutArchive(Path.of("world"), TEAM, 1, 5678L));
+    }
 }

@@ -13,6 +13,16 @@ public final class VaultKeys {
     /** The Vault's type, at the top of its folder (ADR 0005 section 3a). */
     public static final String VAULT_TYPE_FILE = "orevault_vault.dat";
 
+    /**
+     * The layer stack this build generates, which the type file's {@code layout} and the player's {@code in_vault} record
+     * (ADR 0009, amended 2026-11-21). 1 is the stack of 2026-10, stone to Y=245; 2 is the surface at Y=100. It moves only
+     * with a code change to the built-in stack, never with a datapack edit, and every move comes with the start-of-server
+     * pass's archive of the older folders (ADR 0007 step 4).
+     */
+    public static final int CURRENT_LAYOUT = 2;
+    /** What a record written before {@code layout} existed holds: every such record was written under layout 1. */
+    public static final int FIRST_LAYOUT = 1;
+
     private static final String VAULT_PREFIX = "vault_";
     private static final String TEAM_PREFIX = "team_";
     private static final Pattern VAULT_FOLDER = Pattern.compile("vault_[0-9a-f]{32}");

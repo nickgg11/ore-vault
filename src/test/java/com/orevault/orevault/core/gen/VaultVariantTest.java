@@ -19,17 +19,18 @@ class VaultVariantTest {
         assertEquals(384, VaultVariant.EXPANDED.height());
     }
 
+    /** §3.1, since 2026-11-21: vanilla's own Y1..95, the surface at Y=100. */
     @Test
-    void theBaseStoneBandIs245Layers() {
+    void theBaseStoneBandIs95Layers() {
         assertEquals(1, VaultVariant.BASE.stoneBottomY());
-        assertEquals(245, VaultVariant.BASE.stoneTopY());
+        assertEquals(95, VaultVariant.BASE.stoneTopY());
     }
 
     /** ADR 0009: Y=0 is stone here, so the band has one layer more than the base type's. */
     @Test
     void theExpandedStoneBandStartsAtZero() {
         assertEquals(0, VaultVariant.EXPANDED.stoneBottomY());
-        assertEquals(245, VaultVariant.EXPANDED.stoneTopY());
+        assertEquals(95, VaultVariant.EXPANDED.stoneTopY());
     }
 
     @Test
@@ -58,9 +59,9 @@ class VaultVariantTest {
     /** ADR 0009: the bands are per type, derived from the fields the variant already has. */
     @Test
     void theBandsArePerType() {
-        assertEquals(Optional.of(new BandBounds(1, 245)), VaultVariant.BASE.band(Band.STONE));
+        assertEquals(Optional.of(new BandBounds(1, 95)), VaultVariant.BASE.band(Band.STONE));
         assertEquals(Optional.empty(), VaultVariant.BASE.band(Band.DEEPSLATE));
-        assertEquals(Optional.of(new BandBounds(0, 245)), VaultVariant.EXPANDED.band(Band.STONE));
+        assertEquals(Optional.of(new BandBounds(0, 95)), VaultVariant.EXPANDED.band(Band.STONE));
         assertEquals(Optional.of(new BandBounds(-63, -1)), VaultVariant.EXPANDED.band(Band.DEEPSLATE));
     }
 }

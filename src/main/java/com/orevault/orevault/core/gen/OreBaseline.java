@@ -1,5 +1,6 @@
 package com.orevault.orevault.core.gen;
 
+import com.orevault.orevault.core.ore.OrePicker;
 import com.orevault.orevault.core.ore.Rarity;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -25,21 +26,27 @@ import java.util.Map;
 public record OreBaseline(Map<Band, Map<Rarity, Veins>> ore, Map<Band, Blobs> gravel, Map<Band, Blobs> clay) {
     /**
      * The stone band's height in the base type and the deepslate band's, the third copy of the dimension heights (rule 8,
-     * ADR 0009): the dimension type files, {@link VaultVariant} and these. A test compares them, so they fail together.
-     * The curve reads the base type's figures; the expanded stone band spreads the same counts over 246 layers.
+     * ADR 0009): the layer files, {@link VaultVariant} and these. A test compares them, so they fail together. The curve
+     * reads the base type's figures; the expanded stone band spreads the same counts over 96 layers, 1.0% thinner.
+     * The stone band was 245 layers until the surface came down to Y=100 (ADR 0009, amended 2026-11-21).
      */
-    public static final int STONE_BAND_LAYERS = 245;
+    public static final int STONE_BAND_LAYERS = 95;
     public static final int DEEPSLATE_BAND_LAYERS = 63;
 
     private static final int BLOB_SIZE = 33;
 
-    /** §3.1's baseline. */
+    /**
+     * §3.1's baseline. The stone band's counts are the 245-layer band's, 141, 82 and 33 veins and 9 gravel and 3 clay
+     * blobs, times 95/245, written in that exact form so §3.1's density (3.04%, which §4.3 prices) stays exact: 54.67,
+     * 31.80 and 12.80 veins, 3.49 and 1.16 blobs (ADR 0009, amended 2026-11-21). The deepslate band did not move.
+     */
     public static final OreBaseline BASE = new OreBaseline(
             Map.of(
-                    Band.STONE, rarities(new Veins(141, 9, 12), new Veins(82, 7, 9), new Veins(33, 5, 7)),
+                    Band.STONE, rarities(new Veins(141 * 95 / 245.0, 9, 12), new Veins(82 * 95 / 245.0, 7, 9),
+                            new Veins(33 * 95 / 245.0, 5, 7)),
                     Band.DEEPSLATE, rarities(new Veins(65, 9, 12), new Veins(52, 7, 9), new Veins(25, 5, 7))),
-            Map.of(Band.STONE, new Blobs(9, BLOB_SIZE), Band.DEEPSLATE, new Blobs(2, BLOB_SIZE)),
-            Map.of(Band.STONE, new Blobs(3, BLOB_SIZE), Band.DEEPSLATE, new Blobs(1, BLOB_SIZE)));
+            Map.of(Band.STONE, new Blobs(9 * 95 / 245.0, BLOB_SIZE), Band.DEEPSLATE, new Blobs(2, BLOB_SIZE)),
+            Map.of(Band.STONE, new Blobs(3 * 95 / 245.0, BLOB_SIZE), Band.DEEPSLATE, new Blobs(1, BLOB_SIZE)));
 
     /** EnumMaps, not {@code Map.copyOf}: the placer iterates these, and a {@code Map.copyOf} map's order changes per JVM run (ADR 0003). */
     public OreBaseline {
@@ -127,24 +134,21 @@ public record OreBaseline(Map<Band, Map<Rarity, Veins>> ore, Map<Band, Blobs> gr
     }
 
     /**
-     * How much a rarity's count is raised in a band to make up the blocks of veins cut at the band's floor and top (ADR
-     * 0009 "Height"). A box {@code h} layers tall, whose lowest layer is drawn from the {@code H + h - 1} positions that
-     * leave a layer inside the band, keeps on average {@code H / (H + h - 1)} of its blocks; the factor is the inverse of
-     * that, averaged over the rarity's sizes weighted by blocks. It is about +0.4 to +0.65% in the stone band and +1.6 to
-     * +2.5% in deepslate (Balancer, BAL-E4-5); placed blocks then match the closed form less the overlap.
+     * How much a rarity's count is raised in a band to make up the blocks of veins cut at the band's floor and top (§3.1;
+     * ADR 0009, amended 2026-11-21). Drawing a vein's middle from its ore's profile does not remove the cut: an ore with
+     * mass at the band's floor or top loses its box's overhang there. So the factor is one over the blocks the rarity's
+     * ores keep inside the band, mixed by their pick shares, from the same table the placer draws from and the vein's blocks
+     * by layer about its box middle ({@link LayerSpread}). Placed blocks then match the closed form less the overlap. On
+     * vanilla it is under 1% in the stone band and at most about 2.6% in deepslate, for common, whose iron peaks at the
+     * band's top. It replaces the uniform {@code H / (H + h - 1)} of a band spread evenly.
+     *
+     * @param picker the picker of this band, whose profiles say where the rarity's veins sit
      */
-    public double edgeFactor(Band band, Rarity rarity, VaultVariant variant) {
-        int height = bounds(band, variant).layers();
-        Veins veins = veins(band, rarity);
-        double kept = 0;
-        double weight = 0;
-        for (int size = veins.minSize(); size <= veins.maxSize(); size++) {
-            double blocks = VeinShape.meanBlocks(size);
-            double boxHeight = Math.max(1.0, VeinShape.blockWeightedBoxHeight(size));
-            kept += blocks * height / (height + boxHeight - 1);
-            weight += blocks;
-        }
-        return weight == 0 ? 1.0 : weight / kept;
+    public double edgeFactor(Band band, Rarity rarity, OrePicker picker) {
+        double[] kernel = LayerSpread.kernel(veins(band, rarity));
+        BandBounds bounds = new BandBounds(picker.bandFloorY(), picker.bandTopY());
+        double kept = LayerSpread.kept(LayerSpread.perVein(picker.table(rarity), kernel, bounds), kernel);
+        return kept > 0 ? 1 / kept : 1.0;
     }
 
     private static BandBounds bounds(Band band, VaultVariant variant) {

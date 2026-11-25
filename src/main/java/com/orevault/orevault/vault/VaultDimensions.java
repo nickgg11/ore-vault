@@ -1,10 +1,12 @@
 package com.orevault.orevault.vault;
 
 import com.orevault.orevault.OreVault;
+import com.orevault.orevault.core.gen.Band;
 import com.orevault.orevault.core.gen.GenSnapshot;
 import com.orevault.orevault.core.gen.LayerStack;
 import com.orevault.orevault.core.gen.VaultVariant;
 import com.orevault.orevault.core.key.VaultKeys;
+import com.orevault.orevault.core.ore.OrePicker;
 import com.orevault.orevault.data.DataPaths;
 import com.orevault.orevault.data.GenSnapshots;
 import com.orevault.orevault.data.OreVaultTeamData;
@@ -118,17 +120,48 @@ public final class VaultDimensions {
     }
 
     /**
+     * ADR 0007's start-of-server pass, step 4 only until E11 brings the disband and deferred-reset steps: every Vault folder
+     * of an older layout is moved to the archive ({@link VaultFolders#archiveOldLayouts}). From the root
+     * {@code ServerStartedEvent} listener, first, before the classifier and the restore, so no level holds the folder.
+     *
+     * <p>A team whose Vault level is loaded is never moved (A-6): the pass runs before any Vault is registered, and this
+     * makes "never move an open level" hold by structure, not only by timing. ArchUnit's named rule 7 keeps the call in
+     * the root start listener.
+     *
+     * @return the teams archived, for {@link #restoreAll}'s count
+     */
+    public static Set<UUID> archiveOldLayouts(MinecraftServer server) {
+        return VaultFolders.archiveOldLayouts(DataPaths.worldRoot(server), server.overworld().getGameTime(),
+                teamId -> server.getLevel(dimensionKey(teamId)) != null, LOGGER::warn, LOGGER::error);
+    }
+
+    /**
+     * Whether the team's folder is still here with a type file of an older layout: the start-of-server pass could not move
+     * it aside. The portal and the login check then say so, not that the save is damaged (ADR 0009, amended 2026-11-21).
+     * Reads the type file and logs nothing; the pass's ERROR already names the cause.
+     */
+    public static boolean olderLayoutLeftInPlace(MinecraftServer server, UUID teamId) {
+        Path typeFile = DataPaths.vaultTypeFile(server, teamId);
+        return Files.isRegularFile(typeFile) && VaultTypeFile.readType(typeFile, line -> { }, line -> { })
+                .map(type -> type.layout() < VaultTypeFile.CURRENT_LAYOUT).orElse(false);
+    }
+
+    /**
      * ADR 0002's restore, from the root {@code ServerStartedEvent} listener. One team that fails never stops the others.
      *
      * @param resetTeamIds the resets ADR 0007's start-of-server pass finished at this start, restored whether or not a folder
      *     exists; none until that pass exists (E11)
+     * @param layoutArchivedTeamIds the teams whose folder the pass archived for an older layout: not registered, since they
+     *     have no folder until their next portal entry, and counted as archived, not skipped (restore step 6). The login
+     *     message does not need them: it reads the layout in the player's own {@code in_vault}
      * @throws IllegalStateException when no ore table is published, or its blocks cannot be resolved, before any Vault is
      *     touched. The classifier runs first
      *     in the same listener and stops the start if it fails, so this is a bug in the mod. It is not caught per team:
      *     skipping every Vault would leave a player who logged out inside one in the Overworld sky (rule 2), so the
      *     exception leaves {@code ServerStartedEvent} and the server does not start, as S2-AR-1 decided for the classifier
      */
-    public static List<Restore> restoreAll(MinecraftServer server, Collection<UUID> resetTeamIds) {
+    public static List<Restore> restoreAll(MinecraftServer server, Collection<UUID> resetTeamIds,
+            Collection<UUID> layoutArchivedTeamIds) {
         VaultChunkGenerator.checkOreInputs();
         Set<UUID> teamIds = new LinkedHashSet<>(foldersOnDisk(server));
         teamIds.addAll(resetTeamIds);
@@ -142,7 +175,9 @@ public final class VaultDimensions {
             }
         }
         long restored = results.stream().filter(Restore::restored).count();
-        LOGGER.info("Restored {} Vaults, skipped {}", restored, results.size() - restored);
+        // The "Restored N Vaults, skipped M" prefix is what the restart check matches (tools/restart-check).
+        LOGGER.info("Restored {} Vaults, skipped {}, archived {} of an older layout", restored, results.size() - restored,
+                layoutArchivedTeamIds.size());
         results.stream().filter(result -> !result.restored())
                 .forEach(result -> LOGGER.info("Skipped the Vault of team {}: {}", result.teamId(), result.reason()));
         return results;
@@ -191,8 +226,12 @@ public final class VaultDimensions {
         } else if (OreVaultTeamData.read(server, teamId).disbandedAt().isPresent()) {
             return new Restore(teamId, false, "the team has disbanded");
         }
-        return ensureTeamDimension(server, teamId, () -> variantForANewVault(server, teamId)).isPresent()
-                ? new Restore(teamId, true, "")
+        if (ensureTeamDimension(server, teamId, () -> variantForANewVault(server, teamId)).isPresent()) {
+            return new Restore(teamId, true, "");
+        }
+        return olderLayoutLeftInPlace(server, teamId)
+                ? new Restore(teamId, false, "it is from an older layout and could not be moved aside; the ERROR from the "
+                        + "start-of-server pass names why")
                 : new Restore(teamId, false, "its type file is missing, damaged or names no known type; the ERROR above names it");
     }
 
@@ -209,7 +248,10 @@ public final class VaultDimensions {
             return Optional.empty();
         }
         VaultVariant variant = type.get();
-        Supplier<GenSnapshot> snapshots = GenSnapshots.fill(server, teamId, variant);
+        // The clip reads the published profiles (ADR 0009, amended 2026-11-21); this throws when nothing is published, as
+        // forVault below does. A pack with no classified ore has no pickers and places no ore.
+        Map<Band, OrePicker> pickers = VaultChunkGenerator.publishedPickers(variant);
+        Supplier<GenSnapshot> snapshots = GenSnapshots.fill(server, teamId, variant, pickers);
         Holder.Reference<DimensionType> dimensionType = server.registryAccess().lookupOrThrow(Registries.DIMENSION_TYPE)
                 .getOrThrow(ResourceKey.create(Registries.DIMENSION_TYPE, Identifier.parse(variant.id())));
         Holder.Reference<Biome> biome = server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(VaultChunkGenerator.BIOME);

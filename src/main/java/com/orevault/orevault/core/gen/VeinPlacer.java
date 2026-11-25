@@ -18,16 +18,18 @@ import org.jspecify.annotations.Nullable;
  * <p>The draw sequence is fixed, whatever the pack or the counts (Architect, ARCH-E4-7), and a golden test pins it:
  * requests in the order given (the baseline's: stone then deepslate, each common, uncommon, rare); per request one
  * fraction draw, always; per vein, in this order, the size index, the size fraction, the shape (vanilla's own draws),
- * the box origin x, origin z, the lowest layer, then the ore pick, which takes exactly one {@code nextDouble}. So a
- * pack with forty ores moves which ore a vein is but never where any vein is. An empty vein (vanilla's rare sizes are
- * empty a few percent of the time) still takes all its draws.
+ * the box origin x, origin z, the ore's {@code nextDouble}, then the box middle layer's {@code nextDouble} (ADR 0009,
+ * amended 2026-11-21). An empty vein (vanilla's rare sizes are empty a few percent of the time) still takes all its draws.
+ * What holds is that the same pack and the same chunk always give the same veins. A change of pack can move any vein in
+ * chunks generated after it: the edge factor depends on the pack's profiles and multiplies the count, and a changed
+ * count shifts every later draw in the chunk (Architect, A2).
  *
- * <p>Where a vein sits. Its box fits in the chunk's 16 by 16 columns, so it never crosses a border (S20). Vertically
- * the box may overhang its band's floor or top: for a box {@code h} layers tall over a region of {@code H} layers, its
- * lowest layer is drawn from the {@code H + h - 1} positions that leave a layer inside, and only positions inside the
- * band are kept, so every layer of the band is covered alike (ADR 0009 "Height", BAL-15). The counts are raised by the
- * edge factor to make up the cut blocks. The vein's layer, which picks its ore, is the rolled box's middle layer,
- * {@code minY + (sizeY - 1) / 2} before it is cut, clamped into the band (BAL-E4-3).
+ * <p>Which ore a vein is, and where. Its rarity is the request's. Its ore is drawn next from the rarity's ores in proportion
+ * to weight times profile mass inside the request's region, and its box middle last, from that ore's profile inside the
+ * region ({@link OrePicker.Table}; §3.1 "Where each ore sits"). The box's middle is {@code y0 + (sizeY - 1) / 2} of the
+ * rolled box, the definition {@link VeinShape#layerKernel} is tabled with. Its columns fit in the chunk's 16 by 16, so it
+ * never crosses a border (S20). Vertically the box may overhang the region into the band, and the band's floor or top;
+ * only its positions inside the band are kept, and the counts are raised by the edge factor to make up the cut blocks.
  *
  * <p>Veins are placed in ordinal order, and a later vein that takes an earlier vein's position clears the earlier bit,
  * so the extents match the world exactly and the generator writes every bit of every extent (ADR 0004; ARCH-E4-8). A
@@ -81,20 +83,48 @@ public final class VeinPlacer {
 
     /** The baseline's veins for a chunk, from the seed of {@link GenSalts#BASELINE_ORE}. */
     public static Placement placeOre(OreBaseline baseline, VaultVariant variant, Map<Band, OrePicker> pickers, ClipFactors clip, long seed) {
-        return place(baselineRequests(baseline, variant, clip), variant, pickers, seed);
+        return place(baselineRequests(baseline, variant, pickers, clip), variant, pickers, seed);
+    }
+
+    /**
+     * The same, with the edge factors the snapshot carries, computed once on the main thread (R-6): what the generator
+     * calls for every chunk.
+     */
+    public static Placement placeOre(OreBaseline baseline, VaultVariant variant, Map<Band, OrePicker> pickers, EdgeFactors edges,
+            ClipFactors clip, long seed) {
+        requirePickers(variant, pickers);
+        return place(baselineRequests(baseline, variant, edges, clip), variant, pickers, seed);
     }
 
     /**
      * One request per band the variant has and per rarity, in that order: the count times the rarity's edge factor in the
-     * band times the band's clip factor (ADR 0009), spread through the whole band.
+     * band, from that band's picker, times the band's clip factor (ADR 0009), over the whole band.
+     *
+     * @throws IllegalArgumentException when a band the variant has has no picker
      */
-    public static List<VeinRequest> baselineRequests(OreBaseline baseline, VaultVariant variant, ClipFactors clip) {
+    public static List<VeinRequest> baselineRequests(OreBaseline baseline, VaultVariant variant, Map<Band, OrePicker> pickers,
+            ClipFactors clip) {
+        requirePickers(variant, pickers);
+        return baselineRequests(baseline, variant, EdgeFactors.of(baseline, variant, pickers), clip);
+    }
+
+    private static void requirePickers(VaultVariant variant, Map<Band, OrePicker> pickers) {
+        for (Band band : Band.values()) {
+            if (variant.band(band).isPresent() && !pickers.containsKey(band)) {
+                throw new IllegalArgumentException("No ore picker for the " + band + " band");
+            }
+        }
+    }
+
+    /** As {@link #baselineRequests(OreBaseline, VaultVariant, Map, ClipFactors)}, with the edge factors already computed. */
+    public static List<VeinRequest> baselineRequests(OreBaseline baseline, VaultVariant variant, EdgeFactors edges,
+            ClipFactors clip) {
         List<VeinRequest> requests = new ArrayList<>();
         for (Band band : Band.values()) {
             variant.band(band).ifPresent(bounds -> {
                 for (Rarity rarity : Rarity.values()) {
                     OreBaseline.Veins veins = baseline.veins(band, rarity);
-                    double count = veins.perChunk() * baseline.edgeFactor(band, rarity, variant) * clip.of(band);
+                    double count = veins.perChunk() * edges.of(band, rarity) * clip.of(band);
                     double[] sizes = new double[veins.maxSize() - veins.minSize() + 1];
                     for (int i = 0; i < sizes.length; i++) {
                         sizes[i] = veins.minSize() + i;
@@ -126,8 +156,8 @@ public final class VeinPlacer {
                 throw new IllegalArgumentException("A region outside the " + request.band() + " band");
             }
             long ceiling = (long) Math.floor(ClipFactors.CEILING * ClipFactors.HARD_STOP_HEADROOM * 256 * bounds.layers());
+            OrePicker.Table table = picker.table(request.rarity(), request.regionBottomY(), request.regionTopY());
             int count = rollCount(request.perChunk(), random);
-            int regionLayers = request.regionTopY() - request.regionBottomY() + 1;
             for (int v = 0; v < count; v++) {
                 int size = drawSize(request, random);
                 VeinShape.Rolled shape = VeinShape.roll(size, random);
@@ -136,12 +166,13 @@ public final class VeinPlacer {
                 int sizeZ = Math.max(1, shape.sizeZ());
                 int x0 = random.nextInt(16 - sizeX + 1);
                 int z0 = random.nextInt(16 - sizeZ + 1);
-                int y0 = request.regionBottomY() - (sizeY - 1) + random.nextInt(regionLayers + sizeY - 1);
-                double pickDraw = random.nextDouble();
+                double oreDraw = random.nextDouble();
+                double middleDraw = random.nextDouble();
                 if (shape.blocks() == 0) {
                     continue;
                 }
-                int layer = Math.max(bounds.bottomY(), Math.min(bounds.topY(), y0 + (sizeY - 1) / 2));
+                int ore = table.pickOre(oreDraw);
+                int y0 = table.pickMiddle(ore, middleDraw) - (sizeY - 1) / 2;
                 int cutBottom = Math.max(y0, bounds.bottomY());
                 int cutTop = Math.min(y0 + sizeY - 1, bounds.topY());
                 int inside = 0;
@@ -164,8 +195,7 @@ public final class VeinPlacer {
                 }
                 requested.put(request.band(), soFar + inside);
 
-                String ore = picker.pick(request.rarity(), layer, pickDraw);
-                Builder vein = new Builder(placed.size(), ore, request.band(), x0, cutBottom, z0, sizeX, cutTop - cutBottom + 1, sizeZ, request.guide());
+                Builder vein = new Builder(placed.size(), table.id(ore), request.band(), x0, cutBottom, z0, sizeX, cutTop - cutBottom + 1, sizeZ, request.guide());
                 int self = placed.size() + 1;
                 placed.add(vein);
                 for (int by = cutBottom - y0; by <= cutTop - y0; by++) {

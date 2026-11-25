@@ -9,7 +9,7 @@ log Registered Vault orevault:vault_0000000a00004000800000000000000a \(orevault:
 log \[orevault-debug\] tick orevault:vault_0000000a00004000800000000000000a server_tick=
 run execute in orevault:vault_0000000a00004000800000000000000a run forceload add 0 0
 expect Marked chunk
-run execute in orevault:vault_0000000a00004000800000000000000a run setblock 0 251 0 minecraft:gold_block
+run execute in orevault:vault_0000000a00004000800000000000000a run setblock 0 101 0 minecraft:gold_block
 expect Changed the block
-run execute in orevault:vault_0000000a00004000800000000000000a if block 0 251 0 minecraft:gold_block
+run execute in orevault:vault_0000000a00004000800000000000000a if block 0 101 0 minecraft:gold_block
 expect Test passed

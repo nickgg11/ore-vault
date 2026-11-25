@@ -14,9 +14,11 @@ import com.orevault.orevault.core.gen.OreBaseline;
 import com.orevault.orevault.core.gen.VaultVariant;
 import com.orevault.orevault.core.gen.VeinExtent;
 import com.orevault.orevault.core.gen.VeinPlacer;
+import com.orevault.orevault.core.ore.OrePicker;
 import com.orevault.orevault.ore.ClassifiedOres;
 import com.orevault.orevault.ore.OreClassifier;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -126,6 +128,18 @@ public final class VaultChunkGenerator extends ChunkGenerator {
         for (VaultVariant variant : VaultVariant.values()) {
             OreInputs.from(published, variant);
         }
+    }
+
+    /**
+     * The published pickers of a dimension type, for the snapshot holder's clip (ADR 0009, amended 2026-11-21), so
+     * {@code vault} reads them without naming the classifier's record ({@code vault} does not import {@code ore}, ADR
+     * 0001). None for a pack with no classified ore.
+     *
+     * @throws IllegalStateException when nothing is published, as {@link #forVault} does
+     */
+    public static Map<Band, OrePicker> publishedPickers(VaultVariant variant) {
+        Map<Band, OrePicker> pickers = publishedOres().pickers(variant);
+        return pickers == null ? Map.of() : pickers;
     }
 
     /** The classifier's published record, or an {@link IllegalStateException} naming the bug. */

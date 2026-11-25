@@ -16,10 +16,10 @@ class LayerStackTest {
     private static final String GOOD_BASE = """
             {"layers": [
               {"block": "minecraft:bedrock", "thickness": 1},
-              {"block": "minecraft:cobblestone", "thickness": 245},
+              {"block": "minecraft:cobblestone", "thickness": 95},
               {"block": "minecraft:dirt", "thickness": 4},
               {"block": "minecraft:grass_block", "thickness": 1},
-              {"block": "minecraft:air", "thickness": 69}
+              {"block": "minecraft:air", "thickness": 219}
             ]}""";
 
     private static String at(VaultVariant variant, int y) {
@@ -35,11 +35,11 @@ class LayerStackTest {
         VaultVariant base = VaultVariant.BASE;
         assertEquals("minecraft:bedrock", at(base, 0));
         assertEquals("minecraft:stone", at(base, 1));
-        assertEquals("minecraft:stone", at(base, 245));
-        assertEquals("minecraft:dirt", at(base, 246));
-        assertEquals("minecraft:dirt", at(base, 249));
-        assertEquals("minecraft:grass_block", at(base, 250));
-        assertEquals("minecraft:air", at(base, 251));
+        assertEquals("minecraft:stone", at(base, 95));
+        assertEquals("minecraft:dirt", at(base, 96));
+        assertEquals("minecraft:dirt", at(base, 99));
+        assertEquals("minecraft:grass_block", at(base, 100));
+        assertEquals("minecraft:air", at(base, 101));
         assertEquals("minecraft:air", at(base, 319));
     }
 
@@ -50,10 +50,10 @@ class LayerStackTest {
         assertEquals("minecraft:deepslate", at(expanded, -63));
         assertEquals("minecraft:deepslate", at(expanded, -1));
         assertEquals("minecraft:stone", at(expanded, 0));
-        assertEquals("minecraft:stone", at(expanded, 245));
-        assertEquals("minecraft:dirt", at(expanded, 246));
-        assertEquals("minecraft:grass_block", at(expanded, 250));
-        assertEquals("minecraft:air", at(expanded, 251));
+        assertEquals("minecraft:stone", at(expanded, 95));
+        assertEquals("minecraft:dirt", at(expanded, 96));
+        assertEquals("minecraft:grass_block", at(expanded, 100));
+        assertEquals("minecraft:air", at(expanded, 101));
         assertEquals("minecraft:air", at(expanded, 319));
     }
 
@@ -65,9 +65,9 @@ class LayerStackTest {
     }
 
     @Test
-    void theColumnHasSixtyNineBlocksOfOpenAir() {
+    void theColumnHas219BlocksOfOpenAir() {
         long air = LayerStack.builtIn(VaultVariant.BASE).column().stream().filter(LayerStack.AIR::equals).count();
-        assertEquals(69, air);
+        assertEquals(219, air);
     }
 
     @Test
@@ -105,7 +105,7 @@ class LayerStackTest {
     void aThicknessOfZeroFallsBack() {
         List<String> errors = new ArrayList<>();
         String json = GOOD_BASE.replace("\"minecraft:bedrock\", \"thickness\": 1", "\"minecraft:bedrock\", \"thickness\": 0")
-                .replace("\"thickness\": 245", "\"thickness\": 246");
+                .replace("\"thickness\": 95", "\"thickness\": 96");
         assertEquals(LayerStack.builtIn(VaultVariant.BASE), load(json, ANY_BLOCK, errors));
         assertEquals(1, errors.size(), errors.toString());
     }
@@ -114,7 +114,7 @@ class LayerStackTest {
     @Test
     void aHugeThicknessFallsBack() {
         List<String> errors = new ArrayList<>();
-        String json = GOOD_BASE.replace("\"thickness\": 69", "\"thickness\": 2147483647");
+        String json = GOOD_BASE.replace("\"thickness\": 219", "\"thickness\": 2147483647");
         assertEquals(LayerStack.builtIn(VaultVariant.BASE), load(json, ANY_BLOCK, errors));
         assertEquals(1, errors.size(), errors.toString());
     }
@@ -137,7 +137,7 @@ class LayerStackTest {
     @Test
     void aStackOfTheWrongHeightFallsBackAndNamesBothHeights() {
         List<String> errors = new ArrayList<>();
-        String json = GOOD_BASE.replace("\"thickness\": 69", "\"thickness\": 70");
+        String json = GOOD_BASE.replace("\"thickness\": 219", "\"thickness\": 220");
         assertEquals(LayerStack.builtIn(VaultVariant.BASE), load(json, ANY_BLOCK, errors));
         assertEquals(1, errors.size(), errors.toString());
         assertTrue(errors.getFirst().contains("321") && errors.getFirst().contains("320"), errors.getFirst());
@@ -185,8 +185,8 @@ class LayerStackTest {
     @Test
     void aMixedBandFallsBack() {
         List<String> errors = new ArrayList<>();
-        String json = GOOD_BASE.replace("{\"block\": \"minecraft:cobblestone\", \"thickness\": 245},",
-                "{\"block\": \"minecraft:cobblestone\", \"thickness\": 200}, {\"block\": \"minecraft:dirt\", \"thickness\": 45},");
+        String json = GOOD_BASE.replace("{\"block\": \"minecraft:cobblestone\", \"thickness\": 95},",
+                "{\"block\": \"minecraft:cobblestone\", \"thickness\": 50}, {\"block\": \"minecraft:dirt\", \"thickness\": 45},");
         assertEquals(LayerStack.builtIn(VaultVariant.BASE), load(json, ANY_BLOCK, errors));
         assertEquals(1, errors.size(), errors.toString());
         assertTrue(errors.get(0).contains("STONE band"), errors.get(0));
@@ -208,8 +208,8 @@ class LayerStackTest {
     @Test
     void aBandSpelledTwoWaysIsOneFiller() {
         List<String> errors = new ArrayList<>();
-        String json = GOOD_BASE.replace("{\"block\": \"minecraft:cobblestone\", \"thickness\": 245},",
-                "{\"block\": \"stone\", \"thickness\": 100}, {\"block\": \"minecraft:stone\", \"thickness\": 145},");
+        String json = GOOD_BASE.replace("{\"block\": \"minecraft:cobblestone\", \"thickness\": 95},",
+                "{\"block\": \"stone\", \"thickness\": 40}, {\"block\": \"minecraft:stone\", \"thickness\": 55},");
         LayerStack stack = load(json, ANY_BLOCK, errors);
         assertEquals(List.of(), errors);
         assertEquals("stone", stack.column().get(1));
@@ -226,5 +226,27 @@ class LayerStackTest {
         assertEquals(LayerStack.builtIn(VaultVariant.BASE), stack);
         assertEquals(1, errors.size(), errors.toString());
         assertTrue(errors.get(0).contains("cave_air"), errors.get(0));
+    }
+
+    /**
+     * ADR 0009, amended 2026-11-21: a file written for the layout of 2026-10 (stone to Y=245, grass at Y=250) still sums to
+     * the height and fills Y1..95 with one block, so only the layer above the band can tell. It falls back and says why.
+     */
+    @Test
+    void aFileForTheOldLayoutFallsBackAndSaysSo() {
+        List<String> errors = new ArrayList<>();
+        String json = GOOD_BASE.replace("\"thickness\": 95}", "\"thickness\": 245}").replace("\"thickness\": 219", "\"thickness\": 69");
+        assertEquals(LayerStack.builtIn(VaultVariant.BASE), load(json, ANY_BLOCK, errors));
+        assertEquals(1, errors.size(), errors.toString());
+        assertTrue(errors.getFirst().contains("Y=96") && errors.getFirst().contains("layout of 2026-10"), errors.getFirst());
+    }
+
+    /** The same check on the expanded stack: stone carried past Y=95 by one layer is refused. */
+    @Test
+    void stoneOneLayerPastTheBandIsAProblem() {
+        LayerStack tall = new LayerStack(List.of(new LayerStack.Layer("minecraft:bedrock", 1), new LayerStack.Layer("minecraft:deepslate", 63),
+                new LayerStack.Layer("minecraft:stone", 97), new LayerStack.Layer("minecraft:dirt", 3),
+                new LayerStack.Layer("minecraft:grass_block", 1), new LayerStack.Layer("minecraft:air", 219)));
+        assertTrue(tall.bandFillerProblem(VaultVariant.EXPANDED).orElseThrow().contains("Y=96"));
     }
 }

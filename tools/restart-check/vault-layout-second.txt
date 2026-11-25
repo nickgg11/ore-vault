@@ -1,0 +1,14 @@
+# Second lifetime of the older-layout check (#425, ruling 4). The start-of-server pass (ADR 0007 step 4) finds Vault
+# 0000000c's type file at layout 1, moves the folder to orevault_archive/<team>/layout-1-<time>/ before the restore, and
+# the restore counts it as archived, not skipped. The next create makes a fresh Vault of this layout: grass at Y=100.
+
+log Vault folder .*vault_0000000c00004000800000000000000c was generated under layout 1 \(stone to Y=245\), older than this build's layout 2; archived to .*orevault_archive.*0000000c-0000-4000-8000-00000000000c.*layout-1-
+log Restored 0 Vaults, skipped 0, archived 1 of an older layout
+run orevault vault create 0000000c-0000-4000-8000-00000000000c base
+expect type=orevault:ore_vault$
+run execute in orevault:vault_0000000c00004000800000000000000c run forceload add 0 0
+expect Marked chunk
+run execute in orevault:vault_0000000c00004000800000000000000c if block 0 100 0 minecraft:grass_block
+expect Test passed
+run execute in orevault:vault_0000000c00004000800000000000000c if block 0 101 0 minecraft:air
+expect Test passed

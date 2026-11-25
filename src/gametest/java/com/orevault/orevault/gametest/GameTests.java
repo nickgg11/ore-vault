@@ -115,6 +115,7 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_IDEMPOTENT = function("vault/find_or_create_is_idempotent");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_DAMAGED = function("vault/damaged_type_file_refuses");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_RESTORE_TYPE = function("vault/restore_reads_the_folders_type");
+    private static final ResourceKey<Consumer<GameTestHelper>> LIFE_OLD_LAYOUT = function("vault/old_layout_is_archived_and_replaced");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_RESTORE_DISBANDED = function("vault/restore_skips_a_disbanded_team");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_RESTORE_UNREADABLE = function("vault/restore_keeps_an_unreadable_teams_vault");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_ABSENT = function("vault/absent_team_file_is_not_unreadable");
@@ -128,6 +129,7 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> PLAYER_RESPAWN = function("player/death_inside_clears_in_vault");
     private static final ResourceKey<Consumer<GameTestHelper>> PLAYER_LOGIN_HOME = function("player/login_from_an_unloaded_vault_goes_home");
     private static final ResourceKey<Consumer<GameTestHelper>> PLAYER_LOGIN_OTHER = function("player/login_in_another_teams_vault_goes_home");
+    private static final ResourceKey<Consumer<GameTestHelper>> PLAYER_LOGIN_OLD_LAYOUT = function("player/login_under_an_older_layout_goes_home");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_RESTORE_NO_FOLDER = function("vault/restore_refuses_a_team_with_no_folder");
     private static final ResourceKey<Consumer<GameTestHelper>> PLAYER_LOGIN_STUCK = function("player/failed_login_move_keeps_in_vault");
     private static final ResourceKey<Consumer<GameTestHelper>> RETURN_BUILT = function("travel/return_portal_built_on_first_entry");
@@ -258,6 +260,7 @@ public final class GameTests {
             registry.register(LIFE_IDEMPOTENT, VaultLifecycleTests::findOrCreateIsIdempotentAndWritesOnlyTheTypeFile);
             registry.register(LIFE_DAMAGED, unchecked(VaultLifecycleTests::aDamagedTypeFileRefusesTheVault));
             registry.register(LIFE_RESTORE_TYPE, unchecked(VaultLifecycleTests::restoreReadsTheTypeFromTheFolder));
+            registry.register(LIFE_OLD_LAYOUT, unchecked(VaultLifecycleTests::aFolderOfTheOldLayoutIsArchivedAndReplaced));
             registry.register(LIFE_RESTORE_DISBANDED, unchecked(VaultLifecycleTests::restoreSkipsADisbandedTeam));
             registry.register(LIFE_RESTORE_UNREADABLE, unchecked(VaultLifecycleTests::restoreKeepsTheVaultOfAnUnreadableTeam));
             registry.register(LIFE_ABSENT, VaultLifecycleTests::anAbsentTeamFileIsNotUnreadable);
@@ -271,6 +274,7 @@ public final class GameTests {
             registry.register(PLAYER_RESPAWN, VaultLifecycleTests::aDeathInsideClearsInVaultAtRespawn);
             registry.register(PLAYER_LOGIN_HOME, VaultLifecycleTests::aLoginRecordedInAVaultThatDidNotLoadGoesHome);
             registry.register(PLAYER_LOGIN_OTHER, VaultLifecycleTests::aLoginInsideAnotherTeamsVaultGoesHome);
+            registry.register(PLAYER_LOGIN_OLD_LAYOUT, VaultLifecycleTests::aLoginRecordedUnderAnOlderLayoutGoesHomeFromTheFreshVault);
             registry.register(LIFE_RESTORE_NO_FOLDER, VaultLifecycleTests::restoreRefusesATeamWithNoFolder);
             registry.register(PLAYER_LOGIN_STUCK, VaultLifecycleTests::aLoginMoveThatFailsKeepsInVault);
             registry.register(RETURN_BUILT, ReturnPortalTests::builtOnTheFirstEntry);
@@ -309,9 +313,9 @@ public final class GameTests {
                 TEAM_DATA_DISBAND_LOST, WORLDGEN_NO_FEATURES, WORLDGEN_FIRST_FREE, WORLDGEN_PLAN_WRITTEN, WORLDGEN_FILLER,
                 WORLDGEN_OTHER_AIR, LIFE_RESTORE_NO_TABLE,
                 DEBUG_VAULT_CREATE, DEBUG_BREAK_RESTORED, LIFE_LOGIN, LIFE_TICKS, LIFE_IDEMPOTENT, LIFE_DAMAGED,
-                LIFE_RESTORE_TYPE, LIFE_RESTORE_DISBANDED, LIFE_RESTORE_UNREADABLE, LIFE_ABSENT, TRAVEL_SAVED_AFTER,
+                LIFE_RESTORE_TYPE, LIFE_OLD_LAYOUT, LIFE_RESTORE_DISBANDED, LIFE_RESTORE_UNREADABLE, LIFE_ABSENT, TRAVEL_SAVED_AFTER,
                 TRAVEL_BOUNCED, TRAVEL_HOME, TRAVEL_FAKE, PLAYER_ROUND_TRIP, PLAYER_NO_IN_VAULT, PLAYER_DEATH,
-                PLAYER_RESPAWN, PLAYER_LOGIN_HOME, PLAYER_LOGIN_OTHER, LIFE_RESTORE_NO_FOLDER, PLAYER_LOGIN_STUCK,
+                PLAYER_RESPAWN, PLAYER_LOGIN_HOME, PLAYER_LOGIN_OTHER, PLAYER_LOGIN_OLD_LAYOUT, LIFE_RESTORE_NO_FOLDER, PLAYER_LOGIN_STUCK,
                 RETURN_BUILT, RETURN_ONE, RETURN_TIERS, RETURN_REBUILT, ARRIVAL_PILLAR, RETURN_BLOCKED, ARRIVAL_TORCH,
                 FROZEN_IDS, ORE_CLASSES, ORE_FEATURES, ORE_NO_ENTRY, ORE_TWO_RUNS, ORE_PUBLISHED, DEBUG_DENSITY_REFUSES,
                 DEBUG_DENSITY_PLAN)) {

@@ -162,8 +162,11 @@ the other marks say where they came from.
      written.
    - The folder exists: read the type file and use its `variant`. Its `layout` (ADR 0005 section 3a) must be
      the current one, 2. A layout-1 folder reaches this step only when ADR 0007's start-of-server pass
-     failed to archive it, and a layout above 2 comes from a newer mod version; both are refused as an
-     unknown type is, below. If the file is missing, cannot be read, or
+     could not move it aside, and a layout above 2 comes from a newer mod version; both are refused as an
+     unknown type is, below, except that the layout-1 refusal says so: the player gets
+     `message.orevault.vault_layout_archive_failed` ("This Vault is from an older layout and could not be
+     moved aside. Ask an operator to check the server log."), not the damaged-save line, since the save is
+     intact and only the move failed (#425, R-4). If the file is missing, cannot be read, or
      names neither `orevault:ore_vault` nor `orevault:ore_vault_expanded`, log at ERROR naming the path,
      register nothing and return. On the portal path the player is refused entry with a message (a lang
      key, the Writer's). Nothing writes into that folder and nothing guesses a type, because the file is the
@@ -253,11 +256,15 @@ and a team file that is absent or unreadable does not stop a Vault from being re
    (creation step 2); the Vault is not registered and counts as skipped, and a player who logged out inside
    it is caught by login case 1. A folder of layout 1 is not here: the start-of-server pass moved it to the
    archive and handed restore its team id on a second list, `layoutArchivedTeamIds`, which restore does not
-   register (the team has no folder until its next portal entry) and keeps for the session, so that login
-   case 1 tells a player who logged out inside it `message.orevault.vault_layout_archived` ("Your team's
-   Vault was made with an older layout and has been archived. Go through the portal again for a new one.")
-   instead of the generic line. It counts as archived, not skipped, in step 7's log.
-7. Log the count restored and the count skipped, and the reason for each skip.
+   register (the team has no folder until its next portal entry) and uses only for step 7's count: it counts
+   as archived, not skipped. Nothing is kept for the session. The login line comes from `in_vault`'s own
+   `layout` (login case 0, below), which holds across any number of restarts and after a teammate has made
+   the fresh Vault (#425, R-1). A layout-1 folder the pass could not move aside is skipped with the reason
+   "it is from an older layout and could not be moved aside; the ERROR from the start-of-server pass names
+   why".
+7. Log the counts restored, skipped and archived, and the reason for each skip, as one line: `Restored 2
+   Vaults, skipped 4, archived 1 of an older layout`. The line keeps its old prefix, `Restored N Vaults,
+   skipped M`, so `tools/restart-check` and the playtest scripts still match it.
 
 A solo player who is in a party keeps their solo Vault on disk and it is restored like any other: its team
 id is still the player's personal team, which FTB Teams never deletes. The cost is one `ServerLevel` per
@@ -266,12 +273,21 @@ party.
 
 ### The `in_vault` login check
 
-`in_vault` on the player attachment (ADR 0005) names the Vault the player is in: the team id and that
-team's `vault_generation` at entry. It is set on entering a Vault and cleared on leaving, both watched
+`in_vault` on the player attachment (ADR 0005) names the Vault the player is in: the team id, that
+team's `vault_generation` at entry, and the layout it was entered under (`layout`, added by #425; a tag
+written without it reads as 1, the layout every earlier build wrote). It is set on entering a Vault and cleared on leaving, both watched
 through the dimension change and the per-tick guard of §11 Vault Session State, not through the portal
 code. On `PlayerLoggedInEvent` (game bus), which fires at the end of `placeNewPlayer` before the first
 tick, the cases are tried in this order:
 
+0. `in_vault` is set and its `layout` is below the current one: the Vault it names was archived by the
+   start-of-server pass, or is the fresh one a teammate has since made in its place, which is not where the
+   player logged out. Teleport to `return_pos` as in 1 and clear `in_vault`, with
+   `message.orevault.vault_layout_archived` ("Your team's Vault was made with an older layout and has been
+   archived. Go through the portal again for a new one."), or `message.orevault.vault_layout_archive_failed`
+   when the team's folder is still a layout-1 one the pass could not move aside. Tried first because the
+   fresh Vault would otherwise pass cases 1 to 3 with `vault_generation` unchanged and leave the player
+   standing at old-layout coordinates in it (#425, R-1/A-1).
 1. `in_vault` is set and the player is not in that Vault's level (the level was skipped, archived or
    failed to restore; vanilla has put them in the Overworld at Vault coordinates): teleport to `return_pos`,
    or to the Overworld respawn point when it is absent; clear `in_vault`; log the player and the reason.
@@ -491,14 +507,17 @@ with two lines in QA's regression list, both required on any PR that changes `ne
   and a team file of garbage bytes; (c) `vault_zzz`; (d) a Vault whose type file is garbage bytes; (e) a
   Vault with region files and no type file; (f) a Vault whose type file names `orevault:nonsense`. Pass: (a)
   and (b) restored, (b) under the expanded type; a WARN naming `vault_zzz`; one ERROR naming (b)'s team file
-  path; one ERROR naming the type file path of each of (d), (e) and (f); "restored 2, skipped 4" with a
+  path; one ERROR naming the type file path of each of (d), (e) and (f); "Restored 2 Vaults, skipped 4" with a
   reason per skip; the bytes of (b)'s team file and of (d) and (f)'s type files unchanged, and the file
   lists of (d), (e) and (f) unchanged. A seventh folder, (g), a Vault with region files and a type file
   with no `layout` (2026-11-21): moved by the start-of-server pass to
   `<world>/orevault_archive/<teamUuid>/layout-1-<time>/` with its files byte-identical, one WARN naming both
   paths, not restored, and counted as "archived 1"; a player whose `in_vault` names it logs in at their
   return position with `message.orevault.vault_layout_archived`; that team's next portal entry creates a
-  folder whose type file has `layout` 2. The pass on its own is "restored 2, archived 1, skipped 4". Second case: a team id on `resetTeamIds` with no folder is
+  folder whose type file has `layout` 2. With (g) the line is `Restored 2 Vaults, skipped 4, archived 1 of an older layout`, the code's order. A
+  player whose `in_vault` was written under layout 1 is sent home at a later start too, after a teammate
+  has made the fresh Vault (the gametest `player/login_under_an_older_layout_goes_home`). Case (g) at a real
+  start is `tools/restart-check/vault-layout-*.txt`. Second case: a team id on `resetTeamIds` with no folder is
   registered, and its new folder holds a type file with `data_version` 1 and the variant its ownership
   gives. Third case: a folder holding only the type file's temp file is restored as a new Vault, the temp
   file gone and the type file written. The end-to-end cases (a damaged team file across two restarts, a

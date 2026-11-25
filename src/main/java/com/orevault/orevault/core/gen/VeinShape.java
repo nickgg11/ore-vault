@@ -49,11 +49,23 @@ public final class VeinShape {
 
     /**
      * Mean box height of a vein of this size, weighted by the blocks each roll placed: E[blocks × h] / E[blocks]. Not the
-     * plain mean box height. ADR 0009's edge factor averages {@code H / (H + h - 1)} over blocks, and taller boxes hold more
-     * of them; the plain mean understates deepslate's factor (Balancer, BAL-E4-5).
+     * plain mean box height: a box spread evenly through a band keeps {@code H / (H + h - 1)} of its blocks, averaged over
+     * blocks, and taller boxes hold more of them (Balancer, BAL-E4-5). Gravel and clay blobs are still spread evenly; ore
+     * veins follow their ores' profiles since 2026-11-21 and read {@link #layerKernel} instead (ADR 0009).
      */
     public static double blockWeightedBoxHeight(int size) {
         return VeinShapeTables.BLOCK_WEIGHTED_BOX_HEIGHT[checkTabled(size)];
+    }
+
+    /** How far from its box middle a vein can place a block, either way: the reach of {@link #layerKernel}. */
+    public static final int KERNEL_REACH = VeinShapeTables.KERNEL_REACH;
+
+    /**
+     * Mean blocks a vein of this size places at each offset from its box middle {@code y0 + (sizeY - 1) / 2}, index
+     * {@code offset + }{@link #KERNEL_REACH} (ADR 0009, amended 2026-11-21, D2). A copy.
+     */
+    public static double[] layerKernel(int size) {
+        return VeinShapeTables.LAYER_KERNEL[checkTabled(size)].clone();
     }
 
     /**

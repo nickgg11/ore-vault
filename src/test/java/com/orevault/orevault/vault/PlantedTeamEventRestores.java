@@ -8,6 +8,6 @@ import net.minecraft.server.MinecraftServer;
 final class PlantedTeamEventRestores {
     void planted(MinecraftServer server) {
         VaultDimensions.restoreOne(server, UUID.randomUUID());
-        VaultDimensions.restoreAll(server, List.of());
+        VaultDimensions.restoreAll(server, List.of(), List.of());
     }
 }

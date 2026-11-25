@@ -34,7 +34,7 @@ class PlayerDataTest {
         CompoundTag tag = new PlayerData(Optional.of(HOME), Optional.of(INSIDE)).write();
         assertEquals(Set.of("data_version", "return_pos", "in_vault"), tag.keySet());
         assertEquals(Set.of("dim", "x", "y", "z"), tag.getCompoundOrEmpty("return_pos").keySet());
-        assertEquals(Set.of("team", "generation"), tag.getCompoundOrEmpty("in_vault").keySet());
+        assertEquals(Set.of("team", "generation", "layout"), tag.getCompoundOrEmpty("in_vault").keySet());
     }
 
     @Test
@@ -79,13 +79,29 @@ class PlayerDataTest {
         return tag;
     }
 
+    /**
+     * The first build's tag has no {@code layout} in {@code in_vault}: it reads as layout 1, which every such entry was
+     * written under (#425), and writes back with that layout added and nothing else changed.
+     */
     @Test
-    void theVersionOneFixtureReadsAndWritesTheSameTag() {
+    void theVersionOneFixtureReadsAsLayoutOneAndWritesItBack() {
         CompoundTag fixture = versionOneFixture();
         PlayerData data = read(fixture);
         assertEquals(new PlayerData(Optional.of(new ReturnPos("minecraft:the_nether", -40, 70, 12)),
-                Optional.of(new InVault(TEAM, 0))), data);
-        assertEquals(fixture, data.write());
+                Optional.of(new InVault(TEAM, 0, 1))), data);
+        CompoundTag expected = fixture.copy();
+        expected.getCompoundOrEmpty("in_vault").putInt("layout", 1);
+        assertEquals(expected, data.write());
+    }
+
+    /** An entry this build makes is under the current layout, 2, and a written layout reads back as written. */
+    @Test
+    void aNewEntryIsUnderTheCurrentLayout() {
+        assertEquals(2, INSIDE.layout());
+        assertEquals(2, PlayerData.DEFAULTS.withInVault(INSIDE).write().getCompoundOrEmpty("in_vault").getIntOr("layout", 0));
+        CompoundTag fixture = versionOneFixture();
+        fixture.getCompoundOrEmpty("in_vault").putInt("layout", 2);
+        assertEquals(Optional.of(new InVault(TEAM, 0, 2)), read(fixture).inVault());
     }
 
     @Test

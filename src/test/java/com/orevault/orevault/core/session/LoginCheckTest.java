@@ -12,6 +12,31 @@ class LoginCheckTest {
     private static final UUID TEAM = UUID.fromString("00000000-0000-0000-0000-00000000000a");
     private static final UUID OTHER = UUID.fromString("00000000-0000-0000-0000-00000000000b");
 
+    /**
+     * #425, ADR 0002 restore step 6: the two-player case. B logged out inside the team's layout-1 Vault; the start archived
+     * it; A re-entered, which made a fresh Vault under the same key and generation. B is placed in it at old coordinates,
+     * and without the layout every other case says stay.
+     */
+    @Test
+    void aRecordFromAnOlderLayoutIsSentHomeInTheFreshVault() {
+        assertEquals(Outcome.SEND_HOME_OLDER_LAYOUT, LoginCheck.decide(new Facts(TEAM, 0, TEAM, false, 0, TEAM, 1)));
+    }
+
+    /** The same record with the Vault not loaded (nobody re-entered yet): the older layout is said, not case 1's silence. */
+    @Test
+    void aRecordFromAnOlderLayoutIsSentHomeOutsideToo() {
+        assertEquals(Outcome.SEND_HOME_OLDER_LAYOUT, LoginCheck.decide(new Facts(TEAM, 0, null, false, 0, TEAM, 1)));
+        assertEquals(Outcome.SEND_HOME_OLDER_LAYOUT, LoginCheck.decide(new Facts(TEAM, 0, OTHER, true, 3, OTHER, 1)));
+    }
+
+    /** A record under the current layout is judged by the other cases; no record at all is never an older layout. */
+    @Test
+    void theCurrentLayoutOrNoRecordIsNotAnOlderLayout() {
+        assertEquals(Outcome.STAY, LoginCheck.decide(new Facts(TEAM, 0, TEAM, false, 0, TEAM, 2)));
+        assertEquals(Outcome.STAY, LoginCheck.decide(new Facts(null, 0, TEAM, false, 0, TEAM, 1)));
+        assertEquals(Outcome.SEND_HOME, LoginCheck.decide(new Facts(TEAM, 0, null, false, 0, TEAM, 2)));
+    }
+
     @Test
     void aPlayerOutsideAnyVaultWithNothingRecordedStays() {
         assertEquals(Outcome.STAY, LoginCheck.decide(new Facts(null, 0, null, false, 0, TEAM)));

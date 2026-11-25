@@ -67,7 +67,7 @@ class VaultTypeFileTest {
 
     @Test
     void theGoldenKeySetIsPinned() {
-        assertEquals(Set.of("data_version", "variant"), VaultTypeFile.toTag(VaultVariant.BASE).keySet());
+        assertEquals(Set.of("data_version", "variant", "layout"), VaultTypeFile.toTag(VaultVariant.BASE).keySet());
     }
 
     @Test
@@ -76,6 +76,7 @@ class VaultTypeFileTest {
         CompoundTag root = NbtIo.readCompressed(typeFile(), NbtAccounter.unlimitedHeap());
         assertEquals(1, root.getIntOr("data_version", 0));
         assertEquals("orevault:ore_vault_expanded", root.getStringOr("variant", ""));
+        assertEquals(2, root.getIntOr("layout", 0));
     }
 
     @Test
@@ -112,14 +113,77 @@ class VaultTypeFileTest {
         assertTrue(warnings.getFirst().contains("99"), warnings.getFirst());
     }
 
+    /** Every file written before {@code layout} existed is this fixture, and was generated with stone to Y=245. */
     @Test
-    void theVersionOneFixtureReadsAndWritesTheSameTag() throws IOException {
+    void theVersionOneFixtureWithNoLayoutIsLayoutOne() throws IOException {
         CompoundTag fixture = new CompoundTag();
         fixture.putInt("data_version", 1);
         fixture.putString("variant", "orevault:ore_vault_expanded");
         writeTag(fixture);
+        assertEquals(Optional.of(new VaultTypeFile.Type(VaultVariant.EXPANDED, 1)),
+                VaultTypeFile.readType(typeFile(), warnings::add, errors::add));
+        assertEquals(List.of(), errors);
+        assertEquals(List.of(), warnings);
+    }
+
+    /** A folder of the old layout still here is a move that failed: a level is never loaded from it. */
+    @Test
+    void anOlderLayoutIsRefusedForALevelNamingTheLayout() throws IOException {
+        CompoundTag fixture = new CompoundTag();
+        fixture.putInt("data_version", 1);
+        fixture.putString("variant", "orevault:ore_vault_expanded");
+        writeTag(fixture);
+        assertEquals(Optional.empty(), read());
+        assertEquals(1, errors.size(), errors.toString());
+        assertTrue(errors.getFirst().contains(typeFile().toString()) && errors.getFirst().contains("layout 1"), errors.getFirst());
+    }
+
+    @Test
+    void anOlderLayoutFolderIsRefusedByThePortalAndNothingIsWritten() throws IOException {
+        CompoundTag fixture = new CompoundTag();
+        fixture.putInt("data_version", 1);
+        fixture.putString("variant", "orevault:ore_vault");
+        writeTag(fixture);
+        byte[] before = Files.readAllBytes(typeFile());
+        assertEquals(Optional.empty(), openOrCreate(VaultVariant.BASE));
+        assertArrayEquals(before, Files.readAllBytes(typeFile()));
+        assertEquals(List.of("orevault_vault.dat"), folderFiles());
+    }
+
+    @Test
+    void theCurrentFixtureReadsAndWritesTheSameTag() throws IOException {
+        CompoundTag fixture = new CompoundTag();
+        fixture.putInt("data_version", 1);
+        fixture.putString("variant", "orevault:ore_vault_expanded");
+        fixture.putInt("layout", 2);
+        writeTag(fixture);
         assertEquals(Optional.of(VaultVariant.EXPANDED), read());
         assertEquals(fixture, VaultTypeFile.toTag(VaultVariant.EXPANDED));
+    }
+
+    /** A newer build's folder: refused like an unknown type, since this build cannot know its terrain. */
+    @Test
+    void aLayoutAboveTheCurrentIsRefused() throws IOException {
+        CompoundTag tag = VaultTypeFile.toTag(VaultVariant.BASE);
+        tag.putInt("layout", VaultTypeFile.CURRENT_LAYOUT + 1);
+        writeTag(tag);
+        assertEquals(Optional.empty(), VaultTypeFile.readType(typeFile(), warnings::add, errors::add));
+        assertEquals(1, errors.size(), errors.toString());
+        assertTrue(errors.getFirst().contains("layout 3"), errors.getFirst());
+    }
+
+    /** A layout that is not a whole number from 1 is damage, never read as the old layout and archived. */
+    @Test
+    void aDamagedLayoutIsRefused() throws IOException {
+        CompoundTag text = VaultTypeFile.toTag(VaultVariant.BASE);
+        text.putString("layout", "two");
+        writeTag(text);
+        assertEquals(Optional.empty(), VaultTypeFile.readType(typeFile(), warnings::add, errors::add));
+        CompoundTag zero = VaultTypeFile.toTag(VaultVariant.BASE);
+        zero.putInt("layout", 0);
+        writeTag(zero);
+        assertEquals(Optional.empty(), VaultTypeFile.readType(typeFile(), warnings::add, errors::add));
+        assertEquals(2, errors.size(), errors.toString());
     }
 
     @Test

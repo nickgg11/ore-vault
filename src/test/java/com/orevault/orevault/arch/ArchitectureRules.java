@@ -166,10 +166,12 @@ final class ArchitectureRules {
                                 .should().callMethodWhere(calling(VAULT + ".VaultDimensions", "findOrCreate")),
                         List.of("PlantedLoginCreatesAVault")),
                 // Restore registers a Vault with no folder only for a finished reset; the root start listener is its one caller.
+                // The start-of-server pass moves folders, so it runs only there too, before any Vault is registered (A-6).
                 new Rule("7: only the root start listener restores", null,
                         noClasses().that().doNotHaveFullyQualifiedName(BASE + ".OreVault")
                                 .and().doNotHaveFullyQualifiedName(VAULT + ".VaultDimensions")
-                                .should().callMethodWhere(calling(VAULT + ".VaultDimensions", "restoreAll", "restoreOne")),
+                                .should().callMethodWhere(calling(VAULT + ".VaultDimensions", "restoreAll", "restoreOne",
+                                        "archiveOldLayouts")),
                         List.of("PlantedTeamEventRestores")),
                 new Rule("8: mixin reaches only core.wear", BASE + ".mixin",
                         noClasses().that().resideInAPackage(BASE + ".mixin")

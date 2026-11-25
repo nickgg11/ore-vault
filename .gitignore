@@ -52,3 +52,6 @@ repo/
 logs/
 run/
 
+
+# Python bytecode from docs/research scripts
+__pycache__/

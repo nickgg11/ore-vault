@@ -27,12 +27,12 @@ class ChunkPlanTest {
     private static final int SIDE = 5;
 
     private static Map<Long, ChunkPlan> plans(VaultVariant variant, Map<Band, OrePicker> pickers, List<int[]> order, boolean interleave) {
-        GenSnapshot snapshot = GenSnapshot.of(variant, 2, GenerationTiers.NONE);
+        GenSnapshot snapshot = GenSnapshot.of(variant, 2, pickers, GenerationTiers.NONE);
         Map<Long, ChunkPlan> plans = new HashMap<>();
         for (int[] chunk : order) {
             plans.put(key(chunk), ChunkPlan.of(OreBaseline.BASE, variant, pickers, snapshot, TEAM, chunk[0], chunk[1]));
             if (interleave) {
-                ChunkPlan.of(OreBaseline.BASE, variant, pickers, GenSnapshot.of(variant, 0, GenerationTiers.NONE), OTHER, chunk[1], chunk[0]);
+                ChunkPlan.of(OreBaseline.BASE, variant, pickers, GenSnapshot.of(variant, 0, pickers, GenerationTiers.NONE), OTHER, chunk[1], chunk[0]);
             }
         }
         return plans;
@@ -79,7 +79,7 @@ class ChunkPlanTest {
     void thePlanIsThePlacersWithTheirOwnSalts() {
         VaultVariant variant = VaultVariant.EXPANDED;
         Map<Band, OrePicker> pickers = OrePickers.forVariant(variant, VanillaOres.candidates());
-        GenSnapshot snapshot = GenSnapshot.of(variant, 3, GenerationTiers.NONE);
+        GenSnapshot snapshot = GenSnapshot.of(variant, 3, pickers, GenerationTiers.NONE);
         ChunkPlan plan = ChunkPlan.of(OreBaseline.BASE, variant, pickers, snapshot, TEAM, -4, 9);
         VeinPlacer.Placement ore = VeinPlacer.placeOre(OreBaseline.BASE, variant, pickers, ClipFactors.NONE,
                 ChunkSeed.of(TEAM, 3, -4, 9, GenSalts.BASELINE_ORE));
@@ -94,8 +94,8 @@ class ChunkPlanTest {
     void aResetGivesFreshVeins() {
         VaultVariant variant = VaultVariant.BASE;
         Map<Band, OrePicker> pickers = OrePickers.forVariant(variant, VanillaOres.candidates());
-        assertNotEquals(ChunkPlan.of(OreBaseline.BASE, variant, pickers, GenSnapshot.of(variant, 0, GenerationTiers.NONE), TEAM, 0, 0),
-                ChunkPlan.of(OreBaseline.BASE, variant, pickers, GenSnapshot.of(variant, 1, GenerationTiers.NONE), TEAM, 0, 0));
+        assertNotEquals(ChunkPlan.of(OreBaseline.BASE, variant, pickers, GenSnapshot.of(variant, 0, pickers, GenerationTiers.NONE), TEAM, 0, 0),
+                ChunkPlan.of(OreBaseline.BASE, variant, pickers, GenSnapshot.of(variant, 1, pickers, GenerationTiers.NONE), TEAM, 0, 0));
     }
 
     /** The snapshot's clip reaches the placer: a clipped deepslate band places fewer deepslate veins. */
@@ -103,8 +103,9 @@ class ChunkPlanTest {
     void theSnapshotsClipReachesThePlacer() {
         VaultVariant variant = VaultVariant.EXPANDED;
         Map<Band, OrePicker> pickers = OrePickers.forVariant(variant, VanillaOres.candidates());
-        ChunkPlan open = ChunkPlan.of(OreBaseline.BASE, variant, pickers, new GenSnapshot(variant, 0, ClipFactors.NONE), TEAM, 1, 1);
-        ChunkPlan clipped = ChunkPlan.of(OreBaseline.BASE, variant, pickers, new GenSnapshot(variant, 0, new ClipFactors(1, 0.5)), TEAM, 1, 1);
+        EdgeFactors edges = EdgeFactors.of(OreBaseline.BASE, variant, pickers);
+        ChunkPlan open = ChunkPlan.of(OreBaseline.BASE, variant, pickers, new GenSnapshot(variant, 0, ClipFactors.NONE, edges), TEAM, 1, 1);
+        ChunkPlan clipped = ChunkPlan.of(OreBaseline.BASE, variant, pickers, new GenSnapshot(variant, 0, new ClipFactors(1, 0.5), edges), TEAM, 1, 1);
         assertTrue(deepslateVeins(clipped) < 0.6 * deepslateVeins(open), deepslateVeins(clipped) + " against " + deepslateVeins(open));
     }
 
@@ -115,7 +116,7 @@ class ChunkPlanTest {
     /** A pack with no classified ore: no veins, still gravel and clay. */
     @Test
     void noPickersPlaceGravelAndClayOnly() {
-        ChunkPlan plan = ChunkPlan.of(OreBaseline.BASE, VaultVariant.BASE, Map.of(), GenSnapshot.of(VaultVariant.BASE, 0, GenerationTiers.NONE), TEAM, 0, 0);
+        ChunkPlan plan = ChunkPlan.of(OreBaseline.BASE, VaultVariant.BASE, Map.of(), GenSnapshot.of(VaultVariant.BASE, 0, Map.of(), GenerationTiers.NONE), TEAM, 0, 0);
         assertTrue(plan.ore().veins().isEmpty());
         assertFalse(plan.ore().hardStopped());
         assertTrue(plan.blobs().gravel().length > 0);
@@ -124,6 +125,6 @@ class ChunkPlanTest {
     @Test
     void aSnapshotOfTheOtherVariantIsRefused() {
         assertThrows(IllegalArgumentException.class, () -> ChunkPlan.of(OreBaseline.BASE, VaultVariant.BASE, Map.of(),
-                GenSnapshot.of(VaultVariant.EXPANDED, 0, GenerationTiers.NONE), TEAM, 0, 0));
+                GenSnapshot.of(VaultVariant.EXPANDED, 0, Map.of(), GenerationTiers.NONE), TEAM, 0, 0));
     }
 }

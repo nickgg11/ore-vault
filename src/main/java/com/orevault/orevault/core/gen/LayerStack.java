@@ -27,10 +27,11 @@ public record LayerStack(List<Layer> layers) {
     private static final String DIRT = "minecraft:dirt";
     private static final String GRASS = "minecraft:grass_block";
 
-    private static final List<Layer> SURFACE = List.of(new Layer(DIRT, 4), new Layer(GRASS, 1), new Layer(AIR, 69));
-    private static final LayerStack BASE = new LayerStack(stack(new Layer(BEDROCK, 1), new Layer(STONE, 245)));
+    /** Dirt Y96..99, grass Y=100, air Y101..319 (§3.1, layout 2 since 2026-11-21; layout 1 had grass at Y=250). */
+    private static final List<Layer> SURFACE = List.of(new Layer(DIRT, 4), new Layer(GRASS, 1), new Layer(AIR, 219));
+    private static final LayerStack BASE = new LayerStack(stack(new Layer(BEDROCK, 1), new Layer(STONE, 95)));
     private static final LayerStack EXPANDED = new LayerStack(
-            stack(new Layer(BEDROCK, 1), new Layer(DEEPSLATE, 63), new Layer(STONE, 246)));
+            stack(new Layer(BEDROCK, 1), new Layer(DEEPSLATE, 63), new Layer(STONE, 96)));
 
     public LayerStack {
         layers = List.copyOf(layers);
@@ -115,6 +116,10 @@ public record LayerStack(List<Layer> layers) {
      * column must fill the variant's height first. A bad file falls back to the built-in stack for this reason too, so a
      * Vault is never refused over it.
      *
+     * <p>The layer just above the stone band must not be the stone band's filler: a file written for the layout of 2026-10,
+     * stone to Y=245, fills Y1..95 with stone and would pass every other check, leaving 150 layers of stone the generator
+     * never puts ore in. It falls back loudly instead (ADR 0009, amended 2026-11-21; rule 8).
+     *
      * @param cannotFill whether a band cannot be filled with a block, beyond the two spellings of air this class knows
      */
     public Optional<String> bandFillerProblem(VaultVariant variant, Predicate<String> cannotFill) {
@@ -136,6 +141,12 @@ public record LayerStack(List<Layer> layers) {
                 if (!block.equals(filler)) {
                     return Optional.of("has " + block + " at Y=" + y + " in the " + band + " band, which is " + filler + " below it");
                 }
+            }
+            int above = bounds.topY() + 1;
+            if (band == Band.STONE && above - variant.minY() < column.size()
+                    && normalize(column.get(above - variant.minY())).equals(filler)) {
+                return Optional.of("has " + filler + " at Y=" + above + ", above the " + band + " band, which ends at Y="
+                        + bounds.topY() + ", as a stack written for the layout of 2026-10 (stone to Y=245) does");
             }
         }
         return Optional.empty();

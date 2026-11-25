@@ -19,6 +19,8 @@ import com.orevault.orevault.vault.VaultOpenings;
 import com.orevault.orevault.vault.VaultPlayerEvents;
 import com.orevault.orevault.vault.VaultTeamEvents;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.server.MinecraftServer;
@@ -70,15 +72,16 @@ public final class OreVault {
 
     /**
      * The start of the server, in ADR 0002's order. It returns before the tick loop runs, so before any login is placed. The
-     * steps before the restore join here with their stories: ADR 0007's start-of-server pass (E11), which hands the restore
-     * the resets it finished; the ore classifier (E4-S2, here); the pending generation tradeoffs (E9). Each comes before the
+     * steps before the restore join here with their stories: ADR 0007's start-of-server pass, first, which archives Vault
+     * folders of an older layout now (E4-S3b, #425) and with E11 hands the restore the resets it finished; the ore classifier (E4-S2, here); the pending generation tradeoffs (E9). Each comes before the
      * restore, because the snapshot the restore fills reads what they leave: the classifier publishes its table before any
      * Vault level is registered, so no Vault chunk can generate before it (ADR 0009 "Publication").
      */
     private static void onServerStarted(ServerStartedEvent event) {
         MinecraftServer server = event.getServer();
+        Set<UUID> layoutArchived = VaultDimensions.archiveOldLayouts(server);
         classifyOres(server);
-        VaultDimensions.restoreAll(server, List.of());
+        VaultDimensions.restoreAll(server, List.of(), layoutArchived);
     }
 
     /**

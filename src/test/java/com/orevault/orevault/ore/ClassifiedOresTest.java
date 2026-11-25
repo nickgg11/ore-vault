@@ -7,8 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.orevault.orevault.core.gen.Band;
 import com.orevault.orevault.core.gen.VaultVariant;
+import com.orevault.orevault.core.ore.OrePicker;
 import com.orevault.orevault.core.ore.OreTable;
 import com.orevault.orevault.core.ore.Overrides;
+import com.orevault.orevault.core.ore.Rarity;
 import com.orevault.orevault.core.ore.VanillaOres;
 import java.util.List;
 import java.util.Set;
@@ -26,8 +28,10 @@ class ClassifiedOresTest {
         ClassifiedOres ores = ClassifiedOres.of(vanilla(), OreClassifier.OWN_SOURCE);
         assertEquals(Set.of(Band.STONE), ores.pickers(VaultVariant.BASE).keySet());
         assertEquals(Set.of(Band.STONE, Band.DEEPSLATE), ores.pickers(VaultVariant.EXPANDED).keySet());
-        assertEquals("minecraft:emerald_ore", ores.pickers(VaultVariant.BASE).get(Band.STONE)
-                .pick(com.orevault.orevault.core.ore.Rarity.RARE, 100, 0.5));
+        // Rare in Y1..95 is diamond then emerald by id, emerald about 52% (§3.1), so a draw near 1 is emerald.
+        OrePicker.Table rare = ores.pickers(VaultVariant.BASE).get(Band.STONE).table(Rarity.RARE);
+        assertEquals("minecraft:emerald_ore", rare.id(rare.pickOre(0.99)));
+        assertEquals("minecraft:diamond_ore", rare.id(rare.pickOre(0.01)));
     }
 
     /** No ore at all: nothing to pick from, and the record says so rather than throwing at start-up. */
