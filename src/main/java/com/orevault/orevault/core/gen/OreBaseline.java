@@ -37,7 +37,7 @@ public record OreBaseline(Map<Band, Map<Rarity, Veins>> ore, Map<Band, Blobs> gr
 
     /**
      * §3.1's baseline. The stone band's counts are the 245-layer band's, 141, 82 and 33 veins and 9 gravel and 3 clay
-     * blobs, times 95/245, written in that exact form so §3.1's density (3.04%, which §4.3 prices) stays exact: 54.67,
+     * blobs, times 95/245, written in that exact form so §3.1's density stays exact (3.0446% in closed form, which the level curve reads, §4.3): 54.67,
      * 31.80 and 12.80 veins, 3.49 and 1.16 blobs (ADR 0009, amended 2026-11-21). The deepslate band did not move.
      */
     public static final OreBaseline BASE = new OreBaseline(

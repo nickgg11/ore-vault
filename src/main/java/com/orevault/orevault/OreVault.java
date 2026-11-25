@@ -3,8 +3,12 @@ package com.orevault.orevault;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.orevault.orevault.config.ConfigReload;
 import com.orevault.orevault.config.OreVaultServerConfig;
+import com.orevault.orevault.core.curve.LevelCurve;
+import com.orevault.orevault.core.gen.OreBaseline;
 import com.orevault.orevault.core.ore.Overrides;
+import com.orevault.orevault.core.tree.TreeConstants;
 import com.orevault.orevault.data.GenSnapshots;
+import com.orevault.orevault.data.LevelCurves;
 import com.orevault.orevault.data.PlayerAttachment;
 import com.orevault.orevault.debug.DebugCommands;
 import com.orevault.orevault.debug.VaultTickLog;
@@ -18,6 +22,7 @@ import com.orevault.orevault.vault.VaultDimensions;
 import com.orevault.orevault.vault.VaultOpenings;
 import com.orevault.orevault.vault.VaultPlayerEvents;
 import com.orevault.orevault.vault.VaultTeamEvents;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -81,6 +86,7 @@ public final class OreVault {
         MinecraftServer server = event.getServer();
         Set<UUID> layoutArchived = VaultDimensions.archiveOldLayouts(server);
         classifyOres(server);
+        publishLevelCurve();
         VaultDimensions.restoreAll(server, List.of(), layoutArchived);
     }
 
@@ -101,10 +107,31 @@ public final class OreVault {
         }
     }
 
+    /**
+     * §4.3 steps 3 to 7: the curve from the baseline record and the two {@code [resonance]} values, computed once. The log
+     * line is a cheap check that the server read the config it was given (old PR #116).
+     */
+    private static void publishLevelCurve() {
+        double targetPlayHours = OreVaultServerConfig.targetPlayHours();
+        double curveDivisor = OreVaultServerConfig.curveDivisor();
+        LevelCurve curve = LevelCurve.derive(OreBaseline.BASE, targetPlayHours, curveDivisor);
+        LevelCurves.publish(curve);
+        LOGGER.info("Ore Vault level curve: {} levels, {} points each, {} Resonance over {} hours (curve_divisor {}); level 1"
+                        + " costs {}, level {} costs {}",
+                curve.levelCap(), TreeConstants.POINTS_PER_LEVEL, resonance(curve.totalThousandths()), targetPlayHours,
+                curveDivisor, resonance(curve.costThousandths(1)), curve.levelCap(),
+                resonance(curve.costThousandths(curve.levelCap())));
+    }
+
+    private static String resonance(long thousandths) {
+        return BigDecimal.valueOf(thousandths, 3).toPlainString();
+    }
+
     /** A second world in one client must not find this one's entries under the same personal team id (ADR 0002). */
     private static void onServerStopped(ServerStoppedEvent event) {
         VaultDimensions.clear();
         GenSnapshots.clear();
         OreClassifier.clear();
+        LevelCurves.clear();
     }
 }

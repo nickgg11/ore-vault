@@ -457,11 +457,13 @@ growthFactor = LAST_TO_FIRST_RATIO ^ (1 / (LEVEL_CAP - 1))
 
 | Milestone | Level | ≈ Hours in |
 |---|---|---|
-| First nodes purchasable | 1–2 | < 1 |
-| Mid-tree branches open | 8–10 | about 2 to 3.5 |
-| Vault Expansion keystone, for a team heading straight for it | 18 | ~15 |
-| Vault Expansion keystone, for a team that does not aim for it | about 29 | about 85 |
+| First nodes purchasable | 1–2 | 0.15 and 0.32 (about 9 and 19 minutes) |
+| Mid-tree branches open | 8–10 | 2.2 to 3.35 |
+| Vault Expansion keystone, for a team heading straight for it | 18 | 14.1 |
+| Vault Expansion keystone, for a team that does not aim for it | about 29 | 85.2 |
 | About 70% of the tree owned (150 points) | 30 | 100 |
+
+The figures come from the Java curve (E5-S1, #240): 219.2 ore an hour × 3.484 Resonance an ore is 763.8 Resonance an hour, so the 100-hour total is 76,383 Resonance, level 1 costs 113.1 and level 30 costs 11,312. `CurveSpecFiguresTest` holds them, and the named-layer figures below, to within 1%, so a change to the baseline, the mix or a Resonance value fails it until this section is restated.
 
 **What "100 hours" means.** A team that buys nodes as it earns the points (Nick, 2026-10-26). The curve above is derived for a miner who buys nothing, and every node that raises ore or Resonance shortens it. When T14's measurements show by how much, the curve is stretched to fit and the nodes keep their strength.
 
@@ -478,16 +480,16 @@ Ore an hour outside its band means the curve is re-derived at T14, under "What 1
 
 | Measure | Y65..95, the first stone under the dirt | Y17..32 |
 |---|---|---|
-| Ore broken an hour | 147 to 221 (expected 184) | 170 to 255 (expected 212) |
-| Level 1 reached | 11 to 17 minutes in (expected about 14) | 8 to 12 minutes in (expected about 10) |
-| Level 2 reached | 23 to 35 minutes in (expected about 29) | 17 to 25 minutes in (expected about 21) |
+| Ore broken an hour | 148 to 222 (expected 184.7) | 170 to 255 (expected 212.3) |
+| Level 1 reached | 11 to 16 minutes in (expected 13.7) | 8 to 12 minutes in (expected 9.8) |
+| Level 2 reached | 24 to 36 minutes in (expected 29.7) | 17 to 26 minutes in (expected 21.4) |
 
-Y1..16 is expected at about 329 ore an hour, and the Balancer gives its figures in the session script if the session mines there. Whether about 14 minutes to level 1 near the surface is too slow for a first session was put to Nick on 2026-11-25 and is not yet answered; until he answers, the curve stands as derived.
+Y1..16 is expected at about 329 ore an hour, and the Balancer gives its figures in the session script if the session mines there. About 14 minutes to level 1 near the surface is kept (Nick, 2026-11-25): making level 1 cheaper would change the curve's shape and move every milestone above.
 
 **What gates node effects before T14.** No story that implements a node effect merges until:
 
 1. `/orevault density` is inside S12's tolerance (§3.1 "How the baseline is checked") on Nick's PC. Met in E4-S3b (#425).
-2. E5-S1's curve computes its rate from `OreBaseline` as 7,200 × the stone band's closed-form density × the rarity shares × the Resonance values (§4.2), with no literal for the product, and restates the band-average milestones above and the named-layer figures in this section to within 1% of their unrounded values. The named-layer figures are closed form before overlap, as §3.1's slab table is (`DensityTally.expectedSlabDensity` divided by one minus the overlap), not the placed figures the density command judges.
+2. E5-S1's curve computes its rate from `OreBaseline` as 7,200 × the stone band's closed-form density × the rarity shares × the Resonance values (§4.2), with no literal for the product, and restates the band-average milestones above and the named-layer figures in this section to within 1% of their unrounded values. Met in E5-S1 (#240), held by `CurveSpecFiguresTest`. The named-layer figures are closed form before overlap, as §3.1's slab table is (`DensityTally.expectedSlabDensity` divided by one minus the overlap), not the placed figures the density command judges.
 3. The curve arithmetic check in the E5-S9 PR passes. A JUnit test generates a synthetic per-minute log from the Java curve at 7,200 blocks an hour × the closed-form density the curve reads, and it is committed as the parser's fixture, with the JUnit test asserting the committed file matches what it would generate. The parser must return the fixture's ore an hour and Resonance an hour to within 1% and its level times to the minute, which is all a per-minute log resolves; a fixture at 5,000 blocks an hour (about 152 ore an hour) must make the parser exit non-zero, shown once.
 
 The third check shares its input with the curve, 7,200 × the density, so it catches parser and curve bugs and cannot catch a wrong rate. Blocks an hour, the one input no automated check measures, is measured at T14, and a wrong rate costs a re-derivation there with the nodes keeping their strength. Spec and balance stories for node effects (E9-S1a, #215, and stories like it) are not gated: they can be written, opened and merged before the three checks pass. Stories that implement an effect can be written and opened, and wait only to merge.
@@ -2669,12 +2671,14 @@ Each value below is added to the config in the ticket that first reads it, never
 [resonance]
     # Target hours of play to reach Resonance level 30.
     # Read once at server start; takes effect on the next world load.
+    # Range: 1 to 10,000.
     target_play_hours = 100
 
     # Divides the total Resonance required across the whole curve.
     # 2.0 = half the grind; 0.5 = double it. The shape of the curve is unchanged,
     # so every level requirement in the skill tree keeps its intended pacing.
     # Read once at server start; takes effect on the next world load.
+    # Range: 0.01 to 100.
     curve_divisor = 1.0
 
 [chunk_loading]
@@ -3129,9 +3133,9 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Resonance orb spawns on ore broken by hand in a Vault — 2/5/12.5 by rarity (§4.2); unclassified blocks and machine breaks award nothing — E5-S3 (#264); ×1.75 when Tithe consumed the block — E9-S31 (#335)
 - [ ] Orb floats to the nearest team member within 8 blocks, vanilla's orb radius (§4.2), server-authoritative; only members of the owning team attract or collect it — E5-S2 (#260); Resonance Magnetism raises it to 12 / 16 / 24 — E9-S39 (#347)
 - [x] Team Resonance pool, stored in thousandths, and `level_reached`, each reading 0 from a tag written without it (§11) — E6-S1 (#241)
-- [ ] Level curve: cap 30, 5 points per level (§4.3) — E5-S1 (#240)
-- [ ] `[resonance]` config block: `target_play_hours`, `curve_divisor` — E5-S1 (#240)
-- [ ] Team scaling: `sum / teamSize × (1 + 0.1 × (teamSize − 1))`, with no `ASSUMED_TEAM_SIZE` anywhere (§4.2) — E5-S1 (#240)
+- [x] Level curve: cap 30, 5 points per level, thresholds in thousandths derived at server start from `OreBaseline` (§4.3) — E5-S1 (#240)
+- [x] `[resonance]` config block: `target_play_hours` (1 to 10,000) and `curve_divisor` (0.01 to 100), each read once at server start — E5-S1 (#240)
+- [x] Team scaling: `sum / teamSize × (1 + 0.1 × (teamSize − 1))`, rounded once to thousandths, with no `ASSUMED_TEAM_SIZE` anywhere (§4.2) — E5-S1 (#240)
 - [ ] Skill point award at every level crossed, announced to every online member — E5-S4 (#274); the announcement becomes a toast with the Tome shell — E7-S6 (#291)
 - [ ] Drop pipeline: one `BlockDropsEvent` listener with the six ordered stages and the break context (§11) — E5-S3 (#264); the accumulators and the effects view — E9-S2 (#306); the Fortune re-roll with the first Fortune node — E9-S26 (#330)
 - [ ] Vault session state: trips keyed by player UUID, a per-tick guard that ends the trip of a player no longer in a Vault (a death exit fires no dimension-change event), logout ending a trip (§11) — E9-S5 (#309)

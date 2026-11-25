@@ -119,7 +119,7 @@ Pure packages. None imports Minecraft, NeoForge or Mojang classes, so all of it 
 | `core.ore` | `Rarity` with its base Resonance (§4.2); the rarity rule (100 expected blocks a chunk, 4.5 blocks a vein, §4.2); `OreTable`, the classifier's output as plain values; `HeightProfile` (ADR 0009) | nothing |
 | `core.layout` | `TreeLayout` over the layout file (§6 Layout data): nodes with id, skill, class, marks, ring, required mod or tag, exclusive group and drawing position; edges; each fork's `petalAnchor`; the layout hash. `NodeClass` and the marks. Distances by breadth-first search, the cheapest path, and the layout rules §6 lists | `com.google.gson`, to read the file from the jar |
 | `core.tree` | `SkillTree`: buyable when adjacent to an owned node and the ring is at most team level; refund by connectivity and price (§4.4); a skill's tier as the count of its owned nodes; fork choices; exclusive pairs; hidden and dormant nodes; points from level. The `Refusal` enum with its lang keys (ADR 0006). The tree constants (`LEVEL_CAP`, `POINTS_PER_LEVEL`, refund prices, §11 Tree Layout Data). The effects constants keyed by skill id and count owned. The reserved ids (§6.1). The team vote rule for Volatile Veins and Molten Seam (Q1). No clusters, anchors, gates or node costs | `core.layout` |
-| `core.curve` | `LevelCurve`, `TeamScaling` | `core.gen` (the baseline's density and shares), `core.ore` |
+| `core.curve` | `LevelCurve`, `TeamScaling` | `core.gen` (the baseline's density and shares), `core.ore`, `core.tree` (`LEVEL_CAP`), `core.team` (the size floor) |
 | `core.gen` | `OreBaseline` (ADR 0009), `VeinShape`, `VeinPlacer`, `GenSnapshot` and `TeamEffects` with their pure builders from plain values (ADR 0003), vein extents (ADR 0004), the chunk seed, `VaultVariant` with the heights duplicated from the dimension type files, `LayerStack`, the §3.1 stacks and the rules of their file | `core.ore`, `core.tree`, `com.google.gson`, to read the layer file |
 | `core.mining` | `ResonanceBonuses`, the drop-stage outcome (§11 Drop Pipeline), `MiningSpeedModifiers` | `core.ore`, `core.tree`, `core.vein` (the completion outcome the vein index decrement returns to the drop pipeline, ADR 0004) |
 | `core.vein` | Vein index arithmetic: remaining count, completion, abandon; `VeinRecord`, the header bit layout, and the encoder from `core.gen`'s vein extents (ADR 0004); the explored map's cells, window, compass choice and shade (ADR 0004 Amendment 1) | `core.gen` (`VeinExtent`) |
@@ -411,3 +411,9 @@ Amended 2026-11-01 for #206 (Architect): the `team` row loses `data` and `vault`
 `team` hands plain ids to whoever subscribes (ADR 0002), so `vault`, not `team`, marks the outbox on a team change.
 
 Amended 2026-11-01 by E3-S5 (#233): `VaultVariant` and `LayerStack` join the `core.gen` row, and the row may read Gson, as `core.layout`'s does. The generator is in `worldgen`, which may not import `vault`, so the stack it is handed has to sit in `core`, and there its file's rules are unit tests. The `vault` row keeps the adapter that finds the file in the data packs, `VaultLayerConfig`.
+
+Amended 2026-11-25 by E5-S1 (#240): the `core.curve` row may import `core.tree` and `core.team`. The curve has 30
+levels because the tree's `LEVEL_CAP` says so, and team scaling divides by a size that `TeamSize` floors at 1, so each
+reads the one constant rather than a copy. `core.tree.TreeConstants` starts with `LEVEL_CAP` and `POINTS_PER_LEVEL`
+for the curve, its first reader, ahead of E8a-S1 (#208), which adds the rest of the tree's constants beside them.
+Neither package imports `core.curve`, so the rows keep no cycle.

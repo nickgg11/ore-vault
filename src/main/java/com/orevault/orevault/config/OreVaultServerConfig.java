@@ -9,11 +9,31 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  */
 public final class OreVaultServerConfig {
     public static final ModConfigSpec SPEC;
+    public static final ModConfigSpec.DoubleValue TARGET_PLAY_HOURS;
+    public static final ModConfigSpec.DoubleValue CURVE_DIVISOR;
     public static final ModConfigSpec.BooleanValue ENABLE_DEBUG_COMMANDS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> ORE_CLASSIFICATION_OVERRIDES;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+        builder.translation("orevault.configuration.resonance").push("resonance");
+        // Ranges from old #24, confirmed by the Balancer for E5-S1 (#240). Both are read once at server start, because
+        // moving a threshold mid-session would move it under teams that had already passed it (§4.3 step 3).
+        TARGET_PLAY_HOURS = builder
+                .comment("Target hours of play to reach Resonance level 30.",
+                        "Read once at server start; takes effect on the next world load.")
+                .translation("orevault.configuration.resonance.target_play_hours")
+                .worldRestart()
+                .defineInRange("target_play_hours", 100.0, 1.0, 10_000.0);
+        CURVE_DIVISOR = builder
+                .comment("Divides the total Resonance required across the whole curve.",
+                        "2.0 = half the grind; 0.5 = double it. The shape of the curve is unchanged,",
+                        "so every level requirement in the skill tree keeps its intended pacing.",
+                        "Read once at server start; takes effect on the next world load.")
+                .translation("orevault.configuration.resonance.curve_divisor")
+                .worldRestart()
+                .defineInRange("curve_divisor", 1.0, 0.01, 100.0);
+        builder.pop();
         builder.translation("orevault.configuration.ore_classification").push("ore_classification");
         // The list check is only "a string": NeoForge resets the whole list when one element fails it, so each entry is
         // validated by core.ore.Overrides instead, and a bad one is logged and skipped on its own (§10).
@@ -50,6 +70,16 @@ public final class OreVaultServerConfig {
      */
     public static boolean enableDebugCommands() {
         return SPEC.isLoaded() && ENABLE_DEBUG_COMMANDS.getAsBoolean();
+    }
+
+    /** Read once, by the level curve at server start (§4.3 step 3); the default if the config has not loaded. */
+    public static double targetPlayHours() {
+        return SPEC.isLoaded() ? TARGET_PLAY_HOURS.getAsDouble() : TARGET_PLAY_HOURS.getDefault();
+    }
+
+    /** Read once, by the level curve at server start (§4.3 step 5); the default if the config has not loaded. */
+    public static double curveDivisor() {
+        return SPEC.isLoaded() ? CURVE_DIVISOR.getAsDouble() : CURVE_DIVISOR.getDefault();
     }
 
     /** Read once, by the ore classifier at server start (§10, §11); empty if the config has not loaded. */
