@@ -2,7 +2,7 @@ package com.orevault.orevault.core.tree;
 
 /**
  * The tree's constants that are not layout (§11 Tree Layout Data). The level curve (E5-S1, #240) is their first reader, so
- * the class starts with the two it needs; E8a-S1 (#208) adds the refund prices and the windows beside them.
+ * the class starts with the two it needs; E8a-S1 (#208) adds the refund prices and the free refund windows (§4.4) beside them.
  */
 public final class TreeConstants {
     /** The level cap of both trees (§4.3 step 1). */

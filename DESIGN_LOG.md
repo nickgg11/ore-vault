@@ -25,7 +25,7 @@ keep it.
 
 | Decision | Instead of | Why |
 |---|---|---|
-| The curve keeps its shape: 30 levels, the last 100 times the first, the base derived so the levels sum to the total. Level 1 costs 113.1 Resonance at the default config, 13.7 minutes at Y65..95 and 9.8 at Y17..32 | A cheaper level 1, either a lower first-to-last ratio or a hand-set first level | Either changes the curve's shape and moves every milestone in §4.3, including the level 18 keystone at about 14 hours. The first session still opens its first nodes inside half an hour wherever the player mines. |
+| The curve keeps its shape: 30 levels, the last 100 times the first, the base derived so the levels sum to the total. Level 1 costs 113.1 Resonance at the default config, 13.7 minutes at Y65..95 and 9.8 at Y17..32 | A cheaper level 1, either a lower first-to-last ratio or a hand-set first level | Either changes the curve's shape and moves every milestone in §4.3, including the level 18 keystone at about 14 hours. Level 1 and its 5 points still arrive inside 14 minutes in each stone-band layer §4.3 names. |
 | §4.3's figures are restated from the Java curve (E5-S1, #240) to one decimal and held within 1% by a unit test | The rounded figures of the earlier drafts (level 18 at "~15" hours, level 2 near the surface at "about 29" minutes) | Rounded to whole numbers, several were 2% to 6% off the curve the code computes, outside the 1% the node-effect gate asks for. |
 
 **What this supersedes.** The "Still open" item of the entry below is answered.

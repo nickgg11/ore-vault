@@ -1,5 +1,6 @@
 package com.orevault.orevault.core.curve;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.orevault.orevault.core.gen.Band;
@@ -33,10 +34,14 @@ class CurveSpecFiguresTest {
         assertWithin(11_312, CURVE.costThousandths(30) / 1_000.0, "level 30's cost");
         assertWithin(8.9, minutesTo(1, RESONANCE_PER_HOUR), "minutes to level 1");
         assertWithin(19.3, minutesTo(2, RESONANCE_PER_HOUR), "minutes to level 2");
+        assertBand(175, 263, LevelCurve.oresPerHour(BASE), "ore an hour");
+        assertBand(7, 11, minutesTo(1, RESONANCE_PER_HOUR), "minutes to level 1");
+        assertBand(15, 23, minutesTo(2, RESONANCE_PER_HOUR), "minutes to level 2");
     }
 
     @Test
     void theMilestones() {
+        assertWithin(0.148, hoursTo(1), "hours to level 1");
         assertWithin(0.32, hoursTo(2), "hours to level 2");
         assertWithin(2.20, hoursTo(8), "hours to level 8");
         assertWithin(3.35, hoursTo(10), "hours to level 10");
@@ -51,6 +56,9 @@ class CurveSpecFiguresTest {
         assertWithin(184.7, layer.oresPerHour(), "Y65..95 ore an hour");
         assertWithin(13.7, minutesTo(1, layer.resonancePerHour()), "Y65..95 minutes to level 1");
         assertWithin(29.7, minutesTo(2, layer.resonancePerHour()), "Y65..95 minutes to level 2");
+        assertBand(148, 222, layer.oresPerHour(), "Y65..95 ore an hour");
+        assertBand(11, 16, minutesTo(1, layer.resonancePerHour()), "Y65..95 minutes to level 1");
+        assertBand(24, 36, minutesTo(2, layer.resonancePerHour()), "Y65..95 minutes to level 2");
     }
 
     @Test
@@ -59,6 +67,9 @@ class CurveSpecFiguresTest {
         assertWithin(212.3, layer.oresPerHour(), "Y17..32 ore an hour");
         assertWithin(9.8, minutesTo(1, layer.resonancePerHour()), "Y17..32 minutes to level 1");
         assertWithin(21.4, minutesTo(2, layer.resonancePerHour()), "Y17..32 minutes to level 2");
+        assertBand(170, 255, layer.oresPerHour(), "Y17..32 ore an hour");
+        assertBand(8, 12, minutesTo(1, layer.resonancePerHour()), "Y17..32 minutes to level 1");
+        assertBand(17, 26, minutesTo(2, layer.resonancePerHour()), "Y17..32 minutes to level 2");
     }
 
     @Test
@@ -94,6 +105,12 @@ class CurveSpecFiguresTest {
 
     private static double minutesTo(int level, double resonancePerHour) {
         return CURVE.thresholdThousandths(level) / 1_000.0 / resonancePerHour * 60;
+    }
+
+    /** §4.3's pacing bands are ±20% of the expected value, rounded to whole numbers. */
+    private static void assertBand(long low, long high, double expected, String what) {
+        assertEquals(low, Math.round(0.8 * expected), what + ": the band's low end");
+        assertEquals(high, Math.round(1.2 * expected), what + ": the band's high end");
     }
 
     private static void assertWithin(double stated, double actual, String what) {

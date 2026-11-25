@@ -16,6 +16,13 @@ class TeamScalingTest {
     }
 
     @Test
+    void theRateIsTheSpecFormulaForEverySizeUpToEight() {
+        for (int size = 1; size <= 8; size++) {
+            assertEquals(1 + 0.1 * (size - 1), TeamScaling.rateVsSolo(size), 1e-12, "size " + size);
+        }
+    }
+
+    @Test
     void sizeZeroOrUnknownReadsAsOne() {
         assertEquals(1.0, TeamScaling.rateVsSolo(0), 1e-12);
         assertEquals(1.0, TeamScaling.rateVsSolo(-3), 1e-12);

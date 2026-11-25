@@ -52,7 +52,10 @@ public final class LevelCurve {
         return SOLO_BLOCKS_PER_HOUR * baseline.density(Band.STONE, VaultVariant.BASE);
     }
 
-    /** Mean base Resonance of one ore in the stone band, weighted by the placed-block shares the generator places. */
+    /**
+     * Mean base Resonance of one ore in the stone band, weighted by its rarity shares counted as placed blocks (§4.3 step
+     * 4).
+     */
     public static double resonancePerOre(OreBaseline baseline) {
         double sum = 0;
         for (Rarity rarity : Rarity.values()) {
@@ -87,19 +90,32 @@ public final class LevelCurve {
         return ofTotal(Math.round(totalResonance * THOUSANDTHS));
     }
 
-    /** Spreads a total over the levels as {@code baseCost * growthFactor ^ n}, the last level absorbing the drift. */
+    /**
+     * Spreads a total over the levels as {@code baseCost * growthFactor ^ n}. Each threshold is rounded from the cumulative
+     * double, never summed from rounded costs (ADR 0005 section 3), and the last is the total, so the costs, the differences
+     * of the thresholds, sum to it exactly and the last level absorbs the drift (§4.3 step 6).
+     */
     static LevelCurve ofTotal(long totalThousandths) {
         int levels = TreeConstants.LEVEL_CAP;
         double growth = growthFactor();
         double baseCost = totalThousandths * (growth - 1) / (Math.pow(growth, levels) - 1);
         long[] costs = new long[levels];
-        long sum = 0;
-        for (int n = 0; n < levels - 1; n++) {
-            costs[n] = Math.round(baseCost * Math.pow(growth, n));
-            sum += costs[n];
+        long previous = 0;
+        for (int n = 0; n < levels; n++) {
+            long threshold = n == levels - 1
+                    ? totalThousandths
+                    : Math.round(baseCost * (Math.pow(growth, n + 1) - 1) / (growth - 1));
+            costs[n] = threshold - previous;
+            previous = threshold;
         }
-        costs[levels - 1] = totalThousandths - sum;
         return new LevelCurve(costs);
+    }
+
+    /** The unrounded pool for {@code level} on a curve of this total; for the test that thresholds are rounded from it. */
+    static double cumulative(long totalThousandths, int level) {
+        double growth = growthFactor();
+        double baseCost = totalThousandths * (growth - 1) / (Math.pow(growth, TreeConstants.LEVEL_CAP) - 1);
+        return baseCost * (Math.pow(growth, level) - 1) / (growth - 1);
     }
 
     public int levelCap() {

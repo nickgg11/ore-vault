@@ -35,6 +35,15 @@ class LevelCurveTest {
     }
 
     @Test
+    void eachThresholdIsRoundedFromTheCumulativeDouble() {
+        long total = DEFAULT.totalThousandths();
+        for (int level = 1; level < 30; level++) {
+            assertEquals(Math.round(LevelCurve.cumulative(total, level)), DEFAULT.thresholdThousandths(level), "level " + level);
+        }
+        assertEquals(total, DEFAULT.thresholdThousandths(30));
+    }
+
+    @Test
     void theLastLevelCostsAHundredTimesTheFirst() {
         double ratio = (double) DEFAULT.costThousandths(30) / DEFAULT.costThousandths(1);
         assertEquals(100.0, ratio, 0.01);
@@ -77,7 +86,8 @@ class LevelCurveTest {
         assertEquals(expectedPerOre, LevelCurve.resonancePerOre(base), 1e-12);
         assertEquals(7_200 * base.density(Band.STONE, com.orevault.orevault.core.gen.VaultVariant.BASE),
                 LevelCurve.oresPerHour(base), 1e-9);
-        // §4.3: 68/25/7 at 2, 5 and 12.5 is about 3.485 Resonance an ore, and 3.04% of 7,200 is about 219 ore an hour.
+        // 68/25/7 nominal at 2, 5 and 12.5 is 3.485 Resonance an ore; the placed shares give 3.4844. 3.04% of 7,200 is
+        // about 219 ore an hour.
         assertRelative(3.485, LevelCurve.resonancePerOre(base), 0.001);
         assertRelative(219.2, LevelCurve.oresPerHour(base), 0.001);
     }
