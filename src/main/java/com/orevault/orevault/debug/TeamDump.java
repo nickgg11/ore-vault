@@ -2,6 +2,7 @@ package com.orevault.orevault.debug;
 
 import com.orevault.orevault.data.TeamFields;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -30,9 +31,11 @@ record TeamDump(UUID team, Record record, TeamFields fields) {
                 + " disbanded_at=" + (fields.disbandedAt().isPresent() ? fields.disbandedAt().getAsLong() : "none");
     }
 
-    /** Thousandths as Resonance, exactly: through a decimal with scale 3, never a double. */
+    /** Thousandths as Resonance, exactly: through a decimal, never a double. The division by 1,000 has no remainder. */
     static String resonance(long thousandths) {
-        return BigDecimal.valueOf(thousandths, 3).stripTrailingZeros().toPlainString();
+        return BigDecimal.valueOf(thousandths)
+                .divide(BigDecimal.valueOf(TeamFields.THOUSANDTHS_PER_RESONANCE), 3, RoundingMode.UNNECESSARY)
+                .stripTrailingZeros().toPlainString();
     }
 
     /** The reply and log line of {@code /orevault team resonance add}; its fixed token lets the pacing parser skip it. */

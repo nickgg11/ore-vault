@@ -7,5 +7,5 @@ reject unreadable
 run orevault team resonance add 0000000b-0000-4000-8000-00000000000b 1000
 expect resonance_pool=16300 \(16\.3\)$
 run orevault team dump 0000000b-0000-4000-8000-00000000000b
-expect record=ok resonance_pool=16300 \(16\.3\)
+expect record=ok resonance_pool=16300 \(16\.3\) level_reached=0 vault_generation=0 disbanded_at=none$
 nolog cannot be read

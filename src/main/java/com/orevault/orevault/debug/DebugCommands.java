@@ -91,10 +91,14 @@ public final class DebugCommands {
     }
 
     /**
-     * Interim, for the restart check (#241): adds raw thousandths to a team's pool through the award path's own seam,
-     * {@link OreVaultTeamData#addResonance}. It only raises the pool and never touches {@code level_reached}, so no stored
+     * Interim, for the restart check (#241): adds raw thousandths to a team's pool through the seam the award path will
+     * call, {@link OreVaultTeamData#addResonance} (#264). It only raises the pool and never touches {@code level_reached}, so no stored
      * field is lowered (§11). E5-S8's (#279) {@code grant} replaces it once the award exists, because a grant must pay every
      * level it crosses. The line carries the fixed token {@code resonance add} so the pacing parser leaves it out.
+     *
+     * <p>If the team file cannot be read and cannot be copied aside, {@code forWrite} hands back data that is never saved
+     * (ADR 0005 section 2), so the reply shows a pool that is lost at the next start. The dump's {@code record=unreadable}
+     * is how a session sees that state; the restart lists reject it.
      */
     private static int addResonance(CommandSourceStack source, UUID teamId, long thousandths) {
         long pool = OreVaultTeamData.forWrite(source.getServer(), teamId).addResonance(thousandths);

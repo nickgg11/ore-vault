@@ -15,11 +15,11 @@ import net.minecraft.nbt.CompoundTag;
  * so it is in the Vault's folder ({@link VaultTypeFile}).
  *
  * <p>The pool and the level only go up in play. So the type offers an add to the pool and no setter for either: a general
- * setter is the method a later caller lowers the pool with by mistake. Raising {@code level_reached} lands with the award
- * (#274) and the debug wipe, the one path that lowers both (§11), with #275.
+ * setter is the method a later caller lowers the pool with by mistake. The award raises {@code level_reached} (#274). The
+ * debug wipe (#275) is the one path that lowers either field (§11).
  *
- * @param resonancePool lifetime Resonance in thousandths, never reset by a level-up (§4.3, §11; ADR 0005 section 3; plan
- *     ruling R7). Fixed-point so that 20 payments of 0.05 sum to exactly 1; an amount is rounded once, half up, where it
+ * @param resonancePool lifetime Resonance in thousandths, never reset by a level-up (§4.3, §11; ADR 0005 section 3).
+ *     Fixed-point so that 20 payments of 0.05 sum to exactly 1; an amount is rounded once, half up, where it
  *     enters the pool, by its caller
  * @param levelReached the highest level the team has had (§11). Stored on purpose, because a {@code curve_divisor} change
  *     must never take a level back
@@ -27,7 +27,7 @@ import net.minecraft.nbt.CompoundTag;
  * @param disbandedAt overworld game time of the disband, empty for a team not disbanded
  */
 public record TeamFields(long resonancePool, int levelReached, int vaultGeneration, OptionalLong disbandedAt) {
-    /** The pool's unit (ADR 0005 section 3): debug output and readouts divide by this. */
+    /** The pool's unit (ADR 0005 section 3): the team dump divides by this, and readouts will. */
     public static final long THOUSANDTHS_PER_RESONANCE = 1_000L;
     public static final TeamFields DEFAULTS = new TeamFields(0L, 0, 0, OptionalLong.empty());
 
@@ -92,6 +92,9 @@ public record TeamFields(long resonancePool, int levelReached, int vaultGenerati
      * The pool after an amount enters it, already rounded to thousandths and scaled by its caller (ADR 0005 section 3). It
      * stops at the top of a long rather than throwing: a hand-edited pool near the ceiling must not crash the server at the
      * next payment, which runs inside an entity tick (Architect, #241).
+     *
+     * <p>A negative amount throws instead: it can only be a bug in the caller, which a test should catch loudly. An
+     * overflow can only come from an edited file, which no test reaches, so it saturates.
      *
      * @throws IllegalArgumentException for a negative amount: the pool is never lowered
      */

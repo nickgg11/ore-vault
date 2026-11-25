@@ -1,5 +1,5 @@
-# First lifetime of the team data check (#241, E6-S1). A pool is written through the award path's seam with the
-# interim debug add, in two payments with fractions, and dumped before the stop so a failure points at its lifetime.
+# First lifetime of the team data check (#241, E6-S1). A pool is written through the seam the award path will call,
+# with the interim debug add, in two payments with fractions, and dumped before the stop so a failure points at its lifetime.
 # Nothing makes a Vault: team data lives in the server's storage, not a Vault's.
 
 run orevault team dump 0000000b-0000-4000-8000-00000000000b
