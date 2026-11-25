@@ -3,7 +3,9 @@ package com.orevault.orevault.debug;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.arguments.LongArgumentType;
 import com.orevault.orevault.core.gen.VaultVariant;
+import com.orevault.orevault.data.OreVaultTeamData;
 import com.orevault.orevault.vault.VaultDimensions;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,8 +34,9 @@ import org.slf4j.LoggerFactory;
  *
  * <p>The guard sits on each subcommand, never the root: {@code reset vote} and {@code archive} live under the same
  * root and must work with this flag off (#205, amended 2026-10-27). The operator check and the flag answer different
- * questions, so both apply. The flag arrives as a supplier because {@code debug} may not import {@code config}
- * (ADR 0001); the root package hands it over.
+ * questions, so both apply. {@code team} carries the guard on its own node because every subcommand S44 puts under it
+ * (dump, wipe, grant) is debug; a player-facing {@code team} subcommand would move the guard to the leaves. The flag
+ * arrives as a supplier because {@code debug} may not import {@code config} (ADR 0001); the root package hands it over.
  */
 public final class DebugCommands {
     private static final Logger LOG = LoggerFactory.getLogger(DebugCommands.class);
@@ -60,7 +63,47 @@ public final class DebugCommands {
                                 .then(Commands.literal("base").executes(context -> createVault(context, VaultVariant.BASE)))
                                 .then(Commands.literal("expanded")
                                         .executes(context -> createVault(context, VaultVariant.EXPANDED))))));
+        root.then(Commands.literal("team").requires(allowed)
+                .then(Commands.literal("dump")
+                        .then(Commands.argument("team", UuidArgument.uuid())
+                                .executes(context -> dumpTeam(context.getSource(), UuidArgument.getUuid(context, "team")))))
+                .then(Commands.literal("resonance")
+                        .then(Commands.literal("add")
+                                .then(Commands.argument("team", UuidArgument.uuid())
+                                        .then(Commands.argument("thousandths", LongArgumentType.longArg(0L))
+                                                .executes(context -> addResonance(context.getSource(),
+                                                        UuidArgument.getUuid(context, "team"),
+                                                        LongArgumentType.getLong(context, "thousandths"))))))));
         root.then(DensityCommand.node(allowed));
+    }
+
+    /**
+     * S44's team dump, read-only: it goes through {@link OreVaultTeamData#read}, which creates nothing, so dumping a team
+     * with no file leaves it with none (S18). The restart check compares it before and after a stop (ADR 0005 section 6).
+     * E5-S5 (#275) extends it.
+     */
+    private static int dumpTeam(CommandSourceStack source, UUID teamId) {
+        MinecraftServer server = source.getServer();
+        TeamDump.Record record = OreVaultTeamData.isUnreadable(server, teamId) ? TeamDump.Record.UNREADABLE
+                : OreVaultTeamData.hasRecord(server, teamId) ? TeamDump.Record.OK : TeamDump.Record.NONE;
+        print(source, new TeamDump(teamId, record, OreVaultTeamData.read(server, teamId)).line());
+        return 1;
+    }
+
+    /**
+     * Interim, for the restart check (#241): adds raw thousandths to a team's pool through the seam the award path will
+     * call, {@link OreVaultTeamData#addResonance} (#264). It only raises the pool and never touches {@code level_reached}, so no stored
+     * field is lowered (§11). E5-S8's (#279) {@code grant} replaces it once the award exists, because a grant must pay every
+     * level it crosses. The line carries the fixed token {@code resonance add} so the pacing parser leaves it out.
+     *
+     * <p>If the team file cannot be read and cannot be copied aside, {@code forWrite} hands back data that is never saved
+     * (ADR 0005 section 2), so the reply shows a pool that is lost at the next start. The dump's {@code record=unreadable}
+     * is how a session sees that state; the restart lists reject it.
+     */
+    private static int addResonance(CommandSourceStack source, UUID teamId, long thousandths) {
+        long pool = OreVaultTeamData.forWrite(source.getServer(), teamId).addResonance(thousandths);
+        print(source, TeamDump.added(teamId, thousandths, pool));
+        return 1;
     }
 
     /**

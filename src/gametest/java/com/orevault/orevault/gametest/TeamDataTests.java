@@ -69,13 +69,14 @@ final class TeamDataTests {
         return manager().createParty(member, null, "orevault-data-" + member, "", null);
     }
 
-    /** The codec the storage itself uses, from a tag and back to the same tag. */
+    /** The codec the storage itself uses, from a tag and back to the same tag, a pool past an int's range included. */
     static void theCodecRoundTrips(GameTestHelper helper) {
         UUID team = UUID.randomUUID();
-        Tag tag = new TeamFields(3, OptionalLong.of(77L)).write(team);
+        TeamFields fields = new TeamFields(3_000_000_000_000L, 7, 3, OptionalLong.of(77L));
+        Tag tag = fields.write(team);
         Codec<OreVaultTeamData> codec = OreVaultTeamData.codec(team);
         OreVaultTeamData decoded = codec.parse(NbtOps.INSTANCE, tag).getOrThrow();
-        check(helper, "fields", new TeamFields(3, OptionalLong.of(77L)), decoded.fields());
+        check(helper, "fields", fields, decoded.fields());
         check(helper, "tag", tag, codec.encodeStart(NbtOps.INSTANCE, decoded).getOrThrow());
         helper.succeed();
     }
@@ -97,6 +98,35 @@ final class TeamDataTests {
         check(helper, "the overworld's own storage", null, server.overworld().getDataStorage().get(OreVaultTeamData.type(team)));
         check(helper, "a read after the write", OptionalLong.of(5L), OreVaultTeamData.read(server, team).disbandedAt());
         helper.succeed();
+    }
+
+    /**
+     * The pool through the award path's seam, saved and read back from the file on disk, not the cache (#241): a long of
+     * thousandths in the file's {@code data} compound, beside {@code level_reached} at its default.
+     */
+    static void resonanceIsAddedAndSaved(GameTestHelper helper) throws IOException {
+        MinecraftServer server = server(helper);
+        UUID team = UUID.randomUUID();
+        OreVaultTeamData data = OreVaultTeamData.forWrite(server, team);
+        check(helper, "after the first add", 12_500L, data.addResonance(12_500L));
+        check(helper, "after the second add", 15_300L, data.addResonance(2_800L));
+        check(helper, "dirty", true, data.isDirty());
+        server.getDataStorage().saveAndJoin();
+
+        CompoundTag saved = NbtIo.readCompressed(DataPaths.teamFile(server, team), NbtAccounter.unlimitedHeap())
+                .getCompoundOrEmpty("data");
+        Tag pool = saved.get("resonance_pool");
+        check(helper, "the pool's tag type", Tag.TAG_LONG, pool == null ? (byte) -1 : pool.getId());
+        check(helper, "the pool on disk", 15_300L, saved.getLongOr("resonance_pool", -1L));
+        check(helper, "the level on disk", 0, saved.getIntOr("level_reached", -1));
+        check(helper, "a read after the save", 15_300L, OreVaultTeamData.read(server, team).resonancePool());
+        check(helper, "an add of zero marks nothing", false, addZeroDirties(data));
+        helper.succeed();
+    }
+
+    private static boolean addZeroDirties(OreVaultTeamData data) {
+        data.addResonance(0L);
+        return data.isDirty();
     }
 
     /** A read creates nothing, so a player who logs in and never mines has no file (ADR 0005 section 2). */

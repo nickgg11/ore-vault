@@ -87,6 +87,7 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_DISBAND_EMPTY = function("team_data/disband_with_nothing_writes_nothing");
     private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_DISBAND_FOLDER = function("team_data/disband_with_only_a_folder_is_recorded");
     private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_UNREADABLE = function("team_data/unreadable_file_copied_aside");
+    private static final ResourceKey<Consumer<GameTestHelper>> TEAM_DATA_RESONANCE = function("team_data/resonance_added_and_saved");
     private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_BASE = function("worldgen/fills_the_base_stack");
     private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_EXPANDED = function("worldgen/fills_the_expanded_stack");
     private static final ResourceKey<Consumer<GameTestHelper>> WORLDGEN_ONE_READ = function("worldgen/reads_the_snapshot_once_a_chunk");
@@ -110,6 +111,7 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_BREAK_RESTORED = function("debug/break_in_a_restored_vault");
     private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_DENSITY_REFUSES = function("debug/density_refuses_a_level_that_is_not_a_vault");
     private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_DENSITY_PLAN = function("debug/density_tallies_what_the_plan_placed");
+    private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_TEAM_DUMP = function("debug/team_dump_and_resonance_add");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_LOGIN = function("vault/login_creates_no_vault");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_TICKS = function("vault/created_after_the_first_tick_ticks");
     private static final ResourceKey<Consumer<GameTestHelper>> LIFE_IDEMPOTENT = function("vault/find_or_create_is_idempotent");
@@ -232,6 +234,7 @@ public final class GameTests {
             registry.register(TEAM_DATA_DISBAND_EMPTY, unchecked(TeamDataTests::aDisbandWithNothingToArchiveWritesNothing));
             registry.register(TEAM_DATA_DISBAND_FOLDER, unchecked(TeamDataTests::aDisbandWithOnlyAVaultFolderIsRecorded));
             registry.register(TEAM_DATA_UNREADABLE, unchecked(TeamDataTests::anUnreadableFileIsCopiedAsideBeforeTheFirstWrite));
+            registry.register(TEAM_DATA_RESONANCE, unchecked(TeamDataTests::resonanceIsAddedAndSaved));
             registry.register(WORLDGEN_BASE, WorldgenTests::fillsTheBaseStack);
             registry.register(WORLDGEN_EXPANDED, WorldgenTests::fillsTheExpandedStack);
             registry.register(WORLDGEN_ONE_READ, WorldgenTests::readsTheSnapshotOnceAChunk);
@@ -255,6 +258,7 @@ public final class GameTests {
             registry.register(DEBUG_BREAK_RESTORED, unchecked(DebugCommandTests::breakWorksInARestoredVault));
             registry.register(DEBUG_DENSITY_REFUSES, DebugCommandTests::densityRefusesALevelThatIsNotAVault);
             registry.register(DEBUG_DENSITY_PLAN, DebugCommandTests::densityTalliesWhatThePlanPlaced);
+            registry.register(DEBUG_TEAM_DUMP, DebugCommandTests::teamDumpAndResonanceAdd);
             registry.register(LIFE_LOGIN, VaultLifecycleTests::aLoginCreatesNoVault);
             registry.register(LIFE_TICKS, VaultLifecycleTests::aVaultCreatedAfterTheFirstTickTicks);
             registry.register(LIFE_IDEMPOTENT, VaultLifecycleTests::findOrCreateIsIdempotentAndWritesOnlyTheTypeFile);
@@ -318,7 +322,7 @@ public final class GameTests {
                 PLAYER_RESPAWN, PLAYER_LOGIN_HOME, PLAYER_LOGIN_OTHER, PLAYER_LOGIN_OLD_LAYOUT, LIFE_RESTORE_NO_FOLDER, PLAYER_LOGIN_STUCK,
                 RETURN_BUILT, RETURN_ONE, RETURN_TIERS, RETURN_REBUILT, ARRIVAL_PILLAR, RETURN_BLOCKED, ARRIVAL_TORCH,
                 FROZEN_IDS, ORE_CLASSES, ORE_FEATURES, ORE_NO_ENTRY, ORE_TWO_RUNS, ORE_PUBLISHED, DEBUG_DENSITY_REFUSES,
-                DEBUG_DENSITY_PLAN)) {
+                DEBUG_DENSITY_PLAN, TEAM_DATA_RESONANCE, DEBUG_TEAM_DUMP)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
         }
         event.registerTest(DELIBERATE_FAILURE.identifier(),

@@ -1,0 +1,13 @@
+# First lifetime of the team data check (#241, E6-S1). A pool is written through the seam the award path will call,
+# with the interim debug add, in two payments with fractions, and dumped before the stop so a failure points at its lifetime.
+# Nothing makes a Vault: team data lives in the server's storage, not a Vault's.
+
+run orevault team dump 0000000b-0000-4000-8000-00000000000b
+expect record=none resonance_pool=0 \(0\) level_reached=0
+run orevault team resonance add 0000000b-0000-4000-8000-00000000000b 12500
+expect resonance add team=0000000b-0000-4000-8000-00000000000b added=12500 \(12\.5\) resonance_pool=12500 \(12\.5\)$
+run orevault team resonance add 0000000b-0000-4000-8000-00000000000b 2800
+expect resonance_pool=15300 \(15\.3\)$
+run orevault team dump 0000000b-0000-4000-8000-00000000000b
+expect record=ok resonance_pool=15300 \(15\.3\) level_reached=0 vault_generation=0 disbanded_at=none$
+log \[orevault-debug\] resonance add team=0000000b-0000-4000-8000-00000000000b

@@ -16,12 +16,14 @@ import com.orevault.orevault.core.gen.VeinExtent;
 import com.orevault.orevault.core.ore.OreTable;
 import com.orevault.orevault.data.DataPaths;
 import com.orevault.orevault.data.GenSnapshots;
+import com.orevault.orevault.data.OreVaultTeamData;
 import com.orevault.orevault.data.VaultTypeFile;
 import com.orevault.orevault.debug.DensityCommand;
 import com.orevault.orevault.ore.ClassifiedOres;
 import com.orevault.orevault.vault.VaultDimensions;
 import com.orevault.orevault.worldgen.VaultChunkGenerator;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -117,7 +119,7 @@ final class DebugCommandTests {
         CommandNode<CommandSourceStack> root = dispatcher(helper).getRoot().getChild(OreVault.MOD_ID);
 
         check(helper, "flag off: root for a player", true, root.canUse(player));
-        for (String subcommand : List.of("diag", "break", "vault", "density")) {
+        for (String subcommand : List.of("diag", "break", "vault", "density", "team")) {
             CommandNode<CommandSourceStack> node = root.getChild(subcommand);
             check(helper, "flag off: " + subcommand + " for a gamemaster", false, node.canUse(gamemaster));
             withDebugCommands(() -> {
@@ -343,6 +345,36 @@ final class DebugCommandTests {
                 planned.blocks(Band.STONE) > 0 && planned.blocks(Band.DEEPSLATE) > 0);
         check(helper, "every planned block counted", plan.oreBlocks(), counted.blocks(Band.STONE) + counted.blocks(Band.DEEPSLATE));
         check(helper, "the tally against the plan", planned.counts(), counted.counts());
+        helper.succeed();
+    }
+
+    /**
+     * S44's dump and the interim add (#241), as the restart check runs them: a dump of a team with no file says so and
+     * leaves it with none (S18); an add creates the record, and the dump then shows the sum in both units.
+     */
+    static void teamDumpAndResonanceAdd(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        UUID team = UUID.randomUUID();
+        List<String> lines = new ArrayList<>();
+        CommandSourceStack source = source(helper, LevelBasedPermissionSet.OWNER).withSource(recordingTo(lines));
+
+        withDebugCommands(() -> {
+            check(helper, "dump", 1, run(dispatcher(helper), "orevault team dump " + team, source, helper));
+            check(helper, "no record after a dump", false, OreVaultTeamData.hasRecord(server, team));
+            server.getDataStorage().saveAndJoin();
+            check(helper, "no file after a dump", false, Files.exists(DataPaths.teamFile(server, team)));
+            check(helper, "add", 1, run(dispatcher(helper), "orevault team resonance add " + team + " 12500", source, helper));
+            check(helper, "add", 1, run(dispatcher(helper), "orevault team resonance add " + team + " 2800", source, helper));
+            check(helper, "dump", 1, run(dispatcher(helper), "orevault team dump " + team, source, helper));
+        });
+
+        String tag = "[orevault-debug] ";
+        check(helper, "printed", List.of(
+                tag + "team " + team + " record=none resonance_pool=0 (0) level_reached=0 vault_generation=0 disbanded_at=none",
+                tag + "resonance add team=" + team + " added=12500 (12.5) resonance_pool=12500 (12.5)",
+                tag + "resonance add team=" + team + " added=2800 (2.8) resonance_pool=15300 (15.3)",
+                tag + "team " + team + " record=ok resonance_pool=15300 (15.3) level_reached=0 vault_generation=0 disbanded_at=none"),
+                lines);
         helper.succeed();
     }
 }
