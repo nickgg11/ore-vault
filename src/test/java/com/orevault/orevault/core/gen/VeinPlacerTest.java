@@ -162,12 +162,8 @@ class VeinPlacerTest {
         }
     }
 
-    /**
-     * Not yet pinned for E4-S3b (#425): each ore at its own height draws two more doubles per vein and the surface moved
-     * to Y=100, so every vein changed on purpose. Pin from the first run on Nick's PC, the value this test prints. Was
-     * 1853940645, pinned 2026-11-20.
-     */
-    private static final int PINNED_FINGERPRINT = 0;
+    /** Pinned 2026-11-23 from the first run on Nick's PC (#425). Was 1853940645, pinned 2026-11-20. */
+    private static final int PINNED_FINGERPRINT = 1863178634;
 
     /** ADR 0009: the fractional roll's mean over 10,000 seeds is c within three standard errors. */
     @Test
