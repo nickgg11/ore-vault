@@ -14,6 +14,60 @@ Newest first.
 
 ---
 
+## 2026-11-25 — Playtests move to the release epic, and the pacing gate on node effects becomes three checks
+
+**Where this came from.** On 2026-11-25 Nick decided that in-game playtests happen near the end of development, in
+the release epic (E14, #176), and must not block work. The decision came with his request to start Epic 5, and the
+comment moving #261 records it. Epic 4 closed under it: E4-S5 (#261), his ten-minute mine, moved to E14, and its gate on
+generation nodes was lifted in favour of `/orevault density`, which measured the base type's stone band at 2.99% against
+2.99% expected on his PC (E4-S3b, #425, merged as PR #426). That lift was not logged when it happened; this entry records it. Epic 5's plan
+(Manager, reviewed by the architect, balancer, developer, QA, playtester, UI-UX and writer) does the same for the T5
+pacing session, and the spec changed in §3.1, §4.3 (step 4, the pacing check, a new "What gates node effects before
+T14" and the rig's break time), §11 SavedData Pattern, §12 and §13, with `docs/TEAM_REQUIREMENTS.md` (S9, S11, S16, the
+T4, T5, T9 and T14 rows, the order rules and the Manager, Developer, QA, Balancer and Playtester sections) and ADR 0009.
+
+| Decision | Replaced | Reasoning |
+|---|---|---|
+| E4-S5 (#261), the ten-minute mine, moves to T14. Nick's condition on the expanded type's deepslate top slab (2026-11-22, "Decided after the card" in the 2026-11-21 entry) moves with it, and generation nodes wait only for the density command | "Opens after E4-S5" on Epic 5 (#166), and the Manager's "no generation-node ticket until Nick has mined a fresh Vault for ten minutes" | Nick's decision. The density command measures the thing the gate protected, that the Vault holds the ore the curve prices, and it passed. How a fresh Vault feels after ten minutes is still asked, at T14. |
+| E5-S7 (#287), the T5 pacing session, and E5-S12 (#285), the pacing ledger, move to T14 | Epic 5's "No E9 story opens before E5-S7 is inside its bands", and §4.3's "Before any node effect merges, one player mines for 30 minutes" | E5-S7's deliverable is Nick mining for 60 minutes, which is the case his decision names. Every row of the ledger comes from his sessions. One 60-minute session spreads by about ±20% (QA), as wide as the 176 to 264 band, so pooling sessions in the ledger means something only at T14 anyway. |
+| No story that implements a node effect merges until (1) the density command is inside S12's tolerance on Nick's PC, met in E4-S3b (#425); (2) E5-S1's curve computes its rate from `OreBaseline` with no literal and restates §4.3's band-average and named-layer figures to within 1% of their unrounded values; (3) the curve arithmetic check in the E5-S9 PR passes (§4.3 "What gates node effects before T14") | The pacing session as the gate | These are the parts of the old gate that can be checked without Nick playing. The spec says plainly what they cannot catch: a wrong blocks-an-hour rate, which T14 measures. §4.3 "What 100 hours means" already stretches the curve at T14 and keeps the nodes' strength, so a wrong rate costs a re-derivation and nothing that cannot be undone. |
+| "Merges", not "opens". Spec and balance stories for node effects (E9-S1a, #215, and stories like it) are not gated at all | "No E9 story opens" | E9 tickets can be written and opened before the checks pass; only an effect's code waits. #215's own Why calls it spec work that can run while client gates wait, and §12 lets pure logic for later tasks proceed. |
+| The level times are observations at T14 and are not part of the gate | Level 1 at 7 to 11 minutes and level 2 at 15 to 23 as pass or fail in §4.3 | Fed a synthetic log, they come out right by construction. S11's 2026-10-27 amendment had already made them observations, and §4.3 had never been changed to say so, nor to give the 60 minutes. |
+| The rig's break time is stated in §4.3: stone alone 10,286 blocks an hour, deepslate alone about 9,000, the stone band as mined about 9,800, a 1 by 2 tunnel with walking about 7,700 in plain stone and about 7,450 in the band as mined. 7,200 is about 93% to 97% of the tunnel | The first draft's reading, that 7,200 is a 70% duty cycle of 10,286 | 10,286 is continuous breaking of stone alone; nobody mines a tunnel without walking. Against the tunnel the risk is on the slow side: 20% slower is about 125 hours solo to level 30 (89 for a team of five), 40% slower about 167 (119). The Balancer accepted the new gate on condition that Nick was told these figures, and he was, for information, on 2026-11-25. |
+| §12's "No world-facing task opens until Nick has seen the one before it in a client" is lifted. Anything visual still needs his yes on a rendered preview, and a client step that cannot run before T14 is listed as unverified with playtest steps | That rule | It is the general form of the two gates above, and Nick's decision covers it. A rendered preview is not a playtest, and `CLAUDE.md` requires it. |
+| The debug wipe (`/orevault team wipe`, S44) returns `resonance_pool`, `level_reached`, `owned`, `fork_choice`, `bought_by` and the pin to their defaults together, touches no Vault or lifecycle field, and leaves a team with no data file alone. No player-facing action lowers `level_reached` | `level_reached` "never decreases", with no exception (§11, S16) | The Developer found the conflict while planning E5-S5: a pacing session starts from nothing, and a wipe that left `level_reached` would leave the team at its old level with an empty pool, and one that left `owned` would give negative unspent points (Developer, PR 0 review). The wipe is behind the debug flag and removed at T14. |
+| §4.3 step 4 names the closed form the curve reads, 3.0446% before overlap between veins (219.2 ore an hour; the milestones were derived at 3.04%, 218.9); placed blocks are 2.99% | "at the stone band's density as placed" | The old wording was wrong: the curve reads `OreBaseline.BASE.density(Band.STONE, VaultVariant.BASE)`, the closed form, and the density command measures placed blocks, 1.7% under it. The curve prices about 4 ore an hour more than are placed, well inside the band; it is stated, not corrected. The 0.14% between 219.2 and 218.9 is inside E5-S1's 1% check. |
+
+**Rejected.**
+
+- Wait for Nick's session before nodes, keeping the gate as written. Every E9 effect would wait for the release epic,
+  which is what Nick's decision rules out, and what it protects is mostly covered by the density command and the curve
+  test. The one input it measures, blocks an hour, is re-derived at T14 under rules §4.3 already has.
+- The first draft's automated "pacing check" as the third condition: a synthetic per-minute log at 7,200 blocks an hour
+  × the measured density, run through the parser and the curve, judged against 176 to 264 ore an hour with level 1 and
+  level 2 at their expected minutes. The Balancer, QA and the writer each called it circular, independently: the log
+  and the curve are built from the same product, so it passes whatever the real rate is. It stays as the curve
+  arithmetic check, with the Balancer's 1% conditions and QA's failing 5,000 blocks-an-hour fixture, and is not called a
+  pacing check anywhere.
+- 7,200 as a 70% duty cycle of 10,286 (above).
+
+**Still open.**
+
+- Level 1 at about 14 minutes for a player mining the first stone under the dirt (Y65..95; about 10 at Y17..32). The
+  2026-11-21 entry left it as a question for Nick, not a silent re-derivation, and with the pacing session at T14 it
+  was put to him on 2026-11-25 with the Manager's recommendation to keep it. It has to be answered before E5-S1 (#240)
+  merges, since that PR fixes the curve's shape. The curve and §4.3's figures are unchanged until then.
+
+**What this supersedes.**
+
+- In the 2026-11-21 entry, the pacing-band row stands for the bands and the named layers; the session they judge is now
+  at T14. Its "Decided after the card" condition, that the deepslate top slab is measured in Nick's E4-S5 ten-minute
+  mine, stands, and that mine is at T14.
+- The 2026-11-01 entry "The T2 playtest is deferred" is the precedent: a timed balance question deferred because a
+  wrong answer is cheap to fix later.
+
+---
+
 ## 2026-11-21 — Generator playtest (#422): each ore picks its own height, and the Vault starts at Y=100
 
 **Where this came from.** Nick playtested the generator from #422 and saw lapis at Y=220. That was the rule of

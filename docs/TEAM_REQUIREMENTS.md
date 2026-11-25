@@ -31,14 +31,14 @@ section).
 | S6 | Anchor gates as stated points (10/25/45/55/70/100) or as fractions | **Retired 2026-10-26:** the PoE tree has no anchors or gates; see `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree". Was: Fractions of `totalTreeCost`, rounded up: Prospecting 0, Excavation 15, Assay 39, Broad Cut 39, Metallurgy 71, Claim 89, Deep Lore 110, Mastery 160. The point figures date from the 225-point tree. | §6.1 ("pinned to a fraction"); log 2026-09-07; the §6.1 cost columns sum to 354 (parsed) |
 | S7 | `totalTreeCost` over the full registry (354) or excluding conditional content (311) | **Retired 2026-10-26:** every node costs 1 point and points per level are pinned at 5 (§4.3); see `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree". Was: Full registry, every pack: 354, so `pointsPerLevel` is 12. With 311 the tree is not buyable at level 30 (330 points against 347 holdable). The Writer withdrew 311. | §4.3 steps 1 and 3; arithmetic |
 | S8 | A stub node at T5 or the full node data first | The full node data first, as T8a, before T5's point award. **Amended 2026-10-26:** T8a is the node data model and the tree layout file together (§12 T8a): node and skill ids, rings, classes, marks, edges, petals, mod conditions, reserved ids, and the layout tests of §6; no effects. There are no costs (every node is 1 point) and no level requirement besides the ring. Points per level are pinned at 5 (§4.3 step 2), so "with one node, `pointsPerLevel` is 1" is retired. | §4.3 step 3; amended by §4.3 step 2, §6, §12 |
-| S9 | First purchasable node for the loop | Stone Memory T1, bought by debug command at T5 as a technical check: visible on the next stone block, no Resonance or baseline effect. The player-facing loop milestone is the first node bought through the Tome (T8). Vein Expansion T1 is the first T9 generation node, verified with the density command. Guide Vein is not used. | Vein Expansion T1 is +15% over about five veins in ten minutes and a modifier before the measured baseline. Guide Vein is a generation node: it changes only chunks generated after purchase (§6.1 Guide Vein), so it shows nothing near arrival. **Evidence restated 2026-10-27:** the earlier "about +0.5% of a chunk's ore" is retired; since `DESIGN_LOG.md` 2026-10-26 "The baseline measured against vanilla, and Guide Vein made visible", §6.1 puts it at about +32% of a chunk's ore. The ruling stands |
+| S9 | First purchasable node for the loop | Stone Memory T1, bought by debug command at T5 as a technical check: visible on the next stone block, no Resonance or baseline effect. The player-facing loop milestone is the first node bought through the Tome (T8). Vein Expansion T1 is the first T9 generation node, verified with the density command. Guide Vein is not used. **Amended 2026-11-25:** the XP is checked by gametest (stone broken by hand in a Vault drops 1 XP, a machine break nothing); Nick seeing it on the next stone block is a T14 playtest step (`DESIGN_LOG.md` 2026-11-25). | Vein Expansion T1 is +15% over about five veins in ten minutes and a modifier before the measured baseline. Guide Vein is a generation node: it changes only chunks generated after purchase (§6.1 Guide Vein), so it shows nothing near arrival. **Evidence restated 2026-10-27:** the earlier "about +0.5% of a chunk's ore" is retired; since `DESIGN_LOG.md` 2026-10-26 "The baseline measured against vanilla, and Guide Vein made visible", §6.1 puts it at about +32% of a chunk's ore. The ruling stands |
 | S10 | A provisional tree view for the T5 node | None. Command purchase until T8's approved renderer. | Lessons doc: renderer built three times |
-| S11 | T5 pacing check "level 1 inside the first hour" | Replaced by a measurement: solo, in fresh chunks, zero points, buying nothing, tool named by the Balancer. **Amended 2026-10-27:** 60 minutes, or two 30-minute sessions pooled, and pacing is judged on ore an hour from the S44 per-minute readout; level times are reported as observations, not pass or fail. Bands of ±20%: blocks 5,760 to 8,640 an hour, ore 176 to 264 an hour; observed level 1 expected at about 7 to 11 minutes, level 2 at about 15 to 23. Ore per hour outside its band means the curve is re-derived before any T9 node merges. Was: one 30-minute session with the level times as pass or fail. | §4.3 curve (about 76,259 total at 218.9 ore an hour on the 68/25/7 mix; level 1 costs about 113; Balancer, 2026-10-27); a 2.7x mispricing still passes the old question; log 2026-09-27 "Still open"; QA's variance estimate (2026-10-27): 30 minutes is about 16 veins, roughly ±28%, wider than the band, and one level-1 time varies by roughly ±50% |
+| S11 | T5 pacing check "level 1 inside the first hour" | Replaced by a measurement: solo, in fresh chunks, zero points, buying nothing, tool named by the Balancer. **Amended 2026-10-27:** 60 minutes, or two 30-minute sessions pooled, and pacing is judged on ore an hour from the S44 per-minute readout; level times are reported as observations, not pass or fail. Bands of ±20%: blocks 5,760 to 8,640 an hour, ore 176 to 264 an hour; observed level 1 expected at about 7 to 11 minutes, level 2 at about 15 to 23. Ore per hour outside its band means the curve is re-derived before any T9 node merges. Was: one 30-minute session with the level times as pass or fail. **Amended 2026-11-25:** the session moves to T14 (E5-S7, #287), with the ledger (E5-S12, #285), and stops gating T9. No node effect merges until the density command is inside S12's tolerance on Nick's PC (met in E4-S3b, #425), E5-S1's curve computes its rate from `OreBaseline` with no literal and restates §4.3's milestones and named-layer figures to within 1%, and E5-S9's curve arithmetic check passes (§4.3 "What gates node effects before T14"). Ore an hour outside its band at T14 means the curve is re-derived there (§4.3 "What 100 hours means"). One 60-minute session spreads by about ±20%, as wide as the band, so T14 reports an interval. Was: ore an hour outside its band meant the curve was re-derived before any T9 node merged. | §4.3 curve (about 76,259 total at 218.9 ore an hour on the 68/25/7 mix; level 1 costs about 113; Balancer, 2026-10-27); a 2.7x mispricing still passes the old question; log 2026-09-27 "Still open"; QA's variance estimate (2026-10-27): 30 minutes is about 16 veins, roughly ±28%, wider than the band, and one level-1 time varies by roughly ±50%; the 2026-11-25 amendment: Nick's decision that playtests do not block work, the Epic 4 precedent (#261), §4.3 "What 100 hours means" (log 2026-11-25) |
 | S12 | How density is measured | Not `/orevault testore`, which fills a cube. A pure JUnit count over the placement function, then a read-only `/orevault density [radius]` on a dedicated server (radius in chunks, 4 by default for 81 chunks). Tolerance: each band within ±5% relative over at least 81 chunks; rarity shares by placed blocks within ±2 points of 68/25/7 in the stone band and 60/30/10 in deepslate, on a vanilla-only pack, with Guide Vein off. | Old `VaultDiag` (fact); Balancer owns numbers |
 | S13 | Generation model and the 40% floor | Veins are placed by count and size, never filled toward a target. The floor clips proportionally across vein counts, every clipped modifier is in the snapshot, and the floor test uses the full deepslate stack: it computes the stack's request from `OreBaseline` and asserts it is above 0.9, so the clip really fires (ADR 0009). **Amended 2026-10-27:** "132% requested" was a hub-tree figure nobody re-derived; the Balancer's estimate is 100 to 140% until T9 pins Vein Shaping and Stone Reduction, and the number is recorded then. | §3.1; Vein Expansion plus Proliferation alone reach 26.4%, so a test on those passes vacuously; Balancer (BAL-4) |
 | S14 | T3 as three PRs or one; how the logout case is checked | One PR, three acceptance criteria, plus a login check that sends a player whose `in_vault` names a Vault they are not in to their return position. The gate is a scripted headless restart on every dimension PR; Nick confirms once in a client. | `CLAUDE.md` rule 2; lessons doc (#89's regression) |
 | S15 | Who verifies the generator never reads SavedData | A static rule: ArchUnit, owned by the Reviewer. QA does not sign it as observed. `GenSnapshot` lives in `core.gen`, built on the main thread. | `CLAUDE.md` rule 1; the old `SkillSnapshot.of(OreVaultTeamData)` made worldgen depend on `data` |
-| S16 | Persisted shape basics | `data_version` from the first field; the team-data shape agreed in an ADR before T5 opens. Available points derived, not stored. `level_reached` stored and monotonic. `deepest_y` absent means never entered: no sentinel, no flag. No stored derived totals. | `CLAUDE.md` rule 6; §4.3 step 4 (thresholds must not move under teams that passed them); Architect owns the data model |
+| S16 | Persisted shape basics | `data_version` from the first field; the team-data shape agreed in an ADR before T5 opens. Available points derived, not stored. `level_reached` stored and monotonic. **Amended 2026-11-25:** except through the debug wipe (S44), which returns `resonance_pool`, `level_reached`, `owned` and the other tree fields to their defaults together and touches no Vault or lifecycle field (§11 SavedData Pattern). `deepest_y` absent means never entered: no sentinel, no flag. No stored derived totals. | `CLAUDE.md` rule 6; §4.3 step 4 (thresholds must not move under teams that passed them); Architect owns the data model |
 | S17 | Save-shape tests as JUnit or gametests | JUnit through `CompoundTag` if T1 confirms it loads, as the old `PlayerStatsVersionTest` did; one gametest per storage mechanism (SavedData, chunk attachment, player attachment across death). `CLAUDE.md` Tests is corrected after T1 confirms. | Old test suite (fact) |
 | S18 | Team data and the Tome grant at team creation | Team data is created on first write, never on `FTBTeamsEvent.TeamCreated` (the FTB Teams 26.1.2.4 name, §11 FTB Teams Event Hooks). The Tome is granted on first login and recorded as `tome_granted`. | `CLAUDE.md` rule 2's reasoning; §13 records that `PLAYER_JOINED` misses solo players |
 | S19 | Disband and reset mechanics, whatever Nick picks | No level is deleted or moved while the server runs. Disband sets `disbanded_at` and evacuates online players; the folder is handled at the next start, before restore, and restore skips it. | §11 registry-desync warning; Architect, Developer, Reviewer |
@@ -137,23 +137,26 @@ checks before "ready to merge". Every build, test and client result is from Nick
 | Docs PR | Writer | Balancer, Developer | **Done by #158** (see "Spec corrections needed before T3"). Every item under "Spec corrections" fixed, or marked with the open question it waits on; log entries for the restart and the 2026-10-26 decisions | Balancer's rare constant and tolerances; the cross-cluster restructure (Nk, retired 2026-10-26) and the ore research (N4) for the items that wait on them |
 | T2 Vault Frame and Worn Signet | Developer; Designer for textures | Reviewer, QA; UI-UX and QA on art; Nick | Id-aware registration, creative tab, `items/` definitions, pickaxe tag under `data/minecraft/`; gametests for tag, drop and recipe; Nick sees both in creative and JEI and approves the contact sheet | Designer's `mc-asset` drafts for Nick to review (Q5); art tool approvals; portal cost answer; Writer's lang |
 | T3 Dimension path | Architect (ADR 0002), then Developer | Matrix design row; Reviewer, QA, Architect on code; Designer, UI-UX on the portal texture | S14 and S19 hold; lazy create only through `findOrCreate`; one world-map insert that calls `markWorldsDirty()`; restore survives a bad folder; return position saved after success; scripted restart passes; level-unload spike result written down; Nick confirms logout-inside once | Designer's portal strip and four tints; Playtester's arrival checks |
-| T4 Generator, classifier, baseline | Architect (ADR 0003 snapshot, ADR 0004 vein extents), then Developer | Matrix design row; Reviewer, QA, Architect, Balancer on code | S12 and S13 tests; seeding determinism; `Variant` against `dimension_type` JSON; density command within tolerance; Nick mines ten minutes in a fresh Vault and answers the T4 question | Balancer's tolerances (S12); QA's density procedure |
+| T4 Generator, classifier, baseline | Architect (ADR 0003 snapshot, ADR 0004 vein extents), then Developer | Matrix design row; Reviewer, QA, Architect, Balancer on code | S12 and S13 tests; seeding determinism; `Variant` against `dimension_type` JSON; density command within tolerance; Nick mines ten minutes in a fresh Vault and answers the T4 question. **Amended 2026-11-25:** the ten-minute mine and the T4 question move to T14 (E4-S5, #261), and T4 rests on the density command inside tolerance on Nick's PC, met in E4-S3b (#425) | Balancer's tolerances (S12); QA's density procedure |
 | T8a Node data model | Architect, then Developer | Balancer, Reviewer, QA, Writer | Tests pin 354, the gates in S6, 12 points per level, every fork option covering every parent tier, each gate reachable from the clusters above it. **Amended 2026-10-26:** 354, the gates, 12 a level and Nk are retired with the PoE tree; the tests are now the layout tests in spec §6 and 5 points a level (§4.3); see `DESIGN_LOG.md` 2026-10-26, "The Resonance tree becomes a Path of Exile tree" | Balancer's node list; N4 and Nf |
-| T5 Resonance loop | Developer | Reviewer, QA, Balancer, Architect | Orb modelled on `ExperienceOrb`; three-breaker gametest (S21); vanilla XP still drops; curve and scaling tests; pool persisted with `data_version` from its first commit; Stone Memory T1 bought by command and its XP seen; Nick's pacing session per S11 (60 minutes, or two of 30 pooled), its ore an hour inside the band and the level times reported as observations | T6 ADR agreed first; Balancer's rare constant and milestones; Designer's orb tint check; Playtester and QA's script |
+| T5 Resonance loop | Developer | Reviewer, QA, Balancer, Architect | Orb modelled on `ExperienceOrb`; three-breaker gametest (S21); vanilla XP still drops; curve and scaling tests; pool persisted with `data_version` from its first commit; Stone Memory T1 bought by command and its XP seen; Nick's pacing session per S11 (60 minutes, or two of 30 pooled), its ore an hour inside the band and the level times reported as observations. **Amended 2026-11-25:** Stone Memory T1's XP is shown by gametest, and Nick seeing it is a T14 step; the pacing session moves to T14 (S11), and in its place T5 needs the curve arithmetic check to pass (§4.3 "What gates node effects before T14") | T6 ADR agreed first; Balancer's rare constant and milestones; Designer's orb tint check; Playtester and QA's script |
 | T6 Persistence | Architect (ADR 0005); Developer | Matrix design row; Reviewer, QA | Lands with T5's first field; golden key-set test per shape; fixtures load, including wrong-type keys; absent fields read their documented default; `SavedData` and the chunk attachment checked across a scripted dedicated-server stop and start, compared through the S44 dump (a gametest cannot restart), the player attachment across death by a gametest if the mock player respawns through `PlayerList#respawn`, else a playtest step; an unreadable team file is copied aside, never overwritten (ADR 0005); reserved ids | N1 |
 | T7 Network and Tome shell | Architect (ADR 0006), Developer; UI-UX for screen structure | Matrix rows; Designer, Developer, Playtester on screens; Nick | Payload set in ADR 0006 (`docs/adr/0006-network-channel-and-tome-sync.md`); server validates every mutation; refusal payload with a lang key; pending state; header drawn after first sync; accepted top bar reproduced; `runGameTestServer` after each payload change; Nick's yes | N2, N3 and Nd; Writer's UI strings; Designer's shell art |
 | T8 Tree layout and renderer | UI-UX (the authored layout file, named views, layout tests); Designer (node icons, class frames, state tints, badges, `style.json`); Developer (renderer over `TreeLayout`) | Designer, Developer, Playtester; then Nick | Nick's yes on the preview set drawn from the layout file with `tools/tree-preview` (§6.1); the §6 layout tests pass; renderer holds no placement code; client matches the preview (S33) at scales 2, 3 and 4 at 1920x1080 and 2 and 3 at 1280x720; first node bought through the Tome. **Amended 2026-10-26:** golden layout files and geometry proofs with random widths are retired with the computed layout (S27) | Node list, rings and layout file from T8a; Writer's names, descriptions and every tooltip line; Nick's preview approval |
-| T9 Node effects | Developer, a batch of nodes at a time: the ring-0 nodes first, then §6.1 order (the tree has no clusters since 2026-10-26) | Reviewer, QA, Balancer, Writer; UI-UX if it shows in the Tome | Balancer's stacking review before the batch's tickets open; per-tier pure tests; gametest where a block or drop is touched; Fortune-before-Quantity test; every node answers "how does the player know it worked"; descriptions pass the lang test; the first-ten-minutes session (E9-S59, #363) runs after the ring-0 batch and answers Q17 | T5 pacing inside its band; N5 to N7; UI-UX mockups for Tome-visible effects |
+| T9 Node effects | Developer, a batch of nodes at a time: the ring-0 nodes first, then §6.1 order (the tree has no clusters since 2026-10-26) | Reviewer, QA, Balancer, Writer; UI-UX if it shows in the Tome | Balancer's stacking review before the batch's tickets open; per-tier pure tests; gametest where a block or drop is touched; Fortune-before-Quantity test; every node answers "how does the player know it worked"; descriptions pass the lang test; the first-ten-minutes session (E9-S59, #363) runs after the ring-0 batch and answers Q17 | The node-effect gate in §4.3 "What gates node effects before T14" (amended 2026-11-25, S11; was T5 pacing inside its band); N5 to N7; UI-UX mockups for Tome-visible effects |
 | T10 Chunk loading | Developer | Reviewer, QA, Architect, Balancer | `TicketController` on the mod bus; tickets validated on load; a restored Vault's saved tickets reactivated at restore, as `prepareLevels` does for levels present at start (ADR 0002), checked by a restart with nobody joining; the ceiling has a reader; Anchor only inside the Vault; signet returned as a crafting remainder; S21 holds | Designer's Anchor texture; Writer's messages |
 | T11 Reset and disband | Architect (ADR 0007), Developer; UI-UX for screens | Matrix rows; Nick | Pure vote machine tested at 1 to 5 members online with ADR 0007's cases; S44 fault points after reset steps 3, 6, 7, 8 and 9, each followed by a start and a check; scripted reset with backup on and off, region files checked on disk; S19 holds; a reset within 24 h of the last free window opens none (Q14); the reset count changes the seed (Q2); other members get a toast and chat line, never a forced screen (Q16) | N3, N8, Nh and Ni; T3's spike result |
 | T12 Integrations | Developer | Reviewer, QA, Architect | Dedicated server boots with no soft dependencies, with Ultimine only, with Mekanism; import greps pass; the Ultimine nodes hidden without Ultimine (Broad Cut, a cluster, retired 2026-10-26) | Nick on Mekanism; Balancer on Mekanism-only tiers |
 | T13 Content | Developer, Designer, Writer | Matrix rows; Nick on art | Datagen recipes, loot, tags, blockstates; full `en_us.json`; lang coverage and PNG size tests; every texture batch approved on a contact sheet | N2 sets the PNG test's scope |
-| T14 Release | Manager, with QA, Playtester, Balancer | All | Load test in FTB Evolution 2 on Nick's PC, on the version pinned at T3 and re-checked (Q7); debug block removed; `KNOWN_ISSUES.md`; §12 and §13 match what merged; full playtest against the milestone table; curve re-derived if measured rates are outside band | Every role |
+| T14 Release | Manager, with QA, Playtester, Balancer | All | Load test in FTB Evolution 2 on Nick's PC, on the version pinned at T3 and re-checked (Q7); debug block removed; `KNOWN_ISSUES.md`; §12 and §13 match what merged; the playtests deferred here, among them T4's ten-minute mine (E4-S5, #261) and T5's pacing session and ledger (E5-S7, #287; E5-S12, #285), added 2026-11-25; full playtest against the milestone table; curve re-derived if measured rates are outside band | Every role |
 
-Order rules. The playable loop comes first: no world-facing task T(n+1) opens until Nick has seen T(n) in a
-client. Pure-logic work for later tasks (curve, classifier, node data, layout maths) may proceed while a
-client gate waits. No T9 ticket opens before T4's baseline is measured and T5's pacing is inside band. No
-renderer code before Nick approves the T8 preview.
+Order rules. The playable loop comes first, in the order of §12. **Amended 2026-11-25:** in-game playtests are
+deferred to T14 and do not block later tasks (Nick; `DESIGN_LOG.md` 2026-11-25); a client step that cannot run
+before then is listed as unverified with numbered playtest steps. No T9 story that implements a node effect
+merges before the three checks in §4.3 "What gates node effects before T14" pass (S11); T9 spec and balance stories are not gated, and effect
+stories can be written and opened before then. No renderer code before Nick approves the T8 preview. Was: no
+world-facing task T(n+1) opened until Nick had seen T(n) in a client, and no T9 ticket opened before T4's
+baseline was measured and T5's pacing was inside band.
 
 ## Spec corrections needed before T3
 
@@ -265,7 +268,7 @@ uneven tiers such as Vein Expansion's 1, 1, 2, 2, 3.
 §12. Phases 0 to 2 are marked complete; nothing is. Replace the table with T1 to T14.
 
 §13. 77 lines are ticked for code that no longer exists; untick all. Delete the Chunk Loading Resonance
-line (S22). The orb line's 2/5/12 follows the S40 constant. Silent Stone "(rate is a config value)" goes.
+line (S22). The orb line's 2/5/12.5 follows the S40 constant. Silent Stone "(rate is a config value)" goes.
 The node-art item lists six frame classes; add pact. "Disturbed Zone Unlock ... Core branch" names a branch
 that no longer exists. Pre-restart `#N` and `[N]` references are labelled as pre-restart; #69 and [68]
 name one ticket twice.
@@ -314,15 +317,17 @@ T2. One block and one item in Nick's client before T3 opens.
 T3. One PR (S14). The `orevault_return` data, or the player attachment that replaces it, is versioned from
 the first commit.
 
-T4. Cites §3.1 and S12 and S13. I refuse any generation-node ticket until Nick has mined a fresh Vault for
-ten minutes and the density command is inside tolerance.
+T4. Cites §3.1 and S12 and S13. I refuse any generation-node ticket until the density command is inside
+tolerance on Nick's PC (met in E4-S3b, #425). (Was: and until Nick had mined a fresh Vault for ten minutes; that mine
+moved to T14 on 2026-11-25, E4-S5, #261.)
 
 T8a then T5. The node data model lands first (S8). T5 does not merge if it persists the pool without
 `data_version` (S16).
 
 T7 and T8. Not ticketed for renderer code until the preview set is approved. No toolkit spike (S26).
 
-T9. A batch of nodes at a time: the ring-0 nodes first, since the first-ten-minutes session needs their
+T9. No effect merges before the checks in §4.3 "What gates node effects before T14" pass; spec and balance stories are not gated.
+A batch of nodes at a time: the ring-0 nodes first, since the first-ten-minutes session needs their
 effects (`docs/PLAYER_STORIES.md`), then §6.1 order; each batch's stacking review before its tickets.
 (Was "cluster by cluster, Prospecting first"; the tree has no clusters since 2026-10-26.) No node ticket
 opens until its description can be written with every tier's number.
@@ -349,14 +354,16 @@ PC, `KNOWN_ISSUES.md`, the debug block removed, and every §13 box matching merg
 ### What I will push back on
 
 A modifier before its baseline is measured. Anything in the lessons doc's "Design lessons" table or the
-log's rejected lists, which I check before ruling. A renderer before an agreed preview. A world-facing task
-opened before Nick has seen the previous one. Config that encodes a measurement. A ruling of mine that
+log's rejected lists, which I check before ruling. A renderer before an agreed preview. A node effect merged
+before the checks in §4.3 "What gates node effects before T14". A visual change merged without Nick's yes on a rendered preview.
+Config that encodes a measurement. A ruling of mine that
 rests on consensus rather than a source.
 
 ### Conflicts I expect
 
-The Developer against QA and me on the serial client gates, which run at the pace of Nick's sessions; the
-Developer works on pure logic for the next task meanwhile. The Balancer against the Writer on stale
+The Developer against QA and me over what a PR can claim without a client: since 2026-11-25 Nick's playtests
+are at T14, so a client step that no session on Nick's PC can screenshot is listed as unverified, never
+ticked. (Was: the serial client gates, which ran at the pace of Nick's sessions.) The Balancer against the Writer on stale
 numbers: the Balancer owns the number, the Writer where it is written. UI-UX and the Designer against the
 Developer on preview cycles at T7 and T8.
 
@@ -550,7 +557,7 @@ T14. Boot in Nick's FTB Evolution 2 instance; remove the debug block.
 
 ### What I will push back on
 
-A modifier ticket before T4's baseline is mined. A grid, lanes, or the whole tree on one screen. §11's
+A modifier ticket before T4's baseline is measured by the density command. A grid, lanes, or the whole tree on one screen. §11's
 generator sample. Placement code in the renderer. Save sentinels. Config before its reader.
 
 ### Conflicts I expect
@@ -620,8 +627,11 @@ threshold equally; level 1 costs about 113 and arrives at 0.15 h, level 2 at abo
 (derived, not measured; Balancer, 2026-10-27). Pool unit cases from ADR 0005 section 3: rounded once, half up,
 at pool entry after team scaling; 20 payments of 0.05 sum to exactly 1,000 thousandths. `TeamScaling` 1.0,
 1.1, 1.2, 1.4 and size 0 or unknown read as 1. Gametests for the orb paying only its team, the three breakers
-(S21) and vanilla XP. The pacing session per S11 (60 minutes, or two of 30 pooled), judged on ore an hour from
-the S44 readout.
+(S21) and vanilla XP; the positive "a hand break pays" and "a member collects" paths are a client step or a
+T14 playtest step, since a mock player cannot join (`TeamTests`). The parser's fixture test and the curve
+arithmetic check (§4.3 "What gates node effects before T14"), with the 5,000 blocks-an-hour fixture shown failing once. The pacing session
+per S11 (60 minutes, or two of 30 pooled), judged on ore an hour from the S44 readout, is at T14 (amended
+2026-11-25).
 
 T6. The tests of ADR 0005 section 6: a golden key set per shape, a fixture per shape and version
 (including one without `deepest_y` that reads as never entered), an absent-field test per field, and per
@@ -1176,7 +1186,8 @@ gates at S6 and 12 points a level, retired 2026-10-26 with the tiered tree.)
 
 ### What I need
 
-- From the Manager: no T9 ticket until the T4 baseline is measured and T5's pacing is inside band; T8a
+- From the Manager: no T9 node effect merges before the checks in §4.3 "What gates node effects before T14" (amended
+  2026-11-25; was no T9 ticket until the T4 baseline is measured and T5's pacing is inside band); T8a
   before T5's point award.
 - From the Developer: density, mix, vein sizes and ore rate each in one place read by generator and curve;
   per-tier effect values in one constants source (S41); the per-minute readout (S44).
@@ -1197,7 +1208,9 @@ level 29 at about 64,966 and 85.2 h, level 30 at about 76,259 and 100 h. Thresho
 each rounded from the cumulative value, and the pool is rounded once, half up, at entry after team scaling
 (ADR 0005 section 3). The hours do not move with the mix, because the total is the hourly rate times 100
 hours; the thresholds do. All derived, none measured. One rare constant (S40), which I set in the docs PR. The
-pacing session per S11, with the tool named in the script.
+pacing session per S11, with the tool named in the script, at T14 (amended 2026-11-25). Before then, the
+curve test restates §4.3's milestones and named-layer figures to within 1% from a rate computed from `OreBaseline`
+with no literal.
 
 T6. `deepest_y` must not read as 0, or Shallow Grace starts Outgrown and Highwater Mark counts free steps;
 absence covers it (S16).
@@ -1224,7 +1237,10 @@ pack and 207 to 213 in FTB Evolution 2 (§6.1 Totals), and a node's ring is its 
 ### Derived, not measured
 
 - 218.9 ore an hour is 7,200 blocks an hour times ADR 0009's closed-form density (was 220, from a flat 3%).
-  Density measurement confirms the density, not the rate; only a timed session measures blocks per hour.
+  Density measurement confirms the density, not the rate; only a timed session measures blocks per hour, and
+  that session is at T14 (#287). Until then the rig's break time bounds it: a 1 by 2 tunnel with walking allows
+  about 7,700 an hour in plain stone and about 7,450 in the stone band as mined, so 7,200 is about 93% to 97%
+  of it and the risk is on the slow side (§4.3, 2026-11-25).
 - Calloused Hands' cap arrives at (e^(0.4/0.07) − 1) × 10,000, about 3.0 million blocks at tier 3.
 - Silent Stone pays 0.30 a second per active member below Y=0, raised by that member's counted bonuses and
   team-scaled like ore (Ng; §6.1 Silent Stone): 1,080 an hour solo against about 763 for bare ore, about
@@ -1300,10 +1316,11 @@ points and the ring-0 nodes next to the start (§4.3, §6). The old text is in g
 ### Per task
 
 T2: did Nick have enough iron, and how long did it take? T3: the return portal is visible on arrival and
-returning lands where you left. T4: after ten minutes at zero points, does the Vault feel rich enough to come
-back to and lean enough that the tree has something to sell? T5: the pacing session; the orb, and the level-up
-message arriving, its time recorded as an observation, are on my checklist, with ore an hour inside the S11
-band (the toast comes with T7). T6: log out inside the
+returning lands where you left. T4 (at T14 since 2026-11-25, E4-S5): after ten minutes at zero points, does the Vault feel rich enough to come
+back to and lean enough that the tree has something to sell? T5 (at T14 since 2026-11-25, E5-S7): the pacing
+session; the orb, and the level-up message arriving, its time recorded as an observation, are on my checklist,
+with ore an hour inside the S11 band (the toast comes with T7). The level-up line may be screenshotted earlier
+by a session on Nick's PC once the grant command exists. T6: log out inside the
 Vault, log back in, open the Tome; nothing changed. T7: the level-up toast; the empty-state line, shown while
 the team's pool and level are 0 (§8); the Tome reaching solo players; every disabled control saying why on the
 control itself. T8: can Nick find the next thing to buy in a few seconds, and at 0.2x find a searched or
