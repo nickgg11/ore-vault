@@ -109,13 +109,14 @@ channel negotiation.
   outlines, anything E9 or E10 adds);
 - any field of any payload, nested records included, is added, removed, reordered or changes type or
   codec, or a size bound is lowered;
-- a node id in the layout file changes or is removed, so a client from before the rename is refused at
-  negotiation instead of decoding bitsets against the wrong ids. Moving, re-ringing or re-edging a node
+- a node, skill or option id in the layout file changes or is removed (a fork's id is its parent's skill
+  id), so a client from before the rename is refused at negotiation instead of decoding bitsets against the
+  wrong ids. Moving, re-ringing or re-edging a node
   needs no bump: the layout hash catches it (below).
 
 It does not bump for a handler change, a new refusal lang key, or a raised size bound. The constant's
 Javadoc keeps one line per bump saying what changed, as the old one did. The Reviewer checks that any diff
-under `network/` touching a codec, or any diff to the layout file's ids, bumps it.
+under `network/` touching a codec, or any diff to the layout file's node, skill or option ids, bumps it.
 
 Payload records nest. 26.1's `composite` takes up to 12 fields, but a record of six or fewer fields, each
 group a thing that changes together, is what the old code ran with and reads cleanly in review; this
@@ -208,6 +209,17 @@ exclusive group and position; edges sorted; forks with options and `petalAnchor`
 form, not the file's bytes, so line endings and whitespace in a checkout cannot change it. Node index `i`
 on the wire is the `i`th node of that order; petals are not nodes and are named by id.
 
+The serialisation is Ore Vault's own writer, not `Gson#toJson`, so a library upgrade cannot change it
+(amended 2026-11-25, E8a-S9, #189; `docs/tree-layout-format.md`, "What the layout hash covers"). It is UTF-8
+JSON with no whitespace and a fixed key order per object. Strings escape only `"`, `\` and U+0000 to U+001F,
+the last as `\u00xx` in lowercase hex. Integers are written with `Integer.toString`. An absent optional
+field is written as `null`, and absent `marks` as `[]`. Inside `allOf` and `anyOf` the members are sorted by
+their own canonical text. Each edge is written with its two ids in code-point order and the edge list is
+sorted. Forks are sorted by parent and options by id. The hash is `ByteBuffer.wrap(sha256, 0, 8).getLong()`,
+shown as 16 lowercase hex digits, zero-padded. Petal positions and each node's `forOption` are hashed; the
+file's `rings`, `view` and `format` are not, since no rule reads them. One golden unit case pins a small
+layout's canonical text and its hash.
+
 At join the server sends `LayoutCheck`. The client compares it with its own hash and always answers
 `LayoutAck` with its own hash. On a mismatch the server logs both hashes and the player name, and
 disconnects the player with `Component.translatable("disconnect.orevault.layout_mismatch", serverHash,
@@ -272,7 +284,7 @@ tooltips show are live to within two seconds and are never sent to a player who 
 
 | Record | Fields | Notes |
 |---|---|---|
-| `Ownership` | `List<Long> owned`, `List<Long> hidden` | bitsets in layout order (§6 Layout data). Owned and hidden together is dormant: owned, hidden because its mod or tag is gone, no effect, not counted (§6 Mod-gated nodes). Hidden is the server's view (S25) |
+| `Ownership` | `List<Long> owned`, `List<Long> hidden` | bitsets in layout order (§6 Layout data). Owned and hidden together is dormant: owned, hidden because its mod or tag is gone, no effect, not counted (§6 Mod-gated nodes). Hidden is the server's view (S25). It never holds a node hidden by a fork choice (a node's `forOption`), which `core.tree` derives per team from `Forks` and the layout, on both sides. The start is node 0: bit 0 of `owned` is always set, and it is never set in `hidden`, `active` or `outgrown`, and never saved (amended 2026-11-25, E8a-S9, #189) |
 | `Forks` | `List<ForkChoice(String forkId, String optionId)>`, at most `MAX_FORKS` | forks with no choice are absent |
 | `Marks` | `Optional<Pin(int nodeIndex, int member)>`, `List<Integer> boughtBy`, `List<Member(UUID id, String name)>` | `boughtBy` has one entry per set bit of `owned`, in order: an index into the member table, or −1 for none. The table holds every member a pin or `boughtBy` names, current or former. Names come from `server.services().nameToIdCache().get(UUID)`, which returns `Optional<NameAndId>` (26.1 has no `GameProfileCache`; `Services.java` line 19, read by the Developer); an empty result is sent as an empty name and the Tome says "a former member". The start node's entry is −1 |
 | `PlayerView` | `List<Long> active`, `List<Long> outgrown` | `active` is this player's `active_tradeoffs` (ADR 0005 `PlayerStats`) as a bitset, which for Volatile Veins and Molten Seam is this player's vote. `outgrown` is a bitset in layout order over every `[GROWTH]` node, owned or not, set when the node's condition can no longer be met for this player (§6 Notation, `[GROWTH]`; §8 Tab 1, class table), so an unowned node can warn before purchase |
@@ -441,9 +453,11 @@ Disconnect key: `disconnect.orevault.layout_mismatch` (server hash, client hash)
   that decodes a hand-built oversize buffer and expects the decode to fail: every bounded string and
   list in the size-bounds table, plus a bitset with a bit set at the layout's node count and a
   `SeismicMap` with `side` 34.
-- A golden JUnit test pins the pair (`PROTOCOL_VERSION`, a hash of the layout file's node ids, sorted).
-  A node id renamed or removed without a bump fails it; the fix is to bump and update the pinned pair in
-  the same PR. This makes the third bump rule a test, not the Reviewer's eye.
+- A golden JUnit test holds `PROTOCOL_VERSION` and literal lists of the layout file's node, skill and option
+  ids, written out in the test (amended 2026-11-25, E8a-S9, #189). (a) An id on the list missing from the
+  file at the pinned version fails with "bump and migrate". (b) An id in the file not on the list fails with
+  "add it to the list". (c) When the version is re-pinned, every id dropped from the lists must be on the
+  §6.1 reserved list. This makes the third bump rule a test, not the Reviewer's eye.
 - Unit tests in `core.tree` for the timing rules: 11 mutations in one tick accept 10 and drop 1; a second
   drop within 20 ticks sends no second `too_fast`; the bucket refills at 10 a second; two gains within 10
   ticks send one `TeamProgress`; a level-up sends at once.
@@ -583,3 +597,10 @@ Amended 2026-10-31 by E1-S5 (#195), from `docs/research/neoforge-26.1-sources.md
 the trust rule no longer asks for `enqueueWork`; vanilla's caps do not apply to registered payloads, so the bounds
 are our own, unchanged in value. `AscensionLadder` at its bound, not an outline, is the largest clientbound
 payload. `optional()` and the decode failure read as this record expected. No wire change.
+
+Amended 2026-11-25 by E8a-S9 (#189), with the layout file format (`docs/tree-layout-format.md`): the third
+bump rule and the Reviewer's check cover node, skill and option ids, not node ids alone, since ADR 0005
+freezes all three; "The layout hash" gains the exact serialisation and its scope (petal positions and
+`forOption` in; `rings`, `view` and `format` out); the `Ownership` row gains the start's bit and says the
+hidden bitset never holds a fork-hidden node; the golden id test becomes the three checks (a) to (c). The
+start's `boughtBy` entry of −1 was already in the `Marks` row. No payload changes.
