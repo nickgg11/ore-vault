@@ -723,7 +723,8 @@ of vanilla's `OreFeature`, derived and unplaytested; the script is `docs/researc
   `VeinIndexSizeTest`'s figures are re-measured and its bound changed on purpose in the code PR, not loosened.
 - The expanded deepslate's top slab (P1), accepted by Nick on 2026-11-22. Y-31..-1 is 8.31% ore (iron 390 blocks a
   chunk), 2.53 times the stone curve's rate, and its best 1 by 2 tunnel, Y-4..-3, is about 15.5% ore at 3.74 times, the
-  100 hours in about 27. E4-S5 measures it; the counts are retuned if it plays too fast.
+  100 hours in about 27. E4-S5 (#261, moved to T14 on 2026-11-25) measures it; the counts are retuned if it plays too
+  fast.
 - Existing Vaults (A1; Architect to confirm). The dimension type is shared by every Vault of its type, so a change to
   `min_y` or `height` would apply to every Vault on disk at the next start; Y=100 changes neither, so old Vaults would
   keep their generated chunks with stone to Y=245 and new chunks would generate 150 blocks lower beside them. The type
