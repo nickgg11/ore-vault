@@ -116,6 +116,20 @@ public final class OreVaultTeamData extends SavedData {
         return fields;
     }
 
+    /**
+     * Adds an amount to the pool, already rounded to thousandths and scaled (ADR 0005 section 3). The seam the award path
+     * calls (#264); no level logic here, the curve is #240's. An add of 0 changes nothing and marks nothing.
+     *
+     * @return the pool after the add
+     */
+    public long addResonance(long thousandths) {
+        if (thousandths != 0L) {
+            fields = fields.plusResonance(thousandths);
+            setDirty();
+        }
+        return fields.resonancePool();
+    }
+
     /** @param gameTime overworld game time, the one clock every saved time uses (ADR 0005 section 1) */
     public void markDisbanded(long gameTime) {
         fields = fields.withDisbandedAt(gameTime);

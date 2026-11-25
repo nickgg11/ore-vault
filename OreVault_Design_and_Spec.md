@@ -3109,7 +3109,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] Resonance orb entity on a `VaultOrbEntity` base: vanilla orb sprite sized by value, tinted blue/cyan, carrying `orb_count`, the number of orbs merged into it (Hoarder's Instinct's N, §6.1) — E5-S2 (#260)
 - [ ] Resonance orb spawns on ore broken by hand in a Vault — 2/5/12.5 by rarity (§4.2); unclassified blocks and machine breaks award nothing — E5-S3 (#264); ×1.75 when Tithe consumed the block — E9-S31 (#335)
 - [ ] Orb floats to the nearest team member within 8 blocks, vanilla's orb radius (§4.2), server-authoritative; only members of the owning team attract or collect it — E5-S2 (#260); Resonance Magnetism raises it to 12 / 16 / 24 — E9-S39 (#347)
-- [ ] Team Resonance pool, stored in thousandths (§11) — E6-S1 (#241)
+- [x] Team Resonance pool, stored in thousandths, and `level_reached`, each reading 0 from a tag written without it (§11) — E6-S1 (#241)
 - [ ] Level curve: cap 30, 5 points per level (§4.3) — E5-S1 (#240)
 - [ ] `[resonance]` config block: `target_play_hours`, `curve_divisor` — E5-S1 (#240)
 - [ ] Team scaling: `sum / teamSize × (1 + 0.1 × (teamSize − 1))`, with no `ASSUMED_TEAM_SIZE` anywhere (§4.2) — E5-S1 (#240)

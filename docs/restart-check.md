@@ -123,6 +123,13 @@ Get-CimInstance Win32_Process -Filter "Name='java.exe'" | Where-Object { $_.Comm
   `Restored 0 Vaults, skipped 0, archived 1 of an older layout`, then a fresh Vault from `vault create` with grass at
   Y=100 and air at Y=101. Run it with
   `-First tools/restart-check/vault-layout-first.txt -Second tools/restart-check/vault-layout-second.txt -Between tools/restart-check/vault-layout-between.ps1`.
+- `team-first.txt`, `team-second.txt`: team data across a restart (#241, ADR 0005 section 6). Lifetime 1 dumps team
+  `0000000b-0000-4000-8000-00000000000b` (`record=none`), adds 12500 and then 2800 thousandths with the interim
+  `/orevault team resonance add`, and dumps `record=ok resonance_pool=15300 (15.3) level_reached=0`. Lifetime 2 dumps
+  the same line back, adds 1000 and expects 16300, which shows a write after the restart lands on the loaded data. No
+  Vault, no `-Between`. Run it with
+  `-First tools/restart-check/team-first.txt -Second tools/restart-check/team-second.txt`. `level_reached` crosses the
+  restart only at its default until something can raise it (#274); its round trip is a unit test and a gametest.
 
 The tick logger (`debug.VaultTickLog`) writes `[orevault-debug] tick <dimension> server_tick=<n>` once a second for
 each Vault the server ticks, only while `enable_debug_commands` is on, which the script sets.
