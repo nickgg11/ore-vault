@@ -21,7 +21,7 @@ XP reads (§3.4). Everything an orb decides that needs no `Level` is a pure func
 | `ResonanceAward` | `mining` | Final helper, the one path into the pool. `static void collect(ServerPlayer collector, UUID team, long valueThousandths)`. #274 adds the level-up and `SyncOutbox` here, #264 the `debug.log_resonance_gain` reader, #347 the Hoarder multiplier |
 | `OrbFields` | `mining` | Record `(Optional<UUID> team, long value, int orbCount, int age)`, `DATA_VERSION = 1`; `static OrbFields read(CompoundTag, Consumer<String> warn)`, `CompoundTag write()`, `migrate()` as a no-op chain. Plain class, CompoundTag only, unit-testable (ADR 0005, `CompoundTagLoadsTest`) |
 | `OrbRules` | `core.mining` | Final helper, pure. `BASE_RADIUS = 8`, `LIFETIME = 6000`, `SCAN_PERIOD = 20`, `MERGE_REACH = 0.5`; `isMember(@Nullable UUID orbTeam, UUID playerTeam)`; `pull(double distance, double radius)` (vanilla's `(1 - d/r)^2 * 0.1`, 0 at or past `r`); `canMerge(@Nullable UUID a, @Nullable UUID b)`; `merge(...)` returning a `Merged(long value, int orbCount, int age)` record; `icon(long valueThousandths)` |
-| `ResonanceColor` | `core.mining` | Final. `RESONANCE_COLOR = 0xFF4FC3F7` (ARGB), the one constant the Tome header (T8) and the Resonance bar read; `RESONANCE_DEEP = 0xFF1E88E5` beside it, the far end of the orb's pulse; `pulse(float ageInTicks)` blends the two on vanilla's orb timing, `(sin(age / 2) + 1) / 2` (Designer, Manager ruling 1) |
+| `ResonanceColor` | `core.mining` | Final. `RESONANCE_COLOR = 0xFFB36BFF` (ARGB, light violet; Nick asked for purple on 2026-11-26, replacing cyan `0xFF4FC3F7`), the one constant the Tome header (T8) and the Resonance bar read; `RESONANCE_DEEP = 0xFF7A3DF0` beside it (was `0xFF1E88E5`), the far end of the orb's pulse; `pulse(float ageInTicks)` blends the two on vanilla's orb timing, `(sin(age / 2) + 1) / 2` (Designer, Manager ruling 1) |
 | `ModEntities` | `registry` | `DeferredRegister.createEntities(MOD_ID)`; `RESONANCE_ORB = registerEntityType("resonance_orb", ResonanceOrbEntity::new, MobCategory.MISC, b -> b.noLootTable().sized(0.5F, 0.5F).clientTrackingRange(6).updateInterval(2).fireImmune())`; `register(modEventBus)` from the `OreVault` constructor |
 | `VaultOrbRenderer`, `VaultOrbRenderState` | `client` | One renderer for every orb type (§11). State adds `int icon`, `int tint` (from `tint(ageInTicks)` at extract); registered for `RESONANCE_ORB` in `OreVaultClient` on `EntityRenderersEvent.RegisterRenderers` (mod bus) |
 
@@ -108,15 +108,16 @@ refused with a failure line.
 ## Renderer
 
 Copy of `ExperienceOrbRenderer#submit` on vanilla's `textures/entity/experience/experience_orb.png` (nothing shipped,
-so the 16x16 texture rule does not apply), with the vertex colour from `state.tint` (the blue pulse) instead of the green one, alpha
+so the 16x16 texture rule does not apply), with the vertex colour from `state.tint` (the violet pulse) instead of the green one, alpha
 128, block light +7, shadow 0.15. `extractRenderState` sets `icon = OrbRules.icon(entity.value())` and `tint =
-entity.tint(state.ageInTicks)`. `icon` is vanilla's `getIcon` thresholds applied to whole Resonance (`value / 1000`, floored): common 2
-is sprite 0, uncommon 5 sprite 1, rare 12.5 sprite 2, merged orbs grow. An entity type with no renderer kills
+entity.tint(state.ageInTicks)`. `icon` steps at 3, 3.25, 3.5, 4, 7.5, 9, 10, 20, 50 and 100 Resonance (in thousandths): common 2
+is sprite 0, uncommon 5 sprite 4, rare 12.5 sprite 7, merged orbs grow to 10. Vanilla's `getIcon` thresholds on whole
+Resonance (sprites 0, 1, 2 for the three tiers) were replaced after Nick saw them in game (2026-11-26). An entity type with no renderer kills
 `runClient` at startup while a server runs, so the renderer lands in this PR, not later.
 
 ## Tests
 
-Unit (`src/test/java`): `OrbRulesTest` (icon at 2.999 / 3.000 / 6.999 / 7.000 Resonance and the top threshold; `pull` at
+Unit (`src/test/java`): `OrbRulesTest` (icon for 2, 5 and 12.5 on sprites 0, 4 and 7, each band's floor and one below it, and the top; `pull` at
 0, mid, `r`, past `r`; merge sums, saturation, minimum age; no-team never merges and is never a member); `OrbFieldsTest`
 (golden key set; a fixture without each key loads its default; malformed `team`, negative `value`, `orb_count` 0,
 wrong-type keys, newer `data_version` warns once; round-trip). One planted break per class shown failing in the PR.

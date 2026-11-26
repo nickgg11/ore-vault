@@ -1,16 +1,20 @@
 package com.orevault.orevault.core.mining;
 
 /**
- * The Resonance colour (§11 Resonance Orb Entity: Resonance is blue and cyan). {@link #RESONANCE_COLOR} is the one value
- * the orb, the Tome header (T8) and the Resonance bar share, so they cannot drift apart. The orb pulses from it to
+ * The Resonance colour (§11 Resonance Orb Entity: Resonance is violet). {@link #RESONANCE_COLOR} is the one value the
+ * orb, the Tome header (T8) and the Resonance bar share, so they cannot drift apart. The orb pulses from it to
  * {@link #RESONANCE_DEEP} on vanilla's orb timing, so it moves as an XP orb does and still reads as something else
  * (Designer, #260).
+ *
+ * <p>Violet sits opposite vanilla's yellow-green XP on the blue-yellow axis that red-green colour blindness keeps, and is
+ * far darker, so the two orbs differ in greyscale too; it is blue-shifted from portal tier 3's {@code #A038D0} and from
+ * Animus's red. Nick chose purple over the first build's cyan and blue on 2026-11-26 ({@code DESIGN_LOG.md}).
  */
 public final class ResonanceColor {
-    /** ARGB, the old build's {@code RESONANCE_COLOR}. */
-    public static final int RESONANCE_COLOR = 0xFF4FC3F7;
-    /** ARGB, the deep end of the orb's pulse. */
-    public static final int RESONANCE_DEEP = 0xFF1E88E5;
+    /** ARGB, light violet (hue about 269), the Resonance colour of the whole mod and the light end of the orb's pulse. */
+    public static final int RESONANCE_COLOR = 0xFFB36BFF;
+    /** ARGB, deep violet (hue about 260), the deep end of the orb's pulse; light enough to stay visible at the orb's alpha. */
+    public static final int RESONANCE_DEEP = 0xFF7A3DF0;
 
     private ResonanceColor() {
     }

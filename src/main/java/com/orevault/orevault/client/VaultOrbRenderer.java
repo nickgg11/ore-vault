@@ -17,7 +17,7 @@ import net.minecraft.util.Mth;
 
 /**
  * One renderer for every Vault orb (§11 Resonance Orb Entity): vanilla's {@code ExperienceOrbRenderer} on vanilla's orb
- * sheet, so an orb reads as an orb, sized on vanilla's thresholds ({@link OrbRules#icon}) and tinted by the entity instead
+ * sheet, so an orb reads as an orb, sized by value ({@link OrbRules#icon}) and tinted by the entity instead
  * of vanilla's green pulse. The sheet is vanilla's and ships nothing of ours, so the 16x16 texture rule does not apply.
  */
 public final class VaultOrbRenderer extends EntityRenderer<VaultOrbEntity, VaultOrbRenderState> {

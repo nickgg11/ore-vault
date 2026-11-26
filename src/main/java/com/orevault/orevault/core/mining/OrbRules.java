@@ -23,9 +23,16 @@ public final class OrbRules {
     public static final double MERGE_REACH = 0.5;
 
     private static final double MAX_PULL = 0.1;
-    private static final long THOUSANDTHS = 1_000L;
-    /** Vanilla's {@code ExperienceOrb#getIcon} thresholds, lowest first; the index past the last one passed is the sprite. */
-    private static final long[] ICON_THRESHOLDS = {3, 7, 17, 37, 73, 149, 307, 617, 1237, 2477};
+    /**
+     * Thousandths of a Resonance at which each larger sprite starts, lowest first; the count passed is the sprite. Vanilla's
+     * sheet draws sprites 0 to 10 at 8, 10, 12, 12, 12, 14, 14, 14, 16, 16, 16 pixels, with a pink core from sprite 3, so
+     * the three ore tiers land on sprites that differ in size and in core: common 2 on sprite 0 (8 pixels, no core),
+     * uncommon 5 on 4 (12, small core), rare 12.5 on 7 (14, large core). Each tier keeps its sprite up to about +50 percent
+     * and the upper two down to -20 percent, so ordinary bonuses do not move it. Deep Harvest's halves (1, 2.5, 6.25) land
+     * on 0, 0 and 4, Tithe's x1.75 a step or more larger, Vault Echo on 8 and 9, and caches of 100 or more on 10 (Nick,
+     * 2026-11-26).
+     */
+    private static final long[] ICON_THRESHOLDS = {3_000, 3_250, 3_500, 4_000, 7_500, 9_000, 10_000, 20_000, 50_000, 100_000};
 
     /** The fields an orb has after a merge. */
     public record Merged(long value, int orbCount, int age) {
@@ -64,13 +71,13 @@ public final class OrbRules {
     }
 
     /**
-     * The sprite on vanilla's orb sheet: vanilla's thresholds applied to whole Resonance, floored, so a common ore's 2 is
-     * sprite 0, an uncommon 5 sprite 1, a rare 12.5 sprite 2, and merged orbs grow.
+     * The sprite on vanilla's orb sheet for a value in thousandths: common 2 is sprite 0, uncommon 5 sprite 4, rare 12.5
+     * sprite 7, and merged orbs grow to sprite 10 at 100 Resonance. Vanilla's own thresholds put the three tiers on sprites
+     * 0, 1 and 2, which Nick could not tell apart in game (2026-11-26).
      */
     public static int icon(long valueThousandths) {
-        long whole = valueThousandths / THOUSANDTHS;
         int icon = 0;
-        while (icon < ICON_THRESHOLDS.length && whole >= ICON_THRESHOLDS[icon]) {
+        while (icon < ICON_THRESHOLDS.length && valueThousandths >= ICON_THRESHOLDS[icon]) {
             icon++;
         }
         return icon;

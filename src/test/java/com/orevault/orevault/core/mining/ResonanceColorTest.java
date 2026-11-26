@@ -1,6 +1,7 @@
 package com.orevault.orevault.core.mining;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -8,9 +9,20 @@ import org.junit.jupiter.api.Test;
 class ResonanceColorTest {
     /** Planted break: the Tome header and the orb read this one value, so a change here is a visible change. */
     @Test
-    void theResonanceColourIsTheOldBuilds() {
-        assertEquals(0xFF4FC3F7, ResonanceColor.RESONANCE_COLOR);
-        assertEquals(0xFF1E88E5, ResonanceColor.RESONANCE_DEEP);
+    void theResonanceColourIsViolet() {
+        assertEquals(0xFFB36BFF, ResonanceColor.RESONANCE_COLOR);
+        assertEquals(0xFF7A3DF0, ResonanceColor.RESONANCE_DEEP);
+    }
+
+    /** Nick, 2026-11-26: purple, unlike vanilla's green XP. Both ends are blue-dominant, so they never read as green. */
+    @Test
+    void bothEndsAreVioletNotGreen() {
+        for (int color : new int[] {ResonanceColor.RESONANCE_COLOR, ResonanceColor.RESONANCE_DEEP}) {
+            int red = color >> 16 & 0xFF;
+            int green = color >> 8 & 0xFF;
+            int blue = color & 0xFF;
+            assertTrue(blue > red && red > green, Integer.toHexString(color));
+        }
     }
 
     /** {@code (sin(age / 2) + 1) / 2}: halfway at age 0, the deep end at age pi, the light end at age 3 pi. */
@@ -25,8 +37,8 @@ class ResonanceColorTest {
     void theBlendRunsFromTheLightEndToTheDeepEnd() {
         assertEquals(ResonanceColor.RESONANCE_COLOR, ResonanceColor.blend(0.0F));
         assertEquals(ResonanceColor.RESONANCE_DEEP, ResonanceColor.blend(1.0F));
-        // Each channel halfway, rounded: 0x4F..0x1E = 54.5, so 0x37, 0xC3..0x88 = 0xA6, 0xF7..0xE5 = 0xEE.
-        assertEquals(0xFF37A6EE, ResonanceColor.blend(0.5F));
+        // Each channel halfway, rounded: 0xB3..0x7A = 150.5, so 0x97; 0x6B..0x3D = 0x54; 0xFF..0xF0 = 247.5, so 0xF8.
+        assertEquals(0xFF9754F8, ResonanceColor.blend(0.5F));
     }
 
     @Test

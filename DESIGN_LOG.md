@@ -14,6 +14,30 @@ Newest first.
 
 ---
 
+## 2026-11-26 — Nick's look at the orb: purple, and sizes that differ
+
+**Feedback.** Nick ran the Resonance orb in `runClient` (#260): "The orb looks good, I'd prefer it to be
+purple, they don't look different depending on the stack sizes as small as you say, I spawned 150000
+and it looks different, the suction plus sound work."
+
+**Decision.** The orb pulses between light violet `#B36BFF` and deep violet `#7A3DF0` on vanilla's
+timing. `ResonanceColor.RESONANCE_COLOR` is now `#B36BFF`, the Resonance colour of the whole mod,
+including the Tome header. Violet sits on the blue side of the blue-yellow axis that red-green colour
+blindness keeps, opposite vanilla's yellow-green XP, and is much darker, so the two also differ in
+greyscale. It is bluer than portal tier 3's `#A038D0` (hue about 265 against 281) and lighter; sharing
+a family with it was accepted, because one is a floating translucent orb and the other a portal block,
+and nothing a player decides depends on telling them apart. Animus stays red.
+
+Sizes: common 2 shows sprite 0 (8 pixels, no core), uncommon 5 sprite 4 (12 pixels, a small pink core),
+rare 12.5 sprite 7 (14 pixels, a large core); Vault Echo bursts reach 8 and 9 and caches of 100
+Resonance or more reach 10 (§11). Each tier keeps its sprite through bonuses up to about +50 percent.
+
+**Rejected.** Cyan to blue (`#4FC3F7` to `#1E88E5`), the first build's colour: Nick asked for purple.
+Vanilla's `getIcon` thresholds on whole Resonance: they put the three tiers on sprites 0, 1 and 2, which
+are 8, 10 and 12 pixels with no core and looked the same in game.
+
+---
+
 ## 2026-11-26 — Resonance orbs despawn after five minutes; Hoarder's Instinct caches are recalled after ten
 
 **Feedback.** Asked at #260 whether an orb nobody collects should vanish after five minutes, as an XP
