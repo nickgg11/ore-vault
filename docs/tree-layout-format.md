@@ -73,7 +73,10 @@ quotes or trailing commas). The parser walks each object itself and keeps the na
 duplicate key is refused rather than silently overwritten. Every object refuses keys it does not
 define, so a misspelt `petalAncor` fails at load instead of going missing. A key that starts with `_` is a
 comment: allowed on any object, ignored by the parser and not hashed. Int fields refuse fractions and
-strings.
+strings: the loader requires `peek() == JsonToken.NUMBER` and parses `nextString()` with `Integer.parseInt`,
+because `JsonReader#nextInt()` would accept `"5"` and `1.0`. Both have a refusal test (#212). Gson's
+`Strictness` needs 2.11 or later; #212 confirms the version the 26.1 classpath resolves, and on an older one
+uses `setLenient(false)`.
 
 ## Nodes
 
@@ -158,9 +161,18 @@ fork-gated one whose option is not chosen with `option_not_chosen` (ADR 0006, am
 node that stops being visible is dropped, whether the hidden set or the team's fork choice changed (ADR 0005
 section 7, amended 2026-11-25).
 
-Both are JUnit cases in `core.tree`, owed to #212: a `forOption` node is hidden under every other option and
-with no choice, shown under its own, and a swap away from its option is refused with
-`fork_dependents_owned` while the team owns it.
+These are JUnit cases in `core.tree`, owed to #212:
+
+- a `forOption` node is hidden under every other option and with no choice, and shown under its own;
+- a swap away from its option is refused with `fork_dependents_owned` while the team owns it;
+- `BuyNode`, `BuyPath` and `SetPin` on a fork-gated node whose option is not chosen are refused with
+  `option_not_chosen`, and a node that is both mod-hidden and fork-gated is refused with `hidden`, the
+  earlier check;
+- a pin on a fork-gated node is dropped when the team's fork choice changes away from its option.
+
+`SetTradeoff` and `SetGenerationVote` also require a visible node. When #212 builds the `Refusal` enum it
+either lists `hidden` and `option_not_chosen` on those two rows of ADR 0006 or states there why they cannot
+occur.
 
 ## Edges
 
@@ -213,7 +225,8 @@ renderer places nothing. Level 0 has no ring: the start area inside level 1's ci
 
 A node of ring `r` has its centre in ring `r`'s band: `x² + y² >= radius(r)²` (0 for ring 0) and
 `x² + y² < radius(r + 1)²` (no upper bound for ring 30), computed in `long` arithmetic. This is the "drawn in its
-ring's band" half of §6 Ring, and it is part of the first layout test below.
+ring's band" half of §6 Ring, and it is part of the first layout test below. #212 writes that half; it runs
+against real positions from #259, which turns it on.
 
 The radii are UI/UX's, set against the preview at #259. The 2026-10-26 preview drew the whole tree about
 2,400 tree pixels across (§6.1 Shape of the tree), roughly 40 px a level; that is a starting point, not a
@@ -395,6 +408,8 @@ ADR 0006's golden test holds `PROTOCOL_VERSION` and literal lists of the node, s
 id is its parent's skill id). An id on the list missing from the file at the pinned version fails with "bump,
 and migrate if it was renamed"; an id in the file not on the list fails with "add it to the list"; and when the version is
 re-pinned, every id dropped from the lists must be on the §6.1 reserved list (ADR 0006, amended 2026-11-25).
+The test is owed to #212 with the layout loader, against the provisional file's ids; #239 updates its lists
+when it writes the real ids.
 
 ADR 0005 freezes these ids from T5. The file lands at T8a with provisional positions (#189's 2026-10-27
 amendment), and T5 work is already merging while the file is still unwritten (#239 is open), so in

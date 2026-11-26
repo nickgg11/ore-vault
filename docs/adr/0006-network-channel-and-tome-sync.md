@@ -609,5 +609,7 @@ start's `boughtBy` entry of −1 was already in the `Marks` row. No payload chan
 Amended 2026-11-25 by E8a-S9 (#189), round 2: a node is visible to a team when it is not in the hidden set
 and its `forOption`, if any, is the team's choice. `BuyNode` and `BuyPath` (which already said "visible") and
 `SetPin` require a visible node, and a fork-gated node whose option is not chosen is refused with the new
-key `option_not_chosen`. A new refusal key is no bump (above); it needs its lang key in
-`assets/orevault/lang/en_us.json` when the `Refusal` enum lands. The hash sentence names the fork option.
+key `option_not_chosen`. A new refusal key is no bump (above). Its text,
+`refusal.orevault.option_not_chosen` in `assets/orevault/lang/en_us.json` with the node's name as its one
+argument, is owned like every other key here, by the Writer and E7-S8; the enum constant itself lands with
+the `Refusal` enum in #212. The hash sentence names the fork option.
