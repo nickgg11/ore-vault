@@ -87,7 +87,7 @@ public final class VaultDimensions {
     /** The team whose Vault a level is, read from its key, so it answers for a Vault with no entry here. */
     public static Optional<UUID> teamOf(ResourceKey<Level> level) {
         Identifier id = level.identifier();
-        return OreVault.MOD_ID.equals(id.getNamespace()) ? VaultKeys.teamIdFromDirectoryName(id.getPath()) : Optional.empty();
+        return VaultKeys.teamOfDimension(id.getNamespace(), id.getPath());
     }
 
     /** The variant a Vault registered this session was made under. */

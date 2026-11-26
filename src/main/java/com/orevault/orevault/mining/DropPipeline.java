@@ -30,7 +30,7 @@ import net.neoforged.neoforge.event.level.BlockDropsEvent;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The mod's one {@link BlockDropsEvent} listener (§11 Drop Pipeline, rule 9). Every node that changes what a break drops
+ * The mod's one {@link BlockDropsEvent} listener (§11 Drop Pipeline, `CLAUDE.md` rule 9). Every node that changes what a break drops
  * registers into one of the six {@link DropStage}s instead of adding a listener, because the order the nodes apply in
  * changes the result, and two listeners have no order.
  *
@@ -65,9 +65,13 @@ public final class DropPipeline {
     private DropPipeline() {
     }
 
-    /** Called once from the mod constructor. A gameplay event, so the game bus (rule 3); cancelled events are not received. */
+    /**
+     * Called once from the mod constructor. A gameplay event, so the game bus ({@code CLAUDE.md} rule 3); cancelled events
+     * are not received. At {@code LOWEST} so a protection mod that cancels the drops at any priority does so before the orb
+     * spawns: otherwise a cancel at {@code LOW} would come after a paid orb.
+     */
     public static void register() {
-        NeoForge.EVENT_BUS.addListener(EventPriority.NORMAL, false, BlockDropsEvent.class, DropPipeline::onBlockDrops);
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, false, BlockDropsEvent.class, DropPipeline::onBlockDrops);
     }
 
     /** Adds a node to a stage, at mod init. Within a stage, nodes run in the order they were added. */

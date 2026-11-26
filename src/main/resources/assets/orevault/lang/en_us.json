@@ -24,7 +24,7 @@
   "orevault.configuration.debug.enable_debug_commands": "Debug Commands",
   "orevault.configuration.debug.enable_debug_commands.tooltip": "Turns on the debug subcommands of /orevault for operators. Takes effect on save, with no relog.",
   "orevault.configuration.debug.log_resonance_gain": "Log Resonance Gain",
-  "orevault.configuration.debug.log_resonance_gain.tooltip": "Writes a line to the server log on each Resonance orb pickup: the team, the collector, the orb's value and what the pool received. Takes effect on save.",
+  "orevault.configuration.debug.log_resonance_gain.tooltip": "Writes a line to the server log on each Resonance orb pickup: the team, the collector, the orb's value, the orbs merged into it, the team size and what the pool received. Takes effect on save.",
   "orevault.configuration.debug.tooltip": "Playtest tools. This section is removed before 1.0.",
   "orevault.configuration.ore_classification": "Ore Classification",
   "orevault.configuration.ore_classification.overrides": "Rarity Overrides",
