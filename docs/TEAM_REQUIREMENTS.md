@@ -1073,8 +1073,10 @@ cost", "prerequisites with tier and cluster" and a name cut with an ellipsis on 
 
 Glyphs and icons come out even only at a whole-number effective scale (zoom times GUI scale). Proposed: the
 wheel moves between stops, 0.2 and one or two overview stops, then every k divided by GUI scale from
-effective scale 1 up to 1.5. No text is drawn on the page, so the old text thresholds are retired; icons,
-frames, tints and thickened lines carry the picture at every stop. Nick judges it on the preview. Minimum
+effective scale 1 up to 1.5. No node text is drawn on the page, so the old per-node text thresholds are
+retired; icons, frames, tints and thickened lines carry the picture at every stop. The ring labels and the
+lock badge's opening level are still text, and each has a threshold in effective scale
+(`docs/tree-layout-format.md`, View). Nick judges it on the preview. Minimum
 stays 0.2.
 
 ### Layout data

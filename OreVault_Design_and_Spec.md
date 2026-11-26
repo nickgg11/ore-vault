@@ -599,8 +599,8 @@ The Resonance tree is a Path of Exile style passive tree (Nick, 2026-10-26; `DES
 - **Fork.** A fork parent is an ordinary skill whose nodes do nothing until an option is chosen (§6.1 Forks). Its options are petals: drawn beside the parent's lowest-ring node, the fork's `petalAnchor` in the layout, and joined to nothing. A petal has no edges, is never on a path and costs no points, so choosing an option can never open or block a route.
 - **Exclusive pair.** Two single nodes that hang as leaves off one junction node, at the same ring. Owning one locks the other. The travel nodes leading to them lie before the junction, so locking a leaf never strands anything.
 - **Mod-gated nodes.** A node whose effect needs a mod, or a tag only a mod fills, sits on a dead-end leaf or spur. When the mod is absent it is hidden: not drawn, not counted, not buyable, never shown as locked. Because nothing lies beyond it, hiding it never changes another node's distance or what can be reached. A node hidden because its mod or tag is missing that a team already owns stays in its save, dormant: it has no effect and does not count as spent, and it works again if the mod returns. A node hidden by a fork choice is different: it still counts as spent, and the choice cannot be swapped away while the team owns it (§4.4), so a swap can never turn spent points into free ones.
-- **Saved state.** The team's tree is saved as `{data_version, owned[], fork_choice{}, free_respec_until, free_respec_opened_at, pinned_node, pinned_by, bought_by{}}` (§11 SavedData Pattern): the owned node ids, the chosen option per fork, the end of the free respec window after a reset and when the last one opened (§4.4), the team's shared pin (a nullable node id and the UUID of the member who set it; absent means no pin) and, per owned node, the UUID of the member who last bought it (absent means empty). On load a pin whose node is gone or hidden is dropped. Nothing derived is saved: tiers, points spent and unspent, and distances all follow from `owned` and the layout. On load, an id the layout no longer has is dropped, which returns its point, and an owned node no longer connected to the start after a layout change is pruned for free. Tradeoff toggles are per player and live on `PlayerStats` (§11), except the applied state of the two generation tradeoffs, Volatile Veins and Molten Seam, which is the team's (§6.1, §11).
-- **Layout data.** The tree's shape is authored data, not code: a JSON resource in the mod jar, not a datapack, so a server and its clients always read the same file. It lists every node (id, skill, class, marks, ring, the mod or tag it requires, exclusive group, drawing position) and every edge, plus each fork's `petalAnchor`. Positions are for drawing only; the rules read edges and rings. The server sends the layout's hash at login, and a client whose own layout hashes differently is disconnected with a message naming the mismatch (`docs/adr/0006-network-channel-and-tome-sync.md`). It syncs ownership and the hidden nodes as two bitsets in layout order, plus the fork choices and the pin, and resends all of them, with the Ascending Edge ladder, on `OnDatapackSyncEvent` (each join and each `/reload`). Tests over the file pin the rules above: every node's distance at least its ring, the copies of a skill in ring order, every mod-gated node on a dead end, exclusive leaves off one junction, petals with no edges, no edge through another node.
+- **Saved state.** The team's tree is saved as `{data_version, owned[], fork_choice{}, free_respec_until, free_respec_opened_at, pinned_node, pinned_by, bought_by{}}` (§11 SavedData Pattern): the owned node ids, the chosen option per fork, the end of the free respec window after a reset and when the last one opened (§4.4), the team's shared pin (a nullable node id and the UUID of the member who set it; absent means no pin) and, per owned node, the UUID of the member who last bought it (absent means empty). A pin whose node is gone or hidden is dropped on load, on `/reload` and when the team's fork choice changes (ADR 0005 section 7). Nothing derived is saved: tiers, points spent and unspent, and distances all follow from `owned` and the layout. On load, an id the layout no longer has is dropped, which returns its point, and an owned node no longer connected to the start after a layout change is pruned for free. Tradeoff toggles are per player and live on `PlayerStats` (§11), except the applied state of the two generation tradeoffs, Volatile Veins and Molten Seam, which is the team's (§6.1, §11).
+- **Layout data.** The tree's shape is authored data, not code: a JSON resource in the mod jar, not a datapack, so a server and its clients always read the same file. It lists every node (id, skill, class, marks, ring, the mod or tag it requires, exclusive group, the fork option it is shown under if any, drawing position) and every edge, plus each fork's `petalAnchor`. Positions are for drawing only; the rules read edges and rings. The format is in `docs/tree-layout-format.md`. Positions are in GUI px from the start. The file also holds the ring radii and a view block of icon sizes, the minimum icon gap, zoom stops and text thresholds; only drawing and the layout tests read those. The format says which fields are frozen ids (node, skill and option ids, which are save data) and which are free to move, and exactly what the layout hash covers. The server sends the layout's hash at login, and a client whose own layout hashes differently is disconnected with a message naming the mismatch (`docs/adr/0006-network-channel-and-tome-sync.md`). It syncs ownership and the hidden nodes as two bitsets in layout order, plus the fork choices and the pin, and resends all of them, with the Ascending Edge ladder, on `OnDatapackSyncEvent` (each join and each `/reload`). Tests over the file pin the rules above: every node's distance at least `max(1, ring)` and its position in its ring's band, the copies of a skill in ring order, every mod-gated or fork-gated node on a dead end, exclusive leaves off one junction, petals with no edges, no edge through another node.
 
 **Node classes and marks.** Every node has exactly one **class** and any number of **marks**. The classes are small, travel, notable, keystone, pact, growth and fork parent; fork options are petals, not nodes. Class decides how the node is drawn (§8). The marks are tradeoff, exclusive and requires; a mark adds a rule to a node of any class.
 
@@ -669,8 +669,8 @@ Making each option its own paid branch was rejected on 2026-09-03 ("buy the tier
 
 #### Reserved node ids
 
-These ids belonged to nodes in the pre-restart build and are never reused, so a stray old save or a
-leftover lang key can never be read as a different node:
+These ids are never reused, so a stray old save or a leftover lang key can never be read as a different
+node. The first seven belonged to nodes in the pre-restart build:
 
 `common_ore_boost`, `uncommon_ore_boost`, `rare_ore_boost`, `ore_sense`, `motherlode`,
 `efficient_miner`, `disturbed_zone_unlock`
@@ -679,8 +679,8 @@ Saves from before the restart are not supported (Nick, 2026-10-26): team data st
 `data_version` 1 and no migration reads the old ids. `ore_sense` became `vein_fortune`, `efficient_miner`
 became `miners_constitution`, the three Ore Boosts became `ore_attunement` and its Focus options,
 `motherlode` became the Vein Singularity option, and `disturbed_zone_unlock` is deferred to the post-1.0
-Animus epic. Saved data is still versioned from its first field (§11), and migrating saves
-across tree changes after release is a stretch goal, not a requirement.
+Animus epic. Saved data is versioned from its first field (§11), and from T5 a renamed node, skill or
+option id needs a migration in the same PR (ADR 0005 section 6, "Registry ids are save data"); a removed id needs none. An id removed or renamed after the restart joins this list in the same PR (`docs/tree-layout-format.md`, "Frozen ids and free fields").
 
 #### Reading a node
 
@@ -1220,7 +1220,7 @@ The nodes are listed in this order: the skills carried over from the tiered tree
 
 ---
 
-**Ore Working** `[FORK PARENT: Yield]`
+**Ore Working** `[FORK PARENT: Yield]` `[REQUIRES: the c:clumps/, c:shards/ and c:crystals/ item tags; nodes 4 to 6]`
 
 > Squeezes more out of each ore block. Does nothing on its own: pick Ore Doubling or Smelter's Intuition from the petals beside it, and this node's tiers apply through it. Nodes 4 to 6 exist only with Ore Doubling chosen and the Mekanism-style tags filled (§9). Vein Fortune is separate and applies on top of either option.
 
@@ -1765,7 +1765,7 @@ The next three skills need FTB Ultimine. They sit on a dead-end spur with Steady
 
 #### Travel stats
 
-> Travel nodes are the steps between real nodes. Each grants one step of one of the twelve stats below, sized so a player feels a single node on its own (+10% mining speed, one heart, one block of reach), and each stat has a cap for the whole tree. A stat's node count is its cap divided by its step. All twelve work with no pack mods installed. Ten were chosen for mining and the mods in Nick's pack; the last two make work outside the Vault easier (Nick, 2026-10-26).
+> Travel nodes are the steps between real nodes. Each grants one step of one of the twelve stats below, sized so a player feels a single node on its own (+10% mining speed, one heart, one block of reach), and each stat has a cap for the whole tree. A stat's node count is its cap divided by its step. All twelve work with no pack mods installed. Ten were chosen for mining and the mods in Nick's pack; the last two make work outside the Vault easier (Nick, 2026-10-26). Each travel stat is one skill in the layout file: its nodes share one skill id, and its tier is the number of its nodes the team owns (§6 Skill and tier).
 
 | Stat | Per node | Nodes | Whole-tree cap | Applies | Hook |
 |---|---|---|---|---|---|
@@ -2443,7 +2443,7 @@ Animus orbs drop from mobs killed in Disturbed Zones, behaving identically to XP
 
 Travel is a size step below small nodes, not only a plainer frame, because a frame-weight difference of a texel or two is gone at the smallest zoom (18 × 0.2 is 3.6 units), and paths must still read as paths. A pact differs from a keystone in size and ornament, not only in hue. The sizes are provisional until Nick's yes on the E8-S5 (#283) preview (Designer, Epic 0 round 1). Every copy of a skill uses the same icon, and each travel stat has its own. Icons are drawn at one texel per GUI unit (`CLAUDE.md` Textures). Retro Diffusion is not used for them unless it is absolutely necessary (Nick).
 
-**The page is opaque and zooms.** The tree is drawn on its own solid page, not over the world, so thin edges stay readable. The mouse wheel scales it between a fifth and one and a half times full size, anchored on the pointer, with a readout of the zoom.
+**The page is opaque and zooms.** The tree is drawn on its own solid page, not over the world, so thin edges stay readable. The mouse wheel scales it between a fifth and one and a half times full size, anchored on the pointer, with a readout of the zoom. Two kinds of text are drawn on the page: the ring labels and the lock badge's opening level. Each is drawn only at or above an effective scale (zoom times GUI scale) set in the layout file's view block (`docs/tree-layout-format.md`, View); below it the ring has no label and the badge no number.
 
 **Search.** A search box in the tree tab's strip, focused with Ctrl+F, matches node names and effect text and highlights the matching nodes.
 
@@ -3002,7 +3002,7 @@ One renderer draws both types. It reuses the vanilla orb sprite sheet — an orb
 
 ### Tree Layout Data
 
-The Resonance tree's shape is one JSON resource in the mod jar (§6 Layout data), read at startup into an immutable `TreeLayout`. Pure classes over that object compute distances by breadth-first search, check that a node can be bought or refunded (§4.4), find the cheapest path for the Tome's hover and shift-click (§8), and derive each skill's tier from the owned ids. None of them imports Minecraft, so all of it is tested in JUnit. The tests that pin the layout's rules are listed in §6.
+The Resonance tree's shape is one JSON resource in the mod jar (§6 Layout data), in the format of `docs/tree-layout-format.md`, read at startup into an immutable `TreeLayout`. The loader refuses a malformed file, so the mod fails at start instead of drawing a broken tree. Pure classes over that object compute distances by breadth-first search, check that a node can be bought or refunded (§4.4), find the cheapest path for the Tome's hover and shift-click (§8), and derive each skill's tier from the owned ids. None of them imports Minecraft, so all of it is tested in JUnit. The tests that pin the layout's rules are listed in §6.
 
 Constants that are not layout live in one class beside it: `LEVEL_CAP = 30`, `POINTS_PER_LEVEL = 5` (§4.3) and the refund prices (§4.4). Per-tier effect values live in one effects-constants source, keyed by skill id and count owned, read by the effect code, the lang test and the balance tests. Each entry is the ordered list of that tier's effect-line arguments, the arguments of `node.orevault.<skill id>.effect.<tier>` in order (§8 Lang keys); a tier whose line has no number holds an empty list, and the lang test checks that each key's placeholder count equals its list's length.
 

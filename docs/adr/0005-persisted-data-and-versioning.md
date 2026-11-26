@@ -387,7 +387,7 @@ unit-tested. Each change is logged once and the data is marked dirty only if som
   cleared.
 - `bought_by` and `generation_tradeoffs` entries for nodes not owned are dropped; unknown ids in
   `active_tradeoffs` are dropped.
-- A pin whose node is gone or hidden is dropped, on load and again when `/reload` changes the hidden set.
+- A pin whose node is gone, hidden, or shown only under a fork option the team has not chosen is dropped, on load, when `/reload` changes the hidden set, and when the team's fork choice changes (the accepted `ChooseForkOption` already resends `TreeState`, ADR 0006 Triggers).
 - A node owned but hidden because its mod or tag is missing is kept, dormant: no effect, not counted as
   spent, active again if the mod returns. It is excluded from both views of ADR 0003.
 
@@ -579,3 +579,5 @@ it was and is open with E10-S3 (#373).
 Amended 2026-11-01 by E3-S9 (#232): if the copy aside of section 2 itself fails, the file is left alone and the write accessor hands back data that is never saved, so that one write is lost and the next tries the copy again. "An unreadable team file is never overwritten" holds in that case too. `vault_generation` and `disbanded_at` are read and written by the plain class `data.TeamFields`, and `OreVaultTeamData` is the `SavedData` around it. Save shapes and keys are unchanged.
 
 Amended 2026-11-01 for E3-S9 (#232) and E3-S5 (#233) (Architect). Section 6's "one pure class" of frozen ids is dropped. It was never built, the block and item ids are in `ModBlocks` and `ModItems`, and `core.gen` importing a shared id class would add an edge for no check. A golden constant also cannot show that registration used it; a walk of the live registries can. `registry/frozen_ids` is owed before T5, when the ids freeze, and the Manager tickets it. The read accessor `OreVaultTeamData#read` stays silent on an unreadable file: `SavedDataStorage` logs the failure once at ERROR and caches it, a log per read would repeat on every rebuild, and the ERROR naming the path belongs to restore (ADR 0002 step 4) and the write accessor (section 2). Restore needs absent told from unreadable, which `read` and `hasRecord` do not answer, so E3-S6a (#237) adds `OreVaultTeamData#isUnreadable(server, teamId)`, true when `get` is null and the file exists, and ADR 0007's pass uses the same method.
+
+Amended 2026-11-25 by E8a-S9 (#189): the pin rule covers nodes gated by a fork option and also runs when the team's fork choice changes (`docs/tree-layout-format.md`, `forOption`). No shape change.
