@@ -36,7 +36,7 @@ within 10 minutes still earns the bonus and Hoarder's Instinct does not beat Res
 nothing. B was the fallback with a hard number. C was rejected for its size (a block, a block entity,
 art, and pistons, liquids, quarries and resets to handle). D was rejected because every hoard reaches
 the cap, which is a flat ×3 to ×4 on all Resonance, about 25 to 33 hours to level 30 instead of about
-100, the same flat-multiplier shape rejected earlier for this node. A wider merge radius was dropped:
+100, the same flat-multiplier shape rejected earlier for this node. Recall pays without moving the cache. Flying it to the member, as Nick first suggested, was rejected because the cache would cross unloaded chunks. A wider merge radius was dropped:
 veins in a tunnel are tens of blocks apart, so it barely lowers the count and grows N for free.
 
 ---
