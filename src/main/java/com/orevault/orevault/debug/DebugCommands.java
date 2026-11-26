@@ -108,7 +108,7 @@ public final class DebugCommands {
         String where = String.format(Locale.ROOT, "%.2f %.2f %.2f", pos.x, pos.y, pos.z);
         if (!orbs.spawn(source.getLevel(), pos, team, thousandths)) {
             source.sendFailure(Component.literal(TAG + "orb spawn team=" + team + " value=" + thousandths
-                    + " refused: an orb needs a value above 0"));
+                    + " not spawned: the value must be above 0 and the position loaded"));
             return 0;
         }
         print(source, "orb spawn team=" + team + " value=" + thousandths + " at " + where + " in "
