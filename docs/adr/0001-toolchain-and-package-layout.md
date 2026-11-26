@@ -236,6 +236,8 @@ Named rules, which hold whatever the rows say:
    sources), and only `VaultDimensions`' find-or-create and restore paths call `VaultLevels.register`
    (Reviewer gate 2; `CLAUDE.md` rule 2; the details are ADR 0002's).
 8. Classes in `mixin` depend on nothing of Ore Vault's except `core.wear` (ADR 0008).
+9. Only `mining.DroppedXp` calls `BlockDropsEvent#setDroppedExperience`, and it only raises the value (§3.4,
+   §11 Drop Pipeline). Added with E5-S3 (#264, 2026-11-26), where its class lands, and shown failing there.
 
 S43 stands as settled: at T1 each rule is shown failing once against a planted violation, because
 ArchUnit fails a rule that matches nothing unless told not to, and a vacuous pass is not evidence. This record adds

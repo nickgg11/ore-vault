@@ -31,6 +31,15 @@ class OreVaultServerConfigTest {
         assertEquals(ModConfigSpec.RestartType.NONE, value.restartType());
     }
 
+    /** §10: read on each orb pickup, so immediate; off by default; an unloaded config reads off rather than throwing. */
+    @Test
+    void theGainLogIsOffImmediateAndSafeUnloaded() {
+        assertEquals(false, OreVaultServerConfig.LOG_RESONANCE_GAIN.getDefault());
+        ModConfigSpec.ValueSpec value = OreVaultServerConfig.SPEC.getSpec().get(List.of("debug", "log_resonance_gain"));
+        assertEquals(ModConfigSpec.RestartType.NONE, value.restartType());
+        assertFalse(OreVaultServerConfig.logResonanceGain());
+    }
+
     /** §10: the classifier builds its table at server start, so the screen must warn that an edit waits for a reload. */
     @Test
     void oreOverridesNeedAWorldRestart() {

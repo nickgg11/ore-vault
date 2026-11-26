@@ -12,7 +12,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * The Resonance orb (§4.2, §11 Resonance Orb Entity). {@link #spawn} is the one way the mod makes one; the drop pipeline
- * calls it per break (#264).
+ * calls it per break ({@link DropPipeline}).
  */
 public final class ResonanceOrbEntity extends VaultOrbEntity {
     public ResonanceOrbEntity(EntityType<? extends ResonanceOrbEntity> type, Level level) {
@@ -44,7 +44,7 @@ public final class ResonanceOrbEntity extends VaultOrbEntity {
 
     @Override
     protected void pay(ServerPlayer collector, UUID team, long valueThousandths, int orbCount) {
-        ResonanceAward.collect(collector, team, valueThousandths);
+        ResonanceAward.collect(collector, team, valueThousandths, orbCount);
     }
 
     @Override
