@@ -415,12 +415,15 @@ player's current team as one to leave (ADR 0002). Mining in a Vault pays only me
 
 ### 10. The Resonance orb
 
-Saved through `addAdditionalSaveData`/`readAdditionalSaveData`, snake_case keys, its own `data_version`:
-`team` (UUID string), `value` (long, thousandths of a Resonance), `orb_count` (int, default 1: how many
+Saved through `addAdditionalSaveData`/`readAdditionalSaveData`, snake_case keys nested in one `orb`
+compound, with its own `data_version`: `team` (UUID string; absent or malformed is no team, which follows
+and pays nobody), `value` (long, thousandths of a Resonance before team scaling; absent or negative reads 0,
+and an orb of value 0 is discarded on its first tick), `orb_count` (int, default 1, below 1 reads 1: how many
 orbs merged into this one, the N of Hoarder's Instinct's cache multiplier; one field, confirmed in round 1, not a source-ore count) and `age` (int ticks, default
-0). Whether an orb despawns is not stored: while its team has Hoarder's Instinct chosen, the orb's age does
+0, clamped to 0..6000). The plain class `mining.OrbFields` reads and writes the compound. Whether an orb despawns is not stored: while its team has Hoarder's Instinct chosen, the orb's age does
 not advance (read from `TeamEffects`), so swapping the option away lets old caches age normally. An orb
-whose team has no data or is disbanded pays nothing and despawns normally.
+whose team is disbanded pays nothing and despawns normally. A team with no data yet is paid, and its file
+created: that is every team's first orb.
 
 ### 11. Item components
 
@@ -581,3 +584,5 @@ Amended 2026-11-01 by E3-S9 (#232): if the copy aside of section 2 itself fails,
 Amended 2026-11-01 for E3-S9 (#232) and E3-S5 (#233) (Architect). Section 6's "one pure class" of frozen ids is dropped. It was never built, the block and item ids are in `ModBlocks` and `ModItems`, and `core.gen` importing a shared id class would add an edge for no check. A golden constant also cannot show that registration used it; a walk of the live registries can. `registry/frozen_ids` is owed before T5, when the ids freeze, and the Manager tickets it. The read accessor `OreVaultTeamData#read` stays silent on an unreadable file: `SavedDataStorage` logs the failure once at ERROR and caches it, a log per read would repeat on every rebuild, and the ERROR naming the path belongs to restore (ADR 0002 step 4) and the write accessor (section 2). Restore needs absent told from unreadable, which `read` and `hasRecord` do not answer, so E3-S6a (#237) adds `OreVaultTeamData#isUnreadable(server, teamId)`, true when `get` is null and the file exists, and ADR 0007's pass uses the same method.
 
 Amended 2026-11-25 by E8a-S9 (#189): the pin rule covers nodes gated by a fork option and also runs when the team's fork choice changes (`docs/tree-layout-format.md`, `forOption`). No shape change.
+
+Amended 2026-11-25 by E5-S2 (#260) (Architect's sketch `docs/sketches/260-resonance-orb.md`). Section 10's keys are nested in one `orb` compound, so the reader is a plain class with unit fixtures (`OrbFields`); nothing had been written before, so no migration. "An orb whose team has no data" no longer pays nothing: as written, every team's first orb would have paid nothing. A disbanded team's orb pays nothing. The defaults and clamps for each key are stated in section 10. The entity type id `orevault:resonance_orb` is save data and listed in `registry/frozen_ids`.

@@ -14,6 +14,57 @@ Newest first.
 
 ---
 
+## 2026-11-26 — Nick's look at the orb: purple, and sizes that differ
+
+**Feedback.** Nick ran the Resonance orb in `runClient` (#260): "The orb looks good, I'd prefer it to be
+purple, they don't look different depending on the stack sizes as small as you say, I spawned 150000
+and it looks different, the suction plus sound work."
+
+**Decision.** The orb pulses between light violet `#B36BFF` and deep violet `#7A3DF0` on vanilla's
+timing. `ResonanceColor.RESONANCE_COLOR` is now `#B36BFF`, the Resonance colour of the whole mod,
+including the Tome header. Violet sits on the blue side of the blue-yellow axis that red-green colour
+blindness keeps, opposite vanilla's yellow-green XP, and is much darker, so the two also differ in
+greyscale. It is bluer than portal tier 3's `#A038D0` (hue about 265 against 281) and lighter; sharing
+a family with it was accepted, because one is a floating translucent orb and the other a portal block,
+and nothing a player decides depends on telling them apart. Animus stays red.
+
+Sizes: common 2 shows sprite 0 (8 pixels, no core), uncommon 5 sprite 4 (12 pixels, a small pink core),
+rare 12.5 sprite 7 (14 pixels, a large core); Vault Echo bursts reach 8 and 9 and caches of 100
+Resonance or more reach 10 (§11). Each tier keeps its sprite through bonuses up to about +50 percent.
+
+**Rejected.** Cyan to blue (`#4FC3F7` to `#1E88E5`), the first build's colour: Nick asked for purple.
+Vanilla's `getIcon` thresholds on whole Resonance: they put the three tiers on sprites 0, 1 and 2, which
+are 8, 10 and 12 pixels with no core and looked the same in game.
+
+---
+
+## 2026-11-26 — Resonance orbs despawn after five minutes; Hoarder's Instinct caches are recalled after ten
+
+**Feedback.** Asked at #260 whether an orb nobody collects should vanish after five minutes, as an XP
+orb does. Nick: yes, because orbs that never despawn "could result in a ton of lag".
+
+**Decision.** A Resonance orb nobody collects despawns after 6000 ticks (§4.2). Orbs fly to any team
+member within 8 blocks, so only orbs left behind are affected. Making orbs permanent was rejected for
+the entity count it builds up in a Vault left half-mined.
+
+**Hoarder's Instinct.** Its orbs do not despawn (§6.1), which carries the same risk. Nick asked for
+options. The Balancer offered four:
+
+- A. A cache uncollected for 10 minutes is recalled to the nearest team member in the Vault.
+- B. A cap of 64 caches per team per Vault, with overflow merged into the nearest cache.
+- C. A resting cache turns into a non-ticking block.
+- D. Resting orbs go into a per-team hoard claimed at the portal.
+
+Nick chose A (2026-11-26), with recall paying ×1 rather than the cache multiplier, so walking back
+within 10 minutes still earns the bonus and Hoarder's Instinct does not beat Resonance Magnetism for
+nothing. B was the fallback with a hard number. C was rejected for its size (a block, a block entity,
+art, and pistons, liquids, quarries and resets to handle). D was rejected because every hoard reaches
+the cap, which is a flat ×3 to ×4 on all Resonance, about 25 to 33 hours to level 30 instead of about
+100, the same flat-multiplier shape rejected earlier for this node. Recall pays without moving the cache. Flying it to the member, as Nick first suggested, was rejected because the cache would cross unloaded chunks. A wider merge radius was dropped:
+veins in a tunnel are tens of blocks apart, so it barely lowers the count and grows N for free.
+
+---
+
 ## 2026-11-25 — Level 1 stays at about 14 minutes near the surface
 
 **Where this came from.** The 2026-11-25 entry below left one question open for Nick: with the curve as derived, a solo

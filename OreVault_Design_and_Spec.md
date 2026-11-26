@@ -399,7 +399,7 @@ Resonance is a team-shared numerical counter stored in the team's SavedData. It 
 
 ### 4.2 Resonance Gain
 
-Resonance orbs are spawned as floating entities when an ore block is broken inside the Vault. They behave identically to XP orbs visually and mechanically — they float toward the nearest team member within 8 blocks, are absorbed on contact, and add to the team's Resonance pool. 8 blocks is vanilla's experience orb radius (`ExperienceOrb`, `XpOrbTargetingEvent(this, 8.0)`). Sound and particle effects match XP orbs. The Resonance Magnetism option raises the radius to 12, 16 and 24 blocks (§6.1).
+Resonance orbs are spawned as floating entities when an ore block is broken inside the Vault. They move like XP orbs and use the XP orb sprite in a pulsing violet — they float toward the nearest team member within 8 blocks, are absorbed whole on contact, and add to the team's Resonance pool. Only members of the owning team attract or collect an orb; anyone else, a fake player included, leaves it where it is. 8 blocks is vanilla's experience orb radius (`ExperienceOrb`, `XpOrbTargetingEvent(this, 8.0)`). The XP pickup sound plays on collection, but there is no fly-in animation toward the player: vanilla sends that only for its own item, arrow and XP entities. An orb nobody collects despawns after 6000 ticks (five minutes), as an XP orb does, except under Hoarder's Instinct (§6.1). A permanent orb would pile up entities and cost server time, so the lifetime stays (Nick, 2026-11-26; `DESIGN_LOG.md`). Orbs cannot be damaged. The Resonance Magnetism option raises the radius to 12, 16 and 24 blocks (§6.1).
 
 **Base gain rates** (constants, not config; one constant per row, read by the orb, the curve and this table):
 | Ore Tier | Base Resonance |
@@ -1704,17 +1704,19 @@ The nodes are listed in this order: the skills carried over from the tiered tree
 
 **Hoarder's Instinct** `[FORK OPTION: Orb Collection]`
 
-> Orbs never move toward you and never despawn; orbs resting within 4 blocks of each other merge into a single cache. An orb is resting once it has been on the ground for 20 ticks moving less than 0.01 blocks a tick; merges are checked every 20 ticks. Through Resonant Draw tier 2, collecting a cache of N orbs (N counts orbs, not Resonance) pays ×(1 + 0.1 × N) up to ×3; tier 3 lets caches pull in orbs from other caches within 8 blocks and raises the cap to ×4.
+> Orbs never move toward you and never despawn; orbs resting within 4 blocks of each other merge into a single cache. A cache nobody collects for 10 minutes is recalled: it pays the nearest team member in the same Vault at ×1, with no multiplier. An orb is resting once it has been on the ground for 20 ticks moving less than 0.01 blocks a tick; merges are checked every 20 ticks. Through Resonant Draw tier 2, collecting a cache of N orbs (N counts orbs, not Resonance) pays ×(1 + 0.1 × N) up to ×3; tier 3 lets caches pull in orbs from other caches within 8 blocks and raises the cap to ×4.
 
 **A petal, not a node.** Costs nothing, has no edges and lies on no path. Can be picked once the team owns a Resonant Draw node. One option at a time; picking one locks its siblings, and swapping or unpicking is free, outside the Vault only (§4.4).
 
 | Resonant Draw tier | Effect through this option |
 |---|---|
-| 1 | Orbs are stationary and permanent; orbs resting within 4 blocks merge into one cache |
+| 1 | Orbs are stationary and do not despawn; orbs resting within 4 blocks merge into one cache; a cache uncollected for 12,000 ticks is recalled at ×1 |
 | 2 | Cache collection pays ×(1 + 0.1 × N), capped at ×3 |
 | 3 | Caches pull in orbs from neighbouring caches within 8 blocks; cap raised to ×4 |
 
 > The resting rule and the 20-tick check are derived and unplaytested; T9 confirms them.
+>
+> **Recall** (Nick, 2026-11-26; `DESIGN_LOG.md`). A permanent cache costs server time while a player is near it, so recall keeps caches from piling up without limit. A resting orb that has merged with nothing is a cache of 1 and is recalled the same way. A cache's age counts only while its chunk ticks, and a merge resets it to the age of the newest orb in it, so the 10 minutes run from when the cache last grew. When it reaches 12,000 ticks the cache is removed and pays the team member nearest to it in the same Vault level, chosen by the same filter as attraction (§4.2), with the pickup sound played at that member, at ×1: base value, team-scaled as any orb (§4.2), with no cache multiplier. If no team member is in that level, the cache waits, its age held at 12,000, and is recalled when one arrives. A disbanded team's cache pays nothing (§11). If the team swaps away from Hoarder's Instinct, every cache past 6000 ticks is recalled the same way at once instead of despawning. It does not fly, so it never crosses chunks. Paying the multiplier on recall was rejected: Hoarder's Instinct would then beat Resonance Magnetism outright, bonus Resonance for no walk back. Caches out of every player's simulation distance do not tick and keep their full value for a later sweep.
 >
 > The previous version of this node removed orb attraction and gave a flat 2× on manual pickup, which was strictly worse than Magnetism Tier 1 in ordinary play — an exclusive choice where one side was simply wrong. Merging plus permanence makes it a different way to mine (clear-then-sweep) rather than a worse one.
 
@@ -2998,7 +3000,9 @@ Resonance and Animus orbs share a `VaultOrbEntity` base that pays a team pool ra
 
 Movement is server-authoritative. Vanilla runs the follow logic on both sides and lets the client predict, which works because "nearest player" is knowable client-side; team membership is not, so a client prediction would pull orbs toward players who cannot collect them. The client interpolates what the server sends, which is why the entity type uses a short update interval.
 
-One renderer draws both types. It reuses the vanilla orb sprite sheet — an orb should read as an orb and differ by colour — sizing by value on vanilla's own thresholds and taking its tint from the entity: Resonance = blue/cyan, Animus = red/dark red.
+One renderer draws both types. It reuses the vanilla orb sprite sheet — an orb should read as an orb and differ by colour — sizing by value (`OrbRules.icon`) so the three ore tiers differ in sprite size and in the sheet's pink core: common 2 is sprite 0 (8 pixels, no core), uncommon 5 sprite 4 (12 pixels, small core), rare 12.5 sprite 7 (14 pixels, large core). Each sprite starts at 3, 3.25, 3.5, 4, 7.5, 9, 10, 20, 50 and 100 Resonance, so each tier keeps its sprite through bonuses up to about +50 percent, and merged orbs grow to sprite 10 at 100 Resonance. Vanilla's own thresholds put the three tiers on sprites 0, 1 and 2, which looked the same in game (Nick, 2026-11-26; `DESIGN_LOG.md`). It takes its tint from the entity: Resonance pulses between light violet `0xFFB36BFF` (`ResonanceColor.RESONANCE_COLOR`, the Resonance colour of the whole mod, which the Tome header shares) and deep violet `0xFF7A3DF0` on vanilla's orb timing; Animus = red/dark red.
+
+Pickup sends no take packet. `LivingEntity#take` sends one only for items, arrows and XP orbs, and sending `ClientboundTakeItemEntityPacket` for another entity makes the client play the item sound. So the server plays the XP pickup sound itself, at vanilla's volume and pitch, and there is no fly-in animation. Orbs of one team within half a block merge every second, summing value and `orb_count`; orbs of different teams never merge. Hoarder's Instinct adds its own wider merge of resting orbs (§6.1). Under Hoarder's Instinct orbs do not despawn, and a cache is recalled after 12,000 ticks (§6.1). The saved shape is ADR 0005 section 10.
 
 ### Tree Layout Data
 
@@ -3131,7 +3135,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] The `in_vault` login check: a player whose Vault is gone goes to their return position; one in a disbanded team's Vault or another team's goes home with a chat line; one whose Vault was reset while they were offline goes to the team anchor. `in_vault` is set and cleared on dimension change and respawn, and an online player whose team changes while inside another team's Vault is sent home (§11, ADR 0002) — E3-S6a (#237)
 
 ### Resonance System
-- [ ] Resonance orb entity on a `VaultOrbEntity` base: vanilla orb sprite sized by value, tinted blue/cyan, carrying `orb_count`, the number of orbs merged into it (Hoarder's Instinct's N, §6.1) — E5-S2 (#260)
+- [x] Resonance orb entity on a `VaultOrbEntity` base: vanilla orb sprite sized by value (common, uncommon and rare on sprites 0, 4 and 7), pulsing light to deep violet, carrying `orb_count`, the number of orbs merged into it (Hoarder's Instinct's N, §6.1); immune to damage, despawns after 6000 ticks, XP pickup sound with no fly-in — E5-S2 (#260)
 - [ ] Resonance orb spawns on ore broken by hand in a Vault — 2/5/12.5 by rarity (§4.2); unclassified blocks and machine breaks award nothing — E5-S3 (#264); ×1.75 when Tithe consumed the block — E9-S31 (#335)
 - [ ] Orb floats to the nearest team member within 8 blocks, vanilla's orb radius (§4.2), server-authoritative; only members of the owning team attract or collect it — E5-S2 (#260); Resonance Magnetism raises it to 12 / 16 / 24 — E9-S39 (#347)
 - [x] Team Resonance pool, stored in thousandths, and `level_reached`, each reading 0 from a tag written without it (§11) — E6-S1 (#241)

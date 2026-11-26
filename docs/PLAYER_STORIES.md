@@ -88,7 +88,7 @@ own shaft and hunger.
 ### The orb and the bar
 
 The first ore drops its vanilla XP exactly as in the Overworld (§3.4 Vanilla XP is untouched) and, beside it,
-a Resonance orb tinted blue or cyan that flies to them from up to 8 blocks away, the same base radius as a
+a Resonance orb tinted violet that flies to them from up to 8 blocks away, the same base radius as a
 vanilla XP orb (§4.2; §11 Resonance Orb Entity; §13 Resonance System). The orb is the first new thing the mod
 shows, so it must read as different from the green vanilla orb at a glance. Common ore pays 2, uncommon 5,
 rare 12.5 (§4.2).
@@ -355,7 +355,7 @@ how long before the first vein?
 
 ### T5: The Resonance loop
 
-The player breaks ore. Vanilla XP still drops, and a blue or cyan Resonance orb flies to them and is absorbed
+The player breaks ore. Vanilla XP still drops, and a violet Resonance orb flies to them and is absorbed
 (§3.4, §4.2). Level 1 arrives at 7 to 11 minutes and level 2 at 15 to 23 (§4.3 Pacing check). Until the Tome
 shell lands at T7, the level-up is an overlay message to every online member rather than a toast (E5-S4, #274;
 the toast comes with E7-S6, #291, §13 Resonance System). Stone Memory tier 1 is bought by command and its XP

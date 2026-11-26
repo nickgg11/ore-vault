@@ -146,6 +146,17 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> ORE_NO_ENTRY = function("ore/non_ores_and_ancient_debris_have_no_entry");
     private static final ResourceKey<Consumer<GameTestHelper>> ORE_TWO_RUNS = function("ore/two_runs_give_the_same_table");
     private static final ResourceKey<Consumer<GameTestHelper>> ORE_PUBLISHED = function("ore/published_at_start_with_both_types_pickers");
+    private static final ResourceKey<Consumer<GameTestHelper>> ORB_NON_MEMBER = function("orb/non_member_neither_attracts_nor_collects");
+    private static final ResourceKey<Consumer<GameTestHelper>> ORB_MEMBER = function("orb/member_attracts_and_collects");
+    private static final ResourceKey<Consumer<GameTestHelper>> ORB_PAYS_NOTHING = function("orb/disbanded_or_teamless_pays_nothing");
+    private static final ResourceKey<Consumer<GameTestHelper>> ORB_ROUND_TRIP = function("orb/entity_tag_round_trips");
+    private static final ResourceKey<Consumer<GameTestHelper>> ORB_ZERO = function("orb/zero_value_discarded_on_first_tick");
+    private static final ResourceKey<Consumer<GameTestHelper>> ORB_DAMAGE = function("orb/nothing_damages_it");
+    private static final ResourceKey<Consumer<GameTestHelper>> ORB_MERGE = function("orb/same_team_merge_conserves_value");
+    private static final ResourceKey<Consumer<GameTestHelper>> ORB_TYPE = function("orb/type_updates_every_two_ticks");
+    private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_ORB_SPAWN = function("debug/orb_spawn_and_refuse_zero");
+    /** The orb tests wait 40 ticks for a pull, longer than {@link #MAX_TICKS}. */
+    private static final int ORB_MAX_TICKS = 100;
 
     private GameTests() {
     }
@@ -293,6 +304,15 @@ public final class GameTests {
             registry.register(ORE_NO_ENTRY, OreClassifierTests::nonOresAndAncientDebrisHaveNoEntry);
             registry.register(ORE_TWO_RUNS, OreClassifierTests::twoRunsGiveTheSameTable);
             registry.register(ORE_PUBLISHED, OreClassifierTests::publishedAtStartWithBothTypesPickers);
+            registry.register(ORB_NON_MEMBER, OrbTests::aNonMemberNeitherAttractsNorCollects);
+            registry.register(ORB_MEMBER, OrbTests::aMemberAttractsAndCollects);
+            registry.register(ORB_PAYS_NOTHING, OrbTests::aDisbandedOrTeamlessOrbPaysNothing);
+            registry.register(ORB_ROUND_TRIP, OrbTests::theEntityTagRoundTrips);
+            registry.register(ORB_ZERO, OrbTests::aZeroValueOrbIsDiscardedOnItsFirstTick);
+            registry.register(ORB_DAMAGE, OrbTests::nothingDamagesIt);
+            registry.register(ORB_MERGE, OrbTests::sameTeamOrbsMergeAndConserveValue);
+            registry.register(ORB_TYPE, OrbTests::theTypeUpdatesEveryTwoTicks);
+            registry.register(DEBUG_ORB_SPAWN, DebugCommandTests::orbSpawnSpawnsTheValueAndRefusesZero);
         });
     }
 
@@ -322,8 +342,13 @@ public final class GameTests {
                 PLAYER_RESPAWN, PLAYER_LOGIN_HOME, PLAYER_LOGIN_OTHER, PLAYER_LOGIN_OLD_LAYOUT, LIFE_RESTORE_NO_FOLDER, PLAYER_LOGIN_STUCK,
                 RETURN_BUILT, RETURN_ONE, RETURN_TIERS, RETURN_REBUILT, ARRIVAL_PILLAR, RETURN_BLOCKED, ARRIVAL_TORCH,
                 FROZEN_IDS, ORE_CLASSES, ORE_FEATURES, ORE_NO_ENTRY, ORE_TWO_RUNS, ORE_PUBLISHED, DEBUG_DENSITY_REFUSES,
-                DEBUG_DENSITY_PLAN, TEAM_DATA_RESONANCE, DEBUG_TEAM_DUMP)) {
+                DEBUG_DENSITY_PLAN, TEAM_DATA_RESONANCE, DEBUG_TEAM_DUMP, ORB_PAYS_NOTHING, ORB_ROUND_TRIP, ORB_ZERO,
+                ORB_DAMAGE, ORB_TYPE, DEBUG_ORB_SPAWN)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
+        }
+        for (ResourceKey<Consumer<GameTestHelper>> test : List.of(ORB_NON_MEMBER, ORB_MEMBER, ORB_MERGE)) {
+            event.registerTest(test.identifier(),
+                    new FunctionGameTestInstance(test, data(environment, false, ORB_MAX_TICKS)));
         }
         event.registerTest(DELIBERATE_FAILURE.identifier(),
                 new FunctionGameTestInstance(DELIBERATE_FAILURE, data(environment, true)));
@@ -331,6 +356,11 @@ public final class GameTests {
 
     private static TestData<Holder<TestEnvironmentDefinition<?>>> data(
             Holder<TestEnvironmentDefinition<?>> environment, boolean manualOnly) {
-        return new TestData<>(environment, EMPTY_STRUCTURE, MAX_TICKS, 0, true, Rotation.NONE, manualOnly, 1, 1, false, 0);
+        return data(environment, manualOnly, MAX_TICKS);
+    }
+
+    private static TestData<Holder<TestEnvironmentDefinition<?>>> data(
+            Holder<TestEnvironmentDefinition<?>> environment, boolean manualOnly, int maxTicks) {
+        return new TestData<>(environment, EMPTY_STRUCTURE, maxTicks, 0, true, Rotation.NONE, manualOnly, 1, 1, false, 0);
     }
 }

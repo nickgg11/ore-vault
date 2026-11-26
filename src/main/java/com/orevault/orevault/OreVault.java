@@ -12,9 +12,11 @@ import com.orevault.orevault.data.LevelCurves;
 import com.orevault.orevault.data.PlayerAttachment;
 import com.orevault.orevault.debug.DebugCommands;
 import com.orevault.orevault.debug.VaultTickLog;
+import com.orevault.orevault.mining.ResonanceOrbEntity;
 import com.orevault.orevault.ore.OreClassifier;
 import com.orevault.orevault.registry.ModBlocks;
 import com.orevault.orevault.registry.ModCreativeTabs;
+import com.orevault.orevault.registry.ModEntities;
 import com.orevault.orevault.registry.ModItems;
 import com.orevault.orevault.registry.ModSounds;
 import com.orevault.orevault.team.TeamHelper;
@@ -55,6 +57,7 @@ public final class OreVault {
         ModItems.register(modEventBus);
         ModCreativeTabs.register(modEventBus);
         ModSounds.register(modEventBus);
+        ModEntities.register(modEventBus);
         PlayerAttachment.register(modEventBus);
         TeamHelper.register();
         VaultTeamEvents.register();
@@ -71,7 +74,8 @@ public final class OreVault {
     /** The root carries no guard: everything that is not a debug tool lives under it too, whatever the flag says (§10). */
     private static void registerCommands(RegisterCommandsEvent event) {
         LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal(MOD_ID);
-        DebugCommands.attach(root, OreVaultServerConfig::enableDebugCommands);
+        DebugCommands.attach(root, OreVaultServerConfig::enableDebugCommands,
+                (level, pos, team, thousandths) -> ResonanceOrbEntity.spawn(level, pos, team, thousandths).isPresent());
         event.getDispatcher().register(root);
     }
 
