@@ -110,8 +110,8 @@ channel negotiation.
 - any field of any payload, nested records included, is added, removed, reordered or changes type or
   codec, or a size bound is lowered;
 - a node, skill or option id in the layout file changes or is removed (a fork's id is its parent's skill
-  id), so a client from before the rename is refused at negotiation instead of decoding bitsets against the
-  wrong ids. Moving, re-ringing or re-edging a node
+  id), so a client from before the rename is refused at negotiation instead of decoding bitsets or fork choices against
+  the wrong ids, and so the golden test makes the save migration the rename needs impossible to miss. Moving, re-ringing or re-edging a node
   needs no bump: the layout hash catches it (below).
 
 It does not bump for a handler change, a new refusal lang key, or a raised size bound. The constant's
@@ -205,7 +205,7 @@ smaller.
 
 `TreeLayout#canonicalHash()` (pure, in `core.layout`) is the first 8 bytes of SHA-256 over a canonical
 serialisation of the parsed layout: nodes in file order with id, skill, class, marks, ring, requirement,
-exclusive group and position; edges sorted; forks with options and `petalAnchor`. It hashes the parsed
+exclusive group, fork option and position; edges sorted; forks with options and `petalAnchor`. It hashes the parsed
 form, not the file's bytes, so line endings and whitespace in a checkout cannot change it. Node index `i`
 on the wire is the `i`th node of that order; petals are not nodes and are named by id.
 
@@ -233,13 +233,13 @@ All carry intent only.
 | Payload | Fields | Server checks, in order | Refusal keys |
 |---|---|---|---|
 | `LayoutAck` | `long layoutHash` | equals the server's hash | disconnect, above |
-| `BuyNode` | `String nodeId` | known; not hidden; not owned; adjacent to the start or an owned node; ring at most team level; an unspent point; no exclusive partner owned (§4.4) | `unknown_node`, `hidden`, `already_owned`, `not_adjacent`, `ring_above_level`, `no_points`, `exclusive_owned` |
+| `BuyNode` | `String nodeId` | known; visible (not in the hidden set, and any `forOption` is the team's chosen option); not owned; adjacent to the start or an owned node; ring at most team level; an unspent point; no exclusive partner owned (§4.4) | `unknown_node`, `hidden`, `option_not_chosen`, `already_owned`, `not_adjacent`, `ring_above_level`, `no_points`, `exclusive_owned` |
 | `BuyPath` | `List<String> nodeIds`, 1 to `MAX_PATH`, in the order the Tome highlighted | the whole list before anything is bought: no duplicates, none owned, each known and visible; each node adjacent to the start, an owned node or an earlier node of the list; each ring at most team level; length at most unspent points; no exclusive partner owned or earlier in the list. Then buys in order, all or nothing. The server buys exactly these ids, never a different equal-cost route (§8 Shift-click) | as `BuyNode`, plus `path_duplicate`, `path_not_connected`, `path_crosses_ring`, `path_too_costly`, naming the first failing node |
 | `RefundNode` | `String nodeId`, `boolean expectFree` | known; owned; not the start; sender outside every Vault; every other owned node still connected to the start (§4.4 BFS); price from the undo window, the respec window or the class price; `expectFree` true and the price is not zero refuses rather than charges; sender holds the XP levels | `unknown_node`, `not_owned`, `start_node`, `inside_vault`, `refund_strands`, `refund_window_closed`, `refund_xp` |
 | `ChooseForkOption` | `String forkId`, `Optional<String> optionId` (empty clears) | fork and option known; a parent node owned; sender outside every Vault; no owned node depends on the current option (§4.4) | `unknown_fork`, `unknown_option`, `fork_parent_not_owned`, `inside_vault`, `fork_dependents_owned` |
 | `SetTradeoff` | `String nodeId`, `boolean on` | known; a `[TRADEOFF]` node; owned and visible; not Volatile Veins or Molten Seam; sender outside every Vault. Idempotent: `on` is the desired state, so a replayed packet repeats the same state | `unknown_node`, `not_a_tradeoff`, `not_owned`, `tradeoff_is_voted`, `inside_vault` |
 | `SetGenerationVote` | `String nodeId`, `boolean on` | Volatile Veins or Molten Seam; owned and visible. Allowed anywhere, since nothing applies until the Vault is empty (§6.1 Volatile Veins). Idempotent | `unknown_node`, `not_voted_tradeoff`, `not_owned` |
-| `SetPin` | `Optional<String> nodeId` (empty clears) | known and visible. Anywhere; a pin has no effect on play | `unknown_node`, `hidden` |
+| `SetPin` | `Optional<String> nodeId` (empty clears) | known and visible. Anywhere; a pin has no effect on play | `unknown_node`, `hidden`, `option_not_chosen` |
 | `StartReset` | `boolean backup` | sender holds a Tier 4 Primordial Signet in their inventory; the team has a Vault; no session open for the team; ADR 0007's further rules | `reset_no_signet`, `reset_no_vault`, `reset_session_open` |
 | `CastResetVote` | `int sessionId`, `boolean approve` | the session is the sender's team's and still voting | `reset_no_session` |
 | `SelectEntryPoint` | `int slot`; −1 is the team anchor (X=0, Z=0) | slot under the capacity of the best Signet the sender holds (§3.3); the slot is set for the team's current `vault_generation` | `entry_no_capacity`, `entry_empty` |
@@ -402,6 +402,7 @@ Every key is `refusal.orevault.<reason>`, owned in text by the Writer and E7-S8;
 |---|---|---|
 | `unknown_node` | id not in the layout | the id |
 | `hidden` | node hidden on this server | node |
+| `option_not_chosen` | node shown only under a fork option the team has not chosen (its `forOption`) | node |
 | `already_owned` | buy of an owned node | node |
 | `not_adjacent` | no edge to the start or an owned node | node |
 | `ring_above_level` | ring above team level | node, ring |
@@ -455,7 +456,7 @@ Disconnect key: `disconnect.orevault.layout_mismatch` (server hash, client hash)
   `SeismicMap` with `side` 34.
 - A golden JUnit test holds `PROTOCOL_VERSION` and literal lists of the layout file's node, skill and option
   ids, written out in the test (amended 2026-11-25, E8a-S9, #189). (a) An id on the list missing from the
-  file at the pinned version fails with "bump and migrate". (b) An id in the file not on the list fails with
+  file at the pinned version fails with "bump, and migrate if it was renamed". (b) An id in the file not on the list fails with
   "add it to the list". (c) When the version is re-pinned, every id dropped from the lists must be on the
   §6.1 reserved list. This makes the third bump rule a test, not the Reviewer's eye.
 - Unit tests in `core.tree` for the timing rules: 11 mutations in one tick accept 10 and drop 1; a second
@@ -604,3 +605,9 @@ freezes all three; "The layout hash" gains the exact serialisation and its scope
 `forOption` in; `rings`, `view` and `format` out); the `Ownership` row gains the start's bit and says the
 hidden bitset never holds a fork-hidden node; the golden id test becomes the three checks (a) to (c). The
 start's `boughtBy` entry of −1 was already in the `Marks` row. No payload changes.
+
+Amended 2026-11-25 by E8a-S9 (#189), round 2: a node is visible to a team when it is not in the hidden set
+and its `forOption`, if any, is the team's choice. `BuyNode` and `BuyPath` (which already said "visible") and
+`SetPin` require a visible node, and a fork-gated node whose option is not chosen is refused with the new
+key `option_not_chosen`. A new refusal key is no bump (above); it needs its lang key in
+`assets/orevault/lang/en_us.json` when the `Refusal` enum lands. The hash sentence names the fork option.

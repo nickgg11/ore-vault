@@ -68,8 +68,9 @@ picture.
 | `rings` | array of ring | yes | One faint level ring per level, 1 to 30, with its radius (§8 Tab 1) |
 | `view` | object | yes | Icon sizes, gaps, edge width, zoom stops and text thresholds |
 
-The file is strict JSON, read through Gson's `JsonReader` with `Strictness.STRICT` so that a duplicate key in
-one object is seen and refused rather than silently overwritten. Every object refuses keys it does not
+The file is strict JSON, read through Gson's `JsonReader` with `Strictness.STRICT` (no comments, single
+quotes or trailing commas). The parser walks each object itself and keeps the names it has seen, so a
+duplicate key is refused rather than silently overwritten. Every object refuses keys it does not
 define, so a misspelt `petalAncor` fails at load instead of going missing. A key that starts with `_` is a
 comment: allowed on any object, ignored by the parser and not hashed. Int fields refuse fractions and
 strings.
@@ -136,7 +137,8 @@ A condition is an object with exactly one key besides any `_` comment keys:
 
 Ore Working 4 to 6, for example, carry
 `"requires": { "allOf": [ { "tagPrefix": "c:clumps/" }, { "tagPrefix": "c:shards/" }, { "tagPrefix": "c:crystals/" } ] }`
-and `"forOption": { "fork": "ore_working", "option": "ore_doubling" }`. The exact ids, tags and loot tables
+and `"forOption": { "fork": "ore_working", "option": "ore_doubling" }`, where `ore_doubling` is a placeholder
+option id that #239 settles with the Writer. The exact ids, tags and loot tables
 each node names come from §6.1 and §9 and are written into the file at #239. If a §6.1 condition fits none of
 these forms, #248 adds one in the PR that needs it, updating this table and the loader's list of known forms.
 
@@ -149,6 +151,16 @@ never part of the server's hidden set, because that set is per server and is res
 `Ownership` row). A node hidden by its fork option is not dormant: it still counts as spent, and the option
 cannot be swapped away while the team owns it (§6 Mod-gated nodes, §4.4; refusal `fork_dependents_owned`,
 ADR 0006). Manager ruling, round 1, on the Developer's design.
+
+A node is visible to a team when it is not in the hidden set and its `forOption`, if any, is the team's
+choice. `BuyNode`, `BuyPath` and `SetPin` require a visible node: a hidden one is refused with `hidden`, a
+fork-gated one whose option is not chosen with `option_not_chosen` (ADR 0006, amended 2026-11-25). A pin on a
+node that stops being visible is dropped, whether the hidden set or the team's fork choice changed (ADR 0005
+section 7, amended 2026-11-25).
+
+Both are JUnit cases in `core.tree`, owed to #212: a `forOption` node is hidden under every other option and
+with no choice, shown under its own, and a swap away from its option is refused with
+`fork_dependents_owned` while the team owns it.
 
 ## Edges
 
@@ -181,7 +193,7 @@ The option ids here are placeholders; #239 settles the real ones with the Writer
 |---|---|---|
 | `parent` | string | The fork parent's skill id, which must name a skill in `nodes`. It is also the fork's id: the key of `fork_choice` in the save (ADR 0005, `fork_choice` is keyed by fork parent skill id) and the `forkId` of `ChooseForkOption` (ADR 0006) |
 | `petalAnchor` | string | The node the petals are drawn beside (§6 Fork): a node of the parent skill at the lowest ring among its nodes. If two copies share that ring, either is accepted, and the author's choice stands |
-| `options` | array, at least 2 | Each petal's option id and the centre of its icon, in the same units as nodes. Option ids are unique |
+| `options` | array, at least 2 | Each petal's option id and the centre of its icon, in the same units as nodes. Option ids are unique across all forks in the file |
 
 Petals are drawn where `pos` says, not computed from the anchor; "beside" is the `petalMaxGap` test (gate 9,
 below). Petals have no ring: an option can be picked once the team owns any node of its parent (§6 notation,
@@ -200,7 +212,7 @@ clockwise from the positive `x` axis (so -90 is straight up), authored like any 
 renderer places nothing. Level 0 has no ring: the start area inside level 1's circle is ring 0's band.
 
 A node of ring `r` has its centre in ring `r`'s band: `x² + y² >= radius(r)²` (0 for ring 0) and
-`x² + y² < radius(r + 1)²` (no upper bound for ring 30), computed in integers. This is the "drawn in its
+`x² + y² < radius(r + 1)²` (no upper bound for ring 30), computed in `long` arithmetic. This is the "drawn in its
 ring's band" half of §6 Ring, and it is part of the first layout test below.
 
 The radii are UI/UX's, set against the preview at #259. The 2026-10-26 preview drew the whole tree about
@@ -246,9 +258,10 @@ Gap, clearance and width values may not be negative.
 
 The wheel moves between stops (`docs/TEAM_REQUIREMENTS.md` UI/UX "Zoom and text"). At GUI scale `g`:
 
-1. The crisp stops are `k / g` for every whole `k` from `crispFromEffective` up to `floor(max × g)`. A crisp
+1. The crisp stops are `k / g` for every whole `k` from `crispFromEffective` up to `floor(max × g + 1e-9)`. A crisp
    stop below `min` is dropped.
 2. An overview stop is kept only if it lies in `[min, max]` and below the smallest crisp stop that was kept.
+   If no crisp stop was kept, every overview stop in `[min, max]` is kept.
 3. `min` is always a stop.
 4. Stops are compared with a tolerance of 1e-9, so 0.2 × 5 meets 1/5.
 
@@ -311,15 +324,15 @@ It refuses:
 - a condition without exactly one key besides `_` keys; an empty `allOf` or `anyOf`; `energyItem` other than
   `true`; a `tag`, `tagPrefix` or `lootTable` that is not `namespace:path`, or a `tagPrefix` not ending in
   `/`;
-- a fork whose `parent` names no skill, with fewer than two options, or with an option id repeated or equal
-  to a node or skill id; more than 16 forks; a `fork_parent` skill without exactly one fork, or a fork whose
+- a fork whose `parent` names no skill or with fewer than two options; an option id that repeats any option
+  id in the file, or equals a node or skill id; more than 16 forks; a `fork_parent` skill without exactly one fork, or a fork whose
   parent's nodes are not `fork_parent`; a `petalAnchor` naming no node, or one that is not a node of the
   parent at its lowest ring;
 - a `forOption` naming no fork or no option of that fork;
 - rings not one per level from 1 to 30, or radii not strictly increasing;
 - a view missing an `iconSize` key, or one that is odd or not positive; `zoom.min` not below `zoom.max`;
   overview stops not ascending or outside `[min, max]`; `crispFromEffective` not a whole number of at least 1;
-  a negative gap, clearance or width.
+  a negative gap, clearance or width; `petalMaxGap` below `minIconGap`.
 
 Each refusal has a JUnit test that parses a small bad file from `src/test/resources/tree_layout/` and expects
 that refusal, and one good file with an `_` key on every object parses (#212).
@@ -374,13 +387,13 @@ save or a payload names is frozen.
 | `parent` (fork id) and option `id`s | Frozen from T5 | Save data: `fork_choice` maps fork parent skill id to option id (ADR 0005); both travel as strings in `ChooseForkOption` and `Forks` (ADR 0006). A rename is a bump plus a migration of `fork_choice`; a removal is a bump, and the load rules drop the choice (ADR 0005 section 7). The old id joins the reserved list |
 | `start` | Frozen | Edges name it, the wire puts it at index 0, and saves imply it |
 | `pos`, option `pos` | Free | In the hash, not the protocol. Moving a node needs no bump and no migration (ADR 0006, "Moving, re-ringing or re-edging a node needs no bump"); an older client is disconnected with the layout mismatch message until it updates |
-| `ring`, `class`, `marks`, `requires`, `exclusiveGroup`, `forOption`, `edges`, `petalAnchor` | Free for the format | In the hash. Each is still a design change with its own reviewers (the Balancer for rings and node design, UI/UX for anything that moves the tree; `CLAUDE.md` review matrix). A change to a node a save can own must leave every save in a state ADR 0005 section 7 settles: a node cut off from the start is pruned free, an owned node that gains `requires` becomes dormant. Two changes have no load rule today and need one in the same PR: making two ownable nodes exclusive (a team may own both), and removing `tradeoff` from a node that saves hold in `active_tradeoffs` or `generation_tradeoffs` |
+| `ring`, `class`, `marks`, `requires`, `exclusiveGroup`, `forOption`, `edges`, `petalAnchor` | Free for the format | In the hash. Each is still a design change with its own reviewers (the Balancer for rings and node design, UI/UX for anything that moves the tree; `CLAUDE.md` review matrix). A change to a node a save can own must leave every save in a state ADR 0005 section 7 settles: a node cut off from the start is pruned free, an owned node that gains `requires` is dormant wherever its condition fails. Three changes have no load rule today and need one in the same PR: making two ownable nodes exclusive (a team may own both); removing `tradeoff` from a node that saves hold in `active_tradeoffs` or `generation_tradeoffs`; and adding or changing `forOption` on an ownable node (a team may own it under another option) |
 | Node order in the file | Free | In the hash, since it is the wire index. Adding a node needs no bump (ADR 0006 bumps only on a changed or removed id); appending at the end keeps diffs readable but is not required |
 | `rings`, `view`, `format` | Free | Not in the hash. Read by the renderer and the layout tests, and `format` by the loader; no rule reads them |
 
 ADR 0006's golden test holds `PROTOCOL_VERSION` and literal lists of the node, skill and option ids (a fork's
-id is its parent's skill id). An id on the list missing from the file at the pinned version fails with "bump
-and migrate"; an id in the file not on the list fails with "add it to the list"; and when the version is
+id is its parent's skill id). An id on the list missing from the file at the pinned version fails with "bump,
+and migrate if it was renamed"; an id in the file not on the list fails with "add it to the list"; and when the version is
 re-pinned, every id dropped from the lists must be on the §6.1 reserved list (ADR 0006, amended 2026-11-25).
 
 ADR 0005 freezes these ids from T5. The file lands at T8a with provisional positions (#189's 2026-10-27
