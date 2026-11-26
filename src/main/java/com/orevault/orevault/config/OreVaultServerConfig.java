@@ -12,6 +12,7 @@ public final class OreVaultServerConfig {
     public static final ModConfigSpec.DoubleValue TARGET_PLAY_HOURS;
     public static final ModConfigSpec.DoubleValue CURVE_DIVISOR;
     public static final ModConfigSpec.BooleanValue ENABLE_DEBUG_COMMANDS;
+    public static final ModConfigSpec.BooleanValue LOG_RESONANCE_GAIN;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> ORE_CLASSIFICATION_OVERRIDES;
 
     static {
@@ -56,6 +57,13 @@ public final class OreVaultServerConfig {
                         "The whole [debug] block is removed before 1.0.")
                 .translation("orevault.configuration.debug.enable_debug_commands")
                 .define("enable_debug_commands", false);
+        LOG_RESONANCE_GAIN = builder
+                .comment("Whether each Resonance orb pickup is logged at INFO: team, collector, orbs merged, the orb's",
+                        "value and what the pool received after team scaling. Off by default.",
+                        "Takes effect on save: it is read on each pickup.",
+                        "The whole [debug] block is removed before 1.0.")
+                .translation("orevault.configuration.debug.log_resonance_gain")
+                .define("log_resonance_gain", false);
         builder.pop();
         SPEC = builder.build();
     }
@@ -70,6 +78,11 @@ public final class OreVaultServerConfig {
      */
     public static boolean enableDebugCommands() {
         return SPEC.isLoaded() && ENABLE_DEBUG_COMMANDS.getAsBoolean();
+    }
+
+    /** Read on each orb pickup by {@code ResonanceAward} (§10); off if the config has not loaded. */
+    public static boolean logResonanceGain() {
+        return SPEC.isLoaded() && LOG_RESONANCE_GAIN.getAsBoolean();
     }
 
     /** Read once, by the level curve at server start (§4.3 step 3); the default if the config has not loaded. */

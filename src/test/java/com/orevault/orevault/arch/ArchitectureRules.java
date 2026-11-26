@@ -173,6 +173,12 @@ final class ArchitectureRules {
                                 .should().callMethodWhere(calling(VAULT + ".VaultDimensions", "restoreAll", "restoreOne",
                                         "archiveOldLayouts")),
                         List.of("PlantedTeamEventRestores")),
+                // §3.4, §11 Drop Pipeline: one helper sets a block's XP, and it can only raise it (E5-S3, #264).
+                new Rule("9: only DroppedXp sets a block's dropped XP", null,
+                        noClasses().that().doNotHaveFullyQualifiedName(MINING + ".DroppedXp")
+                                .should().callMethodWhere(calling("net.neoforged.neoforge.event.level.BlockDropsEvent",
+                                        "setDroppedExperience")),
+                        List.of("PlantedMiningSetsXp")),
                 new Rule("8: mixin reaches only core.wear", BASE + ".mixin",
                         noClasses().that().resideInAPackage(BASE + ".mixin")
                                 .should().dependOnClassesThat(resideInAnyPackage(BASE + "..")

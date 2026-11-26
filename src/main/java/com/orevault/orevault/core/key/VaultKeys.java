@@ -53,6 +53,20 @@ public final class VaultKeys {
                 + "-" + hex.substring(16, 20) + "-" + hex.substring(20)));
     }
 
+    /**
+     * The mod id, the namespace of every Vault's dimension key. Duplicated from {@code OreVault.MOD_ID} because core
+     * imports nothing outside core; {@code VaultKeysTest} holds the two equal.
+     */
+    public static final String NAMESPACE = "orevault";
+
+    /**
+     * The team whose Vault a dimension key names, or nothing for any other level. Lets an adapter that may not import
+     * {@code vault}, such as the drop pipeline, take the team from the dimension (§3.4, ADR 0001).
+     */
+    public static Optional<UUID> teamOfDimension(String namespace, String path) {
+        return NAMESPACE.equals(namespace) ? teamIdFromDirectoryName(path) : Optional.empty();
+    }
+
     private static String hex(UUID teamId) {
         return teamId.toString().replace("-", "");
     }

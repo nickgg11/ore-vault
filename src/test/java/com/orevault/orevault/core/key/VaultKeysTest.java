@@ -68,4 +68,23 @@ class VaultKeysTest {
     void aNameWithoutThePrefixIsRejected() {
         assertEquals(Optional.empty(), VaultKeys.teamIdFromDirectoryName(HEX));
     }
+
+    /** The drop pipeline tells a Vault from its dimension key without importing {@code vault} (ADR 0001, §3.4). */
+    @Test
+    void aVaultDimensionNamesItsTeam() {
+        assertEquals(Optional.of(TEAM), VaultKeys.teamOfDimension("orevault", "vault_" + HEX));
+    }
+
+    /** Another mod's level with a Vault-shaped path is not ours. */
+    @Test
+    void aVaultPathInAnotherNamespaceIsNotAVault() {
+        assertEquals(Optional.empty(), VaultKeys.teamOfDimension("minecraft", "vault_" + HEX));
+        assertEquals(Optional.empty(), VaultKeys.teamOfDimension("orevault", "overworld"));
+    }
+
+    /** The namespace is duplicated here because core may not import the root; this holds the two together. */
+    @Test
+    void theNamespaceIsTheModId() {
+        assertEquals(com.orevault.orevault.OreVault.MOD_ID, VaultKeys.NAMESPACE);
+    }
 }

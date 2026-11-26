@@ -155,6 +155,12 @@ public final class GameTests {
     private static final ResourceKey<Consumer<GameTestHelper>> ORB_MERGE = function("orb/same_team_merge_conserves_value");
     private static final ResourceKey<Consumer<GameTestHelper>> ORB_TYPE = function("orb/type_updates_every_two_ticks");
     private static final ResourceKey<Consumer<GameTestHelper>> DEBUG_ORB_SPAWN = function("debug/orb_spawn_and_refuse_zero");
+    private static final ResourceKey<Consumer<GameTestHelper>> DROP_HAND = function("drop/hand_break_pays_by_rarity");
+    private static final ResourceKey<Consumer<GameTestHelper>> DROP_XP = function("drop/vanilla_xp_still_drops");
+    private static final ResourceKey<Consumer<GameTestHelper>> DROP_MACHINE = function("drop/machine_breaks_pay_nothing");
+    private static final ResourceKey<Consumer<GameTestHelper>> DROP_NON_MEMBER = function("drop/non_member_pays_and_records_nothing");
+    private static final ResourceKey<Consumer<GameTestHelper>> DROP_CANCELLED = function("drop/cancelled_event_and_stone_pay_nothing");
+    private static final ResourceKey<Consumer<GameTestHelper>> DROP_XP_HELPER = function("drop/xp_helper_never_lowers_vanilla");
     /** The orb tests wait 40 ticks for a pull, longer than {@link #MAX_TICKS}. */
     private static final int ORB_MAX_TICKS = 100;
 
@@ -313,6 +319,12 @@ public final class GameTests {
             registry.register(ORB_MERGE, OrbTests::sameTeamOrbsMergeAndConserveValue);
             registry.register(ORB_TYPE, OrbTests::theTypeUpdatesEveryTwoTicks);
             registry.register(DEBUG_ORB_SPAWN, DebugCommandTests::orbSpawnSpawnsTheValueAndRefusesZero);
+            registry.register(DROP_HAND, DropTests::aHandBreakPaysByRarity);
+            registry.register(DROP_XP, DropTests::vanillaXpStillDrops);
+            registry.register(DROP_MACHINE, DropTests::machineBreaksPayNothing);
+            registry.register(DROP_NON_MEMBER, DropTests::aNonMemberPaysAndRecordsNothing);
+            registry.register(DROP_CANCELLED, DropTests::aCancelledEventAndStonePayNothing);
+            registry.register(DROP_XP_HELPER, DropTests::theXpHelperNeverLowersVanilla);
         });
     }
 
@@ -343,7 +355,8 @@ public final class GameTests {
                 RETURN_BUILT, RETURN_ONE, RETURN_TIERS, RETURN_REBUILT, ARRIVAL_PILLAR, RETURN_BLOCKED, ARRIVAL_TORCH,
                 FROZEN_IDS, ORE_CLASSES, ORE_FEATURES, ORE_NO_ENTRY, ORE_TWO_RUNS, ORE_PUBLISHED, DEBUG_DENSITY_REFUSES,
                 DEBUG_DENSITY_PLAN, TEAM_DATA_RESONANCE, DEBUG_TEAM_DUMP, ORB_PAYS_NOTHING, ORB_ROUND_TRIP, ORB_ZERO,
-                ORB_DAMAGE, ORB_TYPE, DEBUG_ORB_SPAWN)) {
+                ORB_DAMAGE, ORB_TYPE, DEBUG_ORB_SPAWN, DROP_HAND, DROP_XP, DROP_MACHINE, DROP_NON_MEMBER, DROP_CANCELLED,
+                DROP_XP_HELPER)) {
             event.registerTest(test.identifier(), new FunctionGameTestInstance(test, data(environment, false)));
         }
         for (ResourceKey<Consumer<GameTestHelper>> test : List.of(ORB_NON_MEMBER, ORB_MEMBER, ORB_MERGE)) {

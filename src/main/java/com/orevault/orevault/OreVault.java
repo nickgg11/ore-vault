@@ -12,6 +12,8 @@ import com.orevault.orevault.data.LevelCurves;
 import com.orevault.orevault.data.PlayerAttachment;
 import com.orevault.orevault.debug.DebugCommands;
 import com.orevault.orevault.debug.VaultTickLog;
+import com.orevault.orevault.mining.DropPipeline;
+import com.orevault.orevault.mining.ResonanceAward;
 import com.orevault.orevault.mining.ResonanceOrbEntity;
 import com.orevault.orevault.ore.OreClassifier;
 import com.orevault.orevault.registry.ModBlocks;
@@ -31,12 +33,14 @@ import java.util.UUID;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.server.MinecraftServer;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import org.slf4j.Logger;
@@ -63,10 +67,13 @@ public final class OreVault {
         VaultTeamEvents.register();
         VaultPlayerEvents.register();
         VaultTickLog.register(OreVaultServerConfig::enableDebugCommands);
+        DropPipeline.register();
+        ResonanceAward.logGainsWhen(OreVaultServerConfig::logResonanceGain);
         container.registerConfig(ModConfig.Type.SERVER, OreVaultServerConfig.SPEC);
         modEventBus.addListener(ConfigReload::onReloading);
         NeoForge.EVENT_BUS.addListener(OreVault::registerCommands);
-        NeoForge.EVENT_BUS.addListener(VaultOpenings::refuseBreak);
+        // Never for a cancelled event (§9): FTB Ultimine cancels its first BreakBlockEvent and breaks each block again.
+        NeoForge.EVENT_BUS.addListener(EventPriority.NORMAL, false, BreakBlockEvent.class, VaultOpenings::refuseBreak);
         NeoForge.EVENT_BUS.addListener(OreVault::onServerStarted);
         NeoForge.EVENT_BUS.addListener(OreVault::onServerStopped);
     }
