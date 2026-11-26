@@ -420,3 +420,9 @@ for the curve, its first reader, ahead of E8a-S1 (#208), which adds the rest of 
 Neither package imports `core.curve`, so the rows form no cycle.
 The curve is held in `data.LevelCurves`, which `mining`, `network` and `debug` may all read, and the
 `ServerStartedEvent` listener publishes it after the classifier and before the restore.
+
+Amended 2026-11-25 by E8a-S1 (#208): `SkillId` and `ForkOption` join the `core.tree` row as enums, not string
+constants, so effects tables can be `EnumMap`s checked complete by `values()` and effect code can switch
+exhaustively; saves and the wire use each constant's `id()`, never `name()` or `ordinal()`. `ReservedIds`,
+`ForkCoverage` and `TreeIds` (the layout-to-Java id check) join it too. `NodeClass` and `Mark` are in `core.layout`,
+as the row already says, so the layout parser can refuse an unknown token without importing `core.tree`.

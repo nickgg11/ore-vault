@@ -3147,7 +3147,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] On-screen Resonance bar while mining, on by default, turned off by the client config `hud.show_resonance_bar` (§8, §10) — E5-S11 (#281) preview, E5-S13 (#288)
 
 ### Skill Tree — Resonance Nodes
-- [ ] Node data model: skill ids, classes (small, travel, notable, keystone, pact, growth, fork parent), marks (tradeoff, exclusive, requires), reserved ids never registered (§6) — E8a-S1 (#208)
+- [x] Node data model: skill ids (`SkillId`) and fork option ids (`ForkOption`) in `core.tree`, classes (small, travel, notable, keystone, pact, growth, fork parent; `NodeClass`) and marks (tradeoff, exclusive, requires; `Mark`) in `core.layout`, reserved ids never registered (`ReservedIds`), and the refund prices and windows in `TreeConstants` (§6, §4.4) — E8a-S1 (#208)
 - [ ] Per-tier effect constants, one source for code, lang and tests — E8a-S2a (#235), E8a-S2b (#211), E8a-S2c (#236)
 - [ ] The tree graph in the layout file, and its drawing positions — E8a-S3a (#239), E8a-S3b (#259)
 - [ ] Tree graph from the layout file: adjacency, distances, tier derived from owned ids, layout hash — E8a-S4 (#212)
