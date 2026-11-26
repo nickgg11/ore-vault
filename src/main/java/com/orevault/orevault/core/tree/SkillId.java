@@ -153,7 +153,8 @@ public enum SkillId {
         return id;
     }
 
-    /** The constant whose {@link #id()} is exactly {@code id}; empty for an unknown or reserved id. */
+    /** The constant whose {@link #id()} is exactly {@code id}; empty for an unknown or reserved id. Reserved ids are
+     * empty only because no constant carries one, which {@code SkillIdTest.noIdIsReservedOrStart} enforces. */
     public static Optional<SkillId> fromId(String id) {
         return Optional.ofNullable(BY_ID.get(id));
     }

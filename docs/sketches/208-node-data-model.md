@@ -50,7 +50,7 @@ layout keeps `skill` as a plain string (`core.layout` cannot see `SkillId`); `co
 characters (`MAX_ID`, ADR 0006). A fork parent is an ordinary `SkillId` (`vein_shaping`, `ore_attunement`,
 `ore_working`, `resonant_draw`); it is a fork parent because `ForkOption` names it, not because of a flag.
 
-Travel stats, one `SkillId` each: `mining_speed`, `resonance_gain`, `ore_xp`, `move_speed`, `block_reach`,
+Travel stats, one `SkillId` each: `mining_speed`, `resonance_gain`, `vanilla_xp_from_ore`, `move_speed`, `block_reach`,
 `max_health`, `tool_care`, `tool_charge`, `safe_fall`, `armour`, `masons_reach`, `kit_care`.
 
 Ruling 1: the travel stat `ore_xp` became `vanilla_xp_from_ore`, so the derivation rule above has no exceptions.

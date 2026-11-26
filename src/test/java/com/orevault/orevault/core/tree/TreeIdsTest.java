@@ -64,6 +64,20 @@ class TreeIdsTest {
     }
 
     @Test
+    void aSkillRepeatedPerNodeIsReportedOnce() {
+        assertOneMentioning(check(NODES, List.of("alpha", "beta", "fork", "gamma", "gamma", "gamma"), cleanOptions()),
+                "gamma", "no constants");
+    }
+
+    @Test
+    void problemsComeBackSorted() {
+        List<String> problems = check(NODES, List.of("zeta", "fork", "eta"), cleanOptions());
+        List<String> sorted = new ArrayList<>(problems);
+        sorted.sort(null);
+        assertEquals(sorted, problems);
+    }
+
+    @Test
     void aConstantWithNoNode() {
         assertOneMentioning(check(NODES, List.of("alpha", "fork"), cleanOptions()), "beta", "no node");
     }

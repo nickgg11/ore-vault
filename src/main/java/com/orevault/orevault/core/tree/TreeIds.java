@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * The agreement check between the layout file's ids and Java's (§11 Tree Layout Data; old #135, "ids resolve"). The layout
@@ -22,10 +23,12 @@ public final class TreeIds {
     }
 
     /**
-     * Problems between the layout's ids and {@link SkillId} and {@link ForkOption}; empty when they agree.
+     * Problems between the layout's ids and {@link SkillId} and {@link ForkOption}; empty when they agree. Each offender is
+     * reported once even if a caller passes one skill per node, and the messages come back sorted so a start-time log
+     * (#239) reads the same every run.
      *
      * @param nodeIds every node id in the layout, the start included
-     * @param skillIds every distinct {@code skill} in the layout
+     * @param skillIds the layout's {@code skill} values; repeats are ignored
      * @param optionsByParent each fork's parent skill id to its option ids, from the layout's {@code forks}
      */
     public static List<String> problems(Collection<String> nodeIds, Collection<String> skillIds,
@@ -46,15 +49,15 @@ public final class TreeIds {
             Map<String, ? extends Collection<String>> optionsByParent, Collection<String> knownSkillIds,
             Map<String, String> knownOptionParents) {
         List<String> out = new ArrayList<>();
-        Set<String> layoutSkills = new HashSet<>(skillIds);
-        for (String skill : skillIds) {
+        Set<String> layoutSkills = new TreeSet<>(skillIds);
+        for (String skill : layoutSkills) {
             if (ReservedIds.isReserved(skill)) {
                 out.add("skill id " + skill + " is reserved (§6.1)");
             } else if (!knownSkillIds.contains(skill)) {
                 out.add("layout skill " + skill + " has no constants (no SkillId)");
             }
         }
-        for (String known : knownSkillIds) {
+        for (String known : new TreeSet<>(knownSkillIds)) {
             if (!layoutSkills.contains(known)) {
                 out.add("SkillId " + known + " has no node in the layout");
             }
@@ -94,6 +97,7 @@ public final class TreeIds {
                         + " is missing from the layout");
             }
         }
+        out.sort(null);
         return List.copyOf(out);
     }
 }
