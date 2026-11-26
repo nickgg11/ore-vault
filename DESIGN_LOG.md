@@ -14,6 +14,21 @@ Newest first.
 
 ---
 
+## 2026-11-26 — Resonance orbs despawn after five minutes
+
+**Feedback.** Asked at #260 whether an orb nobody collects should vanish after five minutes, as an XP
+orb does. Nick: yes, because orbs that never despawn "could result in a ton of lag".
+
+**Decision.** A Resonance orb nobody collects despawns after 6000 ticks (§4.2). Orbs fly to any team
+member within 8 blocks, so only orbs left behind are affected. Making orbs permanent was rejected for
+the entity count it builds up in a Vault left half-mined.
+
+**Open.** Hoarder's Instinct (§6.1) makes orbs permanent, which carries the same risk. Nick asked for
+options that keep its orbs from piling up, for example caches that pull to their owner after ten
+minutes uncollected. The options go to him before any spec change.
+
+---
+
 ## 2026-11-25 — Level 1 stays at about 14 minutes near the surface
 
 **Where this came from.** The 2026-11-25 entry below left one question open for Nick: with the curve as derived, a solo

@@ -13,8 +13,8 @@ public final class OrbRules {
     /** Vanilla's orb radius ({@code XpOrbTargetingEvent(this, 8.0)}, §4.2). Resonance Magnetism raises it (#347). */
     public static final double BASE_RADIUS = 8.0;
     /**
-     * Ticks before an unpicked orb despawns: vanilla's 6000, five minutes. The Manager's default while Nick's answer is
-     * open (#260); Hoarder's Instinct stops the ageing (#347).
+     * Ticks before an unpicked orb despawns: vanilla's 6000, five minutes. Permanent orbs would pile up entities and lag
+     * the server (Nick, 2026-11-26, §4.2); Hoarder's Instinct stops the ageing (#347).
      */
     public static final int LIFETIME = 6000;
     /** Ticks between merge scans, vanilla's {@code ENTITY_SCAN_PERIOD}. */

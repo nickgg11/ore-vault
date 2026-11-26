@@ -154,5 +154,5 @@ open until it merges. Lang: `entity.orevault.resonance_orb` for the Writer.
    merge discards the absorbed orb, skips removed orbs, and a gametest checks value is conserved (Developer).
 6. Attraction and pickup by `instanceof ServerPlayer`, never a `FakePlayer` (Reviewer).
 7. The tests above (QA).
-8. Unpicked orbs despawn after 6000 ticks, a named constant, pending Nick.
+8. Unpicked orbs despawn after 6000 ticks, a named constant. Nick confirmed on 2026-11-26 (DESIGN_LOG).
 9. ADR 0005 s.10, §4.2, §11 and §13 in the same PR; `en_us` for the entity name.
