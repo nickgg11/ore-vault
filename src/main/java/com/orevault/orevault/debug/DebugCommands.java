@@ -6,7 +6,9 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.orevault.orevault.core.gen.VaultVariant;
 import com.orevault.orevault.data.OreVaultTeamData;
+import com.orevault.orevault.team.TeamHelper;
 import com.orevault.orevault.vault.VaultDimensions;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
@@ -24,6 +26,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +39,8 @@ import org.slf4j.LoggerFactory;
  * root and must work with this flag off (#205, amended 2026-10-27). The operator check and the flag answer different
  * questions, so both apply. {@code team} carries the guard on its own node because every subcommand S44 puts under it
  * (dump, wipe, grant) is debug; a player-facing {@code team} subcommand would move the guard to the leaves. The flag
- * arrives as a supplier because {@code debug} may not import {@code config} (ADR 0001); the root package hands it over.
+ * arrives as a supplier because {@code debug} may not import {@code config} (ADR 0001); the root package hands it over,
+ * and hands over the orb spawn the same way, because {@code debug} may not import {@code mining} either.
  */
 public final class DebugCommands {
     private static final Logger LOG = LoggerFactory.getLogger(DebugCommands.class);
@@ -45,7 +49,13 @@ public final class DebugCommands {
     private DebugCommands() {
     }
 
-    public static void attach(LiteralArgumentBuilder<CommandSourceStack> root, BooleanSupplier enabled) {
+    /** {@code ResonanceOrbEntity#spawn}, handed over by the root package; false when nothing was spawned. */
+    @FunctionalInterface
+    public interface OrbSpawner {
+        boolean spawn(ServerLevel level, Vec3 pos, UUID team, long valueThousandths);
+    }
+
+    public static void attach(LiteralArgumentBuilder<CommandSourceStack> root, BooleanSupplier enabled, OrbSpawner orbs) {
         Predicate<CommandSourceStack> allowed = Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS)
                 .and(source -> enabled.getAsBoolean());
         root.then(Commands.literal("diag").requires(allowed)
@@ -75,6 +85,35 @@ public final class DebugCommands {
                                                         UuidArgument.getUuid(context, "team"),
                                                         LongArgumentType.getLong(context, "thousandths"))))))));
         root.then(DensityCommand.node(allowed));
+        root.then(Commands.literal("orb").requires(allowed)
+                .then(Commands.literal("spawn")
+                        .then(Commands.argument("thousandths", LongArgumentType.longArg(0L))
+                                .executes(context -> spawnOrb(context.getSource(), orbs,
+                                        LongArgumentType.getLong(context, "thousandths"),
+                                        TeamHelper.teamId(context.getSource().getPlayerOrException())))
+                                .then(Commands.argument("team", UuidArgument.uuid())
+                                        .executes(context -> spawnOrb(context.getSource(), orbs,
+                                                LongArgumentType.getLong(context, "thousandths"),
+                                                UuidArgument.getUuid(context, "team")))))));
+    }
+
+    /**
+     * A Resonance orb at the source's position, for seeing orbs in a client without a Vault or an ore (QA, #260). A
+     * {@code /summon} makes an orb of value 0, which is discarded on its first tick; this sets the value and the team.
+     * The team defaults to the caller's, so a member collects it at once; name another team to see one lie still. A value
+     * of 0 is refused, as the spawn refuses it (Balancer).
+     */
+    private static int spawnOrb(CommandSourceStack source, OrbSpawner orbs, long thousandths, UUID team) {
+        Vec3 pos = source.getPosition();
+        String where = String.format(Locale.ROOT, "%.2f %.2f %.2f", pos.x, pos.y, pos.z);
+        if (!orbs.spawn(source.getLevel(), pos, team, thousandths)) {
+            source.sendFailure(Component.literal(TAG + "orb spawn team=" + team + " value=" + thousandths
+                    + " refused: an orb needs a value above 0"));
+            return 0;
+        }
+        print(source, "orb spawn team=" + team + " value=" + thousandths + " at " + where + " in "
+                + source.getLevel().dimension().identifier());
+        return 1;
     }
 
     /**

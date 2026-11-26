@@ -4,6 +4,7 @@ import com.orevault.orevault.OreVault;
 import com.orevault.orevault.core.frame.FrameLight;
 import com.orevault.orevault.core.signet.SignetTier;
 import com.orevault.orevault.registry.ModBlocks;
+import com.orevault.orevault.registry.ModEntities;
 import com.orevault.orevault.vault.PortalCellChanges;
 import java.util.List;
 import net.minecraft.client.color.block.BlockTintSources;
@@ -13,6 +14,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
@@ -28,6 +30,7 @@ public final class OreVaultClient {
         container.registerExtensionPoint(IConfigScreenFactory.class,
                 (mod, parent) -> new ConfigurationScreen(mod, parent));
         modEventBus.addListener(OreVaultClient::registerTints);
+        modEventBus.addListener(OreVaultClient::registerRenderers);
         modEventBus.addListener(VaultTitleLanguage::register);
         // Last, so a listener that cancels the layer has already done so and the intensity is never left at zero.
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, PortalOverlay::before);
@@ -41,6 +44,11 @@ public final class OreVaultClient {
         NeoForge.EVENT_BUS.addListener(PortalDoors::onLevelUnload);
         NeoForge.EVENT_BUS.addListener(PortalDoors::onClientTick);
         NeoForge.EVENT_BUS.addListener(PortalDoorRenderer::submit);
+    }
+
+    /** Every entity type needs a renderer, or the client dies at startup while a dedicated server runs (old #116). */
+    private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(ModEntities.RESONANCE_ORB.get(), VaultOrbRenderer::new);
     }
 
     /** One list entry per {@code tintindex}. All four portals share one near-white texture (§3.2). */

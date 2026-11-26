@@ -19,6 +19,7 @@ import com.orevault.orevault.data.GenSnapshots;
 import com.orevault.orevault.data.OreVaultTeamData;
 import com.orevault.orevault.data.VaultTypeFile;
 import com.orevault.orevault.debug.DensityCommand;
+import com.orevault.orevault.mining.ResonanceOrbEntity;
 import com.orevault.orevault.ore.ClassifiedOres;
 import com.orevault.orevault.vault.VaultDimensions;
 import com.orevault.orevault.worldgen.VaultChunkGenerator;
@@ -27,6 +28,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.commands.CommandSource;
 import net.minecraft.commands.CommandSourceStack;
@@ -38,7 +40,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.server.permissions.PermissionSet;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
 
 /**
@@ -119,7 +124,7 @@ final class DebugCommandTests {
         CommandNode<CommandSourceStack> root = dispatcher(helper).getRoot().getChild(OreVault.MOD_ID);
 
         check(helper, "flag off: root for a player", true, root.canUse(player));
-        for (String subcommand : List.of("diag", "break", "vault", "density", "team")) {
+        for (String subcommand : List.of("diag", "break", "vault", "density", "team", "orb")) {
             CommandNode<CommandSourceStack> node = root.getChild(subcommand);
             check(helper, "flag off: " + subcommand + " for a gamemaster", false, node.canUse(gamemaster));
             withDebugCommands(() -> {
@@ -375,6 +380,32 @@ final class DebugCommandTests {
                 tag + "resonance add team=" + team + " added=2800 (2.8) resonance_pool=15300 (15.3)",
                 tag + "team " + team + " record=ok resonance_pool=15300 (15.3) level_reached=0 vault_generation=0 disbanded_at=none"),
                 lines);
+        helper.succeed();
+    }
+
+    /**
+     * QA, #260: {@code orb spawn} makes an orb of the value and team asked at the source's position, and refuses 0, as the
+     * spawn does. The team is named because a console source has no player to default to.
+     */
+    static void orbSpawnSpawnsTheValueAndRefusesZero(GameTestHelper helper) {
+        UUID team = UUID.randomUUID();
+        Vec3 pos = Vec3.atBottomCenterOf(helper.absolutePos(TARGET));
+        List<String> lines = new ArrayList<>();
+        CommandSourceStack source = source(helper, LevelBasedPermissionSet.GAMEMASTER).withSource(recordingTo(lines))
+                .withPosition(pos);
+        withDebugCommands(() -> {
+            check(helper, "spawn", 1, run(dispatcher(helper), "orevault orb spawn 12500 " + team, source, helper));
+            check(helper, "zero", 0, run(dispatcher(helper), "orevault orb spawn 0 " + team, source, helper));
+        });
+        List<ResonanceOrbEntity> orbs = helper.getLevel().getEntitiesOfClass(ResonanceOrbEntity.class,
+                new AABB(helper.absolutePos(TARGET)).inflate(3.0), orb -> !orb.isRemoved());
+        check(helper, "one orb", 1, orbs.size());
+        if (orbs.size() == 1) {
+            check(helper, "value", 12_500L, orbs.getFirst().fields().value());
+            check(helper, "team", Optional.of(team), orbs.getFirst().fields().team());
+        }
+        check(helper, "lines", 2, lines.size());
+        orbs.forEach(Entity::discard);
         helper.succeed();
     }
 }

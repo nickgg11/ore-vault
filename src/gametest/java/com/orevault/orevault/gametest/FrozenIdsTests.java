@@ -32,7 +32,8 @@ final class FrozenIdsTests {
             Registries.ITEM, List.of(
                     "vault_frame",
                     "worn_signet"),
-            Registries.ENTITY_TYPE, List.of(),
+            Registries.ENTITY_TYPE, List.of(
+                    "resonance_orb"),
             Registries.DATA_COMPONENT_TYPE, List.of(),
             NeoForgeRegistries.Keys.ATTACHMENT_TYPES, List.of(
                     "player"),
