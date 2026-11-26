@@ -140,8 +140,8 @@ A condition is an object with exactly one key besides any `_` comment keys:
 
 Ore Working 4 to 6, for example, carry
 `"requires": { "allOf": [ { "tagPrefix": "c:clumps/" }, { "tagPrefix": "c:shards/" }, { "tagPrefix": "c:crystals/" } ] }`
-and `"forOption": { "fork": "ore_working", "option": "ore_doubling" }`, where `ore_doubling` is a placeholder
-option id that #239 settles with the Writer. The exact ids, tags and loot tables
+and `"forOption": { "fork": "ore_working", "option": "ore_doubling" }`, where `ore_doubling` is the option id
+#208 fixed (`core.tree.ForkOption`). The exact node ids, tags and loot tables
 each node names come from §6.1 and §9 and are written into the file at #239. If a §6.1 condition fits none of
 these forms, #248 adds one in the PR that needs it, updating this table and the loader's list of known forms.
 
@@ -199,7 +199,8 @@ border to icon border (§8 Tab 1); the renderer clips each line at the two icon 
 }
 ```
 
-The option ids here are placeholders; #239 settles the real ones with the Writer.
+These are the real option ids: #208 fixed every option id and its parent in `core.tree.ForkOption`, and the
+file must use them.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -413,8 +414,9 @@ when it writes the real ids.
 
 ADR 0005 freezes these ids from T5. The file lands at T8a with provisional positions (#189's 2026-10-27
 amendment), and T5 work is already merging while the file is still unwritten (#239 is open), so in
-practice an id is frozen from the PR that first adds it to the file. Choose ids at #239 as if they can never
-change.
+practice an id is frozen from the PR that first adds it to the file. Skill and option ids were fixed earlier, at
+#208, in `core.tree.SkillId` and `core.tree.ForkOption`, so #239 uses those and chooses only node ids, as if they
+can never change.
 
 ## What the layout hash covers
 
@@ -450,7 +452,7 @@ reordering edges keeps it, adding an edge, moving a node or reordering nodes cha
 
 A fragment near the start, with the ring radii of a 40 px a level sketch. It is not the real tree: the real
 start area has at least four growth nodes next to the start (§6 Wheel). The travel stat id `mining_speed` and
-the option ids are placeholders; #239 settles the real ones with the Writer.
+the option ids are the real ones, fixed at #208 (`SkillId`, `ForkOption`).
 
 ```json
 {
