@@ -399,7 +399,7 @@ Resonance is a team-shared numerical counter stored in the team's SavedData. It 
 
 ### 4.2 Resonance Gain
 
-Resonance orbs are spawned as floating entities when an ore block is broken inside the Vault. They behave identically to XP orbs visually and mechanically — they float toward the nearest team member within 8 blocks, are absorbed on contact, and add to the team's Resonance pool. 8 blocks is vanilla's experience orb radius (`ExperienceOrb`, `XpOrbTargetingEvent(this, 8.0)`). Sound and particle effects match XP orbs. The Resonance Magnetism option raises the radius to 12, 16 and 24 blocks (§6.1).
+Resonance orbs are spawned as floating entities when an ore block is broken inside the Vault. They move like XP orbs and use the XP orb sprite in a pulsing blue — they float toward the nearest team member within 8 blocks, are absorbed whole on contact, and add to the team's Resonance pool. Only members of the owning team attract or collect an orb; anyone else, a fake player included, leaves it where it is. 8 blocks is vanilla's experience orb radius (`ExperienceOrb`, `XpOrbTargetingEvent(this, 8.0)`). The XP pickup sound plays on collection, but there is no fly-in animation toward the player: vanilla sends that only for its own item, arrow and XP entities. An orb nobody collects despawns after 6000 ticks (five minutes), as an XP orb does. Orbs cannot be damaged. The Resonance Magnetism option raises the radius to 12, 16 and 24 blocks (§6.1).
 
 **Base gain rates** (constants, not config; one constant per row, read by the orb, the curve and this table):
 | Ore Tier | Base Resonance |
@@ -2998,7 +2998,9 @@ Resonance and Animus orbs share a `VaultOrbEntity` base that pays a team pool ra
 
 Movement is server-authoritative. Vanilla runs the follow logic on both sides and lets the client predict, which works because "nearest player" is knowable client-side; team membership is not, so a client prediction would pull orbs toward players who cannot collect them. The client interpolates what the server sends, which is why the entity type uses a short update interval.
 
-One renderer draws both types. It reuses the vanilla orb sprite sheet — an orb should read as an orb and differ by colour — sizing by value on vanilla's own thresholds and taking its tint from the entity: Resonance = blue/cyan, Animus = red/dark red.
+One renderer draws both types. It reuses the vanilla orb sprite sheet — an orb should read as an orb and differ by colour — sizing by value on vanilla's own thresholds applied to whole Resonance (2 is the smallest sprite, 5 the next, 12.5 the third; merged orbs grow) and taking its tint from the entity: Resonance pulses between cyan `0xFF4FC3F7` (`ResonanceColor.RESONANCE_COLOR`, the colour the Tome header shares) and deep blue `0xFF1E88E5` on vanilla's orb timing; Animus = red/dark red.
+
+Pickup sends no take packet. `LivingEntity#take` sends one only for items, arrows and XP orbs, and sending `ClientboundTakeItemEntityPacket` for another entity makes the client play the item sound. So the server plays the XP pickup sound itself, at vanilla's volume and pitch, and there is no fly-in animation. Orbs of one team within half a block merge every second, summing value and `orb_count`; orbs of different teams never merge. The saved shape is ADR 0005 section 10.
 
 ### Tree Layout Data
 
@@ -3131,7 +3133,7 @@ Use this to track progress. Tick a line only when the work has merged and been s
 - [ ] The `in_vault` login check: a player whose Vault is gone goes to their return position; one in a disbanded team's Vault or another team's goes home with a chat line; one whose Vault was reset while they were offline goes to the team anchor. `in_vault` is set and cleared on dimension change and respawn, and an online player whose team changes while inside another team's Vault is sent home (§11, ADR 0002) — E3-S6a (#237)
 
 ### Resonance System
-- [ ] Resonance orb entity on a `VaultOrbEntity` base: vanilla orb sprite sized by value, tinted blue/cyan, carrying `orb_count`, the number of orbs merged into it (Hoarder's Instinct's N, §6.1) — E5-S2 (#260)
+- [x] Resonance orb entity on a `VaultOrbEntity` base: vanilla orb sprite sized by value, pulsing cyan to deep blue, carrying `orb_count`, the number of orbs merged into it (Hoarder's Instinct's N, §6.1); immune to damage, despawns after 6000 ticks, XP pickup sound with no fly-in — E5-S2 (#260)
 - [ ] Resonance orb spawns on ore broken by hand in a Vault — 2/5/12.5 by rarity (§4.2); unclassified blocks and machine breaks award nothing — E5-S3 (#264); ×1.75 when Tithe consumed the block — E9-S31 (#335)
 - [ ] Orb floats to the nearest team member within 8 blocks, vanilla's orb radius (§4.2), server-authoritative; only members of the owning team attract or collect it — E5-S2 (#260); Resonance Magnetism raises it to 12 / 16 / 24 — E9-S39 (#347)
 - [x] Team Resonance pool, stored in thousandths, and `level_reached`, each reading 0 from a tag written without it (§11) — E6-S1 (#241)
