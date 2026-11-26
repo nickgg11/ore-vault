@@ -1704,17 +1704,19 @@ The nodes are listed in this order: the skills carried over from the tiered tree
 
 **Hoarder's Instinct** `[FORK OPTION: Orb Collection]`
 
-> Orbs never move toward you and never despawn; orbs resting within 4 blocks of each other merge into a single cache. An orb is resting once it has been on the ground for 20 ticks moving less than 0.01 blocks a tick; merges are checked every 20 ticks. Through Resonant Draw tier 2, collecting a cache of N orbs (N counts orbs, not Resonance) pays ×(1 + 0.1 × N) up to ×3; tier 3 lets caches pull in orbs from other caches within 8 blocks and raises the cap to ×4.
+> Orbs never move toward you and never despawn; orbs resting within 4 blocks of each other merge into a single cache. A cache nobody collects for 10 minutes is recalled: it pays the nearest team member in the same Vault at ×1, with no multiplier. An orb is resting once it has been on the ground for 20 ticks moving less than 0.01 blocks a tick; merges are checked every 20 ticks. Through Resonant Draw tier 2, collecting a cache of N orbs (N counts orbs, not Resonance) pays ×(1 + 0.1 × N) up to ×3; tier 3 lets caches pull in orbs from other caches within 8 blocks and raises the cap to ×4.
 
 **A petal, not a node.** Costs nothing, has no edges and lies on no path. Can be picked once the team owns a Resonant Draw node. One option at a time; picking one locks its siblings, and swapping or unpicking is free, outside the Vault only (§4.4).
 
 | Resonant Draw tier | Effect through this option |
 |---|---|
-| 1 | Orbs are stationary and permanent; orbs resting within 4 blocks merge into one cache |
+| 1 | Orbs are stationary and do not despawn; orbs resting within 4 blocks merge into one cache; a cache uncollected for 12,000 ticks is recalled at ×1 |
 | 2 | Cache collection pays ×(1 + 0.1 × N), capped at ×3 |
 | 3 | Caches pull in orbs from neighbouring caches within 8 blocks; cap raised to ×4 |
 
 > The resting rule and the 20-tick check are derived and unplaytested; T9 confirms them.
+>
+> **Recall** (Nick, 2026-11-26; `DESIGN_LOG.md`). A permanent cache costs server time while a player is near it, so caches cannot pile up without limit. A cache's age counts only while its chunk ticks, and a merge resets it to the age of the newest orb in it, so the 10 minutes run from when the cache last grew. When it reaches 12,000 ticks the cache is removed and pays the team member nearest to it in the same Vault level, with the pickup sound, at ×1: base value, team-scaled as any orb (§4.2), with no cache multiplier. If no team member is in that level, the cache waits and is recalled when one arrives. It does not fly, so it never crosses chunks. Paying the multiplier on recall was rejected: Hoarder's Instinct would then beat Resonance Magnetism outright, bonus Resonance for no walk back. Caches out of every player's simulation distance do not tick and keep their full value for a later sweep.
 >
 > The previous version of this node removed orb attraction and gave a flat 2× on manual pickup, which was strictly worse than Magnetism Tier 1 in ordinary play — an exclusive choice where one side was simply wrong. Merging plus permanence makes it a different way to mine (clear-then-sweep) rather than a worse one.
 

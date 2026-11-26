@@ -14,7 +14,7 @@ Newest first.
 
 ---
 
-## 2026-11-26 — Resonance orbs despawn after five minutes
+## 2026-11-26 — Resonance orbs despawn after five minutes; Hoarder's Instinct caches are recalled after ten
 
 **Feedback.** Asked at #260 whether an orb nobody collects should vanish after five minutes, as an XP
 orb does. Nick: yes, because orbs that never despawn "could result in a ton of lag".
@@ -23,9 +23,21 @@ orb does. Nick: yes, because orbs that never despawn "could result in a ton of l
 member within 8 blocks, so only orbs left behind are affected. Making orbs permanent was rejected for
 the entity count it builds up in a Vault left half-mined.
 
-**Open.** Hoarder's Instinct (§6.1) makes orbs permanent, which carries the same risk. Nick asked for
-options that keep its orbs from piling up, for example caches that pull to their owner after ten
-minutes uncollected. The options go to him before any spec change.
+**Hoarder's Instinct.** Its orbs do not despawn (§6.1), which carries the same risk. Nick asked for
+options. The Balancer offered four:
+
+- A. A cache uncollected for 10 minutes is recalled to the nearest team member in the Vault.
+- B. A cap of 64 caches per team per Vault, with overflow merged into the nearest cache.
+- C. A resting cache turns into a non-ticking block.
+- D. Resting orbs go into a per-team hoard claimed at the portal.
+
+Nick chose A (2026-11-26), with recall paying ×1 rather than the cache multiplier, so walking back
+within 10 minutes still earns the bonus and Hoarder's Instinct does not beat Resonance Magnetism for
+nothing. B was the fallback with a hard number. C was rejected for its size (a block, a block entity,
+art, and pistons, liquids, quarries and resets to handle). D was rejected because every hoard reaches
+the cap, which is a flat ×3 to ×4 on all Resonance, about 25 to 33 hours to level 30 instead of about
+100, the same flat-multiplier shape rejected earlier for this node. A wider merge radius was dropped:
+veins in a tunnel are tens of blocks apart, so it barely lowers the count and grows N for free.
 
 ---
 
